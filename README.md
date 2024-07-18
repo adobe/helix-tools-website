@@ -2,8 +2,8 @@
 Your project's description...
 
 ## Environments
-- Preview: https://main--helix-admin-website--adobe.hlx.page/
-- Live: https://main--helix-admin-website--adobe.hlx.live/
+- Preview: https://main--helix-admin-website--adobe.aem.page/
+- Live: https://main--helix-admin-website--adobe.aem.live/
 
 ## Installation
 
