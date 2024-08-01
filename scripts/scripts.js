@@ -1,8 +1,7 @@
 import {
-  buildBlock,
+  // buildBlock,
   loadHeader,
   loadFooter,
-  decorateButtons,
   decorateIcons,
   decorateSections,
   decorateBlocks,
@@ -13,21 +12,6 @@ import {
   loadCSS,
   sampleRUM,
 } from './aem.js';
-
-/**
- * Builds hero block and prepends to main in a new section.
- * @param {Element} main The container element
- */
-function buildHeroBlock(main) {
-  const h1 = main.querySelector('h1');
-  const picture = main.querySelector('picture');
-  // eslint-disable-next-line no-bitwise
-  if (h1 && picture && (h1.compareDocumentPosition(picture) & Node.DOCUMENT_POSITION_PRECEDING)) {
-    const section = document.createElement('div');
-    section.append(buildBlock('hero', { elems: [picture, h1] }));
-    main.prepend(section);
-  }
-}
 
 /**
  * load fonts.css and set a session storage flag
@@ -42,16 +26,78 @@ async function loadFonts() {
 }
 
 /**
+ * Replaces image icons with inline SVGs when they enter the viewport.
+ */
+export function swapIcons() {
+  document.querySelectorAll('span.icon > img').forEach((icon) => {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(async (entry) => {
+        if (entry.isIntersecting) {
+          const resp = await fetch(icon.src);
+          const temp = document.createElement('div');
+          temp.innerHTML = await resp.text();
+          const svg = temp.querySelector('svg');
+          temp.remove();
+          // check if svg has inline styles
+          let style = svg.querySelector('style');
+          if (style) style = style.textContent.toLowerCase().includes('currentcolor');
+          let fill = svg.querySelector('[fill]');
+          if (fill) fill = fill.getAttribute('fill').toLowerCase().includes('currentcolor');
+          // replace image with SVG, ensuring color inheritance
+          if ((style || fill) || (!style && !fill)) {
+            const p = icon.closest('p');
+            if (p) p.removeAttribute('class');
+            icon.replaceWith(svg);
+          }
+          observer.disconnect();
+        }
+      });
+    }, { threshold: 0 });
+    observer.observe(icon);
+  });
+}
+
+/**
  * Builds all synthetic blocks in a container element.
  * @param {Element} main The container element
  */
-function buildAutoBlocks(main) {
-  try {
-    buildHeroBlock(main);
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('Auto Blocking failed', error);
-  }
+// function buildAutoBlocks(main) {
+//   try {
+//     // build auto blocks
+//   } catch (error) {
+//     // eslint-disable-next-line no-console
+//     console.error('Auto Blocking failed', error);
+//   }
+// }
+
+/**
+ * Decorates links with appropriate classes to style them as buttons
+ * @param {HTMLElement} main The main container element
+ */
+function decorateButtons(main) {
+  main.querySelectorAll('p a[href]').forEach((a) => {
+    a.title = a.title || a.textContent;
+    const p = a.closest('p');
+    // identify standalone links
+    if (a.href !== a.textContent && p.textContent === a.textContent) {
+      a.className = 'button';
+      const strong = a.closest('strong');
+      const em = a.closest('em');
+      const double = !!strong && !!em;
+      if (double) a.classList.add('accent');
+      else if (strong) a.classList.add('emphasis');
+      else if (em) a.classList.add('outline');
+      p.innerHTML = a.outerHTML;
+      p.className = 'button-wrapper';
+    }
+  });
+}
+
+function decorateImages(main) {
+  main.querySelectorAll('p img').forEach((img) => {
+    const p = img.closest('p');
+    p.className = 'img-wrapper';
+  });
 }
 
 /**
@@ -60,12 +106,12 @@ function buildAutoBlocks(main) {
  */
 // eslint-disable-next-line import/prefer-default-export
 export function decorateMain(main) {
-  // hopefully forward compatible button decoration
-  decorateButtons(main);
   decorateIcons(main);
-  buildAutoBlocks(main);
+  decorateImages(main);
+  // buildAutoBlocks(main);
   decorateSections(main);
   decorateBlocks(main);
+  decorateButtons(main);
 }
 
 /**
@@ -111,6 +157,7 @@ async function loadLazy(doc) {
 
   loadCSS(`${window.hlx.codeBasePath}/styles/lazy-styles.css`);
   loadFonts();
+  swapIcons(main);
 }
 
 /**

@@ -1,0 +1,26 @@
+:root {
+  /* border width */
+  --border-l: 4px;
+  --border-m: 2px;
+  --border-s: 1px; 
+
+  /* rounding */
+  --rounding-xl: 16px;
+  --rounding-l: 10px;
+  --rounding-m: 8px;
+  --rounding-s: 4px;
+
+  /* spacing */
+    --spacing-50: 2px;
+    --spacing-75: 4px;
+   --spacing-100: 8px;
+   --spacing-200: 12px;
+   --spacing-300: 16px;
+   --spacing-400: 24px;
+   --spacing-500: 32px;
+   --spacing-600: 40px;
+   --spacing-700: 48px;
+   --spacing-800: 64px;
+   --spacing-900: 80px;
+  --spacing-1000: 96px;
+}
