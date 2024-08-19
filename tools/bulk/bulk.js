@@ -1,3 +1,5 @@
+import { sampleRUM } from '../../scripts/aem.js';
+
 /* eslint-disable no-await-in-loop, no-console */
 const log = document.getElementById('logger');
 const append = (string, status = 'unknown') => {
@@ -125,3 +127,6 @@ document.getElementById('start').addEventListener('click', async () => {
     }
   }
 });
+
+// Fire off RUM request
+sampleRUM.enhance();
