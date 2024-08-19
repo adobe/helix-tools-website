@@ -1,0 +1,282 @@
+<html>
+
+<head>
+  <title>Deep PSI</title>
+</head>
+<script src="//cdn.jsdelivr.net/npm/jstat@latest/dist/jstat.min.js"></script>
+<script type="module">
+  import { sampleRUM } from '../../scripts/aem.js';
+  import pLimit from 'https://cdn.skypack.dev/p-limit@4.0.0';
+  const parallelism = new URL(window.location.href).searchParams.get('parallelism');
+  // parse number
+  const limit = pLimit(parallelism ? parseInt(parallelism) : 10);
+
+  async function getResult(url) {
+    console.log(`fetching: ${url}`);
+    const resp = await limit(() => fetch(`https://thinktanked.org/deep-psi?url=${encodeURI(url)}`));
+    const json = await resp.json();
+    return json;
+  }
+
+  async function getResults(url, samples) {
+    const reqs = [];
+    for (let i = 0; i < samples; i += 1) {
+      reqs.push(getResult(`${url}${url.includes('?') ? '&' : '?'}ck=${Math.random()}`));
+    }
+    return await Promise.all(reqs);
+  }
+
+  function createTable(results, averages) {
+    const table = document.createElement('table');
+    const tr = document.createElement('tr');
+    const keys = Object.keys(results[0]);
+    keys.forEach((key) => {
+      const th = document.createElement('th');
+      th.textContent = key;
+      tr.append(th);
+    });
+    table.append(tr);
+
+    const totals = {};
+    results.forEach((result) => {
+      const tr = document.createElement('tr');
+      keys.forEach((key) => {
+        const td = document.createElement('td');
+        let value = result[key];
+        totals[key] = totals[key] ? totals[key] + value : value;
+        if (key === 'CLS') {
+          value = Math.round(value * 1000) / 1000;
+        } else {
+          value = Math.round(value);
+        }
+        td.textContent = value;
+        tr.append(td);
+      });
+      table.append(tr);
+    });
+
+    const avg = document.createElement('tr');
+
+    keys.forEach((key) => {
+      const td = document.createElement('td');
+      let psiVal = lowestCluster(keytoarray(results, key));
+      let value = mean(keytoarray(results, key));
+      let deviation = stddev(keytoarray(results, key));
+      if (key === 'CLS') {
+        value = Math.round(value * 1000) / 1000;
+        psiVal = Math.round(psiVal * 1000) / 1000;
+      } else {
+        value = Math.round(value);
+        psiVal = Math.round(psiVal);
+      }
+      averages[key] = psiVal;
+      td.innerHTML = psiVal + '<br><code>(' + value + ' ± ' + Intl.NumberFormat({ maximumSignificantDigits: 1 }).format(deviation) + ')</code>';
+      avg.append(td);
+    });
+
+    avg.className = 'average';
+
+    table.append(avg);
+    return table;
+  }
+
+  function lowestCluster(arr) {
+    const sorted = arr.sort((a, b) => a - b);
+    let clusterVal = 0;
+    console.log(sorted);
+    for (let i = 0; i < (sorted.length - 2); i += 1 ) {
+      if (sorted[i] === sorted[i + 1] && sorted[i] === sorted[i + 2]) {
+        console.log(clusterVal);
+        clusterVal = sorted[i];
+        break;
+      }
+    if (!clusterVal) clusterVal = (sorted[0] + sorted[1] + sorted[2]) / 3;
+    }
+    return clusterVal;
+  }
+
+  function keytoarray(arr, key) {
+    return arr.map((item) => item[key]);
+  }
+
+  function mean(arr) {
+    return arr.reduce((a, b) => a + b, 0) / arr.length;
+  }
+
+  function stddev(arr) {
+    const m = mean(arr);
+    return Math.sqrt(arr.reduce((sq, n) => sq + Math.pow(n - m, 2), 0) / (arr.length - 1));
+  }
+
+  /**
+   * @param {number[]} arr1 - array of numbers
+   * @param {number[]} arr2 - array of numbers
+   * @returns {number} - the p-value of the two independent samples
+   */
+  function significancetest(arr1, arr2) {
+    const n1 = arr1.length;
+    const n2 = arr2.length;
+    const mean1 = mean(arr1);
+    const mean2 = mean(arr2);
+    const stddev1 = stddev(arr1);
+    const stddev2 = stddev(arr2);
+    const pooledstddev = Math.sqrt(((n1 - 1) * stddev1 * stddev1 + (n2 - 1) * stddev2 * stddev2) / (n1 + n2 - 2));
+    const t = (mean1 - mean2) / (pooledstddev * Math.sqrt(1 / n1 + 1 / n2));
+    const df = n1 + n2 - 2;
+    const p = 1 - jStat.studentt.cdf(Math.abs(t), df);
+    return p;
+  }
+
+  async function comparePSI() {
+    const [res1, res2] = await Promise.all([executePSI(1), executePSI(2)]);
+    if (!res1 || !res2) return;
+    console.log(keytoarray(res1, 'LCP'), keytoarray(res2, 'LCP'));
+    console.log(significancetest(keytoarray(res1, 'LCP'), keytoarray(res2, 'LCP')));
+    const significancetestresults = document.getElementById('significancetestresults');
+    Object.keys(res1[0]).forEach((key) => {
+      const p = significancetest(keytoarray(res1, key), keytoarray(res2, key));
+      const li = document.createElement('li');
+      li.innerHTML = `<code>${key}</code>: ${Intl.NumberFormat({ maximumSignificantDigits: 3 }).format(p)}`;
+      significancetestresults.append(li);
+    });
+  }
+
+  async function executePSI(num) {
+    const url = document.getElementById('url' + num).value;
+    if (!url) return;
+    const output = document.getElementById('output' + num);
+    output.innerHTML += `fetching report for: ${url}\n`;
+    const rawResults = await getResults(url, 20);
+    const categs = ['first-contentful-paint', 'speed-index', 'largest-contentful-paint', 'interactive', 'total-blocking-time', 'cumulative-layout-shift'];
+    const names = ['FCP', 'SI', 'LCP', 'TTI', 'TBT', 'CLS'];
+    const results = rawResults.map((result) => {
+      const cleaned = {};
+      categs.forEach((categ, i) => {
+        cleaned[names[i]] = result.lighthouseResult.audits[categ].numericValue;
+      });
+      return cleaned;
+    });
+    const avgs = {};
+    output.append(createTable(results, avgs));
+    const p = document.createElement('p');
+    p.innerHTML = `<a target="_blank" href="https://googlechrome.github.io/lighthouse/scorecalc/#FCP=${avgs.FCP}&TTI=${avgs.TTI}&SI=${avgs.SI}&TBT=${avgs.TBT}&LCP=${avgs.LCP}&CLS=${avgs.CLS}&device=mobile&version=10">Overall Best Stable Score</a>`;
+
+    const avgScore = (r, k) => {
+      return mean(keytoarray(r, k));
+    }
+    
+    p.innerHTML += `<br><a target="_blank" href="https://googlechrome.github.io/lighthouse/scorecalc/#FCP=${avgScore(results, 'FCP')}&TTI=${avgScore(results, 'TTI')}&SI=${avgScore(results, 'SI')}&TBT=${avgScore(results, 'TBT')}&LCP=${avgScore(results, 'LCP')}&CLS=${avgScore(results, 'CLS')}&device=mobile&version=10">Overall Average Score</a>`;
+    output.append(p);
+
+    return results;
+  }
+
+  document.getElementById("button").addEventListener("click", () => {
+    const url = new URL(window.location);
+    url.searchParams.set('url1', document.getElementById('url1').value);
+    url.searchParams.set('url2', document.getElementById('url2').value);
+    window.history.pushState({}, '', url);
+
+
+    if (document.getElementById('clear').checked) {
+      document.getElementById('output1').innerHTML = '';
+      document.getElementById('output2').innerHTML = '';
+      document.getElementById('significancetestresults').innerHTML = '';
+    }
+
+    comparePSI();
+  });
+
+  const params = new URLSearchParams(window.location.search);
+  const url1 = params.get('url1');
+  const url2 = params.get('url2');
+  if (url1) document.getElementById('url1').value = url1;
+  if (url2) document.getElementById('url2').value = url2;
+
+  sampleRUM.enhance();
+</script>
+<style>
+  body {
+    font-family: 'Helvetica';
+  }
+
+  input {
+    padding: 5px;
+    font-size: 16px;
+    width: 100%;
+  }
+
+  h1,
+  h2 {
+    text-align: center;  
+  }
+
+  .form {
+    display: flex;
+    max-width: 800px;
+    margin: auto;
+    gap: 1rem;
+  }
+
+  .field label {
+    display: flex;
+    height: 100%;
+    align-items: center;
+  }
+
+  .results {
+    display: flex;
+    margin: auto;
+  }
+
+  table {
+    font-size: 25px;
+    width: 100%;
+  }
+
+  td {
+    text-align: center;
+    padding: 5px;
+  }
+
+  tr:nth-child(odd) {
+    background-color: #eee;
+  }
+
+  tr.average {
+    font-weight: 600;
+    background-color: #ddd;
+  }
+</style>
+
+<body>
+  <main>
+    <h1>Deep PSI</h1>
+    <h2>Compare the Average PSI of two URLs over multiple PSI reports</h2>
+    <div class="form">
+      <label for="url1">First URL</label>
+      <input id="url1" value="" autocomplete="on" >
+      <label for="url2">Second URL</label>
+      <input id="url2" value="" autocomplete="on" >
+      <button id="button">Submit</button>
+      <div class="field">
+        <label>
+          <input type="checkbox" id="clear">
+          Clear
+        </label>
+      </div>
+    </div>
+    <div class="results">
+      <div id="output1">
+
+      </div>
+      <div id="output2">
+
+      </div>
+    </div>
+    <ul id="significancetestresults">
+
+    </ul>
+  </main>
+</body>
+</html>
