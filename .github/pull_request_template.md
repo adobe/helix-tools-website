@@ -3,5 +3,5 @@ Please always provide the [GitHub issue(s)](../issues) your PR is for, as well a
 Fix #<gh-issue-id>
 
 Test URLs:
-- Before: https://main--helix-admin-website--adobe.hlx.live/
-- After: https://<branch>--helix-admin-website--adobe.hlx.live/
+- Before: https://main--helix-tools-website--adobe.hlx.live/
+- After: https://<branch>--helix-tools-website--adobe.hlx.live/
