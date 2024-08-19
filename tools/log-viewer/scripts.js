@@ -182,7 +182,6 @@ class RewrittenData {
   }
 
   path(value) {
-    if (!value) return '-';
     const writeA = (href, text) => `<a href="https://${href}" target="_blank">${text}</a>`;
     // path is created based on route/source
     const type = this.data.route || this.data.source;
@@ -198,6 +197,7 @@ class RewrittenData {
       return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.live${value}`, value);
     }
     if (type === 'indexer') {
+      if (!this.data.changes) return value || '-';
       // sometimes ms appears in indexer path?
       const updateMs = !this.data.duration;
       if (updateMs) this.data.duration = 0;
