@@ -5,6 +5,7 @@
 </head>
 <script src="//cdn.jsdelivr.net/npm/jstat@latest/dist/jstat.min.js"></script>
 <script type="module">
+  import { sampleRUM } from '../../scripts/aem.js';
   import pLimit from 'https://cdn.skypack.dev/p-limit@4.0.0';
   const parallelism = new URL(window.location.href).searchParams.get('parallelism');
   // parse number
@@ -12,7 +13,7 @@
 
   async function getResult(url) {
     console.log(`fetching: ${url}`);
-    const resp = await limit(() => fetch(`https://thinktanked.org/deep-psi?url=${encodeURI(url)}`));
+    const resp = await limit(() => fetch(`/tools/deep-psi/deep-psi.html?url=${encodeURI(url)}`));
     const json = await resp.json();
     return json;
   }
@@ -192,7 +193,7 @@
   if (url1) document.getElementById('url1').value = url1;
   if (url2) document.getElementById('url2').value = url2;
 
-
+  sampleRUM.enhance();
 </script>
 <style>
   body {
@@ -203,6 +204,11 @@
     padding: 5px;
     font-size: 16px;
     width: 100%;
+  }
+
+  h1,
+  h2 {
+    text-align: center;  
   }
 
   .form {
@@ -245,8 +251,12 @@
 
 <body>
   <main>
+    <h1>Deep PSI</h1>
+    <h2>Compare the performance of two URLs for more insights</h2>
     <div class="form">
+      <label for="url1">First URL</label>
       <input id="url1" value="">
+      <label for="url2">Second URL</label>
       <input id="url2" value="">
       <button id="button">Submit</button>
       <div class="field">
@@ -269,5 +279,4 @@
     </ul>
   </main>
 </body>
-
 </html>
