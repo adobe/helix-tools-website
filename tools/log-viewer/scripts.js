@@ -182,6 +182,7 @@ class RewrittenData {
   }
 
   path(value) {
+    if (!value) return '-';
     const writeA = (href, text) => `<a href="https://${href}" target="_blank">${text}</a>`;
     // path is created based on route/source
     const type = this.data.route || this.data.source;
@@ -236,7 +237,8 @@ class RewrittenData {
 
   errors(value) {
     if (!value || value.length === 0) return '-';
-    return value.join(', <br />');
+    const errs = value.map((err) => `${err.message} (${err.target})`);
+    return errs.join(', <br />');
   }
 
   method(value) {
@@ -438,7 +440,10 @@ function registerListeners(doc) {
     });
   };
   const gentleFilterTable = debounce(filterTable, 300);
-  TABLE_FILTER.addEventListener('input', gentleFilterTable);
+  TABLE_FILTER.addEventListener('change', gentleFilterTable);
+  TABLE_FILTER.closest('form').addEventListener('submit', (e) => {
+    e.preventDefault();
+  });
 
   [SOURCE_EXPANDER, PATH_EXPANDER].forEach((expander) => {
     expander.addEventListener('click', () => {
