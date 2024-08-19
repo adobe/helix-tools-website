@@ -71,6 +71,42 @@ export function swapIcons() {
 // }
 
 /**
+ * Builds a modal dialog element with a close button and body.
+ * @returns {Array} Array containing the created dialog element and the body div.
+ */
+export function buildModal() {
+  const dialog = document.createElement('dialog');
+  // register events
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      // eslint-disable-next-line no-use-before-define
+      closeModal();
+    }
+  };
+  const closeModal = () => {
+    dialog.close();
+    document.body.removeAttribute('data-modal');
+    document.removeEventListener('keydown', handleEscape);
+  };
+  dialog.addEventListener('focus', () => {
+    document.body.dataset.modal = dialog.open;
+    document.addEventListener('keydown', handleEscape);
+  }, true);
+  dialog.addEventListener('click', (e) => {
+    // check if click target is on dialog (including backdrop)
+    if (e.target === dialog) closeModal();
+  });
+  const close = document.createElement('button');
+  close.className = 'button close-modal';
+  close.setAttribute('type', 'button');
+  close.innerHTML = '<i class="symbol symbol-close"></i>';
+  close.addEventListener('click', closeModal);
+  const body = document.createElement('div');
+  dialog.append(close, body);
+  return [dialog, body];
+}
+
+/**
  * Decorates links with appropriate classes to style them as buttons
  * @param {HTMLElement} main The main container element
  */
