@@ -13,7 +13,7 @@
 
   async function getResult(url) {
     console.log(`fetching: ${url}`);
-    const resp = await limit(() => fetch(`/tools/deep-psi/deep-psi.html?url=${encodeURI(url)}`));
+    const resp = await limit(() => fetch(`https://thinktanked.org/deep-psi?url=${encodeURI(url)}`));
     const json = await resp.json();
     return json;
   }
