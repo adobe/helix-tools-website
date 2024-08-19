@@ -1,0 +1,13 @@
+.action-bar {
+  min-height: 72px;
+  border-radius: var(--rounding-l);
+  padding: var(--spacing-m) var(--horizontal-spacing);
+  box-shadow: var(--shadow-default);
+  background-color: var(--layer-elevated);
+  font-size: var(--body-size-s);
+}
+
+.action-bar form .form-field {
+  display: flex;
+  gap: var(--spacing-xs);
+}
