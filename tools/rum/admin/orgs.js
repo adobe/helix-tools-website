@@ -1,4 +1,6 @@
 import { store, log } from './store.js';
+import { sampleRUM } from '../../../scripts/aem.js';
+
 
 /** @type {HTMLDivElement} */
 const mainDiv = document.getElementById('rumadmin');
@@ -285,3 +287,6 @@ const showOrgkey = (key) => {
     });
   });
 })();
+
+// Fire off RUM request
+sampleRUM.enhance();
