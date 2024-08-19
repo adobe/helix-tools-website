@@ -118,23 +118,6 @@ function enableForm(form) {
   });
 }
 
-function enableLogin(owner, repo, form) {
-  const url = new URL(`https://admin.hlx.page/login/${owner}/${repo}/main`);
-  url.searchParams.set('extensionId', 'cookie');
-
-  const loginWindow = window.open(url, 'Sign in', 'popup,top=233,left=233,width=700,height=467');
-  loginWindow.focus();
-
-  const pollTimer = setInterval(() => {
-    if (loginWindow.closed) {
-      clearInterval(pollTimer);
-      enableForm(form);
-      // eslint-disable-next-line no-use-before-define
-      fetchLogs(owner, repo, form);
-    }
-  }, 1500);
-}
-
 function updateTableDisplay(show, table = document.querySelector('table')) {
   const results = table.querySelector('tbody.results');
   const noResults = table.querySelector('tbody.no-results');
@@ -148,20 +131,31 @@ function updateTableDisplay(show, table = document.querySelector('table')) {
   filter.disabled = show !== 'results';
 }
 
-function updateTableError(code, text) {
+function writeLoginMessage(owner, repo) {
+  if (owner && repo) {
+    return `You need to <a href="https://main--${repo}--${owner}.aem.page/" target="_blank">sign in to the ${repo} project sidekick</a> to view the requested logs.`;
+  }
+  if (repo) {
+    return `You need to sign in to the ${repo} project sidekick to view the requested logs.`;
+  }
+  return 'You need to sign in to this project\'s sidekick view the requested logs.';
+}
+
+function updateTableError(code, text, owner, repo) {
   const messages = {
     400: 'The request for logs could not be processed.',
-    401: 'You need to sign in to view the requested logs.',
+    401: writeLoginMessage(owner, repo),
     403: 'You do not have permission to view the requested logs.',
     404: 'The requested logs could not be found.',
   };
+
   // eslint-disable-next-line no-param-reassign
   if (!text) text = messages[code] || 'Unable to display the requested logs.';
   const error = document.querySelector('table > tbody.error');
   const title = error.querySelector('strong');
   const message = error.querySelector('p:last-of-type');
   title.textContent = `${code} Error`;
-  message.textContent = text;
+  message.innerHTML = text;
   updateTableDisplay('error', error.closest('table'));
 }
 
@@ -329,14 +323,14 @@ async function fetchLogs(owner, repo, form) {
       displayLogs(res.entries);
       enableForm(form);
     } else {
-      updateTableError(req.status, req.statusText);
-      // enableLogin(owner, repo, form);
+      updateTableError(req.status, req.statusText, owner, repo);
+      enableForm(form);
     }
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error(`failed to fetch ${url}:`, error);
     updateTableError(error.name, error.message);
-    // enableLogin(owner, repo, form);
+    enableForm(form);
   }
 }
 
