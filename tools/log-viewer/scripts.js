@@ -323,20 +323,20 @@ async function fetchLogs(owner, repo, form) {
   const toValue = encodeURIComponent(toISODate(to.value));
   const url = `https://admin.hlx.page/log/${owner}/${repo}/main?from=${fromValue}&to=${toValue}`;
   try {
-    const req = await fetch(url, { credentials: 'include' });
+    const req = await fetch(url);
     if (req.ok) {
       const res = await req.json();
       displayLogs(res.entries);
       enableForm(form);
     } else {
       updateTableError(req.status, req.statusText);
-      enableLogin(owner, repo, form);
+      // enableLogin(owner, repo, form);
     }
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error(`failed to fetch ${url}:`, error);
     updateTableError(error.name, error.message);
-    enableLogin(owner, repo, form);
+    // enableLogin(owner, repo, form);
   }
 }
 
