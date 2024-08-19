@@ -1,0 +1,114 @@
+.image-audit #info[aria-hidden] {
+  display: none;
+}
+
+.image-audit .gallery button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 44px;
+  height: 44px;
+  background-color: transparent;
+  cursor: context-menu;
+}
+
+.image-audit .gallery figure {
+  min-height: 44px;
+  cursor: context-menu;
+}
+
+.image-audit .gallery figure button {
+  border-radius: 0 0 0 50%;
+  background-color: var(--transparent-white-700);
+  transition: background-color 0.2s;
+}
+
+.image-audit .gallery figure:hover button {
+  background-color: var(--transparent-white-100);
+}
+
+.image-audit dialog {
+  font-size: var(--body-size-s);
+}
+
+.image-audit dialog table td {
+  vertical-align: top;
+}
+
+.image-audit dialog table tr td:first-of-type {
+  width: max-content;
+  font-weight: bold;
+}
+
+.image-audit dialog table td p:first-of-type {
+  margin-top: 0;
+}
+
+.image-audit dialog table td p:last-of-type {
+  margin-bottom: 0;
+}
+
+.image-audit dialog img {
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 600px;
+  border: var(--border-s) solid var(--gray-100);
+  background-color: var(--layer-pasteboard);
+  background-image:
+    linear-gradient(45deg, var(--color-background) 25%, transparent 25%), 
+    linear-gradient(135deg, var(--color-background) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--color-background) 75%),
+    linear-gradient(135deg, transparent 75%, var(--color-background) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 8px 0, 8px -8px, 0px 8px;
+}
+
+.image-audit dialog table td {
+  padding: 0.6em 0.7em;
+}
+
+.image-audit dialog table tr:not(:last-of-type) td {
+  border-bottom: var(--border-s) solid var(--gray-300);
+}
+
+.image-audit i.symbol-square::after {
+  inset: 0;
+  border: var(--border-m) solid;
+  border-radius: var(--rounding-s);
+}
+
+.image-audit i.symbol-portrait::after {
+  inset: 0 10%;
+  border: var(--border-m) solid;
+  border-radius: var(--rounding-s);
+}
+
+.image-audit i.symbol-landscape::after {
+  inset: 10% 0;
+  border: var(--border-m) solid;
+  border-radius: var(--rounding-s);
+}
+
+.image-audit i.symbol-widescreen::after {
+  inset: 20% 0;
+  border: var(--border-m) solid;
+  border-radius: var(--rounding-s);
+}
+
+.image-audit .canvas {
+  position: relative;
+}
+
+.image-audit .canvas .action-bar-wrapper {
+  position: sticky;
+  top: var(--horizontal-spacing);
+  z-index: 1;
+}
+
+.image-audit .canvas .action-bar button[aria-selected='true'] {
+  background-color: var(--gray-300);
+}

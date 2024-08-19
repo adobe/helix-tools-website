@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Audit</title>
+  <script src="/scripts/aem.js" type="module"></script>
+  <script src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script src="/labs/image-audit/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/labs/image-audit/styles.css" />
+</head>
+
+<body class="image-audit">
+  <header></header>
+  <main>
+    <div>
+      <h1>Image Audit</h1>
+      <p>Tool description blah blah blah, et cetera.</p>
+    </div>
+    <div>
+      <form id="site-form">
+        <div class="form-field url-field">
+          <label for="site-url">Site URL</label>
+          <input name="site-url" id="site-url" type="url" required />
+          <div class="field-help-text">
+            <p>Sitemap, robots, GitHub repository, and hlx/aem page & live URLs supported.</p>
+          </div>
+        </div>
+      </form>
+      <p class="button-wrapper">
+        <p id="info" aria-hidden="true"><span id="images-counter">0</span> images found on <span id="pages-counter">0</span> pages in <span id="elapsed">0</span> s.</p>
+      </p>
+    </div>
+    <div class="canvas" id="canvas">
+      <div class="action-bar">
+        <form>
+          <div role="listbox" class="form-field button-field">
+            <p>Sort by:</p>
+            <button type="button" role="option" aria-current="false" class="button ghost" id="sort-count">Appearances</button>
+            <button type="button" role="option" aria-current="false" class="button ghost" id="sort-aspect">Aspect ratio</button>
+          </div>
+        </form>
+      </div>
+      <div class="gallery" id="image-gallery"></div>
+    </div>
+  </main>
+  
+  <footer></footer>
+</body>
+
+</html>
