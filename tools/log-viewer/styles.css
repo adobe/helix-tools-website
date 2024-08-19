@@ -1,0 +1,291 @@
+@media (width >= 900px) {
+  .log-viewer form#timeframe-form {
+    display: grid;
+    grid-template:
+      'url timeframe' auto
+      'button button' 1fr / 1fr 1fr;
+    align-items: baseline;
+    gap: 0 var(--spacing-l);
+  }
+
+  .log-viewer form#timeframe-form > .url-field {
+    grid-area: url;
+  }
+
+  .log-viewer form#timeframe-form > .timeframe-wrapper {
+    grid-area: timeframe;
+  }
+
+  .log-viewer form#timeframe-form > .button-wrapper {
+    grid-area: button;
+  }
+}
+
+.log-viewer form#timeframe-form .timeframe-wrapper {
+  display: grid;
+
+  /* grid-template-columns: auto 1fr auto; */
+  align-items: end;
+  gap: var(--spacing-l);
+}
+
+.log-viewer form#timeframe-form ul.menu li:last-child {
+  position: relative;
+  margin-top: var(--spacing-m);
+}
+
+.log-viewer form#timeframe-form ul.menu li:last-child::before {
+  content: '';
+  position: absolute;
+  top: calc((-0.5 * var(--spacing-m)) - (var(--border-m) / 2));
+  left: 0;
+  right: 0;
+  height: var(--border-m);
+  background-color: var(--gray-200);
+}
+
+.log-viewer .datetime-wrapper {
+  display: none;
+}
+
+.log-viewer .picker-field input[data-custom='true'] ~ .datetime-wrapper {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--spacing-m) var(--spacing-xs);
+  left: 0;
+  right: 0;
+  top: calc(100% + var(--spacing-xs));
+  margin-top: var(--spacing-xs);
+  border-radius: var(--rounding-m);
+  padding: calc(0.4em + var(--border-m));
+  background-color: var(--color-background);
+  box-shadow: var(--shadow-default);
+  z-index: 1;
+}
+
+.log-viewer ul.menu:not([hidden]) + .datetime-wrapper {
+  display: none;
+}
+
+.log-viewer .picker-field input ~ .datetime-wrapper .form-field {
+  margin-top: 0;
+}
+
+@media (width >= 740px) {
+  .log-viewer .datetime-wrapper {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .log-viewer .picker-field input[data-custom='true'] ~ .datetime-wrapper {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (width >= 900px) {
+  .log-viewer .picker-field input[data-custom='true'] ~ .datetime-wrapper {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (width >= 1200px) {
+  .log-viewer .picker-field input[data-custom='true'] ~ .datetime-wrapper {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    position: absolute;
+  }
+}
+
+.log-viewer .table {
+  max-height: min(calc(100dvh - var(--header-height)), 800px);
+  margin-top: var(--spacing-l);
+  padding-top: 0;
+}
+
+.log-viewer table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.log-viewer table thead tr {
+  position: relative;
+}
+
+.log-viewer table thead th::before {
+  content: '';
+  position: absolute;
+  inset: calc(-0.6em - var(--border-m)) -1px calc(0.6em + var(--border-s));
+  background-color: var(--color-background);
+  z-index: -1;
+}
+
+.log-viewer table tbody[aria-hidden='true'],
+.log-viewer table tbody.results tr[aria-hidden='true'] {
+  display: none;
+}
+
+.log-viewer table tbody.no-results td > div,
+.log-viewer table tbody.error td > div,
+.log-viewer table tbody.loading td > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-m);
+  padding: var(--spacing-xxl) 0;
+  min-height: 200px;
+}
+
+.log-viewer table tbody.no-results span.icon,
+.log-viewer table tbody.error span.icon {
+  font-size: var(--heading-size-xxxxl);
+  line-height: 0;
+}
+
+.log-viewer table tbody.no-results p strong,
+.log-viewer table tbody.error p strong {
+  font-size: var(--detail-size-xl);
+}
+
+.log-viewer table tbody.error span.icon,
+.log-viewer table tbody.error p strong {
+  color: var(--red-900);
+}
+
+.log-viewer table tbody.loading i.symbol {
+  --border-m: 7px;
+
+  width: 5em;
+  height: 5em;
+  color: var(--gray-200);
+}
+
+/* expanded by source */
+.log-viewer table thead th:nth-child(n + 4),
+.log-viewer table tbody.results td:nth-child(n + 4) {
+  display: none;
+}
+
+/* stylelint-disable no-descending-specificity */
+.log-viewer table[data-source-expand='true'] thead th:nth-child(n + 4),
+.log-viewer table[data-source-expand='true'] tbody.results td:nth-child(n + 4) {
+  display: table-cell;
+}
+
+.log-viewer table[data-source-expand='true'] thead th:nth-child(n + 4)::before {
+  background-color: var(--gray-50);
+}
+
+.log-viewer table[data-source-expand='true'] thead th:nth-child(n + 10)::before {
+  background-color: var(--color-background);
+}
+
+.log-viewer table thead th:nth-child(n + 10),
+.log-viewer table tbody.results td:nth-child(n + 10) {
+  display: table-cell;
+}
+
+/* expanded by path */
+.log-viewer table thead th:nth-child(n + 11),
+.log-viewer table tbody.results td:nth-child(n + 11),
+.log-viewer table[data-source-expand='true'] thead th:nth-child(n + 11),
+.log-viewer table[data-source-expand='true'] tbody.results td:nth-child(n + 11) {
+  display: none;
+}
+
+.log-viewer table[data-path-expand='true'] thead th:nth-child(n + 11),
+.log-viewer table[data-path-expand='true'] tbody.results td:nth-child(n + 11) {
+  display: table-cell;
+}
+
+.log-viewer table[data-path-expand='true'] thead th:nth-child(n + 11)::before {
+  background-color: var(--gray-50);
+}
+
+.log-viewer table[data-path-expand='true'] thead th:nth-child(n + 13)::before {
+  background-color: var(--color-background);
+}
+
+.log-viewer table thead th:nth-child(n + 13),
+.log-viewer table tbody.results td:nth-child(n + 13) {
+  display: table-cell !important;
+}
+
+.log-viewer table td .status-light::before {
+  color: var(--red-900);
+}
+
+.log-viewer table td .status-light.http1::before {
+  color: var(--blue-900);
+}
+
+.log-viewer table td .status-light.http2::before {
+  color: var(--green-900);
+}
+
+.log-viewer table td .status-light.http3::before {
+  color: var(--yellow-900);
+}
+
+.log-viewer #logs-source,
+.log-viewer #logs-path {
+  padding-right: calc(1.7em + var(--spacing-xs));
+}
+
+.log-viewer .logs-expander {
+  position: absolute;
+  inset: 0;
+  left: unset;
+  height: calc(100% - 0.6em);
+  border-bottom: var(--border-s) solid var(--color-background);
+  padding: 0 var(--spacing-xs);
+  line-height: 0;
+  transition: background-color 0.2s;
+}
+
+.log-viewer .logs-expander:hover,
+.log-viewer .logs-expander:focus {
+  background-color: var(--gray-100);
+  cursor: col-resize;
+}
+
+.log-viewer .logs-expander .symbol.symbol-expand::before,
+.log-viewer .logs-expander .symbol.symbol-expand::after {
+  transition: left 0.2s, right 0.2s, transform 0.2s;
+}
+
+.log-viewer .logs-expander[aria-expanded='true'] {
+  background-color: var(--gray-50);
+  right: -0.3em;
+}
+
+.log-viewer .logs-expander[aria-expanded='true'] .symbol.symbol-expand::before {
+  left: -0.4ch;
+  transform: translateY(-50%) rotate(135deg);
+}
+
+.log-viewer .logs-expander[aria-expanded='true'] .symbol.symbol-expand::after {
+  right: -0.4ch;
+  transform: translateY(-50%) rotate(-135deg);
+}
+
+.log-viewer .filter-form-wrapper {
+  margin-bottom: 0;
+}
+
+.log-viewer .table-container > div:first-child {
+  margin-bottom: var(--spacing-xs);
+}
+
+.log-viewer .table-container > .table-wrapper {
+  margin-top: 0;
+}
+
+.log-viewer .filter-form .form-field {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--spacing-s);
+  align-items: center;
+}
+
+.log-viewer .filter-form .form-field label {
+  margin: 0;
+}
