@@ -13,7 +13,6 @@
 
 .table table {
   width: calc(100% - 1px);
-  border-collapse: collapse;
   font-size: var(--body-size-m);
 }
 
