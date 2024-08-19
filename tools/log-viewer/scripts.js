@@ -1,3 +1,5 @@
+import { sampleRUM } from '../../scripts/aem.js';
+
 /* eslint-disable class-methods-use-this */
 // utility functions
 function getFormData(form) {
@@ -461,5 +463,6 @@ function initDateTo(doc) {
   }, 60 * 1000);
 }
 
+sampleRUM.enhance();
 initDateTo(document);
 updateTimeframe('1:00:00');
