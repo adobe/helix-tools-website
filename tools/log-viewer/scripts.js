@@ -440,7 +440,7 @@ function registerListeners(doc) {
     });
   };
   const gentleFilterTable = debounce(filterTable, 300);
-  TABLE_FILTER.addEventListener('change', gentleFilterTable);
+  TABLE_FILTER.addEventListener('input', gentleFilterTable);
   TABLE_FILTER.closest('form').addEventListener('submit', (e) => {
     e.preventDefault();
   });
