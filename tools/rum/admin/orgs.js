@@ -1,7 +1,6 @@
 import { store, log } from './store.js';
 import { sampleRUM } from '../../../scripts/aem.js';
 
-
 /** @type {HTMLDivElement} */
 const mainDiv = document.getElementById('rumadmin');
 /** @type {HTMLDivElement} */
