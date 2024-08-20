@@ -197,6 +197,7 @@ class RewrittenData {
       return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.live${value}`, value);
     }
     if (type === 'indexer') {
+      if (!this.data.changes) return value || '-';
       // sometimes ms appears in indexer path?
       const updateMs = !this.data.duration;
       if (updateMs) this.data.duration = 0;
@@ -236,7 +237,8 @@ class RewrittenData {
 
   errors(value) {
     if (!value || value.length === 0) return '-';
-    return value.join(', <br />');
+    const errs = value.map((err) => `${err.message} (${err.target})`);
+    return errs.join(', <br />');
   }
 
   method(value) {
@@ -439,6 +441,9 @@ function registerListeners(doc) {
   };
   const gentleFilterTable = debounce(filterTable, 300);
   TABLE_FILTER.addEventListener('input', gentleFilterTable);
+  TABLE_FILTER.closest('form').addEventListener('submit', (e) => {
+    e.preventDefault();
+  });
 
   [SOURCE_EXPANDER, PATH_EXPANDER].forEach((expander) => {
     expander.addEventListener('click', () => {
