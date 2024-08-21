@@ -374,7 +374,7 @@ function updateTimeframe(value) {
 
 function registerListeners(doc) {
   const TIMEFRAME_FORM = doc.getElementById('timeframe-form');
-  const GITHUB_FIELD = doc.getElementById('github-url');
+  const SITE_FIELD = doc.getElementById('site-url');
   const PICKER_FIELD = doc.getElementById('timeframe');
   const PICKER_DROPDOWN = doc.querySelector('.picker-field ul');
   const PICKER_OPTIONS = PICKER_DROPDOWN.querySelectorAll('li');
@@ -383,12 +383,12 @@ function registerListeners(doc) {
   const RESULTS = TABLE.querySelector('tbody.results');
   const SOURCE_EXPANDER = doc.getElementById('source-expander');
   const PATH_EXPANDER = doc.getElementById('path-expander');
-  const RESET_BUTTON = doc.getElementById('github-reset');
+  const RESET_BUTTON = doc.getElementById('site-reset');
 
   TIMEFRAME_FORM.addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = getFormData(e.srcElement);
-    const [, owner, repo] = data['github-url'].pathname.split('/');
+    const [, repo, owner] = new URL(data['site-url']).hostname.split('.')[0].split('--');
     if (owner && repo) {
       disableForm(TIMEFRAME_FORM);
       showLoadingButton(e.submitter);
@@ -401,13 +401,13 @@ function registerListeners(doc) {
 
   TIMEFRAME_FORM.addEventListener('reset', (e) => {
     e.preventDefault();
-    GITHUB_FIELD.value = '';
+    SITE_FIELD.value = '';
     PICKER_FIELD.value = 'Last 24 hours';
     updateTimeframe('1:00:00');
     updateTableDisplay('no-results', TABLE);
   });
 
-  GITHUB_FIELD.addEventListener('input', () => {
+  SITE_FIELD.addEventListener('input', () => {
     clearTable(RESULTS);
   });
 
