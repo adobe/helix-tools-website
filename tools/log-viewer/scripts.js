@@ -348,7 +348,7 @@ function updateTimeframe(value) {
   }
 }
 
-function updateToFrom(doc) {
+function keepToFromCurrent(doc) {
   const to = doc.getElementById('date-to');
   to.setAttribute('max', toDateTimeLocal(new Date()));
   const timeframe = doc.getElementById('timeframe');
@@ -360,7 +360,7 @@ function updateToFrom(doc) {
 }
 
 async function fetchLogs(owner, repo, form) {
-  updateToFrom(document);
+  keepToFromCurrent(document);
   const from = document.getElementById('date-from');
   const fromValue = encodeURIComponent(toISODate(from.value));
   const to = document.getElementById('date-to');
@@ -474,9 +474,7 @@ function initDateTo(doc) {
   to.value = toDateTimeLocal(new Date());
 
   setInterval(() => {
-    const now = new Date();
-    to.setAttribute('max', toDateTimeLocal(now));
-    updateToFrom(doc);
+    keepToFromCurrent(doc);
   }, 60 * 100);
 }
 
