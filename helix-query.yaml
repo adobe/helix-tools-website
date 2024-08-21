@@ -1,0 +1,18 @@
+indices:
+  sidekick:
+    include:
+      - /sidekick/**
+    target: /sidekick/query-index.json
+    properties:
+      title:
+        select: head > meta[property="og:title"]
+        value: attribute(el, "content")
+      category:
+        select: head > meta[name="category"]
+        value: attribute(el, "content")
+      index:
+        select: head > meta[name="index"]
+        value: attribute(el, "content")
+      publicationDate:
+        select: head > meta[name="publication-date"]
+        value: parseTimestamp(attribute(el, "content"), "MM/DD/YYYY")
