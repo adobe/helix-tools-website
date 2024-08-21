@@ -314,30 +314,6 @@ function displayLogs(logs) {
   updateTableDisplay(logs.length ? 'results' : 'no-results', table);
 }
 
-async function fetchLogs(owner, repo, form) {
-  const from = document.getElementById('date-from');
-  const fromValue = encodeURIComponent(toISODate(from.value));
-  const to = document.getElementById('date-to');
-  const toValue = encodeURIComponent(toISODate(to.value));
-  const url = `https://admin.hlx.page/log/${owner}/${repo}/main?from=${fromValue}&to=${toValue}`;
-  try {
-    const req = await fetch(url);
-    if (req.ok) {
-      const res = await req.json();
-      displayLogs(res.entries);
-      enableForm(form);
-    } else {
-      updateTableError(req.status, req.statusText, owner, repo);
-      enableForm(form);
-    }
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error(`failed to fetch ${url}:`, error);
-    updateTableError(error.name, error.message);
-    enableForm(form);
-  }
-}
-
 function toggleCustomTimeframe(enabled) {
   const picker = document.getElementById('timeframe');
   const datetime = picker.parentElement.querySelector('.datetime-wrapper');
@@ -369,6 +345,42 @@ function updateTimeframe(value) {
     [from, to].forEach((field) => {
       field.removeAttribute('readonly');
     });
+  }
+}
+
+function updateToFrom(doc) {
+  const to = doc.getElementById('date-to');
+  to.setAttribute('max', toDateTimeLocal(new Date()));
+  const timeframe = doc.getElementById('timeframe');
+  if (timeframe.value !== 'Custom') {
+    const options = [...timeframe.parentElement.querySelectorAll('ul > li')];
+    const { value } = options.find((o) => o.textContent === timeframe.value).dataset;
+    updateTimeframe(value);
+  }
+}
+
+async function fetchLogs(owner, repo, form) {
+  updateToFrom(document);
+  const from = document.getElementById('date-from');
+  const fromValue = encodeURIComponent(toISODate(from.value));
+  const to = document.getElementById('date-to');
+  const toValue = encodeURIComponent(toISODate(to.value));
+  const url = `https://admin.hlx.page/log/${owner}/${repo}/main?from=${fromValue}&to=${toValue}`;
+  try {
+    const req = await fetch(url);
+    if (req.ok) {
+      const res = await req.json();
+      displayLogs(res.entries);
+      enableForm(form);
+    } else {
+      updateTableError(req.status, req.statusText, owner, repo);
+      enableForm(form);
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(`failed to fetch ${url}:`, error);
+    updateTableError(error.name, error.message);
+    enableForm(form);
   }
 }
 
@@ -460,12 +472,12 @@ registerListeners(document);
 function initDateTo(doc) {
   const to = doc.getElementById('date-to');
   to.value = toDateTimeLocal(new Date());
-  to.setAttribute('max', toDateTimeLocal(new Date()));
 
   setInterval(() => {
     const now = new Date();
     to.setAttribute('max', toDateTimeLocal(now));
-  }, 60 * 1000);
+    updateToFrom(doc);
+  }, 60 * 100);
 }
 
 sampleRUM.enhance();
