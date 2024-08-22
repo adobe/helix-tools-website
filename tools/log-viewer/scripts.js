@@ -197,6 +197,7 @@ class RewrittenData {
       return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.live${value}`, value);
     }
     if (type === 'indexer') {
+      if (!this.data.changes) return value || '-';
       // sometimes ms appears in indexer path?
       const updateMs = !this.data.duration;
       if (updateMs) this.data.duration = 0;
@@ -236,7 +237,8 @@ class RewrittenData {
 
   errors(value) {
     if (!value || value.length === 0) return '-';
-    return value.join(', <br />');
+    const errs = value.map((err) => `${err.message} (${err.target})`);
+    return errs.join(', <br />');
   }
 
   method(value) {
@@ -312,30 +314,6 @@ function displayLogs(logs) {
   updateTableDisplay(logs.length ? 'results' : 'no-results', table);
 }
 
-async function fetchLogs(owner, repo, form) {
-  const from = document.getElementById('date-from');
-  const fromValue = encodeURIComponent(toISODate(from.value));
-  const to = document.getElementById('date-to');
-  const toValue = encodeURIComponent(toISODate(to.value));
-  const url = `https://admin.hlx.page/log/${owner}/${repo}/main?from=${fromValue}&to=${toValue}`;
-  try {
-    const req = await fetch(url);
-    if (req.ok) {
-      const res = await req.json();
-      displayLogs(res.entries);
-      enableForm(form);
-    } else {
-      updateTableError(req.status, req.statusText, owner, repo);
-      enableForm(form);
-    }
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error(`failed to fetch ${url}:`, error);
-    updateTableError(error.name, error.message);
-    enableForm(form);
-  }
-}
-
 function toggleCustomTimeframe(enabled) {
   const picker = document.getElementById('timeframe');
   const datetime = picker.parentElement.querySelector('.datetime-wrapper');
@@ -370,9 +348,45 @@ function updateTimeframe(value) {
   }
 }
 
+function keepToFromCurrent(doc) {
+  const to = doc.getElementById('date-to');
+  to.setAttribute('max', toDateTimeLocal(new Date()));
+  const timeframe = doc.getElementById('timeframe');
+  if (timeframe.value !== 'Custom') {
+    const options = [...timeframe.parentElement.querySelectorAll('ul > li')];
+    const { value } = options.find((o) => o.textContent === timeframe.value).dataset;
+    updateTimeframe(value);
+  }
+}
+
+async function fetchLogs(owner, repo, form) {
+  keepToFromCurrent(document);
+  const from = document.getElementById('date-from');
+  const fromValue = encodeURIComponent(toISODate(from.value));
+  const to = document.getElementById('date-to');
+  const toValue = encodeURIComponent(toISODate(to.value));
+  const url = `https://admin.hlx.page/log/${owner}/${repo}/main?from=${fromValue}&to=${toValue}`;
+  try {
+    const req = await fetch(url);
+    if (req.ok) {
+      const res = await req.json();
+      displayLogs(res.entries);
+      enableForm(form);
+    } else {
+      updateTableError(req.status, req.statusText, owner, repo);
+      enableForm(form);
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(`failed to fetch ${url}:`, error);
+    updateTableError(error.name, error.message);
+    enableForm(form);
+  }
+}
+
 function registerListeners(doc) {
   const TIMEFRAME_FORM = doc.getElementById('timeframe-form');
-  const GITHUB_FIELD = doc.getElementById('github-url');
+  const SITE_FIELD = doc.getElementById('site-url');
   const PICKER_FIELD = doc.getElementById('timeframe');
   const PICKER_DROPDOWN = doc.querySelector('.picker-field ul');
   const PICKER_OPTIONS = PICKER_DROPDOWN.querySelectorAll('li');
@@ -381,12 +395,12 @@ function registerListeners(doc) {
   const RESULTS = TABLE.querySelector('tbody.results');
   const SOURCE_EXPANDER = doc.getElementById('source-expander');
   const PATH_EXPANDER = doc.getElementById('path-expander');
-  const RESET_BUTTON = doc.getElementById('github-reset');
+  const RESET_BUTTON = doc.getElementById('site-reset');
 
   TIMEFRAME_FORM.addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = getFormData(e.srcElement);
-    const [, owner, repo] = data['github-url'].pathname.split('/');
+    const [, repo, owner] = new URL(data['site-url']).hostname.split('.')[0].split('--');
     if (owner && repo) {
       disableForm(TIMEFRAME_FORM);
       showLoadingButton(e.submitter);
@@ -399,13 +413,13 @@ function registerListeners(doc) {
 
   TIMEFRAME_FORM.addEventListener('reset', (e) => {
     e.preventDefault();
-    GITHUB_FIELD.value = '';
+    SITE_FIELD.value = '';
     PICKER_FIELD.value = 'Last 24 hours';
     updateTimeframe('1:00:00');
     updateTableDisplay('no-results', TABLE);
   });
 
-  GITHUB_FIELD.addEventListener('input', () => {
+  SITE_FIELD.addEventListener('input', () => {
     clearTable(RESULTS);
   });
 
@@ -439,6 +453,9 @@ function registerListeners(doc) {
   };
   const gentleFilterTable = debounce(filterTable, 300);
   TABLE_FILTER.addEventListener('input', gentleFilterTable);
+  TABLE_FILTER.closest('form').addEventListener('submit', (e) => {
+    e.preventDefault();
+  });
 
   [SOURCE_EXPANDER, PATH_EXPANDER].forEach((expander) => {
     expander.addEventListener('click', () => {
@@ -455,12 +472,10 @@ registerListeners(document);
 function initDateTo(doc) {
   const to = doc.getElementById('date-to');
   to.value = toDateTimeLocal(new Date());
-  to.setAttribute('max', toDateTimeLocal(new Date()));
 
   setInterval(() => {
-    const now = new Date();
-    to.setAttribute('max', toDateTimeLocal(now));
-  }, 60 * 1000);
+    keepToFromCurrent(doc);
+  }, 60 * 100);
 }
 
 sampleRUM.enhance();

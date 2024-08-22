@@ -1,0 +1,182 @@
+.push-invalidation pre {
+  width: 100%;
+  white-space: pre-wrap;
+}
+
+.push-invalidation form table {
+  width: 100%;
+}
+
+.push-invalidation form table tr {
+  display: flex;
+  flex-direction: column;
+}
+
+.push-invalidation form table label,
+.push-invalidation form table input {
+  width: 100%;
+  font-family: var(--code-font-family);
+}
+
+.push-invalidation form table .form-field[aria-hidden='true'] {
+  display: none;
+}
+
+@media (width >= 700px) {
+  .push-invalidation form table tr {
+    display: table-row;
+  }
+
+  .push-invalidation form table tr td:first-of-type {
+    vertical-align: baseline;
+  }
+
+  .push-invalidation form table label {
+    margin: 0;
+    padding-right: var(--spacing-m);
+    line-height: calc(1.6em + (2 * 0.4em) + (2 * var(--border-m)));
+  }
+
+  .push-invalidation form table .field-help-text {
+    margin-bottom: var(--spacing-l);
+  }
+}
+
+.push-invalidation fieldset ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-m);
+}
+
+.push-invalidation fieldset ul li {
+  width: 100%;
+  border: var(--border-m) solid var(--gray-300);
+  border-radius: var(--rounding-m);
+  background-color: var(--gray-75);
+  color: var(--color-text);
+  transition: background-color 0.2s, opacity 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.push-invalidation fieldset ul li[aria-selected='true'] {
+  background-color: white;
+  box-shadow: var(--shadow-default);
+}
+
+.push-invalidation fieldset ul li:hover {
+  background-color: var(--gray-50);
+  box-shadow: var(--shadow-hover);
+  transform: scale(1);
+}
+
+.push-invalidation fieldset ul li[aria-selected='true'], 
+.push-invalidation fieldset ul li[aria-selected='true']:hover {
+  transform: scale(1.05);
+} 
+
+.push-invalidation fieldset ul li[aria-selected='false'] {
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+
+.push-invalidation fieldset ul li label {
+  margin: 0.5em 0.25em;
+}
+
+.push-invalidation .radio-field {
+  position: relative;
+  padding: 0;
+}
+
+.push-invalidation .radio-field label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  position: relative;
+  padding: 0.4em 0.85em;
+  cursor: pointer;
+  user-select: none;
+}
+
+.push-invalidation .radio-field label span {
+  font-family: var(--body-font-family);
+  font-size: var(--detail-size-xs);
+  font-weight: var(--weight-medium);
+}
+
+.push-invalidation .radio-field label input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.push-invalidation .radio-field label img {
+  width: auto;
+  max-width: 100%;
+  height: 32px;
+  transition: filter 0.2s, opacity 0.2s;
+}
+
+.push-invalidation .radio-field [aria-selected='false'] img {
+  filter: brightness(0);
+  opacity: 0.5;
+}
+
+.push-invalidation .radio-field [aria-selected='false']:hover img {
+  filter: brightness(1);
+  opacity: 1;
+}
+
+@media (width >= 500px) {
+  .push-invalidation .radio-field label span {
+    font-size: var(--detail-size-s);
+  }
+
+  .push-invalidation .radio-field label img {
+    height: 40px;
+  }
+}
+
+@media (width >= 700px) {
+  .push-invalidation .radio-field label span {
+    font-size: var(--detail-size-m);
+  }
+
+  .push-invalidation .radio-field label img {
+    height: 48px;
+  }
+}
+
+@media (width >= 900px) {
+  .push-invalidation fieldset ul {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  
+  .push-invalidation .radio-field label span {
+    font-size: var(--detail-size-l);
+  }
+
+  .push-invalidation .radio-field label img {
+    height: 72px;
+  }
+}
+
+.push-invalidation .status-light::before {
+  color: var(--red-900);
+}
+
+.push-invalidation .status-light.http1::before {
+  color: var(--blue-900);
+}
+
+.push-invalidation .status-light.http2::before {
+  color: var(--green-900);
+}
+
+.push-invalidation .status-light.http3::before {
+  color: var(--yellow-900);
+}
