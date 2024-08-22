@@ -13,6 +13,9 @@ indices:
       index:
         select: head > meta[name="index"]
         value: attribute(el, "content")
+      locale:
+        select: head > meta[name="locale"]
+        value: attribute(el, "content")
       publicationDate:
         select: head > meta[name="publication-date"]
         value: parseTimestamp(attribute(el, "content"), "MM/DD/YYYY")
