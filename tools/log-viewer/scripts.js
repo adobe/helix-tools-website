@@ -135,13 +135,9 @@ function updateTableDisplay(show, table = document.querySelector('table')) {
 
 async function writeLoginMessage(owner, repo) {
   if (owner && repo) {
-    const aemURL = `https://main--${repo}--${owner}.aem.page/`;
-    const hlxURL = `https://main--${repo}--${owner}.hlx.page/`;
-    const res = await fetch(aemURL);
-    if (res.ok) {
-      return `You need to <a href="${aemURL}" target="_blank">sign in to the ${repo} project sidekick</a> to view the requested logs.`;
-    }
-    return `You need to <a href="${hlxURL}" target="_blank">sign in to the ${repo} project sidekick</a> to view the requested logs.`;
+    // check if project is available at .aem or .hlx
+    const res = await fetch(`https://main--${repo}--${owner}.aem.page/`);
+    return `You need to <a href="https://main--${repo}--${owner}.${res.ok ? 'aem ': 'hlx'}.page/" "${res.ok ? aemURL}" target="_blank">sign in to the ${repo} project sidekick</a> to view the requested logs.`;
   }
   if (repo) {
     return `You need to sign in to the ${repo} project sidekick to view the requested logs.`;
