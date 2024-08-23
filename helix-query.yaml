@@ -19,3 +19,6 @@ indices:
       publicationDate:
         select: head > meta[name="publication-date"]
         value: parseTimestamp(attribute(el, "content"), "MM/DD/YYYY")
+      image:
+        select: head > meta[property="og:image"]
+        value: match(attribute(el, "content"), "https:\/\/[^/]+(/.*)")
