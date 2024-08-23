@@ -1,5 +1,3 @@
-import { sampleRUM } from '../../scripts/aem.js';
-
 function getFormData(form) {
   const data = {};
   [...form.elements].forEach((field) => {
@@ -188,5 +186,4 @@ function registerListeners(doc) {
   });
 }
 
-sampleRUM.enhance();
 registerListeners(document);

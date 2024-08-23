@@ -1,5 +1,3 @@
-import { sampleRUM } from '../../scripts/aem.js';
-
 /* eslint-disable class-methods-use-this */
 // utility functions
 function getFormData(form) {
@@ -133,9 +131,11 @@ function updateTableDisplay(show, table = document.querySelector('table')) {
   filter.disabled = show !== 'results';
 }
 
-function writeLoginMessage(owner, repo) {
+async function writeLoginMessage(owner, repo) {
   if (owner && repo) {
-    return `You need to <a href="https://main--${repo}--${owner}.aem.page/" target="_blank">sign in to the ${repo} project sidekick</a> to view the requested logs.`;
+    // check if project is available at .aem.page
+    const res = await fetch(`https://main--${repo}--${owner}.aem.page/`);
+    return `You need to <a href="https://main--${repo}--${owner}.${res.ok ? 'aem' : 'hlx'}.page/" target="_blank">sign in to the ${repo} project sidekick</a> to view the requested logs.`;
   }
   if (repo) {
     return `You need to sign in to the ${repo} project sidekick to view the requested logs.`;
@@ -143,10 +143,10 @@ function writeLoginMessage(owner, repo) {
   return 'You need to sign in to this project\'s sidekick view the requested logs.';
 }
 
-function updateTableError(code, text, owner, repo) {
+async function updateTableError(code, text, owner, repo) {
   const messages = {
     400: 'The request for logs could not be processed.',
-    401: writeLoginMessage(owner, repo),
+    401: await writeLoginMessage(owner, repo),
     403: 'You do not have permission to view the requested logs.',
     404: 'The requested logs could not be found.',
   };
@@ -373,13 +373,13 @@ async function fetchLogs(owner, repo, form) {
       displayLogs(res.entries);
       enableForm(form);
     } else {
-      updateTableError(req.status, req.statusText, owner, repo);
+      await updateTableError(req.status, req.statusText, owner, repo);
       enableForm(form);
     }
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error(`failed to fetch ${url}:`, error);
-    updateTableError(error.name, error.message);
+    await updateTableError(error.name, error.message);
     enableForm(form);
   }
 }
@@ -478,6 +478,5 @@ function initDateTo(doc) {
   }, 60 * 100);
 }
 
-sampleRUM.enhance();
 initDateTo(document);
 updateTimeframe('1:00:00');
