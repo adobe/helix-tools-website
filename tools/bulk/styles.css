@@ -1,0 +1,43 @@
+.bulk-ops textarea {
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+}
+
+.bulk-ops .run-wrapper {
+  display: grid;
+  gap: var(--spacing-s);
+  margin-top: 0.5em;
+}
+
+@media (width >= 700px) {
+  .bulk-ops .run-wrapper {
+    grid-template-columns: max-content max-content 1fr;
+    align-items: flex-end;
+  }
+}
+
+.bulk-ops .run-wrapper .button-wrapper {
+  margin-bottom: 0;
+}
+
+.bulk-ops .run-wrapper .checkbox-field ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-s);
+}
+
+.bulk-ops .status-light::before {
+  color: var(--red-900);
+}
+
+.bulk-ops .status-light.http1::before {
+  color: var(--blue-900);
+}
+
+.bulk-ops .status-light.http2::before {
+  color: var(--green-900);
+}
+
+.bulk-ops .status-light.http3::before {
+  color: var(--yellow-900);
+}
