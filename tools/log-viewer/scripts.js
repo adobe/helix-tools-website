@@ -134,13 +134,18 @@ function updateTableDisplay(show, table = document.querySelector('table')) {
 async function writeLoginMessage(owner, repo) {
   if (owner && repo) {
     // check if project is available at .aem.page
-    const res = await fetch(`https://main--${repo}--${owner}.aem.page/`, { method: 'HEAD' });
-    return `You need to <a href="https://main--${repo}--${owner}.${res.ok ? 'aem' : 'hlx'}.page/" target="_blank">sign in to the ${repo} project sidekick</a> to view the requested logs.`;
+    try {
+      const res = await fetch(`https://main--${repo}--${owner}.aem.page/`, { method: 'HEAD' });
+      return `You need to <a href="https://main--${repo}--${owner}.${res.ok ? 'aem' : 'hlx'}.page/" target="_blank">sign in to the ${repo} project sidekick</a> to view the requested logs.`;
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(`failed to write ${owner}/${repo} login message:`, error);
+    }
   }
   if (repo) {
     return `You need to sign in to the ${repo} project sidekick to view the requested logs.`;
   }
-  return 'You need to sign in to this project\'s sidekick view the requested logs.';
+  return 'You need to sign in to this project\'s sidekick to view the requested logs.';
 }
 
 async function updateTableError(code, text, owner, repo) {
@@ -194,7 +199,7 @@ class RewrittenData {
       return writeA(`${ADMIN}/config/${this.data.org}/sites/${this.data.site}.json`, value);
     }
     if (type === 'index' || type === 'live') {
-      return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.live${value}`, value);
+      return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.aem.live${value}`, value);
     }
     if (type === 'indexer') {
       if (!this.data.changes) return value || '-';
@@ -219,13 +224,21 @@ class RewrittenData {
       return writeA(`${ADMIN}/job/${this.data.owner}/${this.data.repo}/${this.data.ref}${value}/details`, value);
     }
     if (type === 'preview') {
-      return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.page${value}`, value);
+      return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.aem.page${value}`, value);
     }
     if (type === 'sitemap') {
-      const paths = this.data.updated.map(
-        (update) => writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.live${update}`, update),
-      );
-      return paths.join(', <br />');
+      if (this.data.updated) {
+        if (Array.isArray(this.data.updated) && Array.isArray(this.data.updated[0])) {
+          // this.data.updated is an array containing an array
+          this.data.updated = this.data.updated.flat();
+        }
+        const paths = this.data.updated.map(
+          (update) => writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.aem.live${update}`, update),
+        );
+        return paths.join(', <br />');
+      }
+      if (value) return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.aem.live${value}`, value);
+      return '-';
     }
     if (type === 'status') {
       return writeA(`${ADMIN}/status/${this.data.owner}/${this.data.repo}/${this.data.ref}${value}`, value);
@@ -367,13 +380,13 @@ async function fetchLogs(owner, repo, form) {
   const toValue = encodeURIComponent(toISODate(to.value));
   const url = `https://admin.hlx.page/log/${owner}/${repo}/main?from=${fromValue}&to=${toValue}`;
   try {
-    const req = await fetch(url);
-    if (req.ok) {
-      const res = await req.json();
-      displayLogs(res.entries);
+    const res = await fetch(url);
+    if (res.ok) {
+      const json = await res.json();
+      displayLogs(json.entries);
       enableForm(form);
     } else {
-      await updateTableError(req.status, req.statusText, owner, repo);
+      await updateTableError(res.status, res.statusText, owner, repo);
       enableForm(form);
     }
   } catch (error) {
