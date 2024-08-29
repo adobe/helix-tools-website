@@ -131,11 +131,11 @@ function updateTableDisplay(show, table = document.querySelector('table')) {
   filter.disabled = show !== 'results';
 }
 
-async function writeLoginMessage(owner, repo) {
+function writeLoginMessage(owner, repo) {
+  const siteUrl = document.getElementById('site-url').value;
+  const { origin } = new URL(siteUrl);
   if (owner && repo) {
-    // check if project is available at .aem.page
-    const res = await fetch(`https://main--${repo}--${owner}.aem.page/`, { method: 'HEAD' });
-    return `You need to <a href="https://main--${repo}--${owner}.${res.ok ? 'aem' : 'hlx'}.page/" target="_blank">sign in to the ${repo} project sidekick</a> to view the requested logs.`;
+    return `You need to <a href="${origin}" target="_blank">sign in to the ${repo} project sidekick</a> to view the requested logs.`;
   }
   if (repo) {
     return `You need to sign in to the ${repo} project sidekick to view the requested logs.`;
@@ -143,10 +143,10 @@ async function writeLoginMessage(owner, repo) {
   return 'You need to sign in to this project\'s sidekick view the requested logs.';
 }
 
-async function updateTableError(code, text, owner, repo) {
+function updateTableError(code, text, owner, repo) {
   const messages = {
     400: 'The request for logs could not be processed.',
-    401: await writeLoginMessage(owner, repo),
+    401: writeLoginMessage(owner, repo),
     403: 'You do not have permission to view the requested logs.',
     404: 'The requested logs could not be found.',
   };
@@ -408,7 +408,7 @@ function registerListeners(doc) {
       clearTable(RESULTS);
       updateTableDisplay('loading', TABLE);
       fetchLogs(owner, repo, TIMEFRAME_FORM);
-    }
+    } else updateTableError('Site URL', 'Enter a valid hlx/aem page or live URL to see logs.');
   });
 
   TIMEFRAME_FORM.addEventListener('reset', (e) => {
