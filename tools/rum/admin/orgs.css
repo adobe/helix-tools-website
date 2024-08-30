@@ -5,6 +5,28 @@
   max-width: 1440px;
 }
 
+#rumadmin button.button.negative {
+  border: var(--border-m) solid var(--red-900);
+  background-color: var(--red-900);
+}
+
+#rumadmin button.button.negative:disabled {
+  border: var(--border-m) solid var(--red-100);
+  background-color: var(--red-100);
+}
+
+#rumadmin button.button.secondary {
+  border: var(--border-m) solid var(--color-link);
+  color: var(--color-link);
+  background-color: var(--color-background);
+}
+
+#rumadmin button.button.secondary:disabled {
+  border-color: var(--gray-100);
+  background-color: var(--gray-100);
+  color: var(--gray-400);
+}
+
 #rumadmin h1.title {
   margin: 20px 0;
   font-size: 2em;
@@ -12,7 +34,8 @@
 
 #rumadmin .topbar {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 12px;
 }
 
 #rumadmin .topbar #org-selected {
@@ -21,10 +44,17 @@
 
 #rumadmin .topbar #org-actions {
   display: none;
+  align-self: flex-end;
+  gap: 6px;
+}
+
+#rumadmin .topbar #org-actions.active {
+  display: flex;
 }
 
 #rumadmin .topbar #org-actions .orgkey {
-  width: 300px;
+  width: 390px;
+  margin: 0 12px;
 }
 
 #rumadmin #org-details {
@@ -54,6 +84,7 @@
 
 #org-details .domain-row .cell-domain {
   flex-grow: 1;
+  align-content: center;
 }
 
 #org-details .domain-row .cell-domain-actions {
@@ -61,11 +92,8 @@
 }
 
 #rumadmin .modal {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  right: 0;
+  position: fixed;
+  inset: 0;
   z-index: 9999;
   background: #00000070;
 }
@@ -101,4 +129,5 @@
 
 #rumadmin .modal .modal-content .modal-actions {
   margin-top: 20px;
+  align-self: flex-end;
 }

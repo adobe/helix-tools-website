@@ -46,8 +46,8 @@ const createModal = ({
      <h2 class="modal-title">${title}</h2>
      <div class="content">${content}</div>
      <div class="modal-actions"> 
-       <button id="btn-accept" class="accept">${acceptText}</button>
-       <button id="btn-cancel" class="cancel">${cancelText}</button>
+       <button id="btn-accept" class="button accept">${acceptText}</button>
+       <button id="btn-cancel" class="button negative cancel">${cancelText}</button>
      </div>
    </div>`;
 
@@ -80,7 +80,7 @@ const updateOrgDataList = (orgs) => {
 };
 
 const enableOrgActions = (enabled = true) => {
-  orgActionsDiv.style.display = enabled ? 'block' : 'none';
+  orgActionsDiv.classList[enabled ? 'add' : 'remove']('active');
 };
 
 const createDomainRow = (org, domain) => {
@@ -90,11 +90,11 @@ const createDomainRow = (org, domain) => {
     <div class="cell-checkbox"><input type="checkbox"/></div>
     <div class="cell-domain">${domain}</div>
     <div class="cell-domain-actions">
-      <button class="btn btn-danger">Remove</button>
+      <button class="button negative remove-one">Remove</button>
     </div>`;
 
   const checkbox = row.querySelector('input[type="checkbox"]');
-  const btnRemove = row.querySelector('.btn-danger');
+  const btnRemove = row.querySelector('button.remove-one');
 
   checkbox.addEventListener('change', (e) => {
     const checkedCount = store.selectDomain(domain, e.target.checked);
@@ -199,21 +199,28 @@ const showOrgkey = (key) => {
     createModal({
       title: 'Create new org',
       content: /* html */`
-        <input type="text" placeholder="Name" />
-        <textarea placeholder="List of domain(s), separated by spaces/commas"></textarea>
+        <input type="text" placeholder="domain.com" />
+        <textarea id="domain-list" placeholder="List of domain(s), separated by spaces/commas"></textarea>
+        <textarea id="helixorg-list" placeholder="List of associated Helix org(s), separated by spaces/commas"></textarea>
       `,
       onAccept: async (modal) => {
         const name = modal.querySelector('input').value;
-        const domains = modal.querySelector('textarea').value.split(/[\s,]+/);
-        log.debug('creating org: ', name, domains);
+        const domains = modal.querySelector('#domain-list').value.split(/[\s,]+/);
+        const helixOrgs = modal.querySelector('#helixorg-list').value.split(/[\s,]+/);
+        log.debug('creating org: ', name, domains, helixOrgs);
 
-        if (!name || name.includes(' ')) {
-          modal.querySelector('input').setCustomValidity('Invalid org name');
+        if (!name || name.includes(' ') || !name.includes('.') || name.includes('/')) {
+          modal.querySelector('input').setCustomValidity('Invalid org name, expecting domain');
+          return false;
+        }
+
+        if (name.startsWith('https:') || name.startsWith('http:')) {
+          modal.querySelector('input').setCustomValidity('Invalid org name, expecting domain without protocol');
           return false;
         }
 
         try {
-          const key = await store.createOrg(name, domains);
+          const key = await store.createOrg(name, domains, helixOrgs);
           if (!key) {
             return false;
           }
@@ -237,13 +244,19 @@ const showOrgkey = (key) => {
     createModal({
       title: `Add domains to ${store.selectedOrg}`,
       content: /* html */`
-        <textarea placeholder="List of domain(s), separated by spaces/commas"></textarea>
+        <textarea id="domain-list" placeholder="List of domain(s), separated by spaces/commas"></textarea>
+        <textarea id="helixorg-list" placeholder="List of associated Helix org(s), separated by spaces/commas"></textarea>
       `,
       onAccept: async (modal) => {
-        const newDomains = modal.querySelector('textarea').value.split(/[\s,]+/);
-        log.debug(`adding domains to '${store.selectedOrg}': `, newDomains);
+        const newDomains = modal.querySelector('textarea#domain-list').value.split(/[\s,]+/);
+        const newHelixOrgs = modal.querySelector('textarea#helixorg-list').value.split(/[\s,]+/);
+        log.debug(`adding data to '${store.selectedOrg}': `, newDomains, newHelixOrgs);
         try {
-          const domains = await store.addDomains(store.selectedOrg, newDomains);
+          const domains = await store.addDomainsAndOrgs(
+            store.selectedOrg,
+            newDomains,
+            newHelixOrgs,
+          );
           updateDomainTable(domains);
         } catch (e) {
           // TODO: toast error
