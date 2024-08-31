@@ -222,10 +222,15 @@ class RewrittenData {
       return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.page${value}`, value);
     }
     if (type === 'sitemap') {
-      const paths = this.data.updated.map(
-        (update) => writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.live${update}`, update),
-      );
-      return paths.join(', <br />');
+      // when source: sitemap, we get arrays of paths
+      if (this.data.updated) {
+        const paths = this.data.updated.map(
+          (update) => writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.live${update}`, update),
+        );
+        return paths.join(', <br />');
+      }
+      // when route: sitemap, we only get a path
+      return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.live${this.data.path}`, this.data.path);
     }
     if (type === 'status') {
       return writeA(`${ADMIN}/status/${this.data.owner}/${this.data.repo}/${this.data.ref}${value}`, value);
