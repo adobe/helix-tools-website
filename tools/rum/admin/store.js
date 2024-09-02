@@ -20,6 +20,9 @@ const log = Object.fromEntries(
 );
 
 const store = new (class {
+  /** @type {string[]} */
+  orgs = [];
+
   /** @type {string} */
   selectedOrg = undefined;
 
@@ -30,10 +33,10 @@ const store = new (class {
   error = false;
 
   /**
-   * org => domain map
-   * @type {Map<string, string[]>}
+   * org => orgdata map
+   * @type {Map<string, { domains:string[]; helixOrgs:string[]; }>}
    */
-  orgDomainMap = new Map();
+  orgDataMap = new Map();
 
   /** @type {Set<string>} */
   selectedDomains = new Set();
@@ -42,7 +45,11 @@ const store = new (class {
   orgkeyMap = new Map();
 
   get orgDomains() {
-    return this.orgDomainMap.get(this.selectedOrg);
+    return this.orgDataMap.get(this.selectedOrg)?.domains;
+  }
+
+  get orgHelixOrgs() {
+    return this.orgDataMap.get(this.selectedOrg)?.helixOrgs;
   }
 
   async init() {
@@ -51,6 +58,7 @@ const store = new (class {
       token = localStorage.getItem('rum-bundler-token');
     }
     if (!token) {
+      // eslint-disable-next-line no-alert
       token = prompt('Please enter your key');
       if (!token) {
         this.denied = true;
@@ -85,9 +93,9 @@ const store = new (class {
   }
 
   async setSelectedOrg(orgId) {
-    this.selectedDomains = new Set();
+    this.selectedDomains.clear();
     try {
-      await this.fetchDomains(orgId);
+      await this.fetchOrgData(orgId);
     } catch (e) {
       this.error = e.message;
       this.selectedOrg = undefined;
@@ -118,9 +126,9 @@ const store = new (class {
     return orgkey;
   }
 
-  async fetchDomains(orgId) {
-    if (this.orgDomainMap.has(orgId)) {
-      return this.orgDomainMap.get(orgId);
+  async fetchOrgData(orgId) {
+    if (this.orgDataMap.has(orgId)) {
+      return this.orgDataMap.get(orgId);
     }
 
     const res = await fetchAPI(`/orgs/${orgId}`);
@@ -129,13 +137,22 @@ const store = new (class {
       throw Error('failed to fetch org');
     }
 
-    const { domains } = await res.json();
-    log.debug(`loaded domains for '${orgId}'`, domains);
-    this.orgDomainMap.set(orgId, domains);
+    // helixOrgs may be undefined until populated
+    // rest doesn't have anything now, but maybe in future
+    const { domains, helixOrgs = [], ...rest } = await res.json();
+    log.debug(`loaded data for '${orgId}'`, domains, helixOrgs);
+    this.orgDataMap.set(orgId, { domains, helixOrgs, ...rest });
     return domains;
   }
 
-  async createOrg(orgId, domains = []) {
+  /**
+   * @param {string} orgId
+   * @param {string[]} domains
+   * @param {string[]} helixOrgs
+   * @returns {Promise<string>} orgkey
+   * @throws {Error}
+   */
+  async createOrg(orgId, domains = [], helixOrgs = []) {
     if (this.orgs.includes(orgId)) {
       throw Error('org already exists');
     }
@@ -144,7 +161,7 @@ const store = new (class {
     domains = [...new Set(domains)];
     const res = await fetchAPI('/orgs', {
       method: 'POST',
-      body: JSON.stringify({ id: orgId, domains }),
+      body: JSON.stringify({ id: orgId, domains, helixOrgs }),
       headers: { 'Content-Type': 'application/json' },
     });
     if (!res.ok) {
@@ -153,25 +170,26 @@ const store = new (class {
     }
     const { orgkey } = await res.json();
     this.orgs.push(orgId);
-    this.orgDomainMap.set(orgId, domains);
+    this.orgDataMap.set(orgId, { domains, helixOrgs });
     this.orgkeyMap.set(orgId, orgkey);
     return orgkey;
   }
 
-  async addDomains(orgId, domains) {
+  async addDomainsAndOrgs(orgId, newDomains, newHelixOrgs) {
     const res = await fetchAPI(`/orgs/${orgId}`, {
       method: 'POST',
-      body: JSON.stringify({ domains }),
+      body: JSON.stringify({ domains: newDomains, helixOrgs: newHelixOrgs }),
       headers: { 'Content-Type': 'application/json' },
     });
     if (!res.ok) {
       log.error(`failed to add domains (${res.status}): `, res);
       throw Error('failed to add domains');
     }
-    const currentDomains = this.orgDomainMap.get(orgId);
-    const newDomains = [...new Set([...currentDomains, ...domains])];
-    this.orgDomainMap.set(orgId, newDomains);
-    return newDomains;
+    const { domains: currentDomains, helixOrgs: currentHelixOrgs } = this.orgDataMap.get(orgId);
+    const domains = [...new Set([...currentDomains, ...newDomains])];
+    const helixOrgs = [...new Set([...currentHelixOrgs, ...newHelixOrgs])];
+    this.orgDataMap.set(orgId, { domains, helixOrgs });
+    return { domains, helixOrgs };
   }
 
   async removeDomains(orgId, domains) {
@@ -189,9 +207,9 @@ const store = new (class {
         this.selectedDomains.delete(domain);
       }
     }
-    const currentDomains = this.orgDomainMap.get(orgId);
+    const { domains: currentDomains, helixOrgs: currentHelixOrgs } = this.orgDataMap.get(orgId);
     const newDomains = currentDomains.filter((d) => !removed[d]);
-    this.orgDomainMap.set(orgId, newDomains);
+    this.orgDataMap.set(orgId, { domains: newDomains, helixOrgs: currentHelixOrgs });
     return newDomains;
   }
 })();
