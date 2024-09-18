@@ -200,7 +200,7 @@ class RewrittenData {
 
   path(value) {
     const writeA = (href, text) => `<a href="https://${href}" target="_blank">${text}</a>`;
-    const writeAdminDetails = (href, text) => `<button type='button' class='admin-details button outline' data-url='https://${href}' value='${text}' aria-label='${text}'>${text.substring(0, 50)}...</button>`;
+    const writeAdminDetails = (href, text) => `<button type='button' class='admin-details button outline' data-url='https://${href}' value='${text}' title='${text}' aria-label='${text}'>${text.substring(0, 50)}...</button>`;
     // path is created based on route/source
     const type = this.data.route || this.data.source;
     if (!type) return value || '-';
