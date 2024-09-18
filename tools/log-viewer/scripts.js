@@ -224,7 +224,7 @@ class RewrittenData {
     if (type === 'sitemap') {
       // when source: sitemap, we get arrays of paths
       if (this.data.updated) {
-        const paths = this.data.updated.map(
+        const paths = this.data.updated[0].map(
           (update) => writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.live${update}`, update),
         );
         return paths.join(', <br />');
