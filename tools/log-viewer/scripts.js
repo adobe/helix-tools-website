@@ -231,7 +231,7 @@ class RewrittenData {
         }
         return segment ? writeAdminDetails(`${ADMIN}/index/${this.data.owner}/${this.data.repo}/${this.data.ref}${segment}`, segment) : '/';
       });
-      return changes.join(', <br />');
+      return changes.join('<br /><br />');
     }
     if (type === 'job' || type.includes('-job')) {
       return writeAdminDetails(`${ADMIN}/job/${this.data.owner}/${this.data.repo}/${this.data.ref}${value}/details`, value);
@@ -245,7 +245,7 @@ class RewrittenData {
         const paths = this.data.updated[0].map(
           (update) => writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.live${update}`, update),
         );
-        return paths.join(', <br />');
+        return paths.join('<br /><br />');
       }
       // when route: sitemap, we only get a path
       return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.live${this.data.path}`, this.data.path);
