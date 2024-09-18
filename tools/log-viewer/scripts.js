@@ -145,14 +145,15 @@ function writeLoginMessage(owner, repo) {
 
 function registerAdminDetailsListener(buttons) {
   buttons.forEach((button) => {
-    button.addEventListener('click', async (e) => {
-      e.preventDefault();
+    button.addEventListener('click', async () => {
       const url = new URL(button.dataset.url);
       const { default: getModal } = await import('../../scripts/modal/modal.js');
       if (url) {
         const res = await fetch(url);
         const jsonContent = await res.json();
-        const simpleModal = await getModal('simple-modal', () => `<p><code>${JSON.stringify(jsonContent, null, 3)}<code></p>`);
+        const simpleModal = await getModal('simple-modal', () => `<code>
+            <pre>${JSON.stringify(jsonContent, null, 3)}<pre>
+          </code>`);
         simpleModal.showModal();
       }
     });
@@ -199,7 +200,7 @@ class RewrittenData {
 
   path(value) {
     const writeA = (href, text) => `<a href="https://${href}" target="_blank">${text}</a>`;
-    const writeAdminDetails = (href, text) => `<a><button type='button' class='admin-details button outline' data-url='https://${href}' value='${text}' aria-label='${text}'>${text}</button><a>`;
+    const writeAdminDetails = (href, text) => `<button type='button' class='admin-details button outline' data-url='https://${href}' value='${text}' aria-label='${text}'>${text}</button>`;
     // path is created based on route/source
     const type = this.data.route || this.data.source;
     if (!type) return value || '-';
