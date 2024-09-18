@@ -143,6 +143,22 @@ function writeLoginMessage(owner, repo) {
   return 'You need to sign in to this project\'s sidekick view the requested logs.';
 }
 
+function registerAdminDetailsListener(buttons) {
+  buttons.forEach((button) => {
+    button.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const url = new URL(button.dataset.url);
+      const { default: getModal } = await import('../../scripts/modal/modal.js');
+      if (url) {
+        const res = await fetch(url);
+        const jsonContent = await res.json();
+        const simpleModal = await getModal('simple-modal', () => `<p><code>${JSON.stringify(jsonContent, null, 3)}<code></p>`);
+        simpleModal.showModal();
+      }
+    });
+  });
+}
+
 function updateTableError(code, text, owner, repo) {
   const messages = {
     400: 'The request for logs could not be processed.',
@@ -183,6 +199,7 @@ class RewrittenData {
 
   path(value) {
     const writeA = (href, text) => `<a href="https://${href}" target="_blank">${text}</a>`;
+    const writeAdminDetails = (href, text) => `<a><button type='button' class='admin-details button outline' data-url='https://${href}' value='${text}' aria-label='${text}'>${text}</button><a>`;
     // path is created based on route/source
     const type = this.data.route || this.data.source;
     if (!type) return value || '-';
@@ -216,7 +233,7 @@ class RewrittenData {
       return changes.join(', <br />');
     }
     if (type === 'job' || type.includes('-job')) {
-      return writeA(`${ADMIN}/job/${this.data.owner}/${this.data.repo}/${this.data.ref}${value}/details`, value);
+      return writeAdminDetails(`${ADMIN}/job/${this.data.owner}/${this.data.repo}/${this.data.ref}${value}/details`, value);
     }
     if (type === 'preview') {
       return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.page${value}`, value);
@@ -377,6 +394,7 @@ async function fetchLogs(owner, repo, form) {
       const res = await req.json();
       displayLogs(res.entries);
       enableForm(form);
+      registerAdminDetailsListener(document.querySelectorAll('button.admin-details'));
     } else {
       await updateTableError(req.status, req.statusText, owner, repo);
       enableForm(form);
