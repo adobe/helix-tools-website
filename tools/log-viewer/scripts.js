@@ -152,7 +152,7 @@ function registerAdminDetailsListener(buttons) {
         const res = await fetch(url);
         const jsonContent = await res.json();
         const simpleModal = await getModal('simple-modal', () => `<code>
-            <pre>${JSON.stringify(jsonContent, null, 3)}<pre>
+            <pre>${JSON.stringify(jsonContent, null, 3)}</pre>
           </code>`);
         simpleModal.showModal();
       }
