@@ -151,7 +151,7 @@ function registerAdminDetailsListener(buttons) {
       if (url) {
         const res = await fetch(url);
         const jsonContent = await res.json();
-        const simpleModal = await getModal('simple-modal', () => `<code>
+        const simpleModal = await getModal(url.pathname, () => `<code>
             <pre>${JSON.stringify(jsonContent, null, 3)}</pre>
           </code>`);
         simpleModal.showModal();
@@ -209,7 +209,7 @@ class RewrittenData {
       return writeA(`github.com/${this.data.owner}/${this.data.repo}/tree/${this.data.ref}`, value);
     }
     if (type === 'config') {
-      return writeA(`${ADMIN}/config/${this.data.org}/sites/${this.data.site}.json`, value);
+      return writeAdminDetails(`${ADMIN}/config/${this.data.org}/sites/${this.data.site}.json`, value);
     }
     if (type === 'index' || type === 'live') {
       return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.live${value}`, value);
@@ -229,7 +229,7 @@ class RewrittenData {
             if (!Number.isNaN(number)) this.data.duration += number;
           }
         }
-        return segment ? writeA(`${ADMIN}/index/${this.data.owner}/${this.data.repo}/${this.data.ref}${segment}`, segment) : '/';
+        return segment ? writeAdminDetails(`${ADMIN}/index/${this.data.owner}/${this.data.repo}/${this.data.ref}${segment}`, segment) : '/';
       });
       return changes.join(', <br />');
     }
@@ -251,7 +251,7 @@ class RewrittenData {
       return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.live${this.data.path}`, this.data.path);
     }
     if (type === 'status') {
-      return writeA(`${ADMIN}/status/${this.data.owner}/${this.data.repo}/${this.data.ref}${value}`, value);
+      return writeAdminDetails(`${ADMIN}/status/${this.data.owner}/${this.data.repo}/${this.data.ref}${value}`, value);
     }
     // eslint-disable-next-line no-console
     console.warn('unhandled log type:', type, this.data);
