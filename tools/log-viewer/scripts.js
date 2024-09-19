@@ -147,14 +147,16 @@ function registerAdminDetailsListener(buttons) {
   buttons.forEach((button) => {
     button.addEventListener('click', async () => {
       const url = new URL(button.dataset.url);
-      const { default: getModal } = await import('../../scripts/modal/modal.js');
+      const { createModal } = await import('../../blocks/modal/modal.js');
       if (url) {
         const res = await fetch(url);
         const jsonContent = await res.json();
-        const simpleModal = await getModal(url.pathname, () => `<code>
-            <pre>${JSON.stringify(jsonContent, null, 3)}</pre>
-          </code>`);
-        simpleModal.showModal();
+        const modalContent = document.createElement('div');
+        modalContent.innerHTML = `<code>
+             <pre>${JSON.stringify(jsonContent, null, 3)}</pre>
+           </code>`;
+        const { showModal } = await createModal(modalContent.childNodes);
+        showModal();
       }
     });
   });
