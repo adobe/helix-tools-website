@@ -143,6 +143,25 @@ function writeLoginMessage(owner, repo) {
   return 'You need to sign in to this project\'s sidekick view the requested logs.';
 }
 
+function registerAdminDetailsListener(buttons) {
+  buttons.forEach((button) => {
+    button.addEventListener('click', async () => {
+      const url = new URL(button.dataset.url);
+      const { createModal } = await import('../../blocks/modal/modal.js');
+      if (url) {
+        const res = await fetch(url);
+        const jsonContent = await res.json();
+        const modalContent = document.createElement('div');
+        modalContent.innerHTML = `<code>
+             <pre>${JSON.stringify(jsonContent, null, 3)}</pre>
+           </code>`;
+        const { showModal } = await createModal(modalContent.childNodes);
+        showModal();
+      }
+    });
+  });
+}
+
 function updateTableError(code, text, owner, repo) {
   const messages = {
     400: 'The request for logs could not be processed.',
@@ -183,6 +202,7 @@ class RewrittenData {
 
   path(value) {
     const writeA = (href, text) => `<a href="https://${href}" target="_blank">${text}</a>`;
+    const writeAdminDetails = (href, text) => `<button type='button' class='admin-details button outline' data-url='https://${href}' value='${text}' title='${text}' aria-label='${text}'>${text.substring(0, 50)}...</button>`;
     // path is created based on route/source
     const type = this.data.route || this.data.source;
     if (!type) return value || '-';
@@ -191,7 +211,7 @@ class RewrittenData {
       return writeA(`github.com/${this.data.owner}/${this.data.repo}/tree/${this.data.ref}`, value);
     }
     if (type === 'config') {
-      return writeA(`${ADMIN}/config/${this.data.org}/sites/${this.data.site}.json`, value);
+      return writeAdminDetails(`${ADMIN}/config/${this.data.org}/sites/${this.data.site}.json`, value);
     }
     if (type === 'index' || type === 'live') {
       return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.live${value}`, value);
@@ -211,12 +231,12 @@ class RewrittenData {
             if (!Number.isNaN(number)) this.data.duration += number;
           }
         }
-        return segment ? writeA(`${ADMIN}/index/${this.data.owner}/${this.data.repo}/${this.data.ref}${segment}`, segment) : '/';
+        return segment ? writeAdminDetails(`${ADMIN}/index/${this.data.owner}/${this.data.repo}/${this.data.ref}${segment}`, segment) : '/';
       });
-      return changes.join(', <br />');
+      return changes.join('<br /><br />');
     }
     if (type === 'job' || type.includes('-job')) {
-      return writeA(`${ADMIN}/job/${this.data.owner}/${this.data.repo}/${this.data.ref}${value}/details`, value);
+      return writeAdminDetails(`${ADMIN}/job/${this.data.owner}/${this.data.repo}/${this.data.ref}${value}/details`, value);
     }
     if (type === 'preview') {
       return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.page${value}`, value);
@@ -224,16 +244,16 @@ class RewrittenData {
     if (type === 'sitemap') {
       // when source: sitemap, we get arrays of paths
       if (this.data.updated) {
-        const paths = this.data.updated.map(
+        const paths = this.data.updated[0].map(
           (update) => writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.live${update}`, update),
         );
-        return paths.join(', <br />');
+        return paths.join('<br /><br />');
       }
       // when route: sitemap, we only get a path
       return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.live${this.data.path}`, this.data.path);
     }
     if (type === 'status') {
-      return writeA(`${ADMIN}/status/${this.data.owner}/${this.data.repo}/${this.data.ref}${value}`, value);
+      return writeAdminDetails(`${ADMIN}/status/${this.data.owner}/${this.data.repo}/${this.data.ref}${value}`, value);
     }
     // eslint-disable-next-line no-console
     console.warn('unhandled log type:', type, this.data);
@@ -377,6 +397,7 @@ async function fetchLogs(owner, repo, form) {
       const res = await req.json();
       displayLogs(res.entries);
       enableForm(form);
+      registerAdminDetailsListener(document.querySelectorAll('button.admin-details'));
     } else {
       await updateTableError(req.status, req.statusText, owner, repo);
       enableForm(form);
