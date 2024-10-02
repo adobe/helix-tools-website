@@ -152,7 +152,9 @@ function registerAdminDetailsListener(buttons) {
         const res = await fetch(url);
         const jsonContent = await res.json();
         const modalContent = document.createElement('div');
-        modalContent.innerHTML = `<pre>${JSON.stringify(jsonContent, null, 3)}</pre>`;
+        modalContent.innerHTML = `<pre>
+            ${JSON.stringify(jsonContent, null, 3)}
+          </pre>`;
         const { showModal } = await createModal(modalContent.childNodes);
         showModal();
       }
@@ -200,7 +202,14 @@ class RewrittenData {
 
   path(value) {
     const writeA = (href, text) => `<a href="https://${href}" target="_blank">${text}</a>`;
-    const writeAdminDetails = (href, text) => `<button type='button' class='admin-details button outline' data-url='https://${href}' value='${text}' title='${text}' aria-label='${text}'>${text.substring(0, 50)}...</button>`;
+    const writeAdminDetails = (href, text) => `<button
+        type='button'
+        class='admin-details button outline'
+        data-url='https://${href}'
+        value='${text}'
+        title='${text}'>
+          ${text.length > 29 ? `${text.substring(0, 29)}…` : text}
+      </button>`;
     // path is created based on route/source
     const type = this.data.route || this.data.source;
     if (!type) return value || '-';
