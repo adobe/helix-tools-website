@@ -135,12 +135,12 @@ function writeLoginMessage(owner, repo) {
   const siteUrl = document.getElementById('site-url').value;
   const { origin } = new URL(siteUrl);
   if (owner && repo) {
-    return `You need to <a href="${origin}" target="_blank">sign in to the ${repo} project sidekick</a> to view the requested logs.`;
+    return `<a href="${origin}" target="_blank">Sign in to the ${repo} project sidekick</a> to view the requested logs.`;
   }
   if (repo) {
-    return `You need to sign in to the ${repo} project sidekick to view the requested logs.`;
+    return `Sign in to the ${repo} project sidekick to view the requested logs.`;
   }
-  return 'You need to sign in to this project\'s sidekick view the requested logs.';
+  return 'Sign in to this project\'s sidekick view the requested logs.';
 }
 
 function registerAdminDetailsListener(buttons) {
@@ -152,9 +152,7 @@ function registerAdminDetailsListener(buttons) {
         const res = await fetch(url);
         const jsonContent = await res.json();
         const modalContent = document.createElement('div');
-        modalContent.innerHTML = `<code>
-             <pre>${JSON.stringify(jsonContent, null, 3)}</pre>
-           </code>`;
+        modalContent.innerHTML = `<pre>${JSON.stringify(jsonContent, null, 3)}</pre>`;
         const { showModal } = await createModal(modalContent.childNodes);
         showModal();
       }
