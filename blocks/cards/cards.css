@@ -13,7 +13,12 @@
   transition: box-shadow 0.3s;
 }
 
-.cards > ul > li:hover {
+.cards > ul > li.cards-card-linked {
+  cursor: pointer;
+  transition: box-shadow 0.3s;
+}
+
+.cards > ul > li.cards-card-linked:hover {
   box-shadow: var(--shadow-hover);
 }
 

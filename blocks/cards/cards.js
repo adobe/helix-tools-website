@@ -18,6 +18,7 @@ export default function decorate(block) {
   ));
   ul.querySelectorAll(':scope > li a[href]:first-of-type').forEach((a) => {
     const li = a.closest('li');
+    li.className = 'cards-card-linked';
     li.addEventListener('click', () => a.click());
   });
   block.textContent = '';
