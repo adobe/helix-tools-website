@@ -197,7 +197,7 @@ class RewrittenData {
 
   user(value) {
     if (!value) return '-';
-    return `<a href="mailto:${value}">${value}</a>`;
+    return `<a href="mailto:${value}" title="${value}">${value.split('@')[0]}</a>`;
   }
 
   path(value) {
@@ -306,10 +306,10 @@ function buildLog(data) {
   const cols = [
     'timestamp',
     'route',
+    'user',
     'source',
     'org',
     'site',
-    'user',
     'owner',
     'repo',
     'ref',
