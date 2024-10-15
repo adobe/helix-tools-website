@@ -269,7 +269,13 @@ class RewrittenData {
 
   errors(value) {
     if (!value || value.length === 0) return '-';
-    const errs = value.map((err) => `${err.message} (${err.target})`);
+    const errs = value.map((err) => {
+      const { message, target } = err;
+      if (message) {
+        return `${message} (${target})`;
+      }
+      return err;
+    });
     return errs.join(', <br />');
   }
 
