@@ -32,7 +32,7 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
     const { hostname, pathname } = new URL(url);
     const [branch, repo, owner] = hostname.split('.')[0].split('--');
     const adminURL = `https://admin.hlx.page/${operation}/${owner}/${repo}/${branch}${pathname}`;
-    const resp = await fetch(adminURL, { method: 'POST' });
+    const resp = await fetch(adminURL, { method: 'POST', credentials: 'include' });
     resp.text().then(() => {
       counter += 1;
       append(`${counter}/${total}: ${adminURL}`, resp.status);
@@ -63,6 +63,7 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
       const paths = urls.map((url) => new URL(url).pathname);
       const bulkResp = await fetch(`https://admin.hlx.page/${operation}/${owner}/${repo}/${branch}/*`, {
         method: 'POST',
+        credentials: 'include',
         body: JSON.stringify({
           paths,
           forceUpdate,
@@ -78,7 +79,7 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
         const { name } = job;
         const jobStatusPoll = window.setInterval(async () => {
           try {
-            const jobResp = await fetch(`https://admin.hlx.page/job/${owner}/${repo}/${branch}/${VERB[operation]}/${name}/details`);
+            const jobResp = await fetch(`https://admin.hlx.page/job/${owner}/${repo}/${branch}/${VERB[operation]}/${name}/details`, { credentials: 'include' });
             const jobStatus = await jobResp.json();
             const {
               state,
