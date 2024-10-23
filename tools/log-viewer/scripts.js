@@ -149,7 +149,7 @@ function registerAdminDetailsListener(buttons) {
       const url = new URL(button.dataset.url);
       const { createModal } = await import('../../blocks/modal/modal.js');
       if (url) {
-        const res = await fetch(url);
+        const res = await fetch(url, { credentials: 'include' });
         const jsonContent = await res.json();
         const modalContent = document.createElement('div');
         modalContent.innerHTML = `<pre>
@@ -405,7 +405,7 @@ async function fetchLogs(owner, repo, form) {
   const toValue = encodeURIComponent(toISODate(to.value));
   const url = `https://admin.hlx.page/log/${owner}/${repo}/main?from=${fromValue}&to=${toValue}`;
   try {
-    const req = await fetch(url);
+    const req = await fetch(url, { credentials: 'include' });
     if (req.ok) {
       const res = await req.json();
       displayLogs(res.entries);
