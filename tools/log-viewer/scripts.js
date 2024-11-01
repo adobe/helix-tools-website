@@ -186,8 +186,9 @@ function clearTable(table) {
 }
 
 class RewrittenData {
-  constructor(data) {
+  constructor(data, host) {
     this.data = data;
+    this.host = host;
   }
 
   timestamp(value) {
@@ -221,7 +222,7 @@ class RewrittenData {
       return writeAdminDetails(`${ADMIN}/config/${this.data.org}/sites/${this.data.site}.json`, value);
     }
     if (type === 'index' || type === 'live') {
-      return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.live${value}`, value);
+      return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.${this.host}.live${value}`, value);
     }
     if (type === 'indexer') {
       if (!this.data.changes) return value || '-';
@@ -246,18 +247,18 @@ class RewrittenData {
       return writeAdminDetails(`${ADMIN}/job/${this.data.owner}/${this.data.repo}/${this.data.ref}${value}/details`, value);
     }
     if (type === 'preview') {
-      return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.page${value}`, value);
+      return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.${this.host}.page${value}`, value);
     }
     if (type === 'sitemap') {
       // when source: sitemap, we get arrays of paths
       if (this.data.updated) {
         const paths = this.data.updated[0].map(
-          (update) => writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.live${update}`, update),
+          (update) => writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.${this.host}.live${update}`, update),
         );
         return paths.join('<br /><br />');
       }
       // when route: sitemap, we only get a path
-      return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.hlx.live${this.data.path}`, this.data.path);
+      return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.${this.host}.live${this.data.path}`, this.data.path);
     }
     if (type === 'status') {
       return writeAdminDetails(`${ADMIN}/status/${this.data.owner}/${this.data.repo}/${this.data.ref}${value}`, value);
@@ -307,7 +308,7 @@ class RewrittenData {
   }
 }
 
-function buildLog(data) {
+function buildLog(data, host) {
   const row = document.createElement('tr');
   const cols = [
     'timestamp',
@@ -328,7 +329,7 @@ function buildLog(data) {
     'status',
     'duration',
   ];
-  const formattedData = new RewrittenData(data);
+  const formattedData = new RewrittenData(data, host);
   formattedData.rewrite(cols);
 
   cols.forEach((col) => {
@@ -342,11 +343,11 @@ function buildLog(data) {
   return row;
 }
 
-function displayLogs(logs) {
+function displayLogs(logs, host) {
   const table = document.querySelector('table');
   const results = table.querySelector('tbody.results');
   logs.forEach((log) => {
-    const row = buildLog(log);
+    const row = buildLog(log, host);
     results.prepend(row);
   });
   updateTableDisplay(logs.length ? 'results' : 'no-results', table);
@@ -397,7 +398,7 @@ function keepToFromCurrent(doc) {
   }
 }
 
-async function fetchLogs(owner, repo, form) {
+async function fetchLogs(owner, repo, host, form) {
   keepToFromCurrent(document);
   const from = document.getElementById('date-from');
   const fromValue = encodeURIComponent(toISODate(from.value));
@@ -408,7 +409,7 @@ async function fetchLogs(owner, repo, form) {
     const req = await fetch(url);
     if (req.ok) {
       const res = await req.json();
-      displayLogs(res.entries);
+      displayLogs(res.entries, host);
       enableForm(form);
       registerAdminDetailsListener(document.querySelectorAll('button.admin-details'));
     } else {
@@ -439,14 +440,15 @@ function registerListeners(doc) {
   TIMEFRAME_FORM.addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = getFormData(e.srcElement);
-    const [, repo, owner] = new URL(data['site-url']).hostname.split('.')[0].split('--');
+    const [rro, host] = new URL(data['site-url']).hostname.split('.');
+    const [, repo, owner] = rro.split('--');
     if (owner && repo) {
       disableForm(TIMEFRAME_FORM);
       showLoadingButton(e.submitter);
       toggleResetButton(RESET_BUTTON, false);
       clearTable(RESULTS);
       updateTableDisplay('loading', TABLE);
-      fetchLogs(owner, repo, TIMEFRAME_FORM);
+      fetchLogs(owner, repo, host, TIMEFRAME_FORM);
     } else updateTableError('Site URL', 'Enter a valid hlx/aem page or live URL to see logs.');
   });
 
