@@ -404,8 +404,10 @@ async function fetchAllLogs(owner, repo, fromValue, toValue) {
   let nextToken;
   do {
     const url = `https://admin.hlx.page/log/${owner}/${repo}/main?from=${fromValue}&to=${toValue}${nextToken ? `&nextToken=${nextToken}` : ''}`;
+    // eslint-disable-next-line no-await-in-loop
     const req = await fetch(url);
     if (req.ok) {
+      // eslint-disable-next-line no-await-in-loop
       const res = await req.json();
       entries.push(...res.entries);
       nextToken = res.nextToken;
