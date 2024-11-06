@@ -398,6 +398,28 @@ function keepToFromCurrent(doc) {
   }
 }
 
+async function fetchAllLogs(owner, repo, fromValue, toValue) {
+  const entries = [];
+  let reqError;
+  let nextToken;
+  do {
+    const url = `https://admin.hlx.page/log/${owner}/${repo}/main?from=${fromValue}&to=${toValue}${nextToken ? `&nextToken=${nextToken}` : ''}`;
+    // eslint-disable-next-line no-await-in-loop
+    const req = await fetch(url);
+    if (req.ok) {
+      // eslint-disable-next-line no-await-in-loop
+      const res = await req.json();
+      entries.push(...res.entries);
+      nextToken = res.nextToken;
+    } else {
+      reqError = req;
+      nextToken = null;
+    }
+  } while (nextToken);
+
+  return { entries, reqError };
+}
+
 async function fetchLogs(owner, repo, host, form) {
   keepToFromCurrent(document);
   const from = document.getElementById('date-from');
@@ -406,14 +428,13 @@ async function fetchLogs(owner, repo, host, form) {
   const toValue = encodeURIComponent(toISODate(to.value));
   const url = `https://admin.hlx.page/log/${owner}/${repo}/main?from=${fromValue}&to=${toValue}`;
   try {
-    const req = await fetch(url);
-    if (req.ok) {
-      const res = await req.json();
-      displayLogs(res.entries, host);
+    const { entries, reqError } = await fetchAllLogs(owner, repo, fromValue, toValue);
+    if (!reqError) {
+      displayLogs(entries, host);
       enableForm(form);
       registerAdminDetailsListener(document.querySelectorAll('button.admin-details'));
     } else {
-      await updateTableError(req.status, req.statusText, owner, repo);
+      await updateTableError(reqError.status, reqError.statusText, owner, repo);
       enableForm(form);
     }
   } catch (error) {
