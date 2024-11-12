@@ -461,51 +461,6 @@ function displayLogs(logs, live, preview) {
   updateTableDisplay(logs.length ? 'results' : 'no-results', TABLE);
 }
 
-function toggleCustomTimeframe(enabled) {
-  const picker = document.getElementById('timeframe');
-  const datetime = picker.parentElement.querySelector('.datetime-wrapper');
-  picker.dataset.custom = enabled;
-  datetime.hidden = !enabled;
-  [...datetime.children].forEach((child) => {
-    child.setAttribute('aria-hidden', !enabled);
-  });
-}
-
-function updateTimeframe(value) {
-  const now = new Date();
-  const from = document.getElementById('date-from');
-  const to = document.getElementById('date-to');
-  [from, to].forEach((field) => {
-    field.readOnly = true;
-  });
-  to.value = toDateTimeLocal(now);
-  toggleCustomTimeframe(value === 'custom');
-  if (value.includes(':')) {
-    const [days, hours, mins] = value.split(':').map((v) => parseInt(v, 10));
-    const date = calculatePastDate(days, hours, mins);
-    from.value = toDateTimeLocal(date);
-  } else if (value === 'today') {
-    const midnight = now;
-    midnight.setHours(0, 0, 0, 0);
-    from.value = toDateTimeLocal(midnight);
-  } else if (value === 'custom') {
-    [from, to].forEach((field) => {
-      field.removeAttribute('readonly');
-    });
-  }
-}
-
-function keepToFromCurrent(doc) {
-  const to = doc.getElementById('date-to');
-  to.setAttribute('max', toDateTimeLocal(new Date()));
-  const timeframe = doc.getElementById('timeframe');
-  if (timeframe.value !== 'Custom') {
-    const options = [...timeframe.parentElement.querySelectorAll('ul > li')];
-    const { value } = options.find((o) => o.textContent === timeframe.value).dataset;
-    updateTimeframe(value);
-  }
-}
-
 /**
  * Constructs query params based on the provided timeframe.
  * @param {string} timeframe - Timeframe for logs.
@@ -882,17 +837,23 @@ function registerListeners() {
 
 registerListeners();
 
-function initDateTo(doc) {
-  const to = doc.getElementById('date-to');
-  to.value = toDateTimeLocal(new Date());
-
+/**
+ * Initializes the max date value for date input fields and updates it every minute.
+ * @param {HTMLInputElement} from - "from" date input element.
+ * @param {HTMLInputElement} to - "to" date input element.
+ */
+function initDateMax(from, to) {
+  [from, to].forEach((d) => {
+    d.max = toDateTimeLocal(new Date());
+  });
   setInterval(() => {
-    keepToFromCurrent(doc);
-  }, 60 * 100);
+    [from, to].forEach((d) => {
+      d.max = toDateTimeLocal(new Date());
+    });
+  }, 60 * 1000);
 }
 
-initDateTo(document);
-updateTimeframe('1:00:00');
+initDateMax(FROM, TO);
 
 /**
  * Populates fields with values from URL query params.
