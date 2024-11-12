@@ -108,48 +108,111 @@ function calculatePastDate(days, hours, mins, now = new Date()) {
 }
 
 // loading button management
+/**
+ * Displays loading spinner in button.
+ * @param {HTMLButtonElement} button - Button element.
+ */
 function showLoadingButton(button) {
-  const { width } = button.getBoundingClientRect();
+  button.disabled = true;
+  // preserves original size of the button
+  const { width, height } = button.getBoundingClientRect();
   button.style.minWidth = `${width}px`;
+  button.style.minHeight = `${height}px`;
+  // stores original button text content
   button.dataset.label = button.textContent;
   button.innerHTML = '<i class="symbol symbol-loading"></i>';
 }
 
+/**
+ * Resets button from loading state back to original appearance and content.
+ * @param {HTMLButtonElement} button - Button element.
+ */
 function resetLoadingButton(button) {
-  button.removeAttribute('style');
   button.textContent = button.dataset.label;
+  button.removeAttribute('style');
   button.disabled = false;
 }
 
 // form management
-function toggleResetButton(button, state) {
-  button.disabled = state;
-}
-
-function disableForm(form) {
+/**
+ * Disables all form elements within specified form.
+ * @param {HTMLFormElement} form - Form element.
+ * @param {HTMLFormElement} button - Form's submit button.
+ */
+function disableForm(form, button) {
+  showLoadingButton(button);
   [...form.elements].forEach((el) => {
     el.disabled = true;
   });
 }
 
-function enableForm(form) {
-  resetLoadingButton(form.querySelector('button[type="submit"]'));
+/**
+ * Enables all form elements within specified form.
+ * @param {HTMLFormElement} form - Form element.
+ * @param {HTMLFormElement} button - Form's submit button.
+ */
+function enableForm(form, button) {
+  resetLoadingButton(button);
   [...form.elements].forEach((el) => {
     el.disabled = false;
   });
 }
 
-function updateTableDisplay(show, table = document.querySelector('table')) {
-  const results = table.querySelector('tbody.results');
-  const noResults = table.querySelector('tbody.no-results');
-  const error = table.querySelector('tbody.error');
-  const loading = table.querySelector('tbody.loading');
-  [results, noResults, error, loading].forEach((tbody) => {
+/**
+ * Sets the max and current values for custom date inputs based on specified timeframe.
+ * @param {string} timeframe - Timeframe for setting values, either "DD:HH:MM" or "today".
+ * @param {HTMLInputElement} from - Input element for start date.
+ * @param {HTMLInputElement} to - Input element for end date.
+ */
+function setTimeframeValues(timeframe, from, to) {
+  const now = new Date();
+  [from, to].forEach((d) => {
+    d.max = toDateTimeLocal(now);
+  });
+  to.value = toDateTimeLocal(now);
+  if (timeframe.includes(':')) {
+    const [days, hours, mins] = timeframe.split(':').map((t) => parseInt(t, 10));
+    const date = calculatePastDate(days, hours, mins, now);
+    from.value = toDateTimeLocal(date);
+  } else if (timeframe === 'today') {
+    const midnight = now;
+    midnight.setHours(0, 0, 0, 0);
+    from.value = toDateTimeLocal(midnight);
+  }
+}
+
+/**
+ * Toggles visibility/editability of custom date inputs based on selected timeframe.
+ * @param {string} timeframe - Selected timeframe, where "Custom" enables custom date inputs.
+ */
+function selectTimeframe(timeframe) {
+  const custom = timeframe === 'Custom';
+  // select picker option
+  PICKER_OPTIONS.forEach((option) => {
+    option.setAttribute('aria-selected', option.dataset.value === timeframe.toLowerCase());
+  });
+  PICKER.dataset.custom = custom;
+  PICKER.value = timeframe;
+  // update from and to fields
+  [FROM, TO].forEach((input) => {
+    input.setAttribute('aria-hidden', !custom);
+    input.readOnly = !custom;
+  });
+}
+
+// table management
+/**
+ * Updates visibility of specific table sections based on display state.
+ * @param {string} show - Class name of table section to display.
+ */
+function updateTableDisplay(show) {
+  // loop through tbodies and hide based on the show param
+  TABLE.querySelectorAll('tbody').forEach((tbody) => {
     tbody.setAttribute('aria-hidden', show !== tbody.className);
   });
-  const filter = document.getElementById('logs-filter');
-  filter.value = '';
-  filter.disabled = show !== 'results';
+  FILTER.value = '';
+  // disable filter if not showing results
+  FILTER.disabled = show !== 'results';
 }
 
 /**
@@ -384,14 +447,18 @@ function buildLog(data, host) {
   return row;
 }
 
-function displayLogs(logs, host) {
-  const table = document.querySelector('table');
-  const results = table.querySelector('tbody.results');
+/**
+ * Displays array of log data in a table.
+ * @param {Object[]} logs - Array of log data objects.
+ * @param {string} live - Hostname for live environment.
+ * @param {string} preview - Hostname for preview environment.
+ */
+function displayLogs(logs, live, preview) {
   logs.forEach((log) => {
-    const row = buildLog(log, host);
-    results.prepend(row);
+    const row = buildLog(log, live, preview);
+    RESULTS.prepend(row);
   });
-  updateTableDisplay(logs.length ? 'results' : 'no-results', table);
+  updateTableDisplay(logs.length ? 'results' : 'no-results', TABLE);
 }
 
 function toggleCustomTimeframe(enabled) {
@@ -437,6 +504,25 @@ function keepToFromCurrent(doc) {
     const { value } = options.find((o) => o.textContent === timeframe.value).dataset;
     updateTimeframe(value);
   }
+}
+
+/**
+ * Constructs query params based on the provided timeframe.
+ * @param {string} timeframe - Timeframe for logs.
+ * @returns {string} Constructed query params.
+ */
+function writeTimeParams(timeframe) {
+  if (timeframe === 'custom' || timeframe === 'today') {
+    const [from, to] = [FROM, TO].map((i) => encodeURIComponent(toISODate(i.value)));
+    return `from=${from}&to=${to}`;
+  }
+  const [days, hours, mins] = timeframe.split(':').map((v) => parseInt(v, 10));
+  // eslint-disable-next-line no-nested-ternary
+  return (days > 0)
+    ? `since=${days}d`
+    : (hours > 0)
+      ? `since=${hours}h`
+      : `since=${mins}m`;
 }
 
 /**
@@ -661,12 +747,7 @@ function populateFromSidekick() {
   }
 }
 
-function registerListeners(doc) {
-  const TIMEFRAME_FORM = doc.getElementById('timeframe-form');
-  const SITE_FIELD = doc.getElementById('site-url');
-  const PICKER_FIELD = doc.getElementById('timeframe');
-  const TABLE_FILTER = doc.getElementById('logs-filter');
-
+function registerListeners() {
   // enable site when org has value
   ORG.addEventListener('input', () => {
     SITE.disabled = !ORG.value;
@@ -710,36 +791,48 @@ function registerListeners(doc) {
     enableForm(target, submitter);
   });
 
-  TIMEFRAME_FORM.addEventListener('reset', (e) => {
+  // enable form clear
+  FORM.addEventListener('reset', (e) => {
     e.preventDefault();
-    SITE_FIELD.value = '';
-    PICKER_FIELD.value = 'Last 24 hours';
-    updateTimeframe('1:00:00');
+    [...e.target.elements].forEach((el) => {
+      el.value = '';
+    });
+    clearTable(RESULTS);
+    selectTimeframe('Last 24 hours');
+    setTimeframeValues('1:00:00', FROM, TO);
     updateTableDisplay('no-results', TABLE);
   });
 
-  SITE_FIELD.addEventListener('input', () => {
-    clearTable(RESULTS);
-  });
-
-  PICKER_FIELD.addEventListener('click', () => {
-    const expanded = PICKER_FIELD.getAttribute('aria-expanded') === 'true';
-    PICKER_FIELD.setAttribute('aria-expanded', !expanded);
+  // enable timeframe dropdown
+  PICKER.addEventListener('click', (e) => {
+    const { target } = e;
+    const expanded = target.getAttribute('aria-expanded') === 'true';
+    target.setAttribute('aria-expanded', !expanded);
     PICKER_DROPDOWN.hidden = expanded;
   });
 
-  PICKER_OPTIONS.forEach((option) => {
-    option.addEventListener('click', () => {
-      PICKER_FIELD.value = option.textContent;
-      PICKER_FIELD.setAttribute('aria-expanded', false);
+  PICKER_DROPDOWN.addEventListener('click', (e) => {
+    const option = e.target.closest('[role="option"]');
+    if (option) {
+      PICKER.value = option.textContent;
+      PICKER.setAttribute('aria-expanded', false);
       PICKER_DROPDOWN.hidden = true;
       PICKER_OPTIONS.forEach((o) => o.setAttribute('aria-selected', o === option));
-      // update to and from
-      updateTimeframe(option.dataset.value);
-    });
+      const { value } = option.dataset;
+      setTimeframeValues(value, FROM, TO);
+      // enable custom timeframe option
+      const custom = value === 'custom';
+      PICKER.dataset.custom = custom;
+      DATETIME_WRAPPER.hidden = !custom;
+      [FROM, TO].forEach((input) => {
+        input.setAttribute('aria-hidden', !custom);
+        input.readOnly = !custom;
+      });
+    }
   });
 
-  const filterTable = (e) => {
+  // enable table results filtering
+  const filterTable = debounce((e) => {
     const filter = e.target.value.toLowerCase();
     [...RESULTS.children].forEach((row) => {
       const cells = [...row.children];
@@ -749,11 +842,32 @@ function registerListeners(doc) {
       });
       row.setAttribute('aria-hidden', !match);
     });
-  };
-  const gentleFilterTable = debounce(filterTable, 300);
-  TABLE_FILTER.addEventListener('input', gentleFilterTable);
-  TABLE_FILTER.closest('form').addEventListener('submit', (e) => {
-    e.preventDefault();
+  }, 300);
+  FILTER.addEventListener('input', filterTable);
+
+  FILTER.closest('form').addEventListener('submit', (e) => e.preventDefault());
+
+  // enable admin details modal
+  RESULTS.addEventListener('click', async (e) => {
+    const { target } = e;
+    if (target.dataset.url) {
+      try {
+        showLoadingButton(target);
+        const url = new URL(target.dataset.url);
+        const { createModal } = await import('../../blocks/modal/modal.js');
+        const res = await fetch(url);
+        const json = await res.json();
+        const modal = document.createElement('div');
+        modal.innerHTML = `<pre>${JSON.stringify(json, null, 2)}
+          </pre>`;
+        const { showModal } = await createModal(modal.childNodes);
+        resetLoadingButton(target);
+        showModal();
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.log('Could not create modal:', error);
+      }
+    }
   });
 
   [SOURCE_EXPANDER, PATH_EXPANDER].forEach((expander) => {
@@ -766,7 +880,7 @@ function registerListeners(doc) {
   });
 }
 
-registerListeners(document);
+registerListeners();
 
 function initDateTo(doc) {
   const to = doc.getElementById('date-to');
