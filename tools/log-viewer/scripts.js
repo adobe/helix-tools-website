@@ -189,7 +189,7 @@ function selectTimeframe(timeframe) {
   const custom = timeframe === 'Custom';
   // select picker option
   PICKER_OPTIONS.forEach((option) => {
-    option.setAttribute('aria-selected', option.dataset.value === timeframe.toLowerCase());
+    option.setAttribute('aria-selected', option.dataset.value === timeframe.toLowerCase() || option.textContent.toLowerCase() === timeframe.toLowerCase());
   });
   PICKER.dataset.custom = custom;
   PICKER.value = timeframe;
@@ -241,7 +241,7 @@ function updateTableError(status, preview, site) {
 
 function clearTable(table) {
   table.innerHTML = '';
-  updateTableDisplay('no-results', table.closest('table'));
+  updateTableDisplay('no-results', TABLE);
 }
 
 class RewrittenData {
@@ -412,7 +412,7 @@ class RewrittenData {
   }
 }
 
-function buildLog(data, host) {
+function buildLog(data, live, preview) {
   const row = document.createElement('tr');
   const cols = [
     'timestamp',
@@ -433,7 +433,7 @@ function buildLog(data, host) {
     'status',
     'duration',
   ];
-  const formattedData = new RewrittenData(data, host);
+  const formattedData = new RewrittenData(data, live, preview);
   formattedData.rewrite(cols);
 
   cols.forEach((col) => {
