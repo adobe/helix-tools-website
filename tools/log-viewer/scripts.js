@@ -445,6 +445,162 @@ async function fetchLogs(owner, repo, host, form) {
   }
 }
 
+// org/site management
+const ORG = document.getElementById('org');
+const ORG_LIST = document.getElementById('org-list');
+const SITE = document.getElementById('site');
+const SITE_LIST = document.getElementById('site-list');
+
+/**
+ * Sets field value and marks as autofilled (if it hasn't been autofilled already).
+ * @param {HTMLElement} field - Input field.
+ * @param {string} value - Value to set.
+ */
+function setFieldValue(field, value, type) {
+  if (!field.dataset.autofill) {
+    field.value = value;
+    field.dataset.autofill = type;
+    field.dispatchEvent(new Event('input'));
+  }
+}
+
+/**
+ * Populates datalist with options (if options aren't already in datalist).
+ * @param {HTMLElement} list - Datalist element.
+ * @param {string[]} values - Array of values to populate as options.
+ */
+function populateList(list, values) {
+  values.forEach((value) => {
+    if (![...list.options].some((o) => o.value === value)) {
+      const option = document.createElement('option');
+      option.value = value;
+      list.append(option);
+    }
+  });
+}
+
+/**
+ * Updates org and site datalists with form data.
+ * @param {string} org - Organization name.
+ * @param {string} site - Site name within org.
+ */
+function updateLists(org, site) {
+  populateList(ORG_LIST, [org]);
+  populateList(SITE_LIST, [site]);
+}
+
+/**
+ * Resets site datalist to display sites associated with specified org.
+ * @param {string} org - Organization name.
+ */
+function resetSiteListForOrg(org) {
+  // clear site list
+  while (SITE_LIST.firstChild) SITE_LIST.removeChild(SITE_LIST.firstChild);
+  // repopulate site and site list from storage
+  const projects = JSON.parse(localStorage.getItem('aem-projects'));
+  if (projects && projects.sites && projects.sites[org]) {
+    SITE.value = projects.sites[org][0] || '';
+    populateList(SITE_LIST, projects.sites[org]);
+  }
+}
+
+/**
+ * Updates current URL query params with form data.
+ * @param {Object} data - Form data.
+ */
+function updateParams(data) {
+  const url = new URL(window.location.href);
+  url.search = ''; // clear existing params
+  FIELDS.forEach((field) => {
+    if (data[field]) {
+      if (field.startsWith('date-')) {
+        url.searchParams.set(field, toDateTimeLocal(data[field]));
+      } else {
+        url.searchParams.set(field, data[field]);
+      }
+    }
+  });
+  window.history.replaceState({}, document.title, url.href);
+}
+
+/**
+ * Updates local storage with most recently used org and site.
+ * @param {string} org - Organization name.
+ * @param {string} site - Site name within org.
+ */
+function updateStorage(org, site) {
+  const projects = JSON.parse(localStorage.getItem('aem-projects'));
+  if (projects) {
+    // ensure org is most recent in orgs array
+    if (projects.orgs.includes(org)) {
+      projects.orgs = projects.orgs.filter((o) => o !== org);
+    }
+    projects.orgs.unshift(org);
+    // ensure site is most recent in site array
+    if (projects.sites[org]) {
+      if (projects.sites[org].includes(site)) {
+        projects.sites[org] = projects.sites[org].filter((s) => s !== site);
+      }
+      projects.sites[org].unshift(site);
+    } else {
+      projects.sites[org] = [site];
+    }
+    localStorage.setItem('aem-projects', JSON.stringify(projects));
+  } else {
+    // init project org and site storage
+    const project = {
+      orgs: [org],
+      sites: { [org]: [site] },
+    };
+    localStorage.setItem('aem-projects', JSON.stringify(project));
+  }
+}
+
+/**
+ * Populates org and site fields from local storage.
+ */
+function populateFromStorage() {
+  const projects = JSON.parse(localStorage.getItem('aem-projects'));
+  if (projects) {
+    if (projects.orgs && projects.orgs[0]) {
+      // populate org list
+      const { orgs } = projects;
+      populateList(ORG_LIST, orgs);
+      // populate org field
+      const lastOrg = projects.orgs[0];
+      setFieldValue(ORG, lastOrg, 'storage');
+      if (projects.sites && projects.sites[lastOrg]) {
+        // populate site list
+        const sites = projects.sites[lastOrg];
+        populateList(SITE_LIST, sites);
+        // populate site field
+        const lastSite = sites[0];
+        if (lastSite) setFieldValue(SITE, lastSite, 'storage');
+      }
+    }
+  }
+}
+
+/**
+ * Populates org field from sidekick.
+ */
+function populateFromSidekick() {
+  // eslint-disable-next-line no-undef
+  if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
+    const id = 'igkmdomcgoebiipaifhmpfjhbjccggml';
+    // eslint-disable-next-line no-undef
+    chrome.runtime.sendMessage(id, { action: 'getAuthInfo' }, (orgs) => {
+      if (orgs[0]) {
+        // populate org list
+        populateList(ORG_LIST, orgs);
+        // populate org field
+        const lastOrg = orgs[0];
+        setFieldValue(ORG, lastOrg, 'sidekick');
+      }
+    });
+  }
+}
+
 function registerListeners(doc) {
   const TIMEFRAME_FORM = doc.getElementById('timeframe-form');
   const SITE_FIELD = doc.getElementById('site-url');
@@ -457,6 +613,16 @@ function registerListeners(doc) {
   const SOURCE_EXPANDER = doc.getElementById('source-expander');
   const PATH_EXPANDER = doc.getElementById('path-expander');
   const RESET_BUTTON = doc.getElementById('site-reset');
+
+  // enable site when org has value
+  ORG.addEventListener('input', () => {
+    SITE.disabled = !ORG.value;
+  }, { once: true });
+
+  // refresh site datalist to match org
+  ORG.addEventListener('change', (e) => {
+    resetSiteListForOrg(e.target.value);
+  });
 
   TIMEFRAME_FORM.addEventListener('submit', async (e) => {
     e.preventDefault();
