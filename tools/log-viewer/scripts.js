@@ -1,4 +1,6 @@
 /* eslint-disable class-methods-use-this */
+import { loadPrism, highlight } from '../../utils/prism/prism.js';
+
 // utility functions
 function getFormData(form) {
   const data = {};
@@ -88,15 +90,17 @@ function calculatePastDate(days, hours, mins, now = new Date()) {
 
 // loading button management
 function showLoadingButton(button) {
-  const { width } = button.getBoundingClientRect();
+  button.disabled = true;
+  const { width, height } = button.getBoundingClientRect();
   button.style.minWidth = `${width}px`;
+  button.style.minHeight = `${height}px`;
   button.dataset.label = button.textContent;
   button.innerHTML = '<i class="symbol symbol-loading"></i>';
 }
 
 function resetLoadingButton(button) {
-  button.removeAttribute('style');
   button.textContent = button.dataset.label;
+  button.removeAttribute('style');
   button.disabled = false;
 }
 
@@ -146,18 +150,20 @@ function writeLoginMessage(owner, repo) {
 function registerAdminDetailsListener(buttons) {
   buttons.forEach((button) => {
     button.addEventListener('click', async () => {
+      showLoadingButton(button);
       const url = new URL(button.dataset.url);
       const { createModal } = await import('../../blocks/modal/modal.js');
       if (url) {
         const res = await fetch(url);
         const jsonContent = await res.json();
         const modalContent = document.createElement('div');
-        modalContent.innerHTML = `<pre>
-            ${JSON.stringify(jsonContent, null, 3)}
-          </pre>`;
+        modalContent.innerHTML = `<pre><code class="language-js">${JSON.stringify(jsonContent, null, 2)}
+          </code></pre>`;
         const { showModal } = await createModal(modalContent.childNodes);
         showModal();
+        highlight(document.querySelector('.modal'));
       }
+      resetLoadingButton(button);
     });
   });
 }
@@ -472,6 +478,8 @@ function registerListeners(doc) {
       fetchLogs(owner, repo, host, TIMEFRAME_FORM);
     } else updateTableError('Site URL', 'Enter a valid hlx/aem page or live URL to see logs.');
   });
+
+  TIMEFRAME_FORM.addEventListener('submit', loadPrism, { once: true });
 
   TIMEFRAME_FORM.addEventListener('reset', (e) => {
     e.preventDefault();
