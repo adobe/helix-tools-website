@@ -1,4 +1,25 @@
 /* eslint-disable class-methods-use-this */
+// field ids
+const FIELDS = ['org', 'site', 'date-from', 'date-to'];
+
+// tool elements
+const FORM = document.getElementById('timeframe-form');
+const ORG = FORM.querySelector('#org');
+const ORG_LIST = FORM.querySelector('#org-list');
+const SITE = FORM.querySelector('#site');
+const SITE_LIST = FORM.querySelector('#site-list');
+const PICKER = FORM.querySelector('#timeframe');
+const PICKER_DROPDOWN = FORM.querySelector('#timeframe-menu');
+const PICKER_OPTIONS = PICKER_DROPDOWN.querySelectorAll('[role="option"]');
+const DATETIME_WRAPPER = FORM.querySelector('.datetime-wrapper');
+const [FROM, TO] = DATETIME_WRAPPER.querySelectorAll('input');
+const TABLE = document.querySelector('table');
+const RESULTS = TABLE.querySelector('.results');
+const ERROR = TABLE.querySelector('.error');
+const SOURCE_EXPANDER = TABLE.querySelector('#source-expander');
+const PATH_EXPANDER = TABLE.querySelector('#path-expander');
+const FILTER = document.getElementById('logs-filter');
+
 // utility functions
 function getFormData(form) {
   const data = {};
@@ -131,53 +152,28 @@ function updateTableDisplay(show, table = document.querySelector('table')) {
   filter.disabled = show !== 'results';
 }
 
-function writeLoginMessage(owner, repo) {
-  const siteUrl = document.getElementById('site-url').value;
-  const { origin } = new URL(siteUrl);
-  if (owner && repo) {
-    return `<a href="${origin}" target="_blank">Sign in to the ${repo} project sidekick</a> to view the requested logs.`;
-  }
-  if (repo) {
-    return `Sign in to the ${repo} project sidekick to view the requested logs.`;
-  }
-  return 'Sign in to this project\'s sidekick view the requested logs.';
-}
-
-function registerAdminDetailsListener(buttons) {
-  buttons.forEach((button) => {
-    button.addEventListener('click', async () => {
-      const url = new URL(button.dataset.url);
-      const { createModal } = await import('../../blocks/modal/modal.js');
-      if (url) {
-        const res = await fetch(url);
-        const jsonContent = await res.json();
-        const modalContent = document.createElement('div');
-        modalContent.innerHTML = `<pre>
-            ${JSON.stringify(jsonContent, null, 3)}
-          </pre>`;
-        const { showModal } = await createModal(modalContent.childNodes);
-        showModal();
-      }
-    });
-  });
-}
-
-function updateTableError(code, text, owner, repo) {
+/**
+ * Updates table to display error message based on HTTP error code.
+ * @param {number} status - HTTP error status code.
+ * @param {string} preview - Hostname for preview environment.
+ * @param {string} site - Site name within org.
+ */
+function updateTableError(status, preview, site) {
   const messages = {
     400: 'The request for logs could not be processed.',
-    401: writeLoginMessage(owner, repo),
-    403: 'You do not have permission to view the requested logs.',
+    401: `<a href="https://${preview}" target="_blank">Sign in to the ${site} project sidekick</a> 
+      to view the requested logs.`,
+    403: 'Insufficient permissions to view the requested logs.',
     404: 'The requested logs could not be found.',
+    Project: `${site} project not found.`,
   };
 
-  // eslint-disable-next-line no-param-reassign
-  if (!text) text = messages[code] || 'Unable to display the requested logs.';
-  const error = document.querySelector('table > tbody.error');
-  const title = error.querySelector('strong');
-  const message = error.querySelector('p:last-of-type');
-  title.textContent = `${code} Error`;
+  const text = messages[status] || 'Unable to display the requested logs.';
+  const title = ERROR.querySelector('strong');
+  const message = ERROR.querySelector('p:last-of-type');
+  title.textContent = `${status} Error`;
   message.innerHTML = text;
-  updateTableDisplay('error', error.closest('table'));
+  updateTableDisplay('error', TABLE);
 }
 
 function clearTable(table) {
@@ -186,35 +182,57 @@ function clearTable(table) {
 }
 
 class RewrittenData {
-  constructor(data, host) {
+  /**
+   * Creates instance of RewrittenData.
+   * @param {Object} data - Original data object.
+   * @param {string} live - Hostname for live environment.
+   * @param {string} preview - Hostname for preview environment.
+  */
+  constructor(data, live, preview) {
     this.data = data;
-    this.host = host;
+    this.live = live;
+    this.preview = preview;
   }
 
+  /**
+   * Formats timestamp value into UTC format.
+   * @param {string|number|null} value - Timestamp.
+   * @returns {string} Formatted UTC date (or '-' if no value provided).
+   */
   timestamp(value) {
     if (!value) return '-';
     return toUTCDate(new Date(value));
   }
 
+  /**
+   * Formats user email address into a :mailto link.
+   * @param {string|null} value - User email address.
+   * @returns {string} Mailto link formatted from email address (or '-' if no value provided).
+   */
   user(value) {
     if (!value) return '-';
     return `<a href="mailto:${value}" title="${value}">${value.split('@')[0]}</a>`;
   }
 
+  /**
+   * Generates link or button based on type of path.
+   * @param {string|null} value - Path or identifier for constructing the link/button.
+   * @returns {string} Link or button (or '-' if no value or unhandled type).
+   */
   path(value) {
     const writeA = (href, text) => `<a href="https://${href}" target="_blank">${text}</a>`;
     const writeAdminDetails = (href, text) => `<button
         type='button'
-        class='admin-details button outline'
+        class='button outline'
         data-url='https://${href}'
         value='${text}'
         title='${text}'>
-          ${text.length > 29 ? `${text.substring(0, 29)}…` : text}
+          ${text.length > 26 ? `${text.substring(0, 26)}…` : text}
       </button>`;
     // path is created based on route/source
+    const ADMIN = 'admin.hlx.page';
     const type = this.data.route || this.data.source;
     if (!type) return value || '-';
-    const ADMIN = 'admin.hlx.page';
     if (type === 'code') {
       return writeA(`github.com/${this.data.owner}/${this.data.repo}/tree/${this.data.ref}`, value);
     }
@@ -222,7 +240,7 @@ class RewrittenData {
       return writeAdminDetails(`${ADMIN}/config/${this.data.org}/sites/${this.data.site}.json`, value);
     }
     if (type === 'index' || type === 'live') {
-      return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.${this.host}.live${value}`, value);
+      return writeA(`${this.live}${value}`, value);
     }
     if (type === 'indexer') {
       if (!this.data.changes) return value || '-';
@@ -247,18 +265,18 @@ class RewrittenData {
       return writeAdminDetails(`${ADMIN}/job/${this.data.owner}/${this.data.repo}/${this.data.ref}${value}/details`, value);
     }
     if (type === 'preview') {
-      return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.${this.host}.page${value}`, value);
+      return writeA(`${this.preview}${value}`, value);
     }
     if (type === 'sitemap') {
       // when source: sitemap, we get arrays of paths
       if (this.data.updated) {
         const paths = this.data.updated[0].map(
-          (update) => writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.${this.host}.live${update}`, update),
+          (update) => writeA(`${this.live}${update}`, update),
         );
         return paths.join('<br /><br />');
       }
       // when route: sitemap, we only get a path
-      return writeA(`${this.data.ref}--${this.data.repo}--${this.data.owner}.${this.host}.live${this.data.path}`, this.data.path);
+      return writeA(`${this.live}${this.data.path}`, this.data.path);
     }
     if (type === 'status') {
       return writeAdminDetails(`${ADMIN}/status/${this.data.owner}/${this.data.repo}/${this.data.ref}${value}`, value);
@@ -268,6 +286,11 @@ class RewrittenData {
     return value || '-';
   }
 
+  /**
+   * Formats array of error messages for display.
+   * @param {Array|null} value - Array of error objects.
+   * @returns {string} Error messages (or '-' if no errors present).
+   */
   errors(value) {
     if (!value || value.length === 0) return '-';
     const errs = value.map((err) => {
@@ -280,11 +303,21 @@ class RewrittenData {
     return errs.join(', <br />');
   }
 
+  /**
+   * Styles HTTP method in code tags.
+   * @param {string|null} value - HTTP method.
+   * @returns {string} HTTP method wrapped in <code> tags (or '-' if no value provided).
+   */
   method(value) {
     if (!value) return '-';
     return `<code>${value}</code>`;
   }
 
+  /**
+   * Creates a status light for HTTP status code.
+   * @param {number|null} value - HTTP status code.
+   * @returns {string} Status light with HTTP status code (or '-' if no value provided).
+   */
   status(value) {
     if (!value) return '-';
     const badge = document.createElement('span');
@@ -293,12 +326,20 @@ class RewrittenData {
     return badge.outerHTML;
   }
 
+  /**
+   * Formats the duration in seconds.
+   * @param {number|null} value - Duration (in ms).
+   * @returns {string} Duration in seconds (or '-' if no value provided).
+   */
   duration(value) {
     if (!value) return '-';
     return `${(value / 1000).toFixed(1)} s`;
   }
 
-  // rewrite data based on key
+  /**
+   * Transforms data based on key.
+   * @param {string[]} keys - Array of keys in data object.
+   */
   rewrite(keys) {
     keys.forEach((key) => {
       if (this[key]) {
@@ -398,59 +439,78 @@ function keepToFromCurrent(doc) {
   }
 }
 
-async function fetchAllLogs(owner, repo, fromValue, toValue) {
-  const entries = [];
-  let reqError;
-  let nextToken;
-  do {
-    const url = `https://admin.hlx.page/log/${owner}/${repo}/main?from=${fromValue}&to=${toValue}${nextToken ? `&nextToken=${nextToken}` : ''}`;
-    // eslint-disable-next-line no-await-in-loop
-    const req = await fetch(url);
-    if (req.ok) {
-      // eslint-disable-next-line no-await-in-loop
-      const res = await req.json();
-      entries.push(...res.entries);
-      nextToken = res.nextToken;
-    } else {
-      reqError = req;
-      nextToken = null;
-    }
-  } while (nextToken);
+/**
+ * Fetches all log entries with pagination.
+ * @param {string} org - Organization name.
+ * @param {string} site - Site name within org.
+ * @param {string} timeframe - Timeframe for fetching logs.
+ * @returns {Promise<>} Object containing all log entries and/or an error.
+ */
+async function fetchAllLogs(org, site, timeframe) {
+  const logs = [];
+  const timeParams = writeTimeParams(timeframe);
+  let nextUrl = `https://admin.hlx.page/log/${org}/${site}/main?${timeParams}`;
 
-  return { entries, reqError };
+  do {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const res = await fetch(nextUrl);
+      if (!res.ok) throw res;
+      // eslint-disable-next-line no-await-in-loop
+      const json = await res.json();
+      logs.push(...json.entries);
+      nextUrl = json.links ? json.links.next : null;
+    } catch (error) {
+      return { logs, error };
+    }
+  } while (nextUrl);
+
+  return { logs, error: null };
 }
 
-async function fetchLogs(owner, repo, host, form) {
-  keepToFromCurrent(document);
-  const from = document.getElementById('date-from');
-  const fromValue = encodeURIComponent(toISODate(from.value));
-  const to = document.getElementById('date-to');
-  const toValue = encodeURIComponent(toISODate(to.value));
-  const url = `https://admin.hlx.page/log/${owner}/${repo}/main?from=${fromValue}&to=${toValue}`;
+/**
+ * Fetches all logs for a specified site within a given timeframe.
+ * @param {string} org - Organization name.
+ * @param {string} site - Site name within org.
+ * @param {string} timeframe - Timeframe for fetching logs.
+ * @returns {Promise<>} Object containing log entries or an error.
+ */
+async function fetchLogs(org, site, timeframe) {
   try {
-    const { entries, reqError } = await fetchAllLogs(owner, repo, fromValue, toValue);
-    if (!reqError) {
-      displayLogs(entries, host);
-      enableForm(form);
-      registerAdminDetailsListener(document.querySelectorAll('button.admin-details'));
-    } else {
-      await updateTableError(reqError.status, reqError.statusText, owner, repo);
-      enableForm(form);
-    }
+    const { logs, error } = await fetchAllLogs(org, site, timeframe);
+    return { logs, error };
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.error(`failed to fetch ${url}:`, error);
-    await updateTableError(error.name, error.message);
-    enableForm(form);
+    console.log('Failed to fetch logs:', error);
+    return { logs: [], error };
+  }
+}
+
+/**
+ * Fetches the live and preview host URLs for org/site.
+ * @param {string} org - Organization name.
+ * @param {string} site - Site name within org.
+ * @returns {Promise<>} Object with `live` and `preview` hostnames.
+ */
+async function fetchHosts(org, site) {
+  try {
+    const url = `https://admin.hlx.page/status/${org}/${site}/main`;
+    const res = await fetch(url);
+    if (!res.ok) throw res;
+    const json = await res.json();
+    return {
+      live: new URL(json.live.url).host,
+      preview: new URL(json.preview.url).host,
+    };
+  } catch (error) {
+    return {
+      live: null,
+      preview: null,
+    };
   }
 }
 
 // org/site management
-const ORG = document.getElementById('org');
-const ORG_LIST = document.getElementById('org-list');
-const SITE = document.getElementById('site');
-const SITE_LIST = document.getElementById('site-list');
-
 /**
  * Sets field value and marks as autofilled (if it hasn't been autofilled already).
  * @param {HTMLElement} field - Input field.
@@ -605,14 +665,7 @@ function registerListeners(doc) {
   const TIMEFRAME_FORM = doc.getElementById('timeframe-form');
   const SITE_FIELD = doc.getElementById('site-url');
   const PICKER_FIELD = doc.getElementById('timeframe');
-  const PICKER_DROPDOWN = doc.querySelector('.picker-field ul');
-  const PICKER_OPTIONS = PICKER_DROPDOWN.querySelectorAll('li');
   const TABLE_FILTER = doc.getElementById('logs-filter');
-  const TABLE = doc.querySelector('table');
-  const RESULTS = TABLE.querySelector('tbody.results');
-  const SOURCE_EXPANDER = doc.getElementById('source-expander');
-  const PATH_EXPANDER = doc.getElementById('path-expander');
-  const RESET_BUTTON = doc.getElementById('site-reset');
 
   // enable site when org has value
   ORG.addEventListener('input', () => {
@@ -624,19 +677,37 @@ function registerListeners(doc) {
     resetSiteListForOrg(e.target.value);
   });
 
-  TIMEFRAME_FORM.addEventListener('submit', async (e) => {
+  // enable form submission
+  FORM.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const data = getFormData(e.srcElement);
-    const [rro, host] = new URL(data['site-url']).hostname.split('.');
-    const [, repo, owner] = rro.split('--');
-    if (owner && repo) {
-      disableForm(TIMEFRAME_FORM);
-      showLoadingButton(e.submitter);
-      toggleResetButton(RESET_BUTTON, false);
-      clearTable(RESULTS);
-      updateTableDisplay('loading', TABLE);
-      fetchLogs(owner, repo, host, TIMEFRAME_FORM);
-    } else updateTableError('Site URL', 'Enter a valid hlx/aem page or live URL to see logs.');
+    const { target, submitter } = e;
+    disableForm(target, submitter);
+    clearTable(RESULTS);
+    updateTableDisplay('loading', TABLE);
+
+    const data = getFormData(target);
+    const { org, site } = data;
+    if (org && site) {
+      // validate org/site config
+      const { live, preview } = await fetchHosts(org, site);
+      if (live && preview) {
+        // ensure log access
+        const timeframe = [...PICKER_OPTIONS].find((o) => o.getAttribute('aria-selected') === 'true').dataset.value;
+        const { logs, error } = await fetchLogs(org, site, timeframe);
+        if (!error) {
+          displayLogs(logs, live, preview);
+          updateStorage(org, site);
+          updateParams(data);
+          updateLists(org, site);
+        } else {
+          updateTableError(error.status, preview, site);
+        }
+      } else {
+        updateTableError('Project', null, `${org}/${site}`);
+      }
+    }
+
+    enableForm(target, submitter);
   });
 
   TIMEFRAME_FORM.addEventListener('reset', (e) => {
@@ -708,3 +779,36 @@ function initDateTo(doc) {
 
 initDateTo(document);
 updateTimeframe('1:00:00');
+
+/**
+ * Populates fields with values from URL query params.
+ * @param {string} search - Query string containing URL params.
+ * @param {Document} doc - Document object.
+ */
+function populateFromParams(search, doc) {
+  const params = new URLSearchParams(search);
+  if (params && params.size > 0) {
+    FIELDS.forEach((field) => {
+      const param = params.get(field);
+      const el = doc.getElementById(field);
+      if (param && el) {
+        setFieldValue(el, param, 'params');
+        if (field.startsWith('date-')) {
+          selectTimeframe('Custom');
+        }
+      }
+    });
+  }
+}
+
+function populateForm(doc) {
+  populateFromParams(window.location.search, doc);
+  if (PICKER.value !== 'Custom') {
+    // set default timeframe if not already set by params
+    setTimeframeValues('1:00:00', FROM, TO);
+  }
+  populateFromStorage();
+  populateFromSidekick();
+}
+
+populateForm(document);
