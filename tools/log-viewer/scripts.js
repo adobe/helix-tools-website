@@ -253,10 +253,8 @@ function selectTimeframe(timeframe) {
  * @param {string} show - Class name of table section to display.
  */
 function updateTableDisplay(show) {
-  const noResults = TABLE.querySelector('tbody.no-results');
-  const loading = TABLE.querySelector('tbody.loading');
   // loop through tbodies and hide based on the show param
-  [RESULTS, noResults, ERROR, loading].forEach((tbody) => {
+  TABLE.querySelectorAll('tbody').forEach((tbody) => {
     tbody.setAttribute('aria-hidden', show !== tbody.className);
   });
   FILTER.value = '';
