@@ -1,0 +1,25 @@
+.form-field.config-field {
+  display: grid;
+}
+
+@media (width >= 600px) {
+  .form-field.config-field {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-l);
+  }
+
+  .form-field.config-field .form-field {
+    margin-top: 0;
+  }
+
+  .form-field.config-field .site-field {
+    position: relative;
+  }
+
+  .form-field.config-field .site-field::before {
+    content: '/';
+    position: absolute;
+    left: calc((var(--spacing-l) + 0.5ch) / -2);
+    bottom: calc(var(--border-m) + 0.4em);
+  }
+}

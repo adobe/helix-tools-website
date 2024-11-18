@@ -1,15 +1,12 @@
 /* eslint-disable class-methods-use-this */
+import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { loadPrism, highlight } from '../../utils/prism/prism.js';
 
 // field ids
-const FIELDS = ['org', 'site', 'date-from', 'date-to'];
+const FIELDS = ['date-from', 'date-to'];
 
 // tool elements
 const FORM = document.getElementById('timeframe-form');
-const ORG = FORM.querySelector('#org');
-const ORG_LIST = FORM.querySelector('#org-list');
-const SITE = FORM.querySelector('#site');
-const SITE_LIST = FORM.querySelector('#site-list');
 const PICKER = FORM.querySelector('#timeframe');
 const PICKER_DROPDOWN = FORM.querySelector('#timeframe-menu');
 const PICKER_OPTIONS = PICKER_DROPDOWN.querySelectorAll('[role="option"]');
@@ -23,43 +20,12 @@ const PATH_EXPANDER = TABLE.querySelector('#path-expander');
 const FILTER = document.getElementById('logs-filter');
 
 // utility functions
-function getFormData(form) {
-  const data = {};
-  [...form.elements].forEach((field) => {
-    const { name, type, value } = field;
-    if (name && type && value) {
-      switch (type) {
-        case 'number':
-        case 'range':
-          data[name] = parseFloat(value, 10);
-          break;
-        case 'date':
-        case 'datetime-local':
-          data[name] = new Date(value);
-          break;
-        case 'checkbox':
-          if (field.checked) {
-            if (data[name]) data[name].push(value);
-            else data[name] = [value];
-          }
-          break;
-        case 'radio':
-          if (field.checked) data[name] = value;
-          break;
-        case 'url':
-          data[name] = new URL(value);
-          break;
-        case 'file':
-          data[name] = field.files;
-          break;
-        default:
-          data[name] = value;
-      }
-    }
-  });
-  return data;
-}
-
+/**
+ * Creates debounced version of provided function.
+ * @param {Function} func - Function to debounce.
+ * @param {number} wait - Time to delay function execution (in ms).
+ * @returns {Function} New function that will debounce original function when invoked.
+ */
 function debounce(func, wait) {
   let timeout;
   // eslint-disable-next-line func-names
@@ -71,10 +37,20 @@ function debounce(func, wait) {
 }
 
 // date management
+/**
+ * Pads a number with a leading 0 if necessary, returning a two-character string.
+ * @param {number} number - Number.
+ * @returns {string} Padded number.
+ */
 function pad(number) {
   return number.toString().padStart(2, '0');
 }
 
+/**
+ * Converts Date object to a formatted datetime-local string.
+ * @param {Date} date - Date object.
+ * @returns {string} Date and time in "YYYY-MM-DDTHH:MM" format.
+ */
 function toDateTimeLocal(date) {
   // convert date
   const year = date.getFullYear();
@@ -87,6 +63,11 @@ function toDateTimeLocal(date) {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
+/**
+ * Converts Date object to a formatted UTC date and time string.
+ * @param {Date} date - Date object.
+ * @returns {string} UTC date and time in "MM/DD/YYYY HH:MM UTC" format.
+ */
 function toUTCDate(date) {
   const dd = pad(date.getUTCDate());
   const mm = pad(date.getUTCMonth() + 1);
@@ -96,11 +77,24 @@ function toUTCDate(date) {
   return `${mm}/${dd}/${yyyy} ${hours}:${minutes} UTC`;
 }
 
+/**
+ * Converts date string to a formatted ISO string.
+ * @param {string} str - Date string.
+ * @returns {string} Date in ISO format ("YYYY-MM-DDTHH:MM:SS.sssZ").
+ */
 function toISODate(str) {
   const date = new Date(str);
   return date.toISOString();
 }
 
+/**
+ * Calculates past date by subtracting specified days, hours, and minutes from reference date.
+ * @param {number} days - Days to subtract.
+ * @param {number} hours - Hours to subtract.
+ * @param {number} mins - Minutes to subtract.
+ * @param {Date} now - Reference date used to calculate past date (default is current date/time).
+ * @returns {Date} Date object representing the calculated past date.
+ */
 function calculatePastDate(days, hours, mins, now = new Date()) {
   const newDate = now;
   if (days > 0) newDate.setDate(newDate.getDate() - days);
@@ -136,6 +130,54 @@ function resetLoadingButton(button) {
 }
 
 // form management
+/**
+ * Extracts and formats form data from given form element.
+ * @param {HTMLFormElement} form - Form element.
+ * @returns {Object} Form data (field names as keys, field values as values).
+ */
+function getFormData(form) {
+  const data = {};
+  [...form.elements].forEach((field) => {
+    const { name, type, value } = field;
+    if (name && type && value) {
+      switch (type) {
+        // parse number and range as floats
+        case 'number':
+        case 'range':
+          data[name] = parseFloat(value, 10);
+          break;
+        // convert date and datetime-local to date objects
+        case 'date':
+        case 'datetime-local':
+          data[name] = new Date(value);
+          break;
+        // store checked checkbox values in array
+        case 'checkbox':
+          if (field.checked) {
+            if (data[name]) data[name].push(value);
+            else data[name] = [value];
+          }
+          break;
+        // only store checked radio
+        case 'radio':
+          if (field.checked) data[name] = value;
+          break;
+        // convert url to url object
+        case 'url':
+          data[name] = new URL(value);
+          break;
+        // store file filelist objects
+        case 'file':
+          data[name] = field.files;
+          break;
+        default:
+          data[name] = value;
+      }
+    }
+  });
+  return data;
+}
+
 /**
  * Disables all form elements within specified form.
  * @param {HTMLFormElement} form - Form element.
@@ -191,7 +233,9 @@ function selectTimeframe(timeframe) {
   const custom = timeframe === 'Custom';
   // select picker option
   PICKER_OPTIONS.forEach((option) => {
-    option.setAttribute('aria-selected', option.dataset.value === timeframe.toLowerCase() || option.textContent.toLowerCase() === timeframe.toLowerCase());
+    const { value } = option.dataset;
+    const text = option.textContent.toLowerCase();
+    option.setAttribute('aria-selected', value === timeframe.toLowerCase() || text === timeframe.toLowerCase());
   });
   PICKER.dataset.custom = custom;
   PICKER.value = timeframe;
@@ -241,11 +285,18 @@ function updateTableError(status, preview, site) {
   updateTableDisplay('error', TABLE);
 }
 
+/**
+ * Clears all content within a specified table body.
+ * @param {HTMLElement} table - Table body element.
+ */
 function clearTable(table) {
   table.innerHTML = '';
   updateTableDisplay('no-results', TABLE);
 }
 
+/**
+ * Class representing transformed data set with methods to rewrite/format properties for display.
+ */
 class RewrittenData {
   /**
    * Creates instance of RewrittenData.
@@ -414,6 +465,13 @@ class RewrittenData {
   }
 }
 
+/**
+ * Builds a table row populated with log data.
+ * @param {Object} data - Log data object.
+ * @param {string} live - Hostname for live environment.
+ * @param {string} preview - Hostname for preview environment.
+ * @returns {HTMLTableRowElement} Table row element with populated cells.
+ */
 function buildLog(data, live, preview) {
   const row = document.createElement('tr');
   const cols = [
@@ -553,214 +611,25 @@ async function fetchHosts(org, site) {
   }
 }
 
-// org/site management
-/**
- * Sets field value and marks as autofilled (if it hasn't been autofilled already).
- * @param {HTMLElement} field - Input field.
- * @param {string} value - Value to set.
- */
-function setFieldValue(field, value, type) {
-  if (!field.dataset.autofill) {
-    field.value = value;
-    field.dataset.autofill = type;
-    field.dispatchEvent(new Event('input'));
-  }
-}
-
-/**
- * Populates datalist with options (if options aren't already in datalist).
- * @param {HTMLElement} list - Datalist element.
- * @param {string[]} values - Array of values to populate as options.
- */
-function populateList(list, values) {
-  values.forEach((value) => {
-    if (![...list.options].some((o) => o.value === value)) {
-      const option = document.createElement('option');
-      option.value = value;
-      list.append(option);
-    }
-  });
-}
-
-/**
- * Updates org and site datalists with form data.
- * @param {string} org - Organization name.
- * @param {string} site - Site name within org.
- */
-function updateLists(org, site) {
-  populateList(ORG_LIST, [org]);
-  populateList(SITE_LIST, [site]);
-}
-
-/**
- * Resets site datalist to display sites associated with specified org.
- * @param {string} org - Organization name.
- */
-function resetSiteListForOrg(org) {
-  // clear site list
-  while (SITE_LIST.firstChild) SITE_LIST.removeChild(SITE_LIST.firstChild);
-  // repopulate site and site list from storage
-  const projects = JSON.parse(localStorage.getItem('aem-projects'));
-  if (projects && projects.sites && projects.sites[org]) {
-    SITE.value = projects.sites[org][0] || '';
-    populateList(SITE_LIST, projects.sites[org]);
-  }
-}
-
 /**
  * Updates current URL query params with form data.
  * @param {Object} data - Form data.
  */
 function updateParams(data) {
   const url = new URL(window.location.href);
-  url.search = ''; // clear existing params
   FIELDS.forEach((field) => {
     if (data[field]) {
-      if (field.startsWith('date-')) {
-        url.searchParams.set(field, toDateTimeLocal(data[field]));
-      } else {
-        url.searchParams.set(field, data[field]);
-      }
+      url.searchParams.set(field, toDateTimeLocal(data[field]));
     }
   });
   window.history.replaceState({}, document.title, url.href);
 }
 
 /**
- * Updates local storage with most recently used org and site.
- * @param {string} org - Organization name.
- * @param {string} site - Site name within org.
+ * Registers event listeners to handle form interactions, table updates, and UI behavior.
  */
-function updateStorage(org, site) {
-  const projects = JSON.parse(localStorage.getItem('aem-projects'));
-  if (projects) {
-    // ensure org is most recent in orgs array
-    if (projects.orgs.includes(org)) {
-      projects.orgs = projects.orgs.filter((o) => o !== org);
-    }
-    projects.orgs.unshift(org);
-    // ensure site is most recent in site array
-    if (projects.sites[org]) {
-      if (projects.sites[org].includes(site)) {
-        projects.sites[org] = projects.sites[org].filter((s) => s !== site);
-      }
-      projects.sites[org].unshift(site);
-    } else {
-      projects.sites[org] = [site];
-    }
-    localStorage.setItem('aem-projects', JSON.stringify(projects));
-  } else {
-    // init project org and site storage
-    const project = {
-      orgs: [org],
-      sites: { [org]: [site] },
-    };
-    localStorage.setItem('aem-projects', JSON.stringify(project));
-  }
-}
-
-/**
- * Populates org and site fields from local storage.
- */
-function populateFromStorage() {
-  const projects = JSON.parse(localStorage.getItem('aem-projects'));
-  if (projects) {
-    if (projects.orgs && projects.orgs[0]) {
-      // populate org list
-      const { orgs } = projects;
-      populateList(ORG_LIST, orgs);
-      // populate org field
-      const lastOrg = projects.orgs[0];
-      setFieldValue(ORG, lastOrg, 'storage');
-      if (projects.sites && projects.sites[lastOrg]) {
-        // populate site list
-        const sites = projects.sites[lastOrg];
-        populateList(SITE_LIST, sites);
-        // populate site field
-        const lastSite = sites[0];
-        if (lastSite) setFieldValue(SITE, lastSite, 'storage');
-      }
-    }
-  }
-}
-
-/**
- * Populates org field from sidekick.
- */
-function populateFromSidekick() {
-  // eslint-disable-next-line no-undef
-  if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
-    const id = 'igkmdomcgoebiipaifhmpfjhbjccggml';
-    // eslint-disable-next-line no-undef
-    chrome.runtime.sendMessage(id, { action: 'getAuthInfo' }, (orgs) => {
-      if (orgs[0]) {
-        // populate org list
-        populateList(ORG_LIST, orgs);
-        // populate org field
-        const lastOrg = orgs[0];
-        setFieldValue(ORG, lastOrg, 'sidekick');
-      }
-    });
-  }
-}
-
 function registerListeners() {
-  // enable site when org has value
-  ORG.addEventListener('input', () => {
-    SITE.disabled = !ORG.value;
-  }, { once: true });
-
-  // refresh site datalist to match org
-  ORG.addEventListener('change', (e) => {
-    resetSiteListForOrg(e.target.value);
-  });
-
-  FORM.addEventListener('submit', loadPrism, { once: true });
-
-  // enable form submission
-  FORM.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const { target, submitter } = e;
-    disableForm(target, submitter);
-    clearTable(RESULTS);
-    updateTableDisplay('loading', TABLE);
-
-    const data = getFormData(target);
-    const { org, site } = data;
-    if (org && site) {
-      // validate org/site config
-      const { live, preview } = await fetchHosts(org, site);
-      if (live && preview) {
-        // ensure log access
-        const timeframe = [...PICKER_OPTIONS].find((o) => o.getAttribute('aria-selected') === 'true').dataset.value;
-        const { logs, error } = await fetchLogs(org, site, timeframe);
-        if (!error) {
-          displayLogs(logs, live, preview);
-          updateStorage(org, site);
-          updateParams(data);
-          updateLists(org, site);
-        } else {
-          updateTableError(error.status, preview, site);
-        }
-      } else {
-        updateTableError('Project', null, `${org}/${site}`);
-      }
-    }
-
-    enableForm(target, submitter);
-  });
-
-  // enable form clear
-  FORM.addEventListener('reset', (e) => {
-    e.preventDefault();
-    [...e.target.elements].forEach((el) => {
-      el.value = '';
-    });
-    clearTable(RESULTS);
-    selectTimeframe('Last 24 hours');
-    setTimeframeValues('1:00:00', FROM, TO);
-    updateTableDisplay('no-results', TABLE);
-  });
+  initConfigField();
 
   // enable timeframe dropdown
   PICKER.addEventListener('click', (e) => {
@@ -788,6 +657,50 @@ function registerListeners() {
         input.readOnly = !custom;
       });
     }
+  });
+
+  // enable form clear
+  FORM.addEventListener('reset', (e) => {
+    e.preventDefault();
+    [...e.target.elements].forEach((el) => {
+      el.value = '';
+    });
+    clearTable(RESULTS);
+    selectTimeframe('Last 24 hours');
+    setTimeframeValues('1:00:00', FROM, TO);
+    updateTableDisplay('no-results', TABLE);
+  });
+
+  // enable form submission
+  FORM.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const { target, submitter } = e;
+    disableForm(target, submitter);
+    clearTable(RESULTS);
+    updateTableDisplay('loading', TABLE);
+
+    const data = getFormData(target);
+    const { org, site } = data;
+    if (org && site) {
+      // validate org/site config
+      const { live, preview } = await fetchHosts(org, site);
+      if (live && preview) {
+        // ensure log access
+        const timeframe = [...PICKER_OPTIONS].find((o) => o.getAttribute('aria-selected') === 'true').dataset.value;
+        const { logs, error } = await fetchLogs(org, site, timeframe);
+        if (!error) {
+          displayLogs(logs, live, preview);
+          updateConfig();
+          updateParams(data);
+        } else {
+          updateTableError(error.status, preview, site);
+        }
+      } else {
+        updateTableError('Project', null, `${org}/${site}`);
+      }
+    }
+
+    enableForm(target, submitter);
   });
 
   // enable table results filtering
@@ -830,6 +743,9 @@ function registerListeners() {
     }
   });
 
+  RESULTS.addEventListener('click', loadPrism, { once: true });
+
+  // enable table column expand/collapse
   [SOURCE_EXPANDER, PATH_EXPANDER].forEach((expander) => {
     expander.addEventListener('click', () => {
       const type = expander.id.split('-')[0];
@@ -872,10 +788,8 @@ function populateFromParams(search, doc) {
       const param = params.get(field);
       const el = doc.getElementById(field);
       if (param && el) {
-        setFieldValue(el, param, 'params');
-        if (field.startsWith('date-')) {
-          selectTimeframe('Custom');
-        }
+        el.value = toDateTimeLocal(new Date(param));
+        selectTimeframe('Custom');
       }
     });
   }
@@ -887,8 +801,6 @@ function populateForm(doc) {
     // set default timeframe if not already set by params
     setTimeframeValues('1:00:00', FROM, TO);
   }
-  populateFromStorage();
-  populateFromSidekick();
 }
 
 populateForm(document);
