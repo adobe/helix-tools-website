@@ -233,7 +233,9 @@ function selectTimeframe(timeframe) {
   const custom = timeframe === 'Custom';
   // select picker option
   PICKER_OPTIONS.forEach((option) => {
-    option.setAttribute('aria-selected', option.dataset.value === timeframe.toLowerCase() || option.textContent.toLowerCase() === timeframe.toLowerCase());
+    const { value } = option.dataset;
+    const text = option.textContent.toLowerCase();
+    option.setAttribute('aria-selected', value === timeframe.toLowerCase() || text === timeframe.toLowerCase());
   });
   PICKER.dataset.custom = custom;
   PICKER.value = timeframe;
@@ -615,7 +617,6 @@ async function fetchHosts(org, site) {
  */
 function updateParams(data) {
   const url = new URL(window.location.href);
-  // url.search = ''; // clear existing params
   FIELDS.forEach((field) => {
     if (data[field]) {
       url.searchParams.set(field, toDateTimeLocal(data[field]));

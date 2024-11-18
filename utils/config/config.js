@@ -218,7 +218,7 @@ export function initConfigField() {
         cfg.site.disabled = !cfg.org.value;
       }, { once: true });
 
-      // refresh site datalist to match orgß
+      // refresh site datalist to match org
       cfg.org.addEventListener('change', (e) => {
         resetSiteListForOrg(e.target.value, cfg.site, cfg.siteList);
       });
