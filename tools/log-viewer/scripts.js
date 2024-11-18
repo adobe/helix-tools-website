@@ -1,4 +1,6 @@
 /* eslint-disable class-methods-use-this */
+import { loadPrism, highlight } from '../../utils/prism/prism.js';
+
 // field ids
 const FIELDS = ['org', 'site', 'date-from', 'date-to'];
 
@@ -712,6 +714,8 @@ function registerListeners() {
   ORG.addEventListener('change', (e) => {
     resetSiteListForOrg(e.target.value);
   });
+
+  FORM.addEventListener('submit', loadPrism, { once: true });
 
   // enable form submission
   FORM.addEventListener('submit', async (e) => {
