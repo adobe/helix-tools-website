@@ -27,13 +27,18 @@
     <div>
       <form id="timeframe-form">
 
-        <div class="form-field url-field">
-          <label for="site-url">Site URL</label>
-          <input name="site-url" id="site-url" type="url" required />
-          <div class="field-help-text">
-            <p>hlx/aem page & live URLs supported.</p>
+        <section class="form-field config-field">
+          <div class="form-field org-field">
+            <label for="org">Organization</label>
+            <input name="org" id="org" list="org-list" required />
+            <datalist id="org-list"></datalist>
           </div>
-        </div>
+          <div class="form-field site-field">
+            <label for="site">Site</label>
+            <input name="site" id="site" list="site-list" disabled required />
+            <datalist id="site-list"></datalist>
+          </div>
+        </section>
 
         <section class="form-field timeframe-wrapper">
           <!-- <button type="button" class="button">
