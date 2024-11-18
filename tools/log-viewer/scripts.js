@@ -722,8 +722,8 @@ function registerListeners() {
   RESULTS.addEventListener('click', async (e) => {
     const { target } = e;
     if (target.dataset.url) {
+      showLoadingButton(target);
       try {
-        showLoadingButton(target);
         const url = new URL(target.dataset.url);
         const { createModal } = await import('../../blocks/modal/modal.js');
         const res = await fetch(url);
@@ -732,13 +732,13 @@ function registerListeners() {
         modal.innerHTML = `<pre><code class="language-js">${JSON.stringify(json, null, 2)}
           </code></pre>`;
         const { showModal } = await createModal(modal.childNodes);
-        resetLoadingButton(target);
-        showModal();
         highlight(document.querySelector('.modal'));
+        showModal();
       } catch (error) {
         // eslint-disable-next-line no-console
         console.log('Could not create modal:', error);
       }
+      resetLoadingButton(target);
     }
   });
 
