@@ -595,7 +595,7 @@ async function fetchLogs(org, site, timeframe) {
  */
 async function fetchHosts(org, site) {
   try {
-    const url = `https://admin.hlx.page/status/${org}/${site}/main`;
+    const url = `https://admin.hlx.page/status/${org}/${site}/main/`;
     const res = await fetch(url);
     if (!res.ok) throw res;
     const json = await res.json();
@@ -604,6 +604,7 @@ async function fetchHosts(org, site) {
       preview: new URL(json.preview.url).host,
     };
   } catch (error) {
+    updateTableError(error.status, `main--${site}--${org}.hlx.page`, `${org}/${site}`);
     return {
       live: null,
       preview: null,
@@ -695,8 +696,6 @@ function registerListeners() {
         } else {
           updateTableError(error.status, preview, site);
         }
-      } else {
-        updateTableError('Project', null, `${org}/${site}`);
       }
     }
 
