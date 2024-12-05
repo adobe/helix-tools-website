@@ -604,10 +604,7 @@ async function fetchHosts(org, site) {
       preview: new URL(json.preview.url).host,
     };
   } catch (error) {
-    return {
-      live: null,
-      preview: null,
-    };
+    return { error };
   }
 }
 
@@ -683,8 +680,10 @@ function registerListeners() {
     const { org, site } = data;
     if (org && site) {
       // validate org/site config
-      const { live, preview } = await fetchHosts(org, site);
-      if (live && preview) {
+      const { live, preview, error } = await fetchHosts(org, site);
+      if (error) {
+        updateTableError(error.status, preview, site);
+      } else if (live && preview) {
         // ensure log access
         const timeframe = [...PICKER_OPTIONS].find((o) => o.getAttribute('aria-selected') === 'true').dataset.value;
         const { logs, error } = await fetchLogs(org, site, timeframe);
