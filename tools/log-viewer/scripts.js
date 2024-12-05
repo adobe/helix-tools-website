@@ -680,9 +680,9 @@ function registerListeners() {
     const { org, site } = data;
     if (org && site) {
       // validate org/site config
-      const { live, preview, error } = await fetchHosts(org, site);
-      if (error) {
-        updateTableError(error.status, preview, site);
+      const { live, preview, error: fetchHostError } = await fetchHosts(org, site);
+      if (fetchHostError) {
+        updateTableError(fetchHostError.status, preview, site);
       } else if (live && preview) {
         // ensure log access
         const timeframe = [...PICKER_OPTIONS].find((o) => o.getAttribute('aria-selected') === 'true').dataset.value;
