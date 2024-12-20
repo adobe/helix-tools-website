@@ -204,6 +204,14 @@
     "specialViews": {
       "type": "array",
       "items": { "$ref": "#/$defs/specialView" }
+    },
+    "editUrlLabel": {
+      "type": "string",
+      "description": "The label of the custom editing environment."
+    },
+    "editUrlPattern": {
+      "type": "string",
+      "description": "The URL pattern for the custom editing environment. Supports placeholders like {{contentSourceUrl}} or {{pathname}}."
     }
    },
    "additionalProperties": false
