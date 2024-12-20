@@ -211,7 +211,7 @@
     },
     "editUrlPattern": {
       "type": "string",
-      "description": "The URL pattern for the custom editing environment."
+      "description": "The URL pattern for the custom editing environment. Supports placeholders like {{contentSourceUrl}} or {{pathname}}."
     }
    },
    "additionalProperties": false
