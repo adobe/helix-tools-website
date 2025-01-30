@@ -604,7 +604,7 @@ async function fetchHosts(org, site) {
       preview: new URL(json.preview.url).host,
     };
   } catch (error) {
-    return { error };
+    return { error, preview: `main--${site}--${org}.aem.page` };
   }
 }
 
