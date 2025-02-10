@@ -59,6 +59,7 @@
   color: var(--color-text);
   transition: background-color 0.2s, opacity 0.2s, transform 0.2s, box-shadow 0.2s;
   position: relative;
+  margin-bottom: 1.5rem;
 }
 
 .push-invalidation fieldset ul li[aria-selected='true'] {
