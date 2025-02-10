@@ -1,0 +1,230 @@
+{
+  "$id": "https://ns.adobe.com/helix/sidekick/config",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$defs": {
+    "plugin": {
+      "type": "object",
+      "properties": {
+        "containerId": {
+          "type": "string",
+          "description": "The ID of the container to add this plugin to"
+        },
+        "environments": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["any", "dev", "admin", "edit", "preview", "live", "prod"]
+          },
+          "description": "The environments to display this plugin in",
+          "default": "any"
+        },
+        "event": {
+          "type": "string",
+          "description": "The name of a custom event to fire when the button is clicked (defaults to id)"
+        },
+        "excludePaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Exclude the plugin from these paths",
+          "examples": [
+            "/foo/**",
+            "**/:x:**"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "description": "The unique plugin ID"
+        },
+        "includePaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Include the plugin on these paths (overrides excludePaths)",
+          "examples": [
+            "/foo/bar/**",
+            "**.docx**"
+          ]
+        },
+        "isContainer": {
+          "type": "boolean",
+          "description": "Turns the plugin into a container for other plugins"
+        },
+        "isPalette": {
+          "type": "boolean",
+          "description": "Opens the URL in a palette instead of a new tab",
+          "dependentRequired": ["url"]
+        },
+        "paletteRect": {
+          "type": "string",
+          "description": "he dimensions and position of a palette box",
+          "dependentRequired": ["isPalette"]
+        },
+        "title": {
+          "type": "string",
+          "description": "The button text"
+        },
+        "titleI18n": {
+          "type": "object",
+          "description": "The button text in other supported languages",
+          "patternProperties": {
+            "^[a-z]{2}(-[A-Z]{2})?$": {
+              "type": "string",
+              "description": "ISO language code (`en` or `en-US`) with translated button text"
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        },
+        "url": {
+          "type": "url",
+          "description": "The URL to open when the button is clicked"
+        },
+        "passConfig": {
+          "type": "boolean",
+          "description": "Append ref, repo, owner, host, and project as query params on new URL button click"
+        },
+        "passReferrer": {
+          "type": "boolean",
+          "description": "Append the referrer URL as a query param on new URL button click"
+        },
+        "isBadge": {
+          "type": "boolean",
+          "description": "Opens the URL in a palette instead of a new tab"
+        },
+        "badgeVariant": {
+          "type": "string",
+          "description": "The variant of the badge following the Adobe Spectrum badge variants",
+          "enum": [
+            "gray",
+            "red",
+            "orange",
+            "yellow",
+            "chartreuse",
+            "celery",
+            "green",
+            "seafoam",
+            "cyan",
+            "blue",
+            "indigo",
+            "purple",
+            "fuchsia",
+            "magenta"
+          ],
+          "dependentRequired": [
+            "isBadge"
+          ]
+        }
+      },
+      "required": [ "id" ],
+      "anyOf": [
+        { "required": [ "url" ] },
+        { "required": [ "event" ] },
+        { "required": [ "isContainer" ] },
+        { "required": [ "isBadge" ] }
+      ],
+      "additionalProperties": false
+    },
+    "specialView": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The unique view ID"
+        },
+        "path": {
+          "type": "string",
+          "description": "Open the special view on this path",
+          "examples": [
+            "/foo/**.json"
+          ]
+        },
+        "viewer": {
+          "type": "string",
+          "description": "The URL of the special view. The resource path will be passed to it via 'path' parameter",
+          "examples": [
+            "/tools/sidekick/foo/index.html"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "path",
+        "viewer"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "description": "Sidekick configuration",
+  "type": "object",
+  "properties": {
+    "contentSourceType": {
+      "type": "string",
+      "description": "The type of the content source",
+      "examples": [
+        "onedrive",
+        "gdrive",
+        "markup"
+      ]
+    },
+    "contentSourceUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "The URL of the content source"
+    },
+    "extends": {
+      "type": "string",
+      "description": "Extend another project's sidekick configuration",
+      "examples": [
+        "hlxsites/foo"
+      ]
+    },
+    "project": {
+      "type": "string",
+      "description": "The name of the project to display in the sidekick"
+    },
+    "previewHost": {
+      "type": "string",
+      "format": "idn-hostname",
+      "description": "The host name of the preview environment (defaults to *.hlx.page)"
+    },
+    "liveHost": {
+      "type": "string",
+      "format": "idn-hostname",
+      "description": "The host name of the live environment (defaults to *.hlx.live)"
+    },
+    "host": {
+      "type": "string",
+      "format": "idn-hostname",
+      "description": "The host name of the production website"
+    },
+    "container": {
+      "type": "string",
+      "description": "The ID of the dropdown container to add this plugin to"
+    },
+    "pushDown": {
+      "type": "boolean",
+      "description": "Have the sidekick push down page content instead of overlaying it"
+    },
+    "pushDownSelector": {
+      "type": "string",
+      "description": "The query selector for absolute elements to also push down"
+    },
+    "plugins": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/plugin" }
+    },
+    "redirect": {
+      "type": "string",
+      "format": "uri",
+      "description": "Loads the sidekick configuration from a different URL"
+    },
+    "specialViews": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/specialView" }
+    }
+   },
+   "additionalProperties": false
+}
