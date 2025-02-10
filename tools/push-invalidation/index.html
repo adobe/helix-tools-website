@@ -17,14 +17,15 @@
   <main>
     <!-- TITLE -->
     <div>
-      <h1>BYOCDN Credential Validator</h1>
+      <h1>CDN Setup</h1>
       <p>
-        The <strong>Credential Validator</strong> tool ensures your content delivery network (CDN) automatically
-        purges outdated content on your production domain (e.g. <code>www.yourdomain.com</code>), whenever an author
+        The <strong>CDN Setup</strong> tool ensures your content delivery network (CDN) automatically
+        purges outdated content on your production domain (e.g. <code>www.yourdomain.com</code>) whenever an author
         publishes changes. Use this tool to validate your project's vendor-specific properties and credentials (as found
         in the Excel workbook named <code>.helix/config.xlsx</code> in Sharepoint or the Google Sheet named
         <code>.helix/config</code> in Google Drive).
       </p>
+      <p>See <a href="https://www.aem.live/docs/byo-cdn-setup">BYO CDN Setup</a> documentation to learn more.</p>
     </div>
     <!-- FORM -->
     <div>
@@ -38,18 +39,21 @@
                 <img src="./assets/akamai-logo.svg" alt="Akamai">
                 <input id="akamai" name="type" value="akamai" type="radio" required />
               </label>
+              <a class="docs" href="https://www.aem.live/docs/byo-cdn-akamai-setup" target="_blank">Setup Docs</a>
             </li>
             <li>
               <label for="fastly">
                 <img src="./assets/fastly-logo.svg" alt="Fastly">
                 <input id="fastly" name="type" value="fastly" type="radio" required />
               </label>
+              <a class="docs" href="https://www.aem.live/docs/byo-cdn-fastly-setup" target="_blank">Setup Docs</a>
             </li>
             <li>
               <label for="cloudflare">
                 <img src="./assets/cloudflare-logo.svg" alt="Cloudflare">
                 <input id="cloudflare" name="type" value="cloudflare" type="radio" required />
               </label>
+              <a class="docs" href="https://www.aem.live/docs/byo-cdn-cloudflare-worker-setup" target="_blank">Setup Docs</a>
             </li>
             <li>
               <label for="cloudfront">
@@ -57,6 +61,7 @@
                 <span>Cloudfront</span>
                 <input id="cloudfront" name="type" value="cloudfront" type="radio" required />
               </label>
+              <a class="docs" href="https://www.aem.live/docs/byo-cdn-cloudfront-setup" target="_blank">Setup Docs</a>
             </li>
           </ul>
         </fieldset>

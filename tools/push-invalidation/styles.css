@@ -58,6 +58,7 @@
   background-color: var(--gray-75);
   color: var(--color-text);
   transition: background-color 0.2s, opacity 0.2s, transform 0.2s, box-shadow 0.2s;
+  position: relative;
 }
 
 .push-invalidation fieldset ul li[aria-selected='true'] {
@@ -83,6 +84,18 @@
 
 .push-invalidation fieldset ul li label {
   margin: 0.5em 0.25em;
+}
+
+.push-invalidation fieldset ul li .docs {
+  position: absolute;
+  bottom: -1.5rem;
+  left: 0;
+  font-size: var(--body-size-s);
+  display: none;
+}
+
+.push-invalidation fieldset ul li[aria-selected='true'] .docs {
+  display: block;
 }
 
 .push-invalidation .radio-field {
