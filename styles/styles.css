@@ -820,3 +820,147 @@ table+.form-field,
 .field-help-text p {
   margin: 0;
 }
+
+/* Redesign styles */
+
+
+/* Redesign button animation */
+
+/* primary button: blue bg */
+.redesign a.button:any-link,
+main .form .button,
+.feed.blog .read-more {
+  cursor: pointer;
+  text-decoration: none;
+  padding: 5.5px 15px;
+  text-align: center;
+  font-size: var(--type-body-xs-size);
+  line-height: var(--body-line-height);
+  font-style: normal;
+  font-weight: 600;
+  color: var(--color-white);
+  background: transparent;
+  border: 2px solid var(--spectrum-blue);
+  border-radius: 100px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  display: inline-block;
+  position: relative;
+  height: fit-content;
+  transition: all 0.3s ease-in-out;
+  overflow: hidden;
+  transform: translateZ(0);
+
+  /* fix for ios overflow with border-radius not working */
+  isolation: isolate;
+}
+
+main .form .button {
+  font-weight: 500;
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.redesign a.button:any-link span {
+  color: var(--color-white);
+  transition: all 0.3s ease-in-out;
+}
+
+.redesign a.button:any-link:hover,
+main .form .button:hover,
+.feed.blog .read-more:hover {
+  color: var(--spectrum-blue);
+  border-color: var(--spectrum-blue);
+  transform: translateZ(0);
+}
+
+.redesign a.button:any-link:hover span {
+  color: var(--spectrum-blue);
+}
+
+.redesign a.button:any-link::before,
+main .form .button::before {
+  content: "";
+  position: absolute;
+  left: -102%;
+  top: 0;
+  transition: all 0.3s ease-in-out;
+  width: 202%;
+  height: 104%;
+  z-index: -1;
+
+  /* 1st value: hovered color, 2nd value: original color */
+  background:
+    radial-gradient(
+      circle at left,
+      var(--color-white) 50%,
+      var(--spectrum-blue) 50%
+    );
+}
+
+.redesign a.button:any-link:hover::before,
+main .form .button:hover::before {
+  left: 0%;
+}
+
+/* secondary button: grey border transparent bg -> border button */
+.redesign a.button.secondary:any-link {
+  color: var(--color-font-grey);
+  border-color: var(--color-font-grey);
+}
+
+.redesign a.button.secondary:any-link:hover {
+  color: var(--color-white);
+}
+
+.redesign a.button.secondary:any-link::before {
+  /* 1st value: hovered color, 2nd value: original color */
+  background:
+    radial-gradient(
+      circle at left,
+      var(--color-font-grey) 50%,
+      transparent 50%
+    );
+}
+
+/* .black-border button: black border transparent bg -> border button */
+.redesign a.button.black-border:any-link {
+  color: var(--color-black);
+  border-color: var(--color-black);
+}
+
+.redesign a.button.black-border:any-link:hover {
+  color: var(--color-white);
+}
+
+.redesign a.button.black-border:any-link::before {
+  /* 1st value: hovered color, 2nd value: original color */
+  background:
+    radial-gradient(
+      circle at left,
+      rgb(0 0 0 / 50%) 50%,
+      transparent 50%
+    );
+}
+
+/* larger size */
+.redesign a.button.large:any-link {
+  font-size: var(--type-body-s-size);
+  line-height: var(--type-body-s-lh);
+}
+
+@media screen and (width >= 900px) {
+  .redesign a.button.large:any-link {
+    font-size: var(--type-body-m-size);
+    line-height: 1.35;
+    padding: 8px 20px;
+    margin-bottom: 0;
+  }
+}
+
+@media screen and (width >= 1200px) {
+  .redesign a.button.large:any-link {
+    font-size: 18px;
+    line-height: 24px;
+    padding: 10px 26px;
+  }
+}

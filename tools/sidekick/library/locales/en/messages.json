@@ -1,0 +1,29 @@
+{
+  "appTitle": {
+    "message": "AEM Sidekick Library"
+  },
+  "unknownPlugin": {
+    "message": "Unknown plugin"
+  },
+  "invalidConfiguration": {
+    "message": "Invalid Configuration"
+  },
+  "invalidConfigurationDescription": {
+    "message": "The library is misconfigured"
+  },
+  "errorLoadingPlugin": {
+    "message": "Error loading plugin"
+  },
+  "errorLoadingLibraryJSON": {
+    "message": "Error loading library JSON"
+  },
+  "generativeTextPrompt": {
+    "message": "What would you like to say?"
+  },
+  "generativeTextCTA": {
+    "message": "Generate"
+  },
+  "search": {
+    "message": "Search"
+  }
+}
