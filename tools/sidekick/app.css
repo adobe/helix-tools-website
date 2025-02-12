@@ -13,7 +13,7 @@
 :host,
 :root {
   --hlx-sk-bg: #fff;
-  --hlx-sk-logo-url: url(data:image/svg+xml;base64,PHN2ZyBpZD0iQWRvYmVFeHBlcmllbmNlQ2xvdWQiIGRhdGEtbmFtZT0iTGF5ZXIgMSIgdmlld0JveD0iLTUgLTUgMjUwIDI0NCIgd2lkdGg9IjI1MCIgaGVpZ2h0PSIyNDQiCiAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCBoZWlnaHQ9IjIzNCIgcng9IjQyLjUiIHdpZHRoPSIyNDAiIGZpbGw9IiNmYTBmMDAiLz4KICA8cGF0aCBkPSJNMTg2LjYxNyAxNzUuOTVoLTI4LjUwNmE2LjI0MyA2LjI0MyAwIDAgMS01Ljg0Ny0zLjc2OWwtMzAuOTQ3LTcyLjM1OWExLjM2NCAxLjM2NCAwIDAgMC0yLjYxMS0uMDM0TDk5LjQyIDE0NS43MzFhMS42MzUgMS42MzUgMCAwIDAgMS41MDYgMi4yNjloMjEuMmEzLjI3IDMuMjcgMCAwIDEgMy4wMSAxLjk5NGw5LjI4MSAyMC42NTVhMy44MTIgMy44MTIgMCAwIDEtMy41MDcgNS4zMDFINTMuNzM0YTMuNTE4IDMuNTE4IDAgMCAxLTMuMjEzLTQuOTA0bDQ5LjA5LTExNi45MDJBNi42MzkgNi42MzkgMCAwIDEgMTA1Ljg0MyA1MGgyOC4zMTRhNi42MjggNi42MjggMCAwIDEgNi4yMzIgNC4xNDRsNDkuNDMgMTE2LjkwMmEzLjUxNyAzLjUxNyAwIDAgMS0zLjIwMiA0LjkwNHoiIGRhdGEtbmFtZT0iMjU2IiBmaWxsPSIjZmZmIi8+Cjwvc3ZnPg==);
+  --hlx-sk-logo-url: url("data:image/svg+xml;base64,PHN2ZyBpZD0iQWRvYmVFeHBlcmllbmNlQ2xvdWQiIGRhdGEtbmFtZT0iTGF5ZXIgMSIgdmlld0JveD0iLTUgLTUgMjUwIDI0NCIgd2lkdGg9IjI1MCIgaGVpZ2h0PSIyNDQiCiAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCBoZWlnaHQ9IjIzNCIgcng9IjQyLjUiIHdpZHRoPSIyNDAiIGZpbGw9IiNmYTBmMDAiLz4KICA8cGF0aCBkPSJNMTg2LjYxNyAxNzUuOTVoLTI4LjUwNmE2LjI0MyA2LjI0MyAwIDAgMS01Ljg0Ny0zLjc2OWwtMzAuOTQ3LTcyLjM1OWExLjM2NCAxLjM2NCAwIDAgMC0yLjYxMS0uMDM0TDk5LjQyIDE0NS43MzFhMS42MzUgMS42MzUgMCAwIDAgMS41MDYgMi4yNjloMjEuMmEzLjI3IDMuMjcgMCAwIDEgMy4wMSAxLjk5NGw5LjI4MSAyMC42NTVhMy44MTIgMy44MTIgMCAwIDEtMy41MDcgNS4zMDFINTMuNzM0YTMuNTE4IDMuNTE4IDAgMCAxLTMuMjEzLTQuOTA0bDQ5LjA5LTExNi45MDJBNi42MzkgNi42MzkgMCAwIDEgMTA1Ljg0MyA1MGgyOC4zMTRhNi42MjggNi42MjggMCAwIDEgNi4yMzIgNC4xNDRsNDkuNDMgMTE2LjkwMmEzLjUxNyAzLjUxNyAwIDAgMS0zLjIwMiA0LjkwNHoiIGRhdGEtbmFtZT0iMjU2IiBmaWxsPSIjZmZmIi8+Cjwvc3ZnPg==");
   --hlx-sk-logo-size: 24px;
   --hlx-sk-logo-position: 10px 12px;
   --hlx-sk-color: #505050;
@@ -24,7 +24,7 @@
   --hlx-sk-font-family: arial, helvetica, sans-serif;
   --hlx-sk-font-size: 14px;
   --hlx-sk-line-height: 1;
-  --hlx-sk-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.1), 0 0 0 0 rgba(0, 0, 0, 0.3);
+  --hlx-sk-shadow: 0 4px 8px 0 rgb(0 0 0 / 10%), 0 0 0 0 rgb(0 0 0 / 30%);
   --hlx-sk-button-color: #707070;
   --hlx-sk-button-bg: transparent;
   --hlx-sk-button-border: solid 1px var(--hlx-sk-button-color);
@@ -32,13 +32,13 @@
   --hlx-sk-button-line-height: var(--hlx-sk-line-height);
   --hlx-sk-button-font-weight: 500;
   --hlx-sk-button-padding: 5px 8px;
-  --hlx-sk-button-hover-bg: rgba(44, 44, 44, .04);
+  --hlx-sk-button-hover-bg: rgb(44 44 44 / 4%);
   --hlx-sk-button-hover-border: var(--hlx-sk-button-color);
   --hlx-sk-button-hover-color: var(--hlx-sk-button-color);
-  --hlx-sk-button-focus-bg: rgba(44, 44, 44, .2);
+  --hlx-sk-button-focus-bg: rgb(44 44 44 / 20%);
   --hlx-sk-button-focus-border: var(--hlx-sk-button-hover-border);
   --hlx-sk-button-focus-color: var(--hlx-sk-button-hover-color);
-  --hlx-sk-button-pressed-bg: rgba(44, 44, 44, .1);
+  --hlx-sk-button-pressed-bg: rgb(44 44 44 / 10%);
   --hlx-sk-button-pressed-color: #404040;
   --hlx-sk-button-border-radius: 6px;
   --hlx-sk-button-disabled-color: #a6a6a6;
@@ -51,9 +51,9 @@
   --hlx-sk-button-badge: #F15B3A;
   --hlx-sk-button-badge-hover: #FFC40E;
   --hlx-sk-label-font-size: 14px;
-  --hlx-sk-dropdown-container-bg: rgba(250, 250, 250, .9);
-  --hlx-sk-dropdown-container-bg-solid: rgb(250, 250, 250);
-  --hlx-sk-modal-overlay-bg: rgba(0,0,0, 0.5);
+  --hlx-sk-dropdown-container-bg: rgb(250 250 250 / 90%);
+  --hlx-sk-dropdown-container-bg-solid: rgb(250 250 250);
+  --hlx-sk-modal-overlay-bg: rgb(0 0 0 / 50%);
   --hlx-sk-modal-bg-0: #e60016;
   --hlx-sk-modal-bg-1: #e67316;
   --hlx-sk-modal-color: white;
@@ -61,8 +61,8 @@
   --hlx-sk-modal-help-color: white;
   --hlx-sk-modal-help-dropdown-container-bg: #1473e6be;
   --hlx-sk-modal-font-size: 1.25rem;
-  --hlx-sk-special-view-button-color: rgba(0,0,0, 0.5);
-  --hlx-sk-special-view-table-border: rgba(0,0,0, 0.5);
+  --hlx-sk-special-view-button-color: rgb(0 0 0 / 50%);
+  --hlx-sk-special-view-table-border: rgb(0 0 0 / 50%);
   --hlx-sk-palette-title-bg: rgba(0 0 0 / 10%);
   --hlx-sk-user-bg: #c0c0c0;
 }
@@ -70,20 +70,20 @@
 @media (prefers-color-scheme: dark) {
   :host,
   :root {
-    --hlx-sk-bg: rgb(48, 48, 48);
+    --hlx-sk-bg: rgb(48 48 48);
     --hlx-sk-color: #dedede;
     --hlx-sk-button-color: #dedede;
-    --hlx-sk-button-hover-bg: rgba(211, 211, 211, .04);
-    --hlx-sk-button-pressed-bg: rgba(211, 211, 211, .06);
+    --hlx-sk-button-hover-bg: rgb(211 211 211 / 4%);
+    --hlx-sk-button-pressed-bg: rgb(211 211 211 / 6%);
     --hlx-sk-button-pressed-color: #C0C0C0;
     --hlx-sk-button-disabled-color: #6c6c6c;
     --hlx-sk-button-badge: #F15B3A;
     --hlx-sk-button-badge-hover: #C71F3D;
-    --hlx-sk-dropdown-container-bg: rgba(48, 48, 48, .9);
-    --hlx-sk-dropdown-container-bg-solid: rgb(48, 48, 48);
-    --hlx-sk-modal-overlay-bg: rgba(127, 127, 127, 0.5);
-    --hlx-sk-special-view-button-color: rgba(127, 127, 127, 0.8);
-    --hlx-sk-special-view-table-border: rgba(127, 127, 127, 0.8);
+    --hlx-sk-dropdown-container-bg: rgb(48 48 48 / 90%);
+    --hlx-sk-dropdown-container-bg-solid: rgb(48 48 48);
+    --hlx-sk-modal-overlay-bg: rgb(127 127 127 / 50%);
+    --hlx-sk-special-view-button-color: rgb(127 127 127 / 80%);
+    --hlx-sk-special-view-table-border: rgb(127 127 127 / 80%);
     --hlx-sk-palette-title-bg: rgba(127 127 127 / 20%);
     --hlx-sk-user-bg: #909090;
   }
@@ -93,8 +93,7 @@
   z-index: 9999999;
   position: fixed;
   display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
+  flex-flow: row nowrap;
   justify-content: start;
   background-color: var(--hlx-sk-bg);
   background-image: var(--hlx-sk-logo-url);
@@ -216,8 +215,7 @@
   position: relative;
   flex-grow: 1;
   display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
+  flex-flow: row wrap;
   justify-content: start;
   row-gap: 8px;
   opacity: 1;
@@ -251,8 +249,7 @@
 
 .hlx-sk .feature-container {
   display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
+  flex-flow: row nowrap;
   justify-content: end;
 }
 
@@ -335,7 +332,7 @@
   display: block;
   height: 3em;
   width: 3em;
-  background: currentColor;
+  background: currentcolor;
   position: relative;
   left: 8px;
   top: 4px;
@@ -347,7 +344,7 @@
   display: block;
   height: 2.45em;
   width: 5em;
-  background: currentColor;
+  background: currentcolor;
   position: relative;
   left: 4px;
   top: 6px;
@@ -406,7 +403,7 @@
   transform: scale(0.8);
   width: 6px;
   height: 6px;
-  background: currentColor;
+  background: currentcolor;
   border-radius: 100px;
   box-shadow: 10px -6px 0, 10px 6px 0;
 }
@@ -420,7 +417,7 @@
   border-radius: 3px;
   width: 10px;
   height: 2px;
-  background: currentColor;
+  background: currentcolor;
   left: 2px;
 }
 
@@ -451,7 +448,7 @@
   position: absolute;
   width: 16px;
   height: 2px;
-  background: currentColor;
+  background: currentcolor;
   transform: rotate(45deg);
   top: 12px;
   left: 5px;
@@ -500,7 +497,7 @@
   display: block;
   width: 16px;
   height: 2px;
-  background: currentColor;
+  background: currentcolor;
   top: 12px;
   left: 5px;
 }
@@ -646,7 +643,7 @@
 }
 
 .hlx-sk-overlay .modal a:any-link {
-  color: currentColor;
+  color: currentcolor;
   word-break: break-all;
 }
 
@@ -690,7 +687,7 @@
   font-size: var(--hlx-sk-button-font-size);
 }
 
-.hlx-sk-overlay .modal.help:after {
+.hlx-sk-overlay .modal.help::after {
 	content: '';
 	position: absolute;
   top: -10px;
@@ -706,11 +703,11 @@
 }
 
 
-.hlx-sk-overlay .modal.help.bottom-center:after {
+.hlx-sk-overlay .modal.help.bottom-center::after {
   display: none;
 }
 
-.hlx-sk-overlay .modal.help.bottom-right:after {
+.hlx-sk-overlay .modal.help.bottom-right::after {
   left: unset;
   right: 40px;
 }
@@ -763,7 +760,7 @@
 }
 
 .hlx-sk-overlay .modal.help .help-step {
-  padding: 19px 12px 9px 12px;
+  padding: 19px 12px 9px;
   cursor: pointer;
 }
 
@@ -881,7 +878,7 @@
   height: 100%;
 }
 
-@media(max-width:600px) {
+@media(width <=600px) {
   .hlx-sk {
     background-image: none;
     padding-left: 10px;
@@ -898,7 +895,7 @@
   }
 }
 
-@media(max-width:450px) {
+@media(width <=450px) {
   .hlx-sk .env.dropdown .dropdown-toggle {
     font-size: 0;
   }
