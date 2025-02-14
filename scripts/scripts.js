@@ -11,7 +11,34 @@ import {
   loadSections,
   loadCSS,
   sampleRUM,
+  getMetadata,
+  loadBlock,
+  buildBlock,
+  decorateBlock,
+  loadScript,
 } from './aem.js';
+
+/**
+ * Helper function to create DOM elements
+ * @param {string} tag DOM element to be created
+ * @param {array} attributes attributes to be added
+ */
+export function createTag(tag, attributes, html) {
+  const el = document.createElement(tag);
+  if (html) {
+    if (html instanceof HTMLElement || html instanceof SVGElement) {
+      el.append(html);
+    } else {
+      el.insertAdjacentHTML('beforeend', html);
+    }
+  }
+  if (attributes) {
+    Object.entries(attributes).forEach(([key, val]) => {
+      el.setAttribute(key, val);
+    });
+  }
+  return el;
+}
 
 /**
  * load fonts.css and set a session storage flag
@@ -100,6 +127,66 @@ function decorateImages(main) {
   });
 }
 
+function updateGuideTemplateStyleBasedOnHero() {
+  const isHeroContentExist = document.querySelector(
+    '.guides-template .section.heading',
+  );
+
+  if (isHeroContentExist) {
+    document.querySelector('main').classList.add('has-full-width-hero');
+    const cardListBlocks = document.querySelectorAll('.block.card-list');
+    // make card list in main category page has '.image-card-listing' class
+    cardListBlocks.forEach((block) => block.classList.add('image-card-listing'));
+  } else {
+    document.querySelector('main').classList.add('without-full-width-hero');
+  }
+}
+
+export function setUpSideNav(main, aside) {
+  const sideNav = buildBlock('side-navigation', '');
+  aside.append(sideNav);
+  main.insertBefore(aside, main.querySelector('.section.content'));
+  updateGuideTemplateStyleBasedOnHero();
+  decorateBlock(sideNav);
+  return loadBlock(sideNav);
+}
+
+async function loadHighlightLibrary() {
+  const highlightCSS = createTag('link', {
+    rel: 'stylesheet',
+    href: '/libs/highlight/atom-one-dark.min.css',
+  });
+  document.head.append(highlightCSS);
+
+  await loadScript('/libs/highlight/highlight.min.js');
+  const initScript = createTag('script', {}, 'hljs.highlightAll();');
+  document.body.append(initScript);
+}
+
+export async function decorateGuideTemplateCodeBlock() {
+  const firstCodeBlock = document.querySelector('pre code');
+  if (!firstCodeBlock) return;
+
+  const intersectionObserver = new IntersectionObserver(
+    (entries, observer) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          observer.unobserve(entry.target);
+          loadHighlightLibrary();
+        }
+      });
+    },
+    {
+      root: null,
+      rootMargin: '200px', // Adjust rootMargin as needed to trigger intersection at the desired position before the codeblock becomes visible
+      threshold: 0,
+    },
+  );
+
+  // when first codeblock is coming into view, load highlight.js for page
+  intersectionObserver.observe(firstCodeBlock);
+}
+
 /**
  * Decorates the main element.
  * @param {Element} main The main element
@@ -158,6 +245,18 @@ async function loadLazy(doc) {
   loadCSS(`${window.hlx.codeBasePath}/styles/lazy-styles.css`);
   loadFonts();
   swapIcons(main);
+
+  if (getMetadata('supressframe')) {
+    doc.querySelector('header').remove();
+    doc.querySelector('footer').remove();
+  } else {
+    // breadcrumb setup
+    // loadBreadcrumb(main);
+    // sidebar + related style setup
+    const aside = main.querySelector('main > aside');
+    if (aside) setUpSideNav(main, aside);
+    decorateGuideTemplateCodeBlock();
+  }
 }
 
 /**
