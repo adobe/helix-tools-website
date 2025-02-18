@@ -58,13 +58,11 @@ function displayResults(results, container) {
     // build title
     const title = document.createElement('p');
     title.innerHTML = `<strong>${result.title}</strong>`;
-    let body = document.createElement('pre');
+    const body = document.createElement('pre');
     // build body
     const { type, content } = result.body;
     if (type === 'text') {
-      body.innerHTML = content;
-    } else if (type === 'xml') {
-      body = content.querySelector('body > *');
+      body.textContent = content;
     } else if (type === 'json') {
       body.innerHTML = JSON.stringify(content, null, 2);
     }
@@ -73,18 +71,6 @@ function displayResults(results, container) {
 }
 
 function parseString(body) {
-  // check for xml
-  if (body.startsWith('<')) {
-    try {
-      const parser = new DOMParser();
-      return {
-        type: 'xml',
-        content: parser.parseFromString(body, 'text/xml'),
-      };
-    } catch (error) {
-      return { type: 'text', content: body };
-    }
-  }
   // check for json
   if (body.startsWith('{') || body.startsWith('[')) {
     try {
@@ -168,7 +154,8 @@ function registerListeners(doc) {
     const url = 'https://helix-pages.anywhere.run/helix-services/byocdn-push-invalidation/v1';
     const resp = await fetch(url, { method: 'POST', headers, body: formData.toString() });
     const text = await resp.text();
-    const results = formatResults(text);
+    const sanitized = body.type === 'cloudfront' ? text.replaceAll('\n', '') : text;
+    const results = formatResults(sanitized);
     displayResults(results, RESULTS);
   });
 
