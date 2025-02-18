@@ -58,7 +58,7 @@ function displayResults(results, container) {
     // build title
     const title = document.createElement('p');
     title.innerHTML = `<strong>${result.title}</strong>`;
-    let body = document.createElement('pre');
+    const body = document.createElement('pre');
     // build body
     const { type, content } = result.body;
     if (type === 'text') {
@@ -151,11 +151,10 @@ function registerListeners(doc) {
     const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
     const body = getFormData(e.target);
     const formData = new URLSearchParams(body);
-    const type = body.type;
     const url = 'https://helix-pages.anywhere.run/helix-services/byocdn-push-invalidation/v1';
     const resp = await fetch(url, { method: 'POST', headers, body: formData.toString() });
     const text = await resp.text();
-    const sanitized = type === 'cloudfront' ? text.replaceAll('\n', '') : text;
+    const sanitized = body.type === 'cloudfront' ? text.replaceAll('\n', '') : text;
     const results = formatResults(sanitized);
     displayResults(results, RESULTS);
   });
