@@ -59,9 +59,19 @@
         },
         "paletteRect": {
           "type": "string",
-          "description": "he dimensions and position of a palette box",
+          "description": "The dimensions and position of a palette box",
           "dependentRequired": ["isPalette"]
         },
+        "isPopover": {
+          "type": "boolean",
+          "description": "Opens the URL in a popover instead of a new tab",
+          "dependentRequired": ["url"]
+        },
+        "popoverRect": {
+          "type": "string",
+          "description": "The dimensions of a popover, delimited by a semicolon (width, height)",
+          "dependentRequired": ["isPopover"]
+        },        
         "title": {
           "type": "string",
           "description": "The button text"

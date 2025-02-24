@@ -825,13 +825,13 @@ facet-sidebar[aria-disabled="true"] div.quick-filter {
   display: none;
 }
 
-@media (min-width: 600px) {
+@media (width >= 600px) {
   main .title url-selector input {
     font-size: var(--type-heading-l-size);
   }
 }
 
-@media (min-width: 900px) {
+@media (width >= 900px) {
   main .title {
     flex-wrap: nowrap;
   }
@@ -898,7 +898,7 @@ facet-sidebar[aria-disabled="true"] div.quick-filter {
 }
 
 /* split mode */
-@media (min-width: 1600px) {
+@media (width >= 1600px) {
   #deepmain {
     display: flex;
     gap: 16px;
@@ -930,7 +930,7 @@ facet-sidebar[aria-disabled="true"] div.quick-filter {
   }
 }
 
-@media (min-width: 2000px) {
+@media (width >= 2000px) {
   main .key-metrics ul {
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   }
