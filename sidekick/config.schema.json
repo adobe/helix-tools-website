@@ -34,7 +34,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["any", "dev", "admin", "edit", "preview", "live", "prod"]
+            "enum": ["any", "dev", "admin", "edit", "preview", "review", "live", "prod"]
           },
           "description": "The environments to display this plugin in",
           "default": "any"
@@ -218,12 +218,12 @@
     "liveHost": {
       "type": "string",
       "format": "idn-hostname",
-      "description": "The host name of the live environment (defaults to *.hlx.live)"
+      "description": "The host name of the live environment (defaults to *.aem.live)"
     },
     "previewHost": {
       "type": "string",
       "format": "idn-hostname",
-      "description": "The host name of the preview environment (defaults to *.hlx.page)"
+      "description": "The host name of the preview environment (defaults to *.aem.page)"
     },
     "plugins": {
       "type": "array",
@@ -232,6 +232,11 @@
     "project": {
       "type": "string",
       "description": "The name of the project to display in the sidekick"
+    },
+    "reviewHost": {
+      "type": "string",
+      "format": "idn-hostname",
+      "description": "The host name of the review environment (defaults to *.aem.reviews)"
     },
     "specialViews": {
       "type": "array",
