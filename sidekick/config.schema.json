@@ -5,6 +5,27 @@
     "plugin": {
       "type": "object",
       "properties": {
+        "badgeVariant": {
+          "type": "string",
+          "description": "The variant of the badge following the Adobe Spectrum badge variants",
+          "enum": [
+            "gray",
+            "red",
+            "orange",
+            "yellow",
+            "chartreuse",
+            "celery",
+            "green",
+            "seafoam",
+            "cyan",
+            "blue",
+            "indigo",
+            "purple",
+            "fuchsia",
+            "magenta"
+          ],
+          "dependentRequired": ["isBadge"]
+        },
         "containerId": {
           "type": "string",
           "description": "The ID of the container to add this plugin to"
@@ -27,7 +48,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Exclude the plugin from these paths",
+          "description": "Excludes the plugin from these paths",
           "examples": [
             "/foo/**",
             "**/:x:**"
@@ -42,7 +63,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Include the plugin on these paths (overrides excludePaths)",
+          "description": "Includes the plugin on these paths (overrides excludePaths)",
           "examples": [
             "/foo/bar/**",
             "**.docx**"
@@ -50,28 +71,58 @@
         },
         "isContainer": {
           "type": "boolean",
-          "description": "Turns the plugin into a container for other plugins"
+          "description": "Renders the plugin as a container for other plugins"
+        },
+        "isBadge": {
+          "type": "boolean",
+          "description": "Renders the plugin as a badge"
         },
         "isPalette": {
           "type": "boolean",
           "description": "Opens the URL in a palette instead of a new tab",
-          "dependentRequired": ["url"]
-        },
-        "paletteRect": {
-          "type": "string",
-          "description": "The dimensions and position of a palette box",
-          "dependentRequired": ["isPalette"]
+          "dependentRequired": [
+            "url"
+          ]
         },
         "isPopover": {
           "type": "boolean",
           "description": "Opens the URL in a popover instead of a new tab",
-          "dependentRequired": ["url"]
+          "dependentRequired": [
+            "url"
+          ]
+        },
+        "paletteRect": {
+          "type": "string",
+          "description": "The dimensions and position of a palette box",
+          "dependentRequired": [
+            "isPalette"
+          ]
+        },
+        "passConfig": {
+          "type": "boolean",
+          "description": "Appends ref, site, org, host, and project as query params to the URL",
+          "dependentRequired": [
+            "url"
+          ]
+        },
+        "passReferrer": {
+          "type": "boolean",
+          "description": "Appends the referrer as a query param to the URL",
+          "dependentRequired": [
+            "url"
+          ]
+        },
+        "pinned": {
+          "type": "boolean",
+          "description": "Renders the plugin in the bar (true, default) or the menu (false)"
         },
         "popoverRect": {
           "type": "string",
           "description": "The dimensions of a popover, delimited by a semicolon (width, height)",
-          "dependentRequired": ["isPopover"]
-        },        
+          "dependentRequired": [
+            "isPopover"
+          ]
+        },
         "title": {
           "type": "string",
           "description": "The button text"
@@ -91,49 +142,12 @@
         "url": {
           "type": "url",
           "description": "The URL to open when the button is clicked"
-        },
-        "passConfig": {
-          "type": "boolean",
-          "description": "Append ref, repo, owner, host, and project as query params on new URL button click"
-        },
-        "passReferrer": {
-          "type": "boolean",
-          "description": "Append the referrer URL as a query param on new URL button click"
-        },
-        "isBadge": {
-          "type": "boolean",
-          "description": "Opens the URL in a palette instead of a new tab"
-        },
-        "badgeVariant": {
-          "type": "string",
-          "description": "The variant of the badge following the Adobe Spectrum badge variants",
-          "enum": [
-            "gray",
-            "red",
-            "orange",
-            "yellow",
-            "chartreuse",
-            "celery",
-            "green",
-            "seafoam",
-            "cyan",
-            "blue",
-            "indigo",
-            "purple",
-            "fuchsia",
-            "magenta"
-          ],
-          "dependentRequired": [
-            "isBadge"
-          ]
         }
       },
       "required": [ "id" ],
       "anyOf": [
         { "required": [ "url" ] },
-        { "required": [ "event" ] },
-        { "required": [ "isContainer" ] },
-        { "required": [ "isBadge" ] }
+        { "required": [ "event" ] }
       ],
       "additionalProperties": false
     },
@@ -179,41 +193,14 @@
         "markup"
       ]
     },
-    "contentSourceUrl": {
-      "type": "string",
-      "format": "uri",
-      "description": "The URL of the content source"
-    },
-    "project": {
-      "type": "string",
-      "description": "The name of the project to display in the sidekick"
-    },
-    "previewHost": {
-      "type": "string",
-      "format": "idn-hostname",
-      "description": "The host name of the preview environment (defaults to *.hlx.page)"
-    },
-    "liveHost": {
-      "type": "string",
-      "format": "idn-hostname",
-      "description": "The host name of the live environment (defaults to *.hlx.live)"
-    },
-    "host": {
-      "type": "string",
-      "format": "idn-hostname",
-      "description": "The host name of the production website"
-    },
     "container": {
       "type": "string",
       "description": "The ID of the dropdown container to add this plugin to"
     },
-    "plugins": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/plugin" }
-    },
-    "specialViews": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/specialView" }
+    "contentSourceUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "The URL of the content source"
     },
     "editUrlLabel": {
       "type": "string",
@@ -222,7 +209,36 @@
     "editUrlPattern": {
       "type": "string",
       "description": "The URL pattern for the custom editing environment. Supports placeholders like {{contentSourceUrl}} or {{pathname}}."
+    },
+    "host": {
+      "type": "string",
+      "format": "idn-hostname",
+      "description": "The host name of the production website"
+    },
+    "liveHost": {
+      "type": "string",
+      "format": "idn-hostname",
+      "description": "The host name of the live environment (defaults to *.hlx.live)"
+    },
+    "previewHost": {
+      "type": "string",
+      "format": "idn-hostname",
+      "description": "The host name of the preview environment (defaults to *.hlx.page)"
+    },
+    "plugins": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/plugin" }
+    },
+    "project": {
+      "type": "string",
+      "description": "The name of the project to display in the sidekick"
+    },
+    "specialViews": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/specialView"
+      }
     }
-   },
+  },
    "additionalProperties": false
 }
