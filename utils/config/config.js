@@ -31,6 +31,7 @@ function validDOM() {
  * Sets field value and marks as autofilled (if it hasn't been autofilled already).
  * @param {HTMLElement} field - Input field.
  * @param {string} value - Value to set.
+ * @returns {string} the fields new value
  */
 function setFieldValue(field, value, type) {
   if (!field.dataset.autofill) {
@@ -38,6 +39,8 @@ function setFieldValue(field, value, type) {
     field.dataset.autofill = type;
     field.dispatchEvent(new Event('input'));
   }
+
+  return field.value;
 }
 
 /**
@@ -47,7 +50,7 @@ function setFieldValue(field, value, type) {
  */
 function populateList(list, values) {
   values.forEach((value) => {
-    if (![...list.options].some((o) => o.value === value)) {
+    if (value && ![...list.options].some((o) => o.value === value)) {
       const option = document.createElement('option');
       option.value = value;
       list.append(option);
@@ -121,6 +124,33 @@ function updateStorage(org, site) {
 }
 
 /**
+ * Adds all sidekick projects to storage data
+ * Since no order guarantee is made for sidekick projects, just add them at end of lists.
+ */
+function updateStorageFromSidekick(projects) {
+  let aemProjects = JSON.parse(localStorage.getItem('aem-projects'));
+  if (!aemProjects) {
+    aemProjects = { orgs: [], sites: {} };
+  }
+
+  projects.forEach(({ org, site }) => {
+    if (!aemProjects.orgs.includes(org)) {
+      aemProjects.orgs.push(org);
+    }
+
+    if (!aemProjects.sites[org]) {
+      aemProjects.sites[org] = [];
+    }
+
+    if (!aemProjects.sites[org].includes(site)) {
+      aemProjects.sites[org].push(site);
+    }
+  });
+
+  localStorage.setItem('aem-projects', JSON.stringify(aemProjects));
+}
+
+/**
  * Updates URL parameters, local storage, and datalists based on org/site values.
  */
 export function updateConfig() {
@@ -161,11 +191,10 @@ function populateFromStorage(org, orgList, site, siteList) {
       const { orgs } = projects;
       populateList(orgList, orgs);
       // populate org field
-      const lastOrg = projects.orgs[0];
-      setFieldValue(org, lastOrg, 'storage');
-      if (projects.sites && projects.sites[lastOrg]) {
+      const selectedOrg = setFieldValue(org, projects.orgs[0], 'storage');
+      if (projects.sites && projects.sites[selectedOrg]) {
         // populate site list
-        const sites = projects.sites[lastOrg];
+        const sites = projects.sites[selectedOrg];
         populateList(siteList, sites);
         // populate site field
         const lastSite = sites[0];
@@ -178,52 +207,78 @@ function populateFromStorage(org, orgList, site, siteList) {
 /**
  * Populates org field from sidekick.
  */
-function populateFromSidekick(org, orgList) {
-  // eslint-disable-next-line no-undef
-  if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
-    const id = 'igkmdomcgoebiipaifhmpfjhbjccggml';
-    // eslint-disable-next-line no-undef
-    chrome.runtime.sendMessage(id, { action: 'getAuthInfo' }, (orgs) => {
-      if (orgs[0]) {
-        // populate org list
-        populateList(orgList, orgs);
-        // populate org field
-        const lastOrg = orgs[0];
-        setFieldValue(org, lastOrg, 'sidekick');
-      }
-    });
-  }
+async function populateFromSidekick(org, orgList, site, siteList) {
+  return new Promise((resolve) => {
+    const { chrome } = window;
+    if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
+      let messageResolved = false;
+      const id = 'igkmdomcgoebiipaifhmpfjhbjccggml';
+      chrome.runtime.sendMessage(id, { action: 'getSites' }, (projects) => {
+        if (projects && projects.length > 0) {
+          updateStorageFromSidekick(projects);
+
+          const { orgs, sites } = projects.reduce((acc, part) => {
+            if (!acc.orgs.includes(part.org)) acc.orgs.push(part.org);
+            if (!acc.sites[part.org]) acc.sites[part.org] = [];
+            if (!acc.sites[part.org].includes(part.site)) acc.sites[part.org].push(part.site);
+
+            return acc;
+          }, { orgs: [], sites: {} });
+
+          // populate org list
+          populateList(orgList, orgs);
+
+          // populate org & site field
+          const lastProject = projects[0];
+          const selectedOrg = setFieldValue(org, lastProject.org, 'sidekick');
+
+          populateList(siteList, sites[selectedOrg] || []);
+          setFieldValue(site, sites[selectedOrg][0], 'sidekick');
+        }
+
+        messageResolved = true;
+        resolve();
+      });
+
+      setTimeout(() => {
+        if (!messageResolved) {
+          // eslint-disable-next-line no-console
+          console.warn('Sidekick message not resolved in time');
+          resolve();
+        }
+      }, 500);
+    } else {
+      resolve();
+    }
+  });
 }
 
-function populateConfig(config) {
+async function populateConfig(config) {
   const {
     org, orgList, site, siteList,
   } = config;
   populateFromParams([org, site], window.location.search);
   populateFromStorage(org, orgList, site, siteList);
-  populateFromSidekick(org, orgList);
+  await populateFromSidekick(org, orgList, site, siteList);
 }
 
 /**
- * Loads org/site config CSS.
- * @param {Event} e - Event object containing target element to highlight, if available.
+ * Loads org/site config CSS and initializes config field datalists/values.
  */
-export function initConfigField() {
+export async function initConfigField() {
   const cfg = validDOM();
 
   if (cfg) {
-    loadCSS('../../utils/config/config.css').then(() => {
-      // enable site when org has value
-      cfg.org.addEventListener('input', () => {
-        cfg.site.disabled = !cfg.org.value;
-      }, { once: true });
+    // enable site when org has value
+    cfg.org.addEventListener('input', () => {
+      cfg.site.disabled = !cfg.org.value;
+    }, { once: true });
 
-      // refresh site datalist to match org
-      cfg.org.addEventListener('change', (e) => {
-        resetSiteListForOrg(e.target.value, cfg.site, cfg.siteList);
-      });
-
-      populateConfig(cfg);
+    // refresh site datalist to match org
+    cfg.org.addEventListener('change', (e) => {
+      resetSiteListForOrg(e.target.value, cfg.site, cfg.siteList);
     });
+
+    await Promise.all([loadCSS('../../utils/config/config.css'), populateConfig(cfg)]);
   }
 }

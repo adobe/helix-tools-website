@@ -625,8 +625,8 @@ function updateParams(data) {
 /**
  * Registers event listeners to handle form interactions, table updates, and UI behavior.
  */
-function registerListeners() {
-  initConfigField();
+async function registerListeners() {
+  await initConfigField();
 
   // enable timeframe dropdown
   PICKER.addEventListener('click', (e) => {
