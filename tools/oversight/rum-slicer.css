@@ -45,6 +45,10 @@ main {
   margin-top: var(--nav-height);
 }
 
+main.rum-explorer {
+  max-width: unset;
+}
+
 body main > .section {
   padding-top: 0;
 }

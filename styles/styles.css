@@ -90,7 +90,13 @@ body[data-scroll='disabled'] {
 }
 
 header {
+  position: fixed;
+  top: 0;
+  width: 100%;
   min-height: var(--header-height);
+  height: var(--nav-height);
+  background-color: #fff;
+  z-index: 9999;
   transition: height 0.2s, min-height 0.2s;
 }
 
@@ -117,7 +123,7 @@ main {
 
 /* sections */
 main > .section {
-  max-width: 1200px;
+  /* max-width: 1200px; */
   margin: var(--spacing-500) 0;
 }
 
@@ -963,4 +969,9 @@ main .form .button:hover::before {
     line-height: 24px;
     padding: 10px 26px;
   }
+}
+
+aside {
+  min-height: 75px;
+  padding: 8px 0 0;
 }
