@@ -151,7 +151,9 @@ function registerListeners(doc) {
     const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
     const body = getFormData(e.target);
     const formData = new URLSearchParams(body);
-    const url = 'https://helix-pages.anywhere.run/helix-services/byocdn-push-invalidation/v1';
+    // TODO: change back to v1 once code has been updated to consume
+    // new payload format of service (>= 1.2.0)
+    const url = 'https://helix-pages.anywhere.run/helix-services/byocdn-push-invalidation/1.1.40';
     const resp = await fetch(url, { method: 'POST', headers, body: formData.toString() });
     const text = await resp.text();
     const sanitized = body.type === 'cloudfront' ? text.replaceAll('\n', '') : text;
