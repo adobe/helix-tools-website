@@ -31,8 +31,21 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
   const executeOperation = async (url) => {
     const { hostname, pathname } = new URL(url);
     const [branch, repo, owner] = hostname.split('.')[0].split('--');
-    const adminURL = `https://admin.hlx.page/${operation}/${owner}/${repo}/${branch}${pathname}`;
-    const resp = await fetch(adminURL, { method: 'POST' });
+    const endpoints = {
+      unpublish: 'live',
+      unpreview: 'preview',
+    };
+    const methods = {
+      unpublish: 'DELETE',
+      unpreview: 'DELETE',
+    };
+    const endpoint = endpoints[operation] || operation;
+    const method = methods[operation] || 'POST';
+    console.log(`executing ${method} on ${url}`);
+    const adminURL = `https://admin.hlx.page/${endpoint}/${owner}/${repo}/${branch}${pathname}`;
+    const resp = await fetch(adminURL, {
+      method,
+    });
     resp.text().then(() => {
       counter += 1;
       append(`${counter}/${total}: ${adminURL}`, resp.status);
@@ -119,7 +132,7 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
     doBulkOperation(urls);
   } else {
     append(`URLs: ${urls.length}`);
-    let concurrency = operation === 'live' ? 40 : 3;
+    let concurrency = ['live', 'unpublish', 'unpreview'].includes(operation) ? 40 : 3;
     if (slow) {
       concurrency = 1;
     }
