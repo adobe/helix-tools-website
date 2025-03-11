@@ -1,4 +1,7 @@
 const log = document.getElementById('logger');
+const adminVersion = new URLSearchParams(window.location.search).get('hlx-admin-version');
+const adminVersionSuffix = adminVersion ? `?hlx-admin-version=${adminVersion}` : '';
+
 const append = (string, status = 'unknown') => {
   const p = document.createElement('p');
   p.textContent = string;
@@ -41,7 +44,7 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
     };
     const endpoint = endpoints[operation] || operation;
     const method = methods[operation] || 'POST';
-    const adminURL = `https://admin.hlx.page/${endpoint}/${owner}/${repo}/${branch}${pathname}`;
+    const adminURL = `https://admin.hlx.page/${endpoint}/${owner}/${repo}/${branch}${pathname}${adminVersionSuffix}`;
     const resp = await fetch(adminURL, {
       method,
     });
@@ -73,7 +76,7 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
       const bulkText = `$1/${total} URL(s) bulk ${VERB[operation]}ed on ${owner}/${repo} ${forceUpdate ? '(force update)' : ''}`;
       const bulkLog = append(bulkText.replace('$1', 0));
       const paths = urls.map((url) => new URL(url).pathname);
-      const bulkResp = await fetch(`https://admin.hlx.page/${operation}/${owner}/${repo}/${branch}/*`, {
+      const bulkResp = await fetch(`https://admin.hlx.page/${operation}/${owner}/${repo}/${branch}/*${adminVersionSuffix}`, {
         method: 'POST',
         body: JSON.stringify({
           paths,
