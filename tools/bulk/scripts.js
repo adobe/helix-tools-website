@@ -41,7 +41,6 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
     };
     const endpoint = endpoints[operation] || operation;
     const method = methods[operation] || 'POST';
-    console.log(`executing ${method} on ${url}`);
     const adminURL = `https://admin.hlx.page/${endpoint}/${owner}/${repo}/${branch}${pathname}`;
     const resp = await fetch(adminURL, {
       method,
