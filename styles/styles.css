@@ -123,7 +123,6 @@ main {
 
 /* sections */
 main > .section {
-  /* max-width: 1200px; */
   margin: var(--spacing-500) 0;
 }
 
