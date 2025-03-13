@@ -56,7 +56,6 @@ function updateBulkStatus(element, jobStatus) {
     index: 'indexed',
     cache: 'purged',
   };
-  console.log(jobStatus);
   const [, , owner, repo] = new URL(jobStatus.links.job).pathname.split('/');
   element.innerHTML = `<span class="status-pill status-success">${success}</span> <span class="status-pill status-warning">${warnings}</span> <span class="status-pill status-error">${errors}</span> ${processed}/${total} URL(s) bulk ${VERB[operation]} [${((new Date().valueOf() - startTime.valueOf()) / 1000).toFixed(2)}s]
   <div class="status-details" aria-label="Details" aria-expanded="false"><textarea></textarea></div>`;
@@ -127,7 +126,6 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
     }
     updateBulkStatus(bulkLog, simpleJobStatus);
     document.getElementById('urls-form').disabled = false;
-    console.log(simpleJobStatus);
   };
 
   const doBulkOperation = async () => {
