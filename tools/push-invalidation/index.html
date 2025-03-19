@@ -23,7 +23,7 @@
         purges outdated content on your production domain (e.g. <code>www.yourdomain.com</code>), whenever an author
         publishes changes. Use this tool to validate your project's vendor-specific properties and credentials (as found
         in the Excel workbook named <code>.helix/config.xlsx</code> in Sharepoint or the Google Sheet named
-        <code>.helix/config</code> in Google Drive).
+        <code>.helix/config</code> in Google Drive, or configured via the new <a href="https://www.aem.live/docs/config-service-setup" target="_blank">Config Service</a>).
       </p>
     </div>
     <!-- FORM -->
@@ -195,7 +195,11 @@
       </div>
     </div>
     <!-- RESULTS -->
-    <div>
+    <div aria-hidden="true">
+      <p><strong>URL Purge</strong></p>
+      <pre><code id="urlPurge" class="language-js"></code></pre>
+      <p><strong>Key Purge</strong></p>
+      <pre><code id="keyPurge" class="language-js"></code></pre>
       <div class="section-metadata">
         <div>
           <div>id</div>

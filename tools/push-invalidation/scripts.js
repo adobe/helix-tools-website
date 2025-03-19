@@ -1,3 +1,5 @@
+import { loadPrism, highlight } from '../../utils/prism/prism.js';
+
 function getFormData(form) {
   const data = {};
   [...form.elements].forEach((field) => {
@@ -43,80 +45,23 @@ function updateTypeParam(value) {
 }
 
 function clearResults(wrapper) {
-  if (wrapper) wrapper.innerHTML = '';
+  wrapper.setAttribute('aria-hidden', true);
+  const code = wrapper.querySelectorAll('pre code');
+  code.forEach((c) => {
+    c.textContent = '';
+  });
 }
 
 function displayResults(results, container) {
-  let wrapper = container.querySelector('.default-content-wrapper');
-  if (!wrapper) {
-    wrapper = document.querySelector('div');
-    wrapper.className = 'default-content-wrapper';
-    container.append(wrapper);
-  }
-  clearResults(wrapper);
-  results.forEach((result) => {
-    // build title
-    const title = document.createElement('p');
-    title.innerHTML = `<strong>${result.title}</strong>`;
-    let body = document.createElement('pre');
-    // build body
-    const { type, content } = result.body;
-    if (type === 'text') {
-      body.innerHTML = content;
-    } else if (type === 'xml') {
-      body = content.querySelector('body > *');
-    } else if (type === 'json') {
-      body.innerHTML = JSON.stringify(content, null, 2);
+  clearResults(container);
+  container.setAttribute('aria-hidden', false);
+  Object.entries(results).forEach(([key, value]) => {
+    const code = document.getElementById(key);
+    if (code) {
+      code.textContent = JSON.stringify(value, null, 2);
+      highlight(code);
     }
-    wrapper.append(title, body);
   });
-}
-
-function parseString(body) {
-  // check for xml
-  if (body.startsWith('<')) {
-    try {
-      const parser = new DOMParser();
-      return {
-        type: 'xml',
-        content: parser.parseFromString(body, 'text/xml'),
-      };
-    } catch (error) {
-      return { type: 'text', content: body };
-    }
-  }
-  // check for json
-  if (body.startsWith('{') || body.startsWith('[')) {
-    try {
-      return {
-        type: 'json',
-        content: JSON.parse(body),
-      };
-    } catch (error) {
-      return { type: 'text', content: body };
-    }
-  }
-  return { type: 'text', content: body };
-}
-
-function formatResults(text) {
-  const lines = text.split('\n').map((l) => l.trim());
-  const results = lines.map((line) => {
-    const [message, ...response] = line.split(': ');
-    const resp = response.join(': ');
-    const result = {
-      title: message,
-      body: { type: 'text', content: resp },
-    };
-    // check if response code included
-    if (resp.includes(' - ')) {
-      const [code, content] = resp.split(' - ');
-      result.title = `<span class="status-light http${Math.floor(code / 100) % 10}">${code}</span> ${result.title}`;
-      result.body = parseString(content);
-    }
-    return result;
-  });
-  return results.filter((r) => r.title && r.body && r.body.content);
 }
 
 // init
@@ -129,7 +74,7 @@ function registerListeners(doc) {
   const lis = [...radios].map((r) => r.closest('li'));
   radios.forEach((radio, i) => {
     radio.addEventListener('change', () => {
-      clearResults(RESULTS.querySelector('.default-content-wrapper'));
+      clearResults(RESULTS);
       const { value } = radio;
       updateTypeParam(value);
       // update radio display
@@ -167,13 +112,14 @@ function registerListeners(doc) {
     const formData = new URLSearchParams(body);
     const url = 'https://helix-pages.anywhere.run/helix-services/byocdn-push-invalidation/v1';
     const resp = await fetch(url, { method: 'POST', headers, body: formData.toString() });
-    const text = await resp.text();
-    const results = formatResults(text);
-    displayResults(results, RESULTS);
+    const json = await resp.json();
+    displayResults(json, RESULTS);
   });
 
+  CREDENTIALS_FORM.addEventListener('submit', loadPrism, { once: true });
+
   CREDENTIALS_FORM.addEventListener('reset', (e) => {
-    clearResults(RESULTS.querySelector('.default-content-wrapper'));
+    clearResults(RESULTS);
     const pre = document.getElementById('credentials-results');
     if (pre) pre.closest('div').remove();
     const { type } = getFormData(e.target);
