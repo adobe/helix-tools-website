@@ -604,10 +604,7 @@ async function fetchHosts(org, site) {
       preview: new URL(json.preview.url).host,
     };
   } catch (error) {
-    return {
-      live: null,
-      preview: null,
-    };
+    return { error, preview: `main--${site}--${org}.aem.page` };
   }
 }
 
@@ -628,8 +625,8 @@ function updateParams(data) {
 /**
  * Registers event listeners to handle form interactions, table updates, and UI behavior.
  */
-function registerListeners() {
-  initConfigField();
+async function registerListeners() {
+  await initConfigField();
 
   // enable timeframe dropdown
   PICKER.addEventListener('click', (e) => {
@@ -683,8 +680,10 @@ function registerListeners() {
     const { org, site } = data;
     if (org && site) {
       // validate org/site config
-      const { live, preview } = await fetchHosts(org, site);
-      if (live && preview) {
+      const { live, preview, error: fetchHostError } = await fetchHosts(org, site);
+      if (fetchHostError) {
+        updateTableError(fetchHostError.status, preview, site);
+      } else if (live && preview) {
         // ensure log access
         const timeframe = [...PICKER_OPTIONS].find((o) => o.getAttribute('aria-selected') === 'true').dataset.value;
         const { logs, error } = await fetchLogs(org, site, timeframe);

@@ -59,9 +59,19 @@
         },
         "paletteRect": {
           "type": "string",
-          "description": "he dimensions and position of a palette box",
+          "description": "The dimensions and position of a palette box",
           "dependentRequired": ["isPalette"]
         },
+        "isPopover": {
+          "type": "boolean",
+          "description": "Opens the URL in a popover instead of a new tab",
+          "dependentRequired": ["url"]
+        },
+        "popoverRect": {
+          "type": "string",
+          "description": "The dimensions of a popover, delimited by a semicolon (width, height)",
+          "dependentRequired": ["isPopover"]
+        },        
         "title": {
           "type": "string",
           "description": "The button text"
@@ -204,6 +214,14 @@
     "specialViews": {
       "type": "array",
       "items": { "$ref": "#/$defs/specialView" }
+    },
+    "editUrlLabel": {
+      "type": "string",
+      "description": "The label of the custom editing environment."
+    },
+    "editUrlPattern": {
+      "type": "string",
+      "description": "The URL pattern for the custom editing environment. Supports placeholders like {{contentSourceUrl}} or {{pathname}}."
     }
    },
    "additionalProperties": false
