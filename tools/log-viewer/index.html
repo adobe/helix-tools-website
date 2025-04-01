@@ -2,13 +2,18 @@
 <html lang="en">
 
 <head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-as-header="true"
+  >
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Log Viewer</title>
-  <script src="/scripts/aem.js" type="module"></script>
-  <script src="/scripts/scripts.js" type="module"></script>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
   <link rel="stylesheet" href="/styles/styles.css" />
-  <script src="/tools/log-viewer/scripts.js" type="module"></script>
+  <script nonce="aem" src="/tools/log-viewer/scripts.js" type="module"></script>
   <link rel="stylesheet" href="/tools/log-viewer/styles.css" />
 </head>
 
