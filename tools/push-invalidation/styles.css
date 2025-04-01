@@ -1,6 +1,16 @@
+.push-invalidation [aria-hidden="true"] {
+  display: none;
+}
+
 .push-invalidation pre {
   width: 100%;
   white-space: pre-wrap;
+}
+
+.push-invalidation pre code {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .push-invalidation form table {
