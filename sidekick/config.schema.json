@@ -5,105 +5,6 @@
     "plugin": {
       "type": "object",
       "properties": {
-        "containerId": {
-          "type": "string",
-          "description": "The ID of the container to add this plugin to"
-        },
-        "environments": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "enum": ["any", "dev", "admin", "edit", "preview", "live", "prod"]
-          },
-          "description": "The environments to display this plugin in",
-          "default": "any"
-        },
-        "event": {
-          "type": "string",
-          "description": "The name of a custom event to fire when the button is clicked (defaults to id)"
-        },
-        "excludePaths": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Exclude the plugin from these paths",
-          "examples": [
-            "/foo/**",
-            "**/:x:**"
-          ]
-        },
-        "id": {
-          "type": "string",
-          "description": "The unique plugin ID"
-        },
-        "includePaths": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Include the plugin on these paths (overrides excludePaths)",
-          "examples": [
-            "/foo/bar/**",
-            "**.docx**"
-          ]
-        },
-        "isContainer": {
-          "type": "boolean",
-          "description": "Turns the plugin into a container for other plugins"
-        },
-        "isPalette": {
-          "type": "boolean",
-          "description": "Opens the URL in a palette instead of a new tab",
-          "dependentRequired": ["url"]
-        },
-        "paletteRect": {
-          "type": "string",
-          "description": "The dimensions and position of a palette box",
-          "dependentRequired": ["isPalette"]
-        },
-        "isPopover": {
-          "type": "boolean",
-          "description": "Opens the URL in a popover instead of a new tab",
-          "dependentRequired": ["url"]
-        },
-        "popoverRect": {
-          "type": "string",
-          "description": "The dimensions of a popover, delimited by a semicolon (width, height)",
-          "dependentRequired": ["isPopover"]
-        },        
-        "title": {
-          "type": "string",
-          "description": "The button text"
-        },
-        "titleI18n": {
-          "type": "object",
-          "description": "The button text in other supported languages",
-          "patternProperties": {
-            "^[a-z]{2}(-[A-Z]{2})?$": {
-              "type": "string",
-              "description": "ISO language code (`en` or `en-US`) with translated button text"
-            }
-          },
-          "minProperties": 1,
-          "additionalProperties": false
-        },
-        "url": {
-          "type": "url",
-          "description": "The URL to open when the button is clicked"
-        },
-        "passConfig": {
-          "type": "boolean",
-          "description": "Append ref, repo, owner, host, and project as query params on new URL button click"
-        },
-        "passReferrer": {
-          "type": "boolean",
-          "description": "Append the referrer URL as a query param on new URL button click"
-        },
-        "isBadge": {
-          "type": "boolean",
-          "description": "Opens the URL in a palette instead of a new tab"
-        },
         "badgeVariant": {
           "type": "string",
           "description": "The variant of the badge following the Adobe Spectrum badge variants",
@@ -123,17 +24,130 @@
             "fuchsia",
             "magenta"
           ],
-          "dependentRequired": [
-            "isBadge"
+          "dependentRequired": ["isBadge"]
+        },
+        "containerId": {
+          "type": "string",
+          "description": "The ID of the container to add this plugin to"
+        },
+        "environments": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["any", "dev", "admin", "edit", "preview", "review", "live", "prod"]
+          },
+          "description": "The environments to display this plugin in",
+          "default": "any"
+        },
+        "event": {
+          "type": "string",
+          "description": "The name of a custom event to fire when the button is clicked (defaults to id)"
+        },
+        "excludePaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Excludes the plugin from these paths",
+          "examples": [
+            "/foo/**",
+            "**/:x:**"
           ]
+        },
+        "id": {
+          "type": "string",
+          "description": "The unique plugin ID"
+        },
+        "includePaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Includes the plugin on these paths (overrides excludePaths)",
+          "examples": [
+            "/foo/bar/**",
+            "**.docx**"
+          ]
+        },
+        "isContainer": {
+          "type": "boolean",
+          "description": "Renders the plugin as a container for other plugins"
+        },
+        "isBadge": {
+          "type": "boolean",
+          "description": "Renders the plugin as a badge"
+        },
+        "isPalette": {
+          "type": "boolean",
+          "description": "Opens the URL in a palette instead of a new tab",
+          "dependentRequired": [
+            "url"
+          ]
+        },
+        "isPopover": {
+          "type": "boolean",
+          "description": "Opens the URL in a popover instead of a new tab",
+          "dependentRequired": [
+            "url"
+          ]
+        },
+        "paletteRect": {
+          "type": "string",
+          "description": "The dimensions and position of a palette box",
+          "dependentRequired": [
+            "isPalette"
+          ]
+        },
+        "passConfig": {
+          "type": "boolean",
+          "description": "Appends ref, site, org, host, and project as query params to the URL",
+          "dependentRequired": [
+            "url"
+          ]
+        },
+        "passReferrer": {
+          "type": "boolean",
+          "description": "Appends the referrer as a query param to the URL",
+          "dependentRequired": [
+            "url"
+          ]
+        },
+        "pinned": {
+          "type": "boolean",
+          "description": "Renders the plugin in the bar (true, default) or the menu (false)"
+        },
+        "popoverRect": {
+          "type": "string",
+          "description": "The dimensions of a popover, delimited by a semicolon (width, height)",
+          "dependentRequired": [
+            "isPopover"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The button text"
+        },
+        "titleI18n": {
+          "type": "object",
+          "description": "The button text in other supported languages",
+          "patternProperties": {
+            "^[a-z]{2}(-[A-Z]{2})?$": {
+              "type": "string",
+              "description": "ISO language code (`en` or `en-US`) with translated button text"
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        },
+        "url": {
+          "type": "url",
+          "description": "The URL to open when the button is clicked"
         }
       },
       "required": [ "id" ],
       "anyOf": [
         { "required": [ "url" ] },
-        { "required": [ "event" ] },
-        { "required": [ "isContainer" ] },
-        { "required": [ "isBadge" ] }
+        { "required": [ "event" ] }
       ],
       "additionalProperties": false
     },
@@ -179,41 +193,14 @@
         "markup"
       ]
     },
-    "contentSourceUrl": {
-      "type": "string",
-      "format": "uri",
-      "description": "The URL of the content source"
-    },
-    "project": {
-      "type": "string",
-      "description": "The name of the project to display in the sidekick"
-    },
-    "previewHost": {
-      "type": "string",
-      "format": "idn-hostname",
-      "description": "The host name of the preview environment (defaults to *.hlx.page)"
-    },
-    "liveHost": {
-      "type": "string",
-      "format": "idn-hostname",
-      "description": "The host name of the live environment (defaults to *.hlx.live)"
-    },
-    "host": {
-      "type": "string",
-      "format": "idn-hostname",
-      "description": "The host name of the production website"
-    },
     "container": {
       "type": "string",
       "description": "The ID of the dropdown container to add this plugin to"
     },
-    "plugins": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/plugin" }
-    },
-    "specialViews": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/specialView" }
+    "contentSourceUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "The URL of the content source"
     },
     "editUrlLabel": {
       "type": "string",
@@ -222,7 +209,41 @@
     "editUrlPattern": {
       "type": "string",
       "description": "The URL pattern for the custom editing environment. Supports placeholders like {{contentSourceUrl}} or {{pathname}}."
+    },
+    "host": {
+      "type": "string",
+      "format": "idn-hostname",
+      "description": "The host name of the production website"
+    },
+    "liveHost": {
+      "type": "string",
+      "format": "idn-hostname",
+      "description": "The host name of the live environment (defaults to *.aem.live)"
+    },
+    "previewHost": {
+      "type": "string",
+      "format": "idn-hostname",
+      "description": "The host name of the preview environment (defaults to *.aem.page)"
+    },
+    "plugins": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/plugin" }
+    },
+    "project": {
+      "type": "string",
+      "description": "The name of the project to display in the sidekick"
+    },
+    "reviewHost": {
+      "type": "string",
+      "format": "idn-hostname",
+      "description": "The host name of the review environment (defaults to *.aem.reviews)"
+    },
+    "specialViews": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/specialView"
+      }
     }
-   },
+  },
    "additionalProperties": false
 }
