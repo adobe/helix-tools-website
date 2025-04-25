@@ -1,8 +1,9 @@
 {
-  "$id": "https://ns.adobe.com/helix/sidekick/config",
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "$defs": {
-    "plugin": {
+  "$comment": "https://github.com/adobe/helix-config/blob/main/LICENSE.txt",
+  "$id": "https://ns.adobe.com/helix/config/sidekick",
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "definitions": {
+    "sidekickPlugin": {
       "type": "object",
       "properties": {
         "badgeVariant": {
@@ -23,8 +24,7 @@
             "purple",
             "fuchsia",
             "magenta"
-          ],
-          "dependentRequired": ["isBadge"]
+          ]
         },
         "containerId": {
           "type": "string",
@@ -34,7 +34,16 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["any", "dev", "admin", "edit", "preview", "review", "live", "prod"]
+            "enum": [
+              "any",
+              "dev",
+              "admin",
+              "edit",
+              "preview",
+              "review",
+              "live",
+              "prod"
+            ]
           },
           "description": "The environments to display this plugin in",
           "default": "any"
@@ -69,48 +78,36 @@
             "**.docx**"
           ]
         },
-        "isContainer": {
-          "type": "boolean",
-          "description": "Renders the plugin as a container for other plugins"
-        },
         "isBadge": {
           "type": "boolean",
           "description": "Renders the plugin as a badge"
         },
+        "isContainer": {
+          "type": "boolean",
+          "description": "Renders the plugin as a container for other plugins"
+        },
         "isPalette": {
           "type": "boolean",
-          "description": "Opens the URL in a palette instead of a new tab",
-          "dependentRequired": [
-            "url"
-          ]
+          "description": "Opens the URL in a palette instead of a new tab"
         },
         "isPopover": {
           "type": "boolean",
-          "description": "Opens the URL in a popover instead of a new tab",
-          "dependentRequired": [
-            "url"
-          ]
+          "description": "Opens the URL in a popover instead of a new tab"
         },
         "paletteRect": {
           "type": "string",
-          "description": "The dimensions and position of a palette box",
-          "dependentRequired": [
-            "isPalette"
+          "description": "The dimensions and position of the palette (top, left, bottom, right, width, height)",
+          "examples": [
+            "top: 100px; right: 20px; width: 200px; height: 50vh"
           ]
         },
         "passConfig": {
           "type": "boolean",
-          "description": "Appends ref, site, org, host, and project as query params to the URL",
-          "dependentRequired": [
-            "url"
-          ]
+          "description": "Append ref, repo, owner, host, and project as query params to the URL"
         },
         "passReferrer": {
           "type": "boolean",
-          "description": "Appends the referrer as a query param to the URL",
-          "dependentRequired": [
-            "url"
-          ]
+          "description": "Append the referrer URL as a query param to the URL"
         },
         "pinned": {
           "type": "boolean",
@@ -118,9 +115,9 @@
         },
         "popoverRect": {
           "type": "string",
-          "description": "The dimensions of a popover, delimited by a semicolon (width, height)",
-          "dependentRequired": [
-            "isPopover"
+          "description": "The dimensions of the popover (width, height)",
+          "examples": [
+            "width: 400px; height: 300px"
           ]
         },
         "title": {
@@ -140,18 +137,33 @@
           "additionalProperties": false
         },
         "url": {
-          "type": "url",
+          "type": "string",
           "description": "The URL to open when the button is clicked"
         }
       },
-      "required": [ "id" ],
-      "anyOf": [
-        { "required": [ "url" ] },
-        { "required": [ "event" ] }
+      "required": [
+        "id"
       ],
+      "dependentRequired": {
+        "isPalette": [
+          "url"
+        ],
+        "paletteRect": [
+          "isPalette"
+        ],
+        "isPopover": [
+          "url"
+        ],
+        "popoverRect": [
+          "isPopover"
+        ],
+        "badgeVariant": [
+          "isBadge"
+        ]
+      },
       "additionalProperties": false
     },
-    "specialView": {
+    "sidekickSpecialView": {
       "type": "object",
       "properties": {
         "id": {
@@ -181,27 +193,9 @@
       "additionalProperties": false
     }
   },
-  "description": "Sidekick configuration",
+  "title": "Sidekick Config",
   "type": "object",
   "properties": {
-    "contentSourceType": {
-      "type": "string",
-      "description": "The type of the content source",
-      "examples": [
-        "onedrive",
-        "gdrive",
-        "markup"
-      ]
-    },
-    "container": {
-      "type": "string",
-      "description": "The ID of the dropdown container to add this plugin to"
-    },
-    "contentSourceUrl": {
-      "type": "string",
-      "format": "uri",
-      "description": "The URL of the content source"
-    },
     "editUrlLabel": {
       "type": "string",
       "description": "The label of the custom editing environment."
@@ -213,21 +207,23 @@
     "host": {
       "type": "string",
       "format": "idn-hostname",
-      "description": "The host name of the production website"
+      "description": "The host name of the production website (overrides cdn.prod.host)"
     },
     "liveHost": {
       "type": "string",
       "format": "idn-hostname",
-      "description": "The host name of the live environment (defaults to *.aem.live)"
+      "description": "The host name of the live environment (overrides cdn.live.host, defaults to *.aem.live)"
+    },
+    "plugins": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/sidekickPlugin"
+      }
     },
     "previewHost": {
       "type": "string",
       "format": "idn-hostname",
-      "description": "The host name of the preview environment (defaults to *.aem.page)"
-    },
-    "plugins": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/plugin" }
+      "description": "The host name of the preview environment (overrides cdn.preview.host, defaults to *.aem.page)"
     },
     "project": {
       "type": "string",
@@ -236,14 +232,14 @@
     "reviewHost": {
       "type": "string",
       "format": "idn-hostname",
-      "description": "The host name of the review environment (defaults to *.aem.reviews)"
+      "description": "The host name of the review environment (overrides cdn.review.host, defaults to *.aem.reviews)"
     },
     "specialViews": {
       "type": "array",
       "items": {
-        "$ref": "#/$defs/specialView"
+        "$ref": "#/$defs/sidekickSpecialView"
       }
     }
   },
-   "additionalProperties": false
+  "additionalProperties": false
 }
