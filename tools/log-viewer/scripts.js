@@ -1,6 +1,7 @@
 /* eslint-disable class-methods-use-this */
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { loadPrism, highlight } from '../../utils/prism/prism.js';
+import { messageSidekick } from '../../utils/sidekick.js';
 
 // field ids
 const FIELDS = ['date-from', 'date-to'];
@@ -265,12 +266,13 @@ function updateTableDisplay(show) {
  * Updates table to display error message based on HTTP error code.
  * @param {number} status - HTTP error status code.
  * @param {string} preview - Hostname for preview environment.
+ * @param {string} org - Organization name.
  * @param {string} site - Site name within org.
  */
-function updateTableError(status, preview, site) {
+function updateTableError(status, preview, org, site) {
   const messages = {
     400: 'The request for logs could not be processed.',
-    401: `<a href="https://${preview}" target="_blank">Sign in to the ${site} project sidekick</a> 
+    401: `<a href="https://${preview}" target="_blank" id="login">Sign in to the ${site} project</a> 
       to view the requested logs.`,
     403: 'Insufficient permissions to view the requested logs.',
     404: 'The requested logs could not be found.',
@@ -283,6 +285,18 @@ function updateTableError(status, preview, site) {
   title.textContent = `${status} Error`;
   message.innerHTML = text;
   updateTableDisplay('error', TABLE);
+
+  const loginLink = ERROR.querySelector('a#login');
+  if (loginLink) {
+    loginLink.addEventListener('click', async (e) => {
+      e.preventDefault();
+      updateTableDisplay('loading', TABLE);
+      await messageSidekick({ action: 'login', org, site });
+      setTimeout(() => {
+        FORM.querySelector('button[type="submit"]').click();
+      }, 500);
+    });
+  }
 }
 
 /**
@@ -682,7 +696,7 @@ async function registerListeners() {
       // validate org/site config
       const { live, preview, error: fetchHostError } = await fetchHosts(org, site);
       if (fetchHostError) {
-        updateTableError(fetchHostError.status, preview, site);
+        updateTableError(fetchHostError.status, preview, org, site);
       } else if (live && preview) {
         // ensure log access
         const timeframe = [...PICKER_OPTIONS].find((o) => o.getAttribute('aria-selected') === 'true').dataset.value;
@@ -692,7 +706,7 @@ async function registerListeners() {
           updateConfig();
           updateParams(data);
         } else {
-          updateTableError(error.status, preview, site);
+          updateTableError(error.status, preview, org, site);
         }
       } else {
         updateTableError('Project', null, `${org}/${site}`);
