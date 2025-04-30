@@ -294,7 +294,7 @@ function updateTableError(status, preview, org, site) {
       await messageSidekick({ action: 'login', org, site });
       setTimeout(() => {
         FORM.querySelector('button[type="submit"]').click();
-      }, 500);
+      }, 1000);
     });
   }
 }
