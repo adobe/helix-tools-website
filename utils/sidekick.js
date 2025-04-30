@@ -1,4 +1,4 @@
-const SIDEKICK_ID = 'dfeojcdljkdfebmdcmilekahpcjkafdp';
+const SIDEKICK_ID = 'igkmdomcgoebiipaifhmpfjhbjccggml';
 
 /**
  * Sends a message to the Sidekick extension.
