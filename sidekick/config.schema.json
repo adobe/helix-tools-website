@@ -161,7 +161,7 @@
           "isBadge"
         ]
       },
-      "additionalProperties": false
+      "additionalProperties": true
     },
     "sidekickSpecialView": {
       "type": "object",
@@ -177,6 +177,10 @@
             "/foo/**.json"
           ]
         },
+        "title": {
+          "type": "string",
+          "description": "Title of the special view"
+        },
         "viewer": {
           "type": "string",
           "description": "The URL of the special view. The resource path will be passed to it via 'path' parameter",
@@ -190,7 +194,7 @@
         "path",
         "viewer"
       ],
-      "additionalProperties": false
+      "additionalProperties": true
     }
   },
   "title": "Sidekick Config",
@@ -206,12 +210,12 @@
     },
     "host": {
       "type": "string",
-      "format": "idn-hostname",
+      "format": "hostname",
       "description": "The host name of the production website (overrides cdn.prod.host)"
     },
     "liveHost": {
       "type": "string",
-      "format": "idn-hostname",
+      "format": "hostname",
       "description": "The host name of the live environment (overrides cdn.live.host, defaults to *.aem.live)"
     },
     "plugins": {
@@ -222,7 +226,7 @@
     },
     "previewHost": {
       "type": "string",
-      "format": "idn-hostname",
+      "format": "hostname",
       "description": "The host name of the preview environment (overrides cdn.preview.host, defaults to *.aem.page)"
     },
     "project": {
@@ -231,14 +235,21 @@
     },
     "reviewHost": {
       "type": "string",
-      "format": "idn-hostname",
+      "format": "hostname",
       "description": "The host name of the review environment (overrides cdn.review.host, defaults to *.aem.reviews)"
     },
     "specialViews": {
       "type": "array",
       "items": {
-        "$ref": "#/$defs/sidekickSpecialView"
+        "$ref": "#/definitions/sidekickSpecialView"
       }
+    },
+    "trustedHosts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Additional hosts that are trusted to use the sidekick authentication"
     }
   },
   "additionalProperties": false
