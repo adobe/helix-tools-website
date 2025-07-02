@@ -491,6 +491,7 @@ function buildLog(data, live, preview) {
     'errors',
     'method',
     'status',
+    'ip',
     'duration',
   ];
   const formattedData = new RewrittenData(data, live, preview);
