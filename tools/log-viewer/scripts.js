@@ -501,6 +501,13 @@ function buildLog(data, live, preview) {
     const cell = document.createElement('td');
     if (formattedData.data[col]) cell.innerHTML = formattedData.data[col];
     else cell.textContent = '-';
+    if (col === 'path' && data.errors !== '-') {
+      const errorSymbol = document.createElement('i');
+      errorSymbol.classList.add('symbol-error');
+      errorSymbol.textContent = '!';
+      errorSymbol.title = 'Expand column to see error details';
+      cell.appendChild(errorSymbol);
+    }
     row.classList.add(data.route || data.source);
     if (col === 'unmodified' || col === 'duration') cell.dataset.type = 'numerical';
     row.append(cell);
