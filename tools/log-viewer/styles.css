@@ -289,3 +289,26 @@
 .log-viewer .filter-form .form-field label {
   margin: 0;
 }
+
+.log-viewer table td {
+  position: relative;
+}
+
+.log-viewer table td i.symbol-error {
+  position: absolute;
+  right: 0;
+  top: calc(50% - 0.7em);
+  width: 1.3em;
+  height: 1.3em;
+  display: block;
+  font-weight: 500;
+  font-style: normal;
+  border-radius: 50%;
+  background-color: var(--red-900);
+  color: white;
+  text-align: center;
+}
+
+.log-viewer table[data-path-expand='true'] td i.symbol-error {
+  display: none;
+}
