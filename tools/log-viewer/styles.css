@@ -125,6 +125,7 @@
 
 .log-viewer table tbody.no-results td > div,
 .log-viewer table tbody.error td > div,
+.log-viewer table tbody.login td > div,
 .log-viewer table tbody.loading td > div {
   display: flex;
   align-items: center;
@@ -135,14 +136,28 @@
 }
 
 .log-viewer table tbody.no-results span.icon,
-.log-viewer table tbody.error span.icon {
+.log-viewer table tbody.error span.icon,
+.log-viewer table tbody.login span.icon {
   font-size: var(--heading-size-xxxxl);
   line-height: 0;
 }
 
 .log-viewer table tbody.no-results p strong,
-.log-viewer table tbody.error p strong {
+.log-viewer table tbody.error p strong,
+.log-viewer table tbody.login td>div {
   font-size: var(--detail-size-xl);
+}
+
+.log-viewer table tbody.login td>div {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+.log-viewer table tbody.login p {
+  text-align: center;
 }
 
 .log-viewer table tbody.error span.icon,

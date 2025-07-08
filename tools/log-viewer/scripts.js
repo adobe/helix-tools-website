@@ -1,5 +1,6 @@
 /* eslint-disable class-methods-use-this */
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
+import createLoginButton from '../../utils/login.js';
 import { loadPrism, highlight } from '../../utils/prism/prism.js';
 
 // field ids
@@ -15,6 +16,7 @@ const [FROM, TO] = DATETIME_WRAPPER.querySelectorAll('input');
 const TABLE = document.querySelector('table');
 const RESULTS = TABLE.querySelector('.results');
 const ERROR = TABLE.querySelector('.error');
+const LOGIN = TABLE.querySelector('.login');
 const SOURCE_EXPANDER = TABLE.querySelector('#source-expander');
 const PATH_EXPANDER = TABLE.querySelector('#path-expander');
 const FILTER = document.getElementById('logs-filter');
@@ -264,25 +266,41 @@ function updateTableDisplay(show) {
 /**
  * Updates table to display error message based on HTTP error code.
  * @param {number} status - HTTP error status code.
- * @param {string} preview - Hostname for preview environment.
+ * @param {string} org - Organization name.
  * @param {string} site - Site name within org.
  */
-function updateTableError(status, preview, site) {
+async function updateTableError(status, org, site) {
   const messages = {
     400: 'The request for logs could not be processed.',
-    401: `<a href="https://${preview}" target="_blank">Sign in to the ${site} project sidekick</a> 
-      to view the requested logs.`,
     403: 'Insufficient permissions to view the requested logs.',
     404: 'The requested logs could not be found.',
-    Project: `${site} project not found.`,
+    Project: `${org}/${site} project not found.`,
   };
 
+  const tbody = status === 401 ? LOGIN : ERROR;
   const text = messages[status] || 'Unable to display the requested logs.';
-  const title = ERROR.querySelector('strong');
-  const message = ERROR.querySelector('p:last-of-type');
-  title.textContent = `${status} Error`;
-  message.innerHTML = text;
-  updateTableDisplay('error', TABLE);
+  const title = tbody.querySelector('strong');
+  const message = tbody.querySelector('p:last-of-type');
+  if (status === 401) {
+    message.innerHTML = '';
+    message.appendChild(await createLoginButton(
+      org,
+      site,
+      (success) => {
+        window.dispatchEvent(new Event('login', { detail: success }));
+      },
+    ));
+    // wait for focus to be back, then re-click submit
+    window.addEventListener('login', () => {
+      setTimeout(() => {
+        FORM.querySelector('button[type="submit"]').click();
+      }, 500);
+    }, { once: true });
+  } else {
+    title.textContent = `${status} Error`;
+    message.innerHTML = text;
+  }
+  updateTableDisplay(status === 401 ? 'login' : 'error');
 }
 
 /**
@@ -291,7 +309,7 @@ function updateTableError(status, preview, site) {
  */
 function clearTable(table) {
   table.innerHTML = '';
-  updateTableDisplay('no-results', TABLE);
+  updateTableDisplay('no-results');
 }
 
 /**
@@ -526,7 +544,7 @@ function displayLogs(logs, live, preview) {
     const row = buildLog(log, live, preview);
     RESULTS.prepend(row);
   });
-  updateTableDisplay(logs.length ? 'results' : 'no-results', TABLE);
+  updateTableDisplay(logs.length ? 'results' : 'no-results');
 }
 
 /**
@@ -690,7 +708,7 @@ async function registerListeners() {
       // validate org/site config
       const { live, preview, error: fetchHostError } = await fetchHosts(org, site);
       if (fetchHostError) {
-        updateTableError(fetchHostError.status, preview, site);
+        updateTableError(fetchHostError.status, org, site);
       } else if (live && preview) {
         // ensure log access
         const timeframe = [...PICKER_OPTIONS].find((o) => o.getAttribute('aria-selected') === 'true').dataset.value;
@@ -700,10 +718,10 @@ async function registerListeners() {
           updateConfig();
           updateParams(data);
         } else {
-          updateTableError(error.status, preview, site);
+          updateTableError(error.status, org, site);
         }
       } else {
-        updateTableError('Project', null, `${org}/${site}`);
+        updateTableError('Project', org, site);
       }
     }
 
@@ -760,6 +778,18 @@ async function registerListeners() {
       TABLE.dataset[`${type}Expand`] = !expanded;
       expander.setAttribute('aria-expanded', !expanded);
     });
+  });
+
+  // toggle add body class if alt key is pressed
+  document.addEventListener('keydown', ({ altKey }) => {
+    if (altKey) {
+      document.body.classList.add('alt-key-pressed');
+    }
+  });
+  document.addEventListener('keyup', ({ altKey }) => {
+    if (!altKey) {
+      document.body.classList.remove('alt-key-pressed');
+    }
   });
 }
 

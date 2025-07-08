@@ -383,8 +383,8 @@ a:focus {
   gap: var(--spacing-s);
 }
 
-a.button,
-button.button {
+.button,
+a.button {
   display: inline-block;
   border: var(--border-m) solid var(--color-link);
   border-radius: 1.15em;
@@ -399,70 +399,63 @@ button.button {
   cursor: pointer;
 }
 
-a.button:hover,
-button.button:hover,
-button.button:focus {
+.button:hover,
+.button:focus {
   border-color: var(--color-link-hover);
   background-color: var(--color-link-hover);
   color: var(--color-background);
   text-decoration: none;
 }
 
-button.button:disabled,
-button.button:disabled:hover,
-button.button:disabled:focus {
+.button:disabled,
+.button:disabled:hover,
+.button:disabled:focus {
   border-color: var(--gray-100);
   background-color: var(--gray-100);
   color: var(--gray-400);
   cursor: not-allowed;
 }
 
-a.button.emphasis,
-button.button.emphasis {
+.button.emphasis {
   border-color: var(--gray-800);
   background-color: var(--gray-800);
 }
 
-a.button.emphasis:hover,
-button.button.emphasis:hover,
-button.button.emphasis:focus {
+.button.emphasis:hover,
+.button.emphasis:focus {
   border-color: var(--gray-900);
   background-color: var(--gray-900);
 }
 
-a.button.outline,
-button.button.outline {
+.button.outline {
   border-color: var(--color-link);
   background-color: var(--color-background);
   color: var(--color-link);
 }
 
-a.button.outline:hover,
-button.button.outline:hover,
-button.button.outline:focus {
+.button.outline:hover,
+.button.outline:focus {
   border-color: var(--color-link-hover);
   background-color: var(--blue-100);
   color: var(--color-link-hover);
 }
 
-button.button.outline:disabled,
-button.button.outline:disabled:hover,
-button.button.outline:disabled:focus {
+.button.outline:disabled,
+.button.outline:disabled:hover,
+.button.outline:disabled:focus {
   border-color: var(--gray-100);
   background-color: var(--color-background);
   color: var(--gray-400);
 }
 
-a.button.accent,
-button.button.accent {
+.button.accent {
   border-color: var(--gray-100);
   color: var(--color-text);
   background-color: var(--gray-100);
 }
 
-a.button.accent:hover,
-button.button.accent:hover,
-button.button.accent:focus {
+.button.accent:hover,
+.button.accent:focus {
   border-color: var(--gray-200);
   background-color: var(--gray-200);
 }
@@ -768,14 +761,37 @@ table+.form-field,
   top: calc((var(--body-size-m) * var(--line-height-l)) + 0.5em + 0.4em);
 }
 
-.form-field.picker-field input {
+.form-field.picker-field input.login {
+  width: unset;
+}
+
+.alt-key-pressed .form-field.picker-field input.login {
+  padding-right: 38px;
+}
+
+.form-field.picker-field input.login+i.symbol {
+  display: none;
+}
+
+.alt-key-pressed .form-field.picker-field input.login + i.symbol {
+  display: block;
+  border-left: solid 1px white;
+  padding: 0 18px 0 8px;
+  height: 42px;
+  color: white;
+  top: 0;
+  right: 3px;
+  cursor: pointer;
+}
+
+.form-field.picker-field input:not(.button) {
   border-color: var(--gray-100);
   background-color: var(--gray-100);
   cursor: pointer;
   transition: border-color 0.2s, background-color 0.2s;
 }
 
-.form-field.picker-field input:hover {
+.form-field.picker-field input:not(.button):hover {
   border-color: var(--gray-200);
   background-color: var(--gray-200);
 }
@@ -794,6 +810,14 @@ table+.form-field,
   z-index: 2;
 }
 
+.form-field.picker-field input.login ~ ul {
+  top: unset;
+  right: 0;
+  bottom: 0;
+  left: 7em;
+  width: max-content;
+}
+
 .form-field.picker-field input[aria-expanded='false'] ~ ul {
   display: none;
 }
@@ -806,6 +830,10 @@ table+.form-field,
   padding: 0.4em 0;
   padding-left: 2rem;
   cursor: pointer;
+}
+
+.form-field.picker-field input.login~ul li {
+  padding-left: 1em;
 }
 
 .form-field.picker-field input ~ ul li:hover {
