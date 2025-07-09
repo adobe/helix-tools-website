@@ -460,6 +460,17 @@ a.button {
   background-color: var(--gray-200);
 }
 
+.button.quiet,
+.button.quiet:hover,
+.button.quiet:focus {
+  border: none;
+  border-radius: 0;
+  text-decoration: underline;
+  color: var(--color-link);
+  background-color: transparent;
+  padding: 0;
+}
+
 /* form elements */
 input,
 textarea,
@@ -765,12 +776,12 @@ table+.form-field,
   width: unset;
 }
 
-.alt-key-pressed .form-field.picker-field input.login {
+.alt-key-pressed button.login {
   background-color: var(--gray-800);
   border-color: var(--gray-800);
 }
 
-.form-field.picker-field input:not(.button) {
+.form-field.picker-field input {
   border-color: var(--gray-100);
   background-color: var(--gray-100);
   cursor: pointer;

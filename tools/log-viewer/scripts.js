@@ -272,7 +272,7 @@ function updateTableDisplay(show) {
 async function updateTableError(status, org, site) {
   const messages = {
     400: 'The request for logs could not be processed.',
-    403: 'Insufficient permissions to view the requested logs.',
+    403: 'Insufficient permissions to view the requested logs. ',
     404: 'The requested logs could not be found.',
     Project: `${org}/${site} project not found.`,
   };
@@ -281,15 +281,19 @@ async function updateTableError(status, org, site) {
   const text = messages[status] || 'Unable to display the requested logs.';
   const title = tbody.querySelector('strong');
   const message = tbody.querySelector('p:last-of-type');
+  const loginButton = await createLoginButton({
+    org,
+    site,
+    callback: (success) => {
+      window.dispatchEvent(new Event('login', { detail: success }));
+    },
+    quiet: status === 403,
+    text: status === 403 ? 'Switch account' : 'Sign in',
+  });
+
   if (status === 401) {
     message.innerHTML = '';
-    message.appendChild(await createLoginButton(
-      org,
-      site,
-      (success) => {
-        window.dispatchEvent(new Event('login', { detail: success }));
-      },
-    ));
+    message.appendChild(loginButton);
     // wait for focus to be back, then re-click submit
     window.addEventListener('login', () => {
       setTimeout(() => {
@@ -299,6 +303,9 @@ async function updateTableError(status, org, site) {
   } else {
     title.textContent = `${status} Error`;
     message.innerHTML = text;
+  }
+  if (status === 403) {
+    message.appendChild(loginButton);
   }
   updateTableDisplay(status === 401 ? 'login' : 'error');
 }

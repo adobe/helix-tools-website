@@ -1,46 +1,57 @@
-import { messageSidekick } from './sidekick.js';
+import { messageSidekick, NO_SIDEKICK } from './sidekick.js';
 
 /**
  * Returns a login button element for the given organization and site.
- * @param {string} org The organization name
- * @param {string} site The site name
- * @param {Function} [callback] The callback function to call after login
+ * @param {Object} cfg The login button configuration
+ * @param {string} cfg.org The organization name
+ * @param {string} cfg.site The site name
+ * @param {Function} [cfg.callback] The callback function to call after login
+ * @param {boolean} [cfg.quiet] Whether to use a quiet login button
+ * @param {string} [cfg.text] The override text to display on the login button
  * @returns {HTMLElement} The login button element
  */
-export default async function createLoginButton(org, site, callback) {
+export default async function createLoginButton({
+  org, site, callback, quiet, text,
+}) {
   const authInfo = await new Promise((resolve) => {
     messageSidekick({ action: 'getAuthInfo' }, (res) => resolve(res));
-    setTimeout(() => resolve(null), 200);
+    // if no response after 200ms, resolve with NO_SIDEKICK
+    setTimeout(() => resolve(NO_SIDEKICK), 200);
   });
-  if (!authInfo) {
+  if (authInfo === NO_SIDEKICK) {
     const msg = document.createElement('span');
     msg.innerHTML = 'Install <a href="https://chromewebstore.google.com/detail/aem-sidekick/igkmdomcgoebiipaifhmpfjhbjccggml" target="_blank" rel="noopener noreferrer">AEM Sidekick</a> to sign in.';
     return msg;
   }
-  const loginContainer = document.createElement('div');
-  loginContainer.classList.add('form-field', 'picker-field');
-  loginContainer.innerHTML = `
-    <input type="button" class="button login" id="login-button-${org}" title="Sign in"
-      value="${authInfo?.includes(org) ? 'Signed in' : 'Sign in'}"
-      ${authInfo?.includes(org) ? 'disabled' : ''}>
-  `;
+  const loginText = text || (authInfo?.includes(org) && !quiet ? 'Signed in' : 'Sign in');
+
+  const loginButton = document.createElement('button');
+  loginButton.classList.add('button', 'login');
+  if (quiet) {
+    loginButton.classList.add('quiet');
+  }
+  loginButton.title = loginText;
+  loginButton.textContent = loginText;
+  if (authInfo?.includes(org) && !quiet) {
+    loginButton.disabled = true;
+  }
 
   // trigger login on button click (alt key for microsoft)
-  const loginPicker = loginContainer.querySelector(`input#login-button-${org}`);
-  loginPicker.addEventListener('click', async () => {
+  loginButton.addEventListener('click', async () => {
     const altKey = document.body.classList.contains('alt-key-pressed');
     const success = await messageSidekick({
       action: 'login',
       org,
       site,
       idp: altKey ? 'microsoft' : undefined,
+      selectAccount: authInfo?.includes(org),
     });
     if (typeof callback === 'function') {
       callback(success);
     }
   });
 
-  return loginContainer;
+  return loginButton;
 }
 
 // add body class if alt key is pressed
