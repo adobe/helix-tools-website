@@ -772,11 +772,7 @@ table+.form-field,
   top: calc((var(--body-size-m) * var(--line-height-l)) + 0.5em + 0.4em);
 }
 
-.form-field.picker-field input.login {
-  width: unset;
-}
-
-.alt-key-pressed button.login {
+button.login.ops {
   background-color: var(--gray-800);
   border-color: var(--gray-800);
 }

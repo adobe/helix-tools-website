@@ -36,9 +36,9 @@ export default async function createLoginButton({
     loginButton.disabled = true;
   }
 
-  // trigger login on button click (alt key for microsoft)
+  // trigger login on button click (alt key for microsoft IDP with common tenant)
   loginButton.addEventListener('click', async () => {
-    const altKey = document.body.classList.contains('alt-key-pressed');
+    const altKey = loginButton.classList.contains('ops');
     const success = await messageSidekick({
       action: 'login',
       org,
@@ -52,17 +52,17 @@ export default async function createLoginButton({
     }
   });
 
+  // add body class if alt key is pressed
+  document.addEventListener('keydown', ({ altKey }) => {
+    if (altKey) {
+      loginButton.classList.add('ops');
+    }
+  });
+  document.addEventListener('keyup', ({ altKey }) => {
+    if (!altKey) {
+      loginButton.classList.remove('ops');
+    }
+  });
+
   return loginButton;
 }
-
-// add body class if alt key is pressed
-document.addEventListener('keydown', ({ altKey }) => {
-  if (altKey) {
-    document.body.classList.add('alt-key-pressed');
-  }
-});
-document.addEventListener('keyup', ({ altKey }) => {
-  if (!altKey) {
-    document.body.classList.remove('alt-key-pressed');
-  }
-});
