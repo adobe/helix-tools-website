@@ -44,6 +44,7 @@ export default async function createLoginButton({
       org,
       site,
       idp: altKey ? 'microsoft' : undefined,
+      tenant: altKey ? 'common' : undefined,
       selectAccount: authInfo?.includes(org),
     });
     if (typeof callback === 'function') {
