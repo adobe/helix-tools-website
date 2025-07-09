@@ -766,22 +766,8 @@ table+.form-field,
 }
 
 .alt-key-pressed .form-field.picker-field input.login {
-  padding-right: 38px;
-}
-
-.form-field.picker-field input.login+i.symbol {
-  display: none;
-}
-
-.alt-key-pressed .form-field.picker-field input.login + i.symbol {
-  display: block;
-  border-left: solid 1px white;
-  padding: 0 18px 0 8px;
-  height: 42px;
-  color: white;
-  top: 0;
-  right: 3px;
-  cursor: pointer;
+  background-color: var(--gray-800);
+  border-color: var(--gray-800);
 }
 
 .form-field.picker-field input:not(.button) {
@@ -810,13 +796,6 @@ table+.form-field,
   z-index: 2;
 }
 
-.form-field.picker-field input.login ~ ul {
-  top: unset;
-  right: 0;
-  bottom: 0;
-  left: 7em;
-  width: max-content;
-}
 
 .form-field.picker-field input[aria-expanded='false'] ~ ul {
   display: none;
@@ -830,10 +809,6 @@ table+.form-field,
   padding: 0.4em 0;
   padding-left: 2rem;
   cursor: pointer;
-}
-
-.form-field.picker-field input.login~ul li {
-  padding-left: 1em;
 }
 
 .form-field.picker-field input ~ ul li:hover {

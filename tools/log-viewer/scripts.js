@@ -779,18 +779,6 @@ async function registerListeners() {
       expander.setAttribute('aria-expanded', !expanded);
     });
   });
-
-  // toggle add body class if alt key is pressed
-  document.addEventListener('keydown', ({ altKey }) => {
-    if (altKey) {
-      document.body.classList.add('alt-key-pressed');
-    }
-  });
-  document.addEventListener('keyup', ({ altKey }) => {
-    if (!altKey) {
-      document.body.classList.remove('alt-key-pressed');
-    }
-  });
 }
 
 registerListeners();
