@@ -1,6 +1,8 @@
+import { toClassName } from '../../scripts/aem.js';
+
 const params = new URLSearchParams(window.location.search);
-const org = params.get('org');
-const site = params.get('site');
+const org = toClassName(params.get('org'));
+const site = toClassName(params.get('site'));
 const user = params.get('user');
 const url = params.get('url');
 
@@ -25,4 +27,12 @@ if (authorUrl.protocol === 'https:') {
 
   const siteElement = document.querySelector('.bot-info-site');
   siteElement.textContent = site;
+
+  const previewLink = document.querySelector('.bot-info-preview');
+  previewLink.href = `https://main--${site}--${org}.aem.page/`;
+  previewLink.textContent = `https://main--${site}--${org}.aem.page/`;
+
+  const liveLink = document.querySelector('.bot-info-live');
+  liveLink.href = `https://main--${site}--${org}.aem.live/`;
+  liveLink.textContent = `https://main--${site}--${org}.aem.live/`;
 }
