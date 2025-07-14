@@ -773,7 +773,7 @@ table+.form-field,
 }
 
 button.login.ops {
-  color: white
+  color: white;
   background-color: var(--gray-800);
   border-color: var(--gray-800);
 }
