@@ -32,12 +32,10 @@ export default async function createLoginButton({
   }
   loginButton.title = loginText;
   loginButton.textContent = loginText;
-  if (authInfo?.includes(org) && !quiet) {
-    loginButton.disabled = true;
-  }
 
   // trigger login on button click (alt key for microsoft IDP with common tenant)
   loginButton.addEventListener('click', async () => {
+    loginButton.disabled = true;
     const altKey = loginButton.classList.contains('ops');
     const success = await messageSidekick({
       action: 'login',
