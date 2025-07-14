@@ -23,7 +23,7 @@ export default async function createLoginButton({
     msg.innerHTML = 'Install <a href="https://chromewebstore.google.com/detail/aem-sidekick/igkmdomcgoebiipaifhmpfjhbjccggml" target="_blank" rel="noopener noreferrer">AEM Sidekick</a> to sign in.';
     return msg;
   }
-  const loginText = text || (authInfo?.includes(org) && !quiet ? 'Signed in' : 'Sign in');
+  const loginText = text || (authInfo?.includes(org) && !quiet ? 'Switch account' : 'Sign in');
 
   const loginButton = document.createElement('button');
   loginButton.classList.add('button', 'login');
