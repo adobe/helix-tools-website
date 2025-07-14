@@ -13,7 +13,7 @@ export async function messageSidekick(message, callback) {
     if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
       let messageResolved = false;
       chrome.runtime.sendMessage(
-        localStorage.getItem('aem-sidekick-id') || SIDEKICK_ID,
+        localStorage.getItem('aem-sidekick-id')?.trim() || SIDEKICK_ID,
         message,
         (response) => {
           if (response) {

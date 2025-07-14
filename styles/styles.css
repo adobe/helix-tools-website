@@ -471,6 +471,12 @@ a.button {
   padding: 0;
 }
 
+.button.login.ops {
+  color: white;
+  background-color: var(--gray-800);
+  border-color: var(--gray-800);
+}
+
 /* form elements */
 input,
 textarea,
@@ -770,11 +776,6 @@ table+.form-field,
   position: absolute;
   right: 0.85em;
   top: calc((var(--body-size-m) * var(--line-height-l)) + 0.5em + 0.4em);
-}
-
-button.login.ops {
-  background-color: var(--gray-800);
-  border-color: var(--gray-800);
 }
 
 .form-field.picker-field input {
