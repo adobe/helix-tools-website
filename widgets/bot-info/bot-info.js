@@ -42,6 +42,7 @@ try {
     userAdminLink.textContent = `https://labs.aem.live/tools/user-admin/index.html?org=${org}&site=${site}`;
   }
 } catch (error) {
+  // eslint-disable-next-line no-console
   console.error(error);
   const alert = document.querySelector('.bot-info-alert');
   alert.ariaHidden = false;
