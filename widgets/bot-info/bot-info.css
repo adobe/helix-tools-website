@@ -1,11 +1,32 @@
-.bot-info {
+.bot-info-success {
     padding: 20px;
     border: 1px solid #ccc;
     border-radius: 10px;
-    margin: 20px;
 }
 
 .bot-info-content-source {
     font-size: 1.2em;
     font-weight: bold;
+}
+
+.bot-info-alert {
+  color: var(--red-900);
+  border: 1px solid var(--red-900);
+  font-size: 1.2em;
+  font-weight: bold;
+  margin-top: 20px;
+  padding: 10px;
+  border-radius: 10px;
+  background-color: var(--red-100);
+}
+
+
+.bot-info-success[aria-hidden="true"],
+.bot-info-alert[aria-hidden="true"] {
+  display: none;
+}
+
+.bot-info-alert[aria-hidden="false"],
+.bot-info-success[aria-hidden="false"] {
+  display: block;
 }
