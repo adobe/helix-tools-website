@@ -284,22 +284,18 @@ async function updateTableError(status, org, site) {
   const loginButton = await createLoginButton({
     org,
     site,
-    callback: (success) => {
-      window.dispatchEvent(new Event('login', { detail: success }));
+    callback: () => {
+    // wait for focus to be back, then re-click submit
+      setTimeout(() => {
+        FORM.querySelector('button[type="submit"]').click();
+      }, 500);
     },
-    quiet: status === 403,
-    text: status === 403 ? 'Switch account' : 'Sign in',
+    status,
   });
 
   if (status === 401) {
     message.innerHTML = '';
     message.appendChild(loginButton);
-    // wait for focus to be back, then re-click submit
-    window.addEventListener('login', () => {
-      setTimeout(() => {
-        FORM.querySelector('button[type="submit"]').click();
-      }, 500);
-    }, { once: true });
   } else {
     title.textContent = `${status} Error`;
     message.innerHTML = text;
