@@ -307,7 +307,7 @@ export async function ensureLogin(org, site) {
         }
       });
     }
-    const siteItem = orgItem.querySelector(`li[data-name="${site}"]`);
+    const siteItem = orgItem?.querySelector(`li[data-name="${site}"]`);
     if (orgItem && siteItem) {
       // select site and place focus on login button
       siteItem.querySelector('input[type="radio"]').checked = true;
