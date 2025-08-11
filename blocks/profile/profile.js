@@ -41,9 +41,9 @@ async function updateLoginButton(loginButton, org, loginInfo) {
   loginButton.textContent = loggedIn ? 'Sign out' : 'Sign in';
   loginButton.title = loggedIn ? `Sign out of ${org}` : `Sign in to ${org}`;
   if (loggedIn) {
-    loginButton.classList.add('outline');
+    loginButton.className = 'button logout outline';
   } else {
-    loginButton.classList.remove('outline');
+    loginButton.className = 'button login';
   }
 }
 
@@ -84,9 +84,11 @@ function createLoginButton(org, loginInfo, closeModal) {
       if (loginWindow.closed) {
         clearInterval(checkLoginWindow);
         loginButton.disabled = false;
-        const newLoginInfo = await getLoginInfo();
-        updateLoginButton(loginButton, org, newLoginInfo);
-        dispatchProfileUpdateEvent(newLoginInfo, org, selectedSite, action);
+        setTimeout(async () => {
+          const newLoginInfo = await getLoginInfo();
+          updateLoginButton(loginButton, org, newLoginInfo);
+          dispatchProfileUpdateEvent(newLoginInfo, org, selectedSite, action);
+        }, 200);
         if (closeModal) {
           // close modal after login
           document.querySelector('#profile-modal').close();
@@ -179,7 +181,7 @@ async function updateProjects(dialog, focusedOrg) {
 
   const projects = dialog.querySelector('#profile-projects');
   projects.innerHTML = `
-    <p>${orgs.length > 0 ? 'Sign in below to use this tool:' : 'No projects found'}</p>
+    <p>${orgs.length > 0 ? 'Sign into a project below to use this tool:' : 'No projects found'}</p>
   `;
   projects.append(orgList);
 
@@ -202,7 +204,7 @@ async function showModal(block, focusedOrg) {
 
   await updateProjects(dialog, focusedOrg);
 
-  const firstOrg = dialog.querySelector('#profile-projects li')?.dataset.name || '';
+  const firstOrg = dialog.querySelector('#profile-projects .profile-orgs > li')?.dataset.name || '';
 
   // form to add new project
   const form = document.createElement('form');
