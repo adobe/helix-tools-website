@@ -471,16 +471,6 @@ a.button {
   padding: 0;
 }
 
-.button.login.ops:not(.quiet) {
-  color: white;
-  background-color: var(--gray-800);
-  border-color: var(--gray-800);
-}
-
-.button.login.quiet.ops {
-  color: var(--gray-800);
-}
-
 /* form elements */
 input,
 textarea,

@@ -1,6 +1,6 @@
 /* eslint-disable class-methods-use-this */
+import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
-import createLoginButton from '../../utils/login.js';
 import { loadPrism, highlight } from '../../utils/prism/prism.js';
 
 // field ids
@@ -8,6 +8,8 @@ const FIELDS = ['date-from', 'date-to'];
 
 // tool elements
 const FORM = document.getElementById('timeframe-form');
+const ORG_FIELD = FORM.querySelector('#org');
+const SITE_FIELD = FORM.querySelector('#site');
 const PICKER = FORM.querySelector('#timeframe');
 const PICKER_DROPDOWN = FORM.querySelector('#timeframe-menu');
 const PICKER_OPTIONS = PICKER_DROPDOWN.querySelectorAll('[role="option"]');
@@ -272,7 +274,7 @@ function updateTableDisplay(show) {
 async function updateTableError(status, org, site) {
   const messages = {
     400: 'The request for logs could not be processed.',
-    403: 'Insufficient permissions to view the requested logs. ',
+    403: 'Insufficient permissions to view the requested logs. Sign in with a different user to view the requested logs.',
     404: 'The requested logs could not be found.',
     Project: `${org}/${site} project not found.`,
   };
@@ -281,27 +283,13 @@ async function updateTableError(status, org, site) {
   const text = messages[status] || 'Unable to display the requested logs.';
   const title = tbody.querySelector('strong');
   const message = tbody.querySelector('p:last-of-type');
-  const loginButton = await createLoginButton({
-    org,
-    site,
-    callback: () => {
-    // wait for focus to be back, then re-click submit
-      setTimeout(() => {
-        FORM.querySelector('button[type="submit"]').click();
-      }, 500);
-    },
-    status,
-  });
 
   if (status === 401) {
-    message.innerHTML = '';
-    message.appendChild(loginButton);
+    message.textContent = '';
+    ensureLogin(org, site);
   } else {
     title.textContent = `${status} Error`;
-    message.innerHTML = text;
-  }
-  if (status === 403) {
-    message.appendChild(loginButton);
+    message.textContent = text;
   }
   updateTableDisplay(status === 401 ? 'login' : 'error');
 }
@@ -652,10 +640,23 @@ function updateParams(data) {
 }
 
 /**
+ * Checks if the user is logged in to the specified org/site.
+ * @returns {Promise<boolean>} True if logged in, false otherwise.
+ */
+async function isLoggedIn() {
+  const org = ORG_FIELD.value;
+  const site = SITE_FIELD.value;
+  if (org && site) {
+    return ensureLogin(org, site);
+  }
+  return false;
+}
+
+/**
  * Registers event listeners to handle form interactions, table updates, and UI behavior.
  */
 async function registerListeners() {
-  await initConfigField();
+  // await initConfigField();
 
   // enable timeframe dropdown
   PICKER.addEventListener('click', (e) => {
@@ -700,6 +701,16 @@ async function registerListeners() {
   // enable form submission
   FORM.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    if (!await isLoggedIn()) {
+      window.addEventListener('profile-update', ({ detail: loginInfo }) => {
+        if (loginInfo.includes(ORG_FIELD.value)) {
+          FORM.querySelector('button[type="submit"]').click();
+        }
+      }, { once: true });
+      return;
+    }
+
     const { target, submitter } = e;
     disableForm(target, submitter);
     clearTable(RESULTS);
@@ -823,12 +834,28 @@ function populateFromParams(search, doc) {
   }
 }
 
-function populateForm(doc) {
+async function populateForm(doc) {
   populateFromParams(window.location.search, doc);
   if (PICKER.value !== 'Custom') {
     // set default timeframe if not already set by params
     setTimeframeValues('1:00:00', FROM, TO);
   }
+  await initConfigField();
 }
 
 populateForm(document);
+
+window.addEventListener('login', async (e) => {
+  const { loginInfo, org, site } = e.detail;
+  const orgField = FORM.querySelector('#org');
+  const siteField = FORM.querySelector('#site');
+  if (org || loginInfo[0]) {
+    orgField.value = org || loginInfo[0];
+  }
+  if (site) {
+    siteField.value = site;
+  }
+  if (org && site) {
+    FORM.querySelector('button[type="submit"]').click();
+  }
+});
