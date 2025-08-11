@@ -71,9 +71,11 @@ function createLoginButton(org, loginInfo, closeModal) {
 
     const loginUrl = new URL(`https://admin.hlx.page/${action}/${org}/${selectedSite}/main`);
     const opsMode = loginButton.classList.contains('ops');
-    if (!loggedIn && opsMode) {
-      loginUrl.searchParams.append('idp', 'microsoft');
-      loginUrl.searchParams.append('tenant', 'common');
+    if (!loggedIn) {
+      if (opsMode) {
+        loginUrl.searchParams.append('idp', 'microsoft');
+        loginUrl.searchParams.append('tenant', 'common');
+      }
       loginUrl.searchParams.append('selectAccount', true);
     }
     loginUrl.searchParams.append('extensionId', getSidekickId());
