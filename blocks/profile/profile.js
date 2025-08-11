@@ -289,7 +289,7 @@ export default async function decorate(block) {
 export async function ensureLogin(org, site) {
   const loginInfo = await new Promise((resolve) => {
     messageSidekick({ action: 'getAuthInfo' }, (res) => resolve(res));
-    setTimeout(() => resolve(null), 200);
+    setTimeout(() => resolve(null), 500);
   });
   const loggedIn = Array.isArray(loginInfo) && loginInfo.includes(org);
   if (!loggedIn) {
