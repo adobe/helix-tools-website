@@ -36,8 +36,13 @@ function addSite(org, site) {
   return true;
 }
 
-async function updateLoginButton(loginButton, org, loginInfo) {
+function createLoginButton(org, loginInfo, closeModal) {
   const loggedIn = Array.isArray(loginInfo) && loginInfo.includes(org);
+  const action = loggedIn ? 'logout' : 'login';
+
+  const loginButton = document.createElement('button');
+  loginButton.id = `profile-login-${org}`;
+  loginButton.classList.add('button', action);
   loginButton.textContent = loggedIn ? 'Sign out' : 'Sign in';
   loginButton.title = loggedIn ? `Sign out of ${org}` : `Sign in to ${org}`;
   if (loggedIn) {
@@ -45,18 +50,7 @@ async function updateLoginButton(loginButton, org, loginInfo) {
   } else {
     loginButton.className = 'button login';
   }
-}
 
-function createLoginButton(org, loginInfo, closeModal) {
-  const loginButton = document.createElement('button');
-  loginButton.id = `profile-login-${org}`;
-
-  updateLoginButton(loginButton, org, loginInfo);
-
-  const loggedIn = Array.isArray(loginInfo) && loginInfo.includes(org);
-  const action = loggedIn ? 'logout' : 'login';
-
-  loginButton.classList.add('button', action);
   loginButton.addEventListener('click', async ({ target }) => {
     if (loginInfo === null) {
       if (confirm('AEM Sidekick is required to sign in. Install now?')) {
@@ -88,7 +82,7 @@ function createLoginButton(org, loginInfo, closeModal) {
         loginButton.disabled = false;
         setTimeout(async () => {
           const newLoginInfo = await getLoginInfo();
-          updateLoginButton(loginButton, org, newLoginInfo);
+          loginButton.replaceWith(createLoginButton(org, newLoginInfo));
           dispatchProfileUpdateEvent(newLoginInfo, org, selectedSite, action);
         }, 200);
         if (closeModal) {
