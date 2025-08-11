@@ -13,6 +13,7 @@ async function getLoginInfo() {
 }
 
 function dispatchProfileUpdateEvent(loginInfo) {
+  console.log('modal: dispatching profile-update event with updated loginInfo', loginInfo);
   window.dispatchEvent(
     new CustomEvent('profile-update', { detail: loginInfo }),
   );
@@ -63,6 +64,7 @@ function createLoginButton(org, loginInfo, closeModal) {
 
     const selectedSite = target.closest('li').querySelector(`input[name="profile-${org}-site"]:checked`)?.value;
 
+    console.log('modal: starting', action, 'process for', org, selectedSite);
     const loginUrl = new URL(`https://admin.hlx.page/${action}/${org}/${selectedSite}/main`);
     const opsMode = loginButton.classList.contains('ops');
     if (!loggedIn) {
@@ -77,11 +79,13 @@ function createLoginButton(org, loginInfo, closeModal) {
 
     // wait for login window to be closed, then dispatch event
     const checkLoginWindow = setInterval(async () => {
+      console.log('modal: checking if login window is closed', loginWindow.closed);
       if (loginWindow.closed) {
         clearInterval(checkLoginWindow);
         loginButton.disabled = false;
         setTimeout(async () => {
           const newLoginInfo = await getLoginInfo();
+          console.log('modal: updated loginInfo from sidekick after login', newLoginInfo);
           loginButton.replaceWith(createLoginButton(org, newLoginInfo));
           dispatchProfileUpdateEvent(newLoginInfo, org, selectedSite, action);
         }, 200);
@@ -113,6 +117,7 @@ function createLoginButton(org, loginInfo, closeModal) {
 async function updateProjects(dialog, focusedOrg) {
   const profileInfo = JSON.parse(localStorage.getItem('aem-profile-info') || '{}');
   const loginInfo = await getLoginInfo();
+  console.log('modal: get initial loginInfo from sidekick', loginInfo);
 
   // merge with projects from sidekick if available
   const sidekickProjects = await new Promise((resolve) => {
@@ -287,12 +292,11 @@ export default async function decorate(block) {
  * @returns {Promise<boolean>} True if logged in, false otherwise.
  */
 export async function ensureLogin(org, site) {
-  const loginInfo = await new Promise((resolve) => {
-    messageSidekick({ action: 'getAuthInfo' }, (res) => resolve(res));
-    setTimeout(() => resolve(null), 500);
-  });
+  const loginInfo = await getLoginInfo();
+  console.log('ensureLogin: get updated loginInfo from sidekick', loginInfo, org, site);
   const loggedIn = Array.isArray(loginInfo) && loginInfo.includes(org);
   if (!loggedIn) {
+    console.log('ensureLogin: not logged in, show modal');
     // show the profile modal
     const block = document.querySelector('header .profile');
     await showModal(block, org);
@@ -309,10 +313,12 @@ export async function ensureLogin(org, site) {
     }
     const siteItem = orgItem?.querySelector(`li[data-name="${site}"]`);
     if (orgItem && siteItem) {
+      console.log('ensureLogin: org and site exists, focus on login button');
       // select site and place focus on login button
       siteItem.querySelector('input[type="radio"]').checked = true;
       orgItem.querySelector('.button.login').focus();
     } else {
+      console.log('ensureLogin: org and site not found, prep form');
       // open and prefill add project form
       const addButton = block.querySelector('#profile-add-project');
       addButton.click();
@@ -322,5 +328,6 @@ export async function ensureLogin(org, site) {
     }
     return false;
   }
+  console.log('ensureLogin: logged in, all good');
   return true;
 }

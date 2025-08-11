@@ -644,6 +644,7 @@ function updateParams(data) {
  * @returns {Promise<boolean>} True if logged in, false otherwise.
  */
 async function isLoggedIn() {
+  console.log('ensuring user is logged in', ORG_FIELD.value, SITE_FIELD.value);
   const org = ORG_FIELD.value;
   const site = SITE_FIELD.value;
   if (org && site) {
@@ -704,7 +705,9 @@ async function registerListeners() {
 
     if (!await isLoggedIn()) {
       window.addEventListener('profile-update', ({ detail: loginInfo }) => {
+        console.log('profile-update event received', loginInfo, ORG_FIELD.value);
         if (loginInfo.includes(ORG_FIELD.value)) {
+          console.log('resubmitting form');
           FORM.querySelector('button[type="submit"]').click();
         }
       }, { once: true });
@@ -844,18 +847,3 @@ async function populateForm(doc) {
 }
 
 populateForm(document);
-
-window.addEventListener('login', async (e) => {
-  const { loginInfo, org, site } = e.detail;
-  const orgField = FORM.querySelector('#org');
-  const siteField = FORM.querySelector('#site');
-  if (org || loginInfo[0]) {
-    orgField.value = org || loginInfo[0];
-  }
-  if (site) {
-    siteField.value = site;
-  }
-  if (org && site) {
-    FORM.querySelector('button[type="submit"]').click();
-  }
-});
