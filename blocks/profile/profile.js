@@ -8,7 +8,7 @@ import {
 async function getLoginInfo() {
   return new Promise((resolve) => {
     messageSidekick({ action: 'getAuthInfo' }, (res) => resolve(res));
-    setTimeout(() => resolve([]), 500);
+    setTimeout(() => resolve(null), 500);
   });
 }
 
@@ -117,7 +117,11 @@ async function updateProjects(dialog, focusedOrg) {
   const loginInfo = await getLoginInfo();
 
   // merge with projects from sidekick if available
-  const sidekickProjects = await messageSidekick({ action: 'getSites' });
+  const sidekickProjects = await new Promise((resolve) => {
+    messageSidekick({ action: 'getSites' }, (res) => resolve(res));
+    setTimeout(() => resolve([]), 500);
+  });
+
   if (Array.isArray(sidekickProjects)) {
     sidekickProjects.forEach(({ org, site }) => {
       if (!profileInfo[org]) {
@@ -140,7 +144,7 @@ async function updateProjects(dialog, focusedOrg) {
       const orgTitle = document.createElement('h3');
       orgTitle.textContent = org;
       orgItem.append(orgTitle);
-      if (loginInfo.includes(org)) {
+      if (Array.isArray(loginInfo) && loginInfo.includes(org)) {
         orgItem.classList.add('signed-in');
       }
       orgTitle.append(createLoginButton(org, loginInfo, !!focusedOrg));
