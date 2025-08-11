@@ -8,7 +8,7 @@ import {
 async function getLoginInfo() {
   return new Promise((resolve) => {
     messageSidekick({ action: 'getAuthInfo' }, (res) => resolve(res));
-    setTimeout(() => resolve(null), 500);
+    setTimeout(() => resolve([]), 500);
   });
 }
 
