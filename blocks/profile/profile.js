@@ -3,13 +3,10 @@
 import {
   getSidekickId,
   messageSidekick,
-} from './sidekick.js';
+} from '../../utils/sidekick.js';
 
 async function getLoginInfo() {
-  return new Promise((resolve) => {
-    messageSidekick({ action: 'getAuthInfo' }, (res) => resolve(res));
-    setTimeout(() => resolve(null), 200);
-  });
+  return messageSidekick({ action: 'getAuthInfo' });
 }
 
 function dispatchProfileUpdateEvent(loginInfo) {
@@ -67,6 +64,8 @@ function createLoginButton(org, loginInfo, closeModal) {
   }
 
   loginButton.addEventListener('click', async ({ target }) => {
+    document.querySelectorAll('#profile-modal button').forEach((button) => button.classList.remove('ops'));
+
     if (loginInfo === null) {
       if (confirm('AEM Sidekick is required to sign in. Install now?')) {
         window.open('https://chromewebstore.google.com/detail/aem-sidekick/igkmdomcgoebiipaifhmpfjhbjccggml', '_blank');
@@ -84,8 +83,8 @@ function createLoginButton(org, loginInfo, closeModal) {
       if (opsMode) {
         loginUrl.searchParams.append('idp', 'microsoft');
         loginUrl.searchParams.append('tenant', 'common');
+        loginUrl.searchParams.append('selectAccount', true);
       }
-      loginUrl.searchParams.append('selectAccount', true);
     }
     loginUrl.searchParams.append('extensionId', getSidekickId());
     const loginWindow = window.open(loginUrl.toString(), '_blank');
@@ -209,10 +208,7 @@ async function updateProjects(dialog, focusedOrg) {
   const loginInfo = await getLoginInfo();
 
   // merge with projects from sidekick if available
-  const sidekickProjects = await new Promise((resolve) => {
-    messageSidekick({ action: 'getSites' }, (res) => resolve(res));
-    setTimeout(() => resolve([]), 200);
-  });
+  const sidekickProjects = await messageSidekick({ action: 'getSites' });
 
   if (Array.isArray(sidekickProjects)) {
     sidekickProjects.forEach(({ org, site }) => {

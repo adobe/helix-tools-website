@@ -36,11 +36,9 @@ export async function messageSidekick(message, callback) {
 
       setTimeout(() => {
         if (!messageResolved) {
-          // eslint-disable-next-line no-console
-          console.warn('Sidekick message not received in time');
           resolve(NO_SIDEKICK);
         }
-      }, 5000);
+      }, 200);
     }
   });
 }
