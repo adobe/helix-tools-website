@@ -8,12 +8,11 @@ import {
 async function getLoginInfo() {
   return new Promise((resolve) => {
     messageSidekick({ action: 'getAuthInfo' }, (res) => resolve(res));
-    setTimeout(() => resolve(null), 500);
+    setTimeout(() => resolve(null), 200);
   });
 }
 
 function dispatchProfileUpdateEvent(loginInfo) {
-  console.log('modal: dispatching profile-update event with updated loginInfo', loginInfo);
   window.dispatchEvent(
     new CustomEvent('profile-update', { detail: loginInfo }),
   );
@@ -33,6 +32,21 @@ function addSite(org, site) {
     return false;
   }
   profileInfo[org].sites.push(site);
+  localStorage.setItem('aem-profile-info', JSON.stringify(profileInfo));
+  return true;
+}
+
+function deleteSite(org, site) {
+  const profileInfo = JSON.parse(localStorage.getItem('aem-profile-info') || '{}');
+  const deletable = profileInfo[org].sites.includes(site);
+  if (!deletable) {
+    alert('This project can only be removed from your sidekick. Click "Manage projects" in the sidekick menu or the extension\'s context menu to do so.');
+    return false;
+  }
+  profileInfo[org].sites = profileInfo[org].sites.filter((s) => s !== site);
+  if (profileInfo[org].sites.length === 0) {
+    delete profileInfo[org];
+  }
   localStorage.setItem('aem-profile-info', JSON.stringify(profileInfo));
   return true;
 }
@@ -64,7 +78,6 @@ function createLoginButton(org, loginInfo, closeModal) {
 
     const selectedSite = target.closest('li').querySelector(`input[name="profile-${org}-site"]:checked`)?.value;
 
-    console.log('modal: starting', action, 'process for', org, selectedSite);
     const loginUrl = new URL(`https://admin.hlx.page/${action}/${org}/${selectedSite}/main`);
     const opsMode = loginButton.classList.contains('ops');
     if (!loggedIn) {
@@ -79,13 +92,11 @@ function createLoginButton(org, loginInfo, closeModal) {
 
     // wait for login window to be closed, then dispatch event
     const checkLoginWindow = setInterval(async () => {
-      console.log('modal: checking if login window is closed', loginWindow.closed);
       if (loginWindow.closed) {
         clearInterval(checkLoginWindow);
         loginButton.disabled = false;
         setTimeout(async () => {
           const newLoginInfo = await getLoginInfo();
-          console.log('modal: updated loginInfo from sidekick after login', newLoginInfo);
           loginButton.replaceWith(createLoginButton(org, newLoginInfo));
           dispatchProfileUpdateEvent(newLoginInfo, org, selectedSite, action);
         }, 200);
@@ -114,15 +125,93 @@ function createLoginButton(org, loginInfo, closeModal) {
   return loginButton;
 }
 
+function updateButtons(dialog, orgs, focusedOrg) {
+  const wrapper = dialog.querySelector('.button-wrapper');
+
+  let addButton = dialog.querySelector('#profile-add-project');
+  if (!addButton) {
+    // form to add new project
+    const form = document.createElement('form');
+    form.classList.add('profile-add-form');
+    form.action = '#';
+    form.innerHTML = `
+      <p>Add a new project:</p>
+      <input type="text" id="profile-add-org" placeholder="org" mandatory="true" value="${orgs[0] || ''}">
+      <input type="text" id="profile-add-site" placeholder="site" mandatory="true">
+      <div class="button-wrapper">
+        <button class="button " type="submit" id="profile-add-save">Save</button>
+        <button class="button outline" type="reset" id="profile-add-cancel">Cancel</button>
+      </div>
+    `;
+
+    // button to add new project
+    addButton = document.createElement('button');
+    addButton.id = 'profile-add-project';
+    addButton.classList.add('button', 'outline');
+    addButton.textContent = 'Add project';
+    addButton.addEventListener('click', ({ target }) => {
+      target.closest('dialog').querySelectorAll('button, input').forEach((control) => {
+        control.disabled = true;
+      });
+      dialog.append(form);
+
+      const resetForm = () => {
+        form.remove();
+        target.closest('dialog').querySelectorAll('button, input').forEach((control) => {
+          control.disabled = false;
+        });
+      };
+
+      const orgField = form.querySelector('#profile-add-org');
+      orgField.focus();
+      if (orgField.value) {
+        orgField.select();
+      }
+      form.addEventListener('submit', async () => {
+        const org = form.querySelector('#profile-add-org').value;
+        const site = form.querySelector('#profile-add-site').value;
+        if (addSite(org, site)) {
+          resetForm();
+          // eslint-disable-next-line no-use-before-define
+          await updateProjects(dialog, focusedOrg);
+          // select new site and focus login button
+          dialog.querySelector(`#profile-projects .profile-sites > li[data-name="${site}"] input`).checked = true;
+          dialog.querySelector(`#profile-projects .profile-orgs > li[data-name="${org}"] .button.login`).focus();
+        }
+      });
+      form.addEventListener('reset', resetForm);
+    });
+    wrapper.append(addButton);
+  }
+
+  let editButton = dialog.querySelector('#profile-edit-projects');
+  if (!editButton && orgs.length > 0) {
+    // button to edit projects
+    const isEditMode = dialog.classList.contains('edit-mode');
+    editButton = document.createElement('button');
+    editButton.id = 'profile-edit-projects';
+    editButton.classList.add('button', isEditMode ? 'accent' : 'outline');
+    editButton.textContent = isEditMode ? 'Done' : 'Edit projects';
+    editButton.addEventListener('click', ({ target }) => {
+      dialog.classList.toggle('edit-mode');
+      target.classList.toggle('outline');
+      target.classList.toggle('accent');
+      target.textContent = dialog.classList.contains('edit-mode') ? 'Done' : 'Edit projects';
+    });
+    wrapper.append(editButton);
+  } else if (editButton && orgs.length === 0) {
+    editButton.remove();
+  }
+}
+
 async function updateProjects(dialog, focusedOrg) {
   const profileInfo = JSON.parse(localStorage.getItem('aem-profile-info') || '{}');
   const loginInfo = await getLoginInfo();
-  console.log('modal: get initial loginInfo from sidekick', loginInfo);
 
   // merge with projects from sidekick if available
   const sidekickProjects = await new Promise((resolve) => {
     messageSidekick({ action: 'getSites' }, (res) => resolve(res));
-    setTimeout(() => resolve([]), 500);
+    setTimeout(() => resolve([]), 200);
   });
 
   if (Array.isArray(sidekickProjects)) {
@@ -137,54 +226,68 @@ async function updateProjects(dialog, focusedOrg) {
   // list orgs
   const orgList = document.createElement('ul');
   orgList.classList.add('profile-orgs');
-  const orgs = Object.keys(profileInfo);
-  orgs
+  const orgs = Object.keys(profileInfo)
     .filter((org) => !focusedOrg || org === focusedOrg)
-    .sort()
-    .forEach((org) => {
-      const orgItem = document.createElement('li');
-      orgItem.dataset.name = org;
-      const orgTitle = document.createElement('h3');
-      orgTitle.textContent = org;
-      orgItem.append(orgTitle);
-      if (Array.isArray(loginInfo) && loginInfo.includes(org)) {
-        orgItem.classList.add('signed-in');
-      }
-      orgTitle.append(createLoginButton(org, loginInfo, !!focusedOrg));
+    .filter((org) => Array.isArray(profileInfo[org].sites)
+      && profileInfo[org].sites.length > 0)
+    .sort();
 
-      // list sites within org
-      const sitesList = document.createElement('ul');
-      sitesList.classList.add('profile-sites');
-      const { sites = [] } = profileInfo[org];
-      sites.sort().forEach((site, i) => {
-        if (!site) {
-          return;
+  orgs.forEach((org) => {
+    const orgItem = document.createElement('li');
+    orgItem.dataset.name = org;
+    const orgTitle = document.createElement('h3');
+    orgTitle.textContent = org;
+    orgItem.append(orgTitle);
+    if (Array.isArray(loginInfo) && loginInfo.includes(org)) {
+      orgItem.classList.add('signed-in');
+    }
+    orgTitle.append(createLoginButton(org, loginInfo, !!focusedOrg));
+
+    // list sites within org
+    const sitesList = document.createElement('ul');
+    sitesList.classList.add('profile-sites');
+    const { sites = [] } = profileInfo[org];
+    sites.sort().forEach((site, i) => {
+      if (!site) {
+        return;
+      }
+      const siteItem = document.createElement('li');
+      siteItem.dataset.name = site;
+      siteItem.innerHTML = `
+        <input type="radio" id="profile-${org}-site-${i}" name="profile-${org}-site" value="${site}">
+        <label for="profile-${org}-site-${i}">${site}</label>
+        <a
+          target="_blank"
+          href="https://main--${site}--${org}.aem.page/"
+          title="Open ${site}"
+        ><span class="external-link"></span></a>
+      `;
+      if (i === 0) {
+        siteItem.querySelector('input').checked = true;
+      }
+      const deleteButton = document.createElement('button');
+      deleteButton.classList.add('cross');
+      deleteButton.title = `Delete ${site} from ${org}`;
+      deleteButton.addEventListener('click', () => {
+        if (confirm(`Are you sure you want to delete ${site} from ${org}?`)) {
+          deleteSite(org, site);
+          updateProjects(dialog, focusedOrg);
         }
-        const siteItem = document.createElement('li');
-        siteItem.dataset.name = site;
-        siteItem.innerHTML = `
-          <input type="radio" id="profile-${org}-site-${i}" name="profile-${org}-site" value="${site}">
-          <label for="profile-${org}-site-${i}">${site}</label>
-          <a
-            target="_blank"
-            href="https://main--${site}--${org}.aem.page/"
-            title="Open ${site}"
-          ><span class="external-link"></span></a>
-        `;
-        if (i === 0) {
-          siteItem.querySelector('input').checked = true;
-        }
-        sitesList.append(siteItem);
       });
-      orgItem.append(sitesList);
-      orgList.append(orgItem);
+      siteItem.append(deleteButton);
+      sitesList.append(siteItem);
     });
+    orgItem.append(sitesList);
+    orgList.append(orgItem);
+  });
 
   const projects = dialog.querySelector('#profile-projects');
   projects.innerHTML = `
     <p>${orgs.length > 0 ? 'Sign into a project below to use this tool:' : 'No projects found'}</p>
   `;
   projects.append(orgList);
+
+  updateButtons(dialog, orgs, focusedOrg);
 
   return profileInfo;
 }
@@ -201,69 +304,22 @@ async function showModal(block, focusedOrg) {
   dialog.innerHTML = `
     <h2>Projects</h2>
     <div id="profile-projects"></div>
+    <div class="button-wrapper"></div>
   `;
 
   await updateProjects(dialog, focusedOrg);
 
-  const firstOrg = dialog.querySelector('#profile-projects .profile-orgs > li')?.dataset.name || '';
-
-  // form to add new project
-  const form = document.createElement('form');
-  form.classList.add('profile-add-form');
-  form.action = '#';
-  form.innerHTML = `
-    <p>Add a new project:</p>
-    <input type="text" id="profile-add-org" placeholder="org" mandatory="true" value="${firstOrg}">
-    <input type="text" id="profile-add-site" placeholder="site" mandatory="true">
-    <div class="button-wrapper">
-      <button class="button " type="submit" id="profile-add-save">Save</button>
-      <button class="button outline" type="reset" id="profile-add-cancel">Cancel</button>
-    </div>
-  `;
-
-  // button to add new project
-  const addButton = document.createElement('button');
-  addButton.id = 'profile-add-project';
-  addButton.classList.add('button', 'outline');
-  addButton.textContent = 'Add project';
-  addButton.addEventListener('click', ({ target }) => {
-    target.closest('dialog').querySelectorAll('button, input').forEach((control) => {
-      control.disabled = true;
-    });
-    dialog.append(form);
-
-    const resetForm = () => {
-      form.remove();
-      target.closest('dialog').querySelectorAll('button, input').forEach((control) => {
-        control.disabled = false;
-      });
-    };
-
-    const orgField = form.querySelector('#profile-add-org');
-    orgField.focus();
-    if (orgField.value) {
-      orgField.select();
-    }
-    form.addEventListener('submit', async () => {
-      const org = form.querySelector('#profile-add-org').value;
-      const site = form.querySelector('#profile-add-site').value;
-      if (addSite(org, site)) {
-        resetForm();
-        await updateProjects(dialog, focusedOrg);
-        block.querySelector(`#profile-projects .profile-sites > li[data-name="${site}"] input`).checked = true;
-        block.querySelector(`#profile-projects .profile-orgs > li[data-name="${org}"] .button.login`).focus();
-      }
-    });
-    form.addEventListener('reset', resetForm);
-  });
-  dialog.append(addButton);
-
   const closeButton = document.createElement('button');
-  closeButton.classList.add('profile-close');
+  closeButton.id = 'profile-close';
+  closeButton.classList.add('cross');
   closeButton.textContent = 'Close';
   closeButton.title = closeButton.textContent;
   closeButton.addEventListener('click', () => dialog.close());
   dialog.append(closeButton);
+
+  dialog.addEventListener('close', () => {
+    dialog.classList.remove('edit-mode');
+  });
 
   dialog.showModal();
 }
@@ -293,10 +349,8 @@ export default async function decorate(block) {
  */
 export async function ensureLogin(org, site) {
   const loginInfo = await getLoginInfo();
-  console.log('ensureLogin: get updated loginInfo from sidekick', loginInfo, org, site);
   const loggedIn = Array.isArray(loginInfo) && loginInfo.includes(org);
   if (!loggedIn) {
-    console.log('ensureLogin: not logged in, show modal');
     // show the profile modal
     const block = document.querySelector('header .profile');
     await showModal(block, org);
@@ -313,12 +367,10 @@ export async function ensureLogin(org, site) {
     }
     const siteItem = orgItem?.querySelector(`li[data-name="${site}"]`);
     if (orgItem && siteItem) {
-      console.log('ensureLogin: org and site exists, focus on login button');
       // select site and place focus on login button
       siteItem.querySelector('input[type="radio"]').checked = true;
       orgItem.querySelector('.button.login').focus();
     } else {
-      console.log('ensureLogin: org and site not found, prep form');
       // open and prefill add project form
       const addButton = block.querySelector('#profile-add-project');
       addButton.click();
@@ -328,6 +380,5 @@ export async function ensureLogin(org, site) {
     }
     return false;
   }
-  console.log('ensureLogin: logged in, all good');
   return true;
 }

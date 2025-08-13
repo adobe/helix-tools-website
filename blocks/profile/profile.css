@@ -41,13 +41,11 @@
   border-radius: 1rem;
   box-shadow: var(--shadow-default);}
 
-.profile .modal .profile-close {
-  position: absolute;
+.profile .modal .cross {
+  position: relative;
   font-size: 1rem;
   text-align: center;
   color: transparent;
-  top: 1.5rem;
-  right: 1.2rem;
   width: 2rem;
   height: 2rem;
   padding: 0.5rem;
@@ -58,23 +56,60 @@
   cursor: pointer;
 }
 
-.profile .modal .profile-close::before {
+.profile .modal .cross::before {
   content: '×';
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  color: var(--gray-600);
+  color: var(--red-900);
   font-size: var(--font-size-800);
+}
+
+.profile .modal #profile-close {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+}
+
+.profile .modal #profile-close::before {
+  color: var(--gray-600);
 }
 
 .profile .modal h2 {
   margin-top: 0;
 }
 
+.profile .modal .profile-add-form {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  background-color: var(--gray-25);
+  border-radius: 1rem;
+  max-width: 400px;
+  padding: 2rem;
+  box-shadow: var(--shadow-default);
+}
+
+.profile .modal .profile-add-form p {
+  margin: 0 0 2rem;
+  font-weight: bold;
+  font-size: var(--body-size-xl);
+}
+
+.profile .modal .profile-add-form input {
+  margin: 0 0 1rem;
+}
+
 .profile .modal #profile-projects {
   margin: 1rem 0;
   border-bottom: 1px solid var(--gray-400);
+}
+
+.profile .modal #profile-projects > p {
+  margin-bottom: 3rem;
 }
 
 .profile .modal .profile-orgs {
@@ -100,12 +135,16 @@
 }
 
 .profile .modal .profile-orgs .profile-sites li {
-  line-height: normal;
+  line-height: 2rem;
   display: flex;
   flex-flow: row nowrap;
   gap: 0.5rem;
-  justify-items: center;
+  place-items: center;
   margin-bottom: 0.5rem;
+}
+
+.profile .modal:not(.edit-mode) .profile-orgs .profile-sites li .cross {
+  display: none;
 }
 
 .profile .modal .profile-orgs .profile-sites li input[type="radio"] {
@@ -118,29 +157,6 @@
 
 .profile .modal .profile-orgs .profile-sites li input:checked ~ label {
   font-weight: bold;
-}
-
-.profile .modal .profile-add-form {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 100%;
-  background-color: var(--gray-25);
-  border-radius: 1rem;
-  max-width: 400px;
-  padding: 2rem;
-  box-shadow: var(--shadow-default);
-}
-
-.profile .modal .profile-add-form p {
-  margin: 0 0 2rem;
-  font-weight: bold;
-  font-size: var(--body-size-xl);
-}
-
-.profile .modal .profile-add-form input {
-  margin: 0 0 1rem;
 }
 
 .profile .modal .external-link {
