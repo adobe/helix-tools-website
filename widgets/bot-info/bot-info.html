@@ -1,8 +1,13 @@
 <div class="bot-info-success">
     <h2>What we did:</h2>
-    <p>Set up AEM for <span class="bot-info-org">{{org}}</span> / <span class="bot-info-site">{{site}}</span>.</p>
-    <p>Made <span class="bot-info-user">{{user}}</span> an admin.</p>
-    <p>Started code sync for selected repos.</p>
+    <ul>
+        <li>Set up AEM for <span class="bot-info-org">{{org}}</span> / <span class="bot-info-site">{{site}}</span>.</li>
+        <li>Made <span class="bot-info-user">{{user}}</span><sup>*</sup> an admin.</li>
+        <li>Started AEM Code Sync for selected GitHub repositories.</li>
+    </ul>
+    <p class="bot-info-admin-note"><sup>*</sup>We are using the primary email address for the account that just installed AEM Code Sync as the default admin. 
+        If this is not the account you want to use as the default admin, feel free to change it in the <a class="bot-info-user-admin" href="https://labs.aem.live/tools/user-admin/index.html">User Admin Tool</a>.
+    </p>
 
     <h2>What’s next:</h2>
     <h3>Check your site:</h3>
