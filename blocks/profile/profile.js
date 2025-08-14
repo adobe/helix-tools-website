@@ -3,6 +3,7 @@
 import {
   getSidekickId,
   messageSidekick,
+  NO_SIDEKICK,
 } from '../../utils/sidekick.js';
 
 async function getLoginInfo() {
@@ -66,7 +67,7 @@ function createLoginButton(org, loginInfo, closeModal) {
   loginButton.addEventListener('click', async ({ target }) => {
     document.querySelectorAll('#profile-modal button').forEach((button) => button.classList.remove('ops'));
 
-    if (loginInfo === null) {
+    if (loginInfo === NO_SIDEKICK) {
       if (confirm('AEM Sidekick is required to sign in. Install now?')) {
         window.open('https://chromewebstore.google.com/detail/aem-sidekick/igkmdomcgoebiipaifhmpfjhbjccggml', '_blank');
       }
