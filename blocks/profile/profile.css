@@ -37,6 +37,7 @@
   max-width: 90vw;
   max-height: 90vh;
   padding: 2rem;
+  line-height: 1.5;
   border: none;
   border-radius: 1rem;
   box-shadow: var(--shadow-default);}
