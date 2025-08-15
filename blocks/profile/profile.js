@@ -65,8 +65,6 @@ function createLoginButton(org, loginInfo, closeModal) {
   }
 
   loginButton.addEventListener('click', async ({ target }) => {
-    document.querySelectorAll('#profile-modal button').forEach((button) => button.classList.remove('ops'));
-
     if (loginInfo === NO_SIDEKICK) {
       if (confirm('AEM Sidekick is required to sign in. Install now?')) {
         window.open('https://chromewebstore.google.com/detail/aem-sidekick/igkmdomcgoebiipaifhmpfjhbjccggml', '_blank');
@@ -76,10 +74,13 @@ function createLoginButton(org, loginInfo, closeModal) {
 
     loginButton.disabled = true;
 
+    // check and remove ops mode
+    const opsMode = target.classList.contains('ops');
+    document.querySelectorAll('#profile-modal button').forEach((button) => button.classList.remove('ops'));
+
     const selectedSite = target.closest('li').querySelector(`input[name="profile-${org}-site"]:checked`)?.value;
 
     const loginUrl = new URL(`https://admin.hlx.page/${action}/${org}/${selectedSite}/main`);
-    const opsMode = loginButton.classList.contains('ops');
     if (!loggedIn) {
       if (opsMode) {
         loginUrl.searchParams.append('idp', 'microsoft');
@@ -295,6 +296,7 @@ async function showModal(block, focusedOrg) {
     dialog = document.createElement('dialog');
     dialog.classList.add('modal');
     dialog.id = 'profile-modal';
+    dialog.closedBy = 'any';
     block.append(dialog);
   }
 
@@ -322,7 +324,7 @@ async function showModal(block, focusedOrg) {
 }
 
 export default async function decorate(block) {
-  const avatar = document.createElement('a');
+  const avatar = document.createElement('button');
   avatar.innerHTML = `
     <span class="icon" title="Sign in">
       <img src="/icons/user.svg" alt="User">

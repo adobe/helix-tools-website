@@ -39,6 +39,8 @@ export async function messageSidekick(message, callback) {
           resolve(NO_SIDEKICK);
         }
       }, 200);
+    } else {
+      resolve(NO_SIDEKICK);
     }
   });
 }
