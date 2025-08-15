@@ -326,7 +326,7 @@ async function showModal(block, focusedOrg) {
 export default async function decorate(block) {
   const avatar = document.createElement('button');
   avatar.innerHTML = `
-    <span class="icon" title="Sign in">
+    <span class="icon" title="Manage projects and sign in">
       <img src="/icons/user.svg" alt="User">
     </span>
   `;
