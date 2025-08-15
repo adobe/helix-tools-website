@@ -41,3 +41,41 @@
 .bulk-ops .status-light.http3::before {
   color: var(--yellow-900);
 }
+
+.status-pill {
+  display: inline-block;
+  padding: 0.5em 1em;
+  border-radius: 1.5em;
+  min-width: 5em;
+  color: #fff;
+  text-align: center;
+}
+
+.status-success {
+  background-color: var(--green-900);
+}
+
+.status-warning {
+  background-color: var(--yellow-900);
+}
+
+.status-error {
+  background-color: var(--red-900);
+}
+
+.status-details[aria-expanded="false"] {
+  display: none;
+}
+
+.status-details[aria-expanded="true"] {
+  margin-top: 1em;
+  display: block;
+}
+
+.status-details textarea {
+  width: 100%;
+  height: 400px;
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+}
+
