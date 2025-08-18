@@ -129,7 +129,7 @@
 
 .profile .modal .profile-orgs h3 .button {
   position: absolute;
-  top: 0.5rem;
+  top: 0;
   right: 0;
   font-size: var(--body-size-l);
   line-height: normal;
