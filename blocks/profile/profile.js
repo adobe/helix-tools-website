@@ -302,7 +302,7 @@ async function updateProjects(dialog, focusedOrg) {
 
   const projects = dialog.querySelector('#profile-projects');
   projects.innerHTML = `
-    <p>${orgs.length > 0 ? 'Sign into a project below to use this tool. Note that you may neeed to allow pop-ups from this site.' : 'No projects found'}</p>
+    <p>${orgs.length > 0 ? 'Sign into a project below to use this tool. Note that you may neeed to allow pop-ups from this site.' : 'No projects yet'}</p>
   `;
   projects.append(orgList);
 
