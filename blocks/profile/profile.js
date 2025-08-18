@@ -49,6 +49,18 @@ function deleteSite(org, site) {
   return true;
 }
 
+async function fetchUserInfo(userInfoElem, org, site) {
+  let userInfo = '';
+  const resp = await fetch(`https://admin.hlx.page/profile/${org}/${site}`);
+  if (resp.ok) {
+    const { profile } = await resp.json();
+    if (profile) {
+      userInfo = `(${profile.email})`;
+    }
+  }
+  userInfoElem.textContent = userInfo;
+}
+
 function createLoginButton(org, loginInfo, closeModal) {
   const loggedIn = Array.isArray(loginInfo) && loginInfo.includes(org);
   const action = loggedIn ? 'logout' : 'login';
@@ -98,7 +110,9 @@ function createLoginButton(org, loginInfo, closeModal) {
         loginButton.disabled = false;
         setTimeout(async () => {
           const newLoginInfo = await getLoginInfo();
+          const orgTitle = loginButton.parentElement.parentElement;
           loginButton.replaceWith(createLoginButton(org, newLoginInfo));
+          fetchUserInfo(orgTitle.querySelector('.user-info'), org, selectedSite);
           dispatchProfileUpdateEvent(newLoginInfo, org, selectedSite, action);
         }, 200);
         if (closeModal) {
@@ -239,6 +253,9 @@ async function updateProjects(dialog, focusedOrg) {
     if (Array.isArray(loginInfo) && loginInfo.includes(org)) {
       orgItem.classList.add('signed-in');
     }
+    const userInfo = document.createElement('span');
+    userInfo.classList.add('user-info');
+    orgTitle.append(userInfo);
     orgTitle.append(createLoginButton(org, loginInfo, !!focusedOrg));
 
     // list sites within org
@@ -249,6 +266,9 @@ async function updateProjects(dialog, focusedOrg) {
       if (!site) {
         return;
       }
+      if (i === 0) {
+        fetchUserInfo(userInfo, org, site);
+      }
       const siteItem = document.createElement('li');
       siteItem.dataset.name = site;
       siteItem.innerHTML = `
@@ -258,8 +278,9 @@ async function updateProjects(dialog, focusedOrg) {
           target="_blank"
           href="https://main--${site}--${org}.aem.page/"
           title="Open ${site}"
-        ><span class="external-link"></span></a>
+        ><span class="external-link"></span><span class="user-info"></span></a>
       `;
+
       if (i === 0) {
         siteItem.querySelector('input').checked = true;
       }

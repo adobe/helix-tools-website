@@ -127,6 +127,13 @@
   position: relative;
 }
 
+.profile .modal .profile-orgs h3 .user-info {
+  font-size: var(--body-size-m);
+  font-weight: normal;
+  color: var(--gray-600);
+  margin-left: 0.5rem;
+}
+
 .profile .modal .profile-orgs h3 .button {
   position: absolute;
   top: 0;
