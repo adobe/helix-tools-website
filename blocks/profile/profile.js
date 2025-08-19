@@ -82,7 +82,7 @@ async function removeSite(org, site) {
 
   return messageSidekick({
     action: 'removeSite',
-    config: { owner: org, repo: site },
+    config: { org, site },
   });
 }
 
