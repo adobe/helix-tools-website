@@ -1,4 +1,4 @@
-/* eslint-disable no-restricted-globals, no-alert */
+/* eslint-disable no-restricted-globals, no-alert, no-await-in-loop */
 
 import {
   getSidekickId,
@@ -16,37 +16,74 @@ function dispatchProfileUpdateEvent(loginInfo) {
   );
 }
 
-function addSite(org, site) {
+function confirmInstallSidekick(resp) {
+  if (resp === NO_SIDEKICK && confirm('AEM Sidekick is required to sign in. Install now?')) {
+    window.open('https://chromewebstore.google.com/detail/aem-sidekick/igkmdomcgoebiipaifhmpfjhbjccggml', '_blank');
+  }
+}
+
+async function waitForSiteAdded(org, site) {
+  for (let i = 0; i < 5; i += 1) {
+    const sites = await messageSidekick({ action: 'getSites' });
+    if (!Array.isArray(sites)) {
+      confirmInstallSidekick(sites);
+      return false;
+    }
+    if (sites.find((s) => s.org === org && s.site === site)) {
+      return true;
+    }
+    await new Promise((resolve) => { setTimeout(resolve, 100); });
+  }
+  return false;
+}
+
+async function addSite(org, site) {
   if (!org || !site) {
     return false;
   }
 
-  const profileInfo = JSON.parse(localStorage.getItem('aem-profile-info') || '{}');
-  if (!profileInfo[org]) {
-    profileInfo[org] = { sites: [] };
+  const sites = await messageSidekick({ action: 'getSites' });
+  if (!Array.isArray(sites)) {
+    confirmInstallSidekick(sites);
+    return false;
   }
-  if (profileInfo[org].sites.includes(site)) {
+  if (sites.find((s) => s.org === org && s.site === site)) {
     alert(`${site} already exists in ${org}.`);
     return false;
   }
-  profileInfo[org].sites.push(site);
-  localStorage.setItem('aem-profile-info', JSON.stringify(profileInfo));
-  return true;
+
+  await messageSidekick({
+    action: 'addSite',
+    config: { org, site },
+  }, null, 10000);
+
+  if (await waitForSiteAdded(org, site)) {
+    return true;
+  }
+
+  alert('Failed to add project. Please try again.');
+  return false;
 }
 
-function deleteSite(org, site) {
-  const profileInfo = JSON.parse(localStorage.getItem('aem-profile-info') || '{}');
-  const deletable = profileInfo[org].sites.includes(site);
-  if (!deletable) {
-    alert('This project can only be removed from your sidekick. Click "Manage projects" in the sidekick menu or the extension\'s context menu to do so.');
+async function removeSite(org, site) {
+  if (!org || !site) {
     return false;
   }
-  profileInfo[org].sites = profileInfo[org].sites.filter((s) => s !== site);
-  if (profileInfo[org].sites.length === 0) {
-    delete profileInfo[org];
+
+  const sites = await messageSidekick({ action: 'getSites' });
+  if (!Array.isArray(sites)) {
+    confirmInstallSidekick();
+    return false;
   }
-  localStorage.setItem('aem-profile-info', JSON.stringify(profileInfo));
-  return true;
+  if (!sites.find((s) => s.org === org && s.site === site)) {
+    alert(`${site} does not exist in ${org}.`);
+    return false;
+  }
+
+  return messageSidekick({
+    action: 'removeSite',
+    config: { owner: org, repo: site },
+  });
 }
 
 async function fetchUserInfo(userInfoElem, org, site) {
@@ -77,10 +114,8 @@ function createLoginButton(org, loginInfo, closeModal) {
   }
 
   loginButton.addEventListener('click', async ({ target }) => {
-    if (loginInfo === NO_SIDEKICK) {
-      if (confirm('AEM Sidekick is required to sign in. Install now?')) {
-        window.open('https://chromewebstore.google.com/detail/aem-sidekick/igkmdomcgoebiipaifhmpfjhbjccggml', '_blank');
-      }
+    if (!Array.isArray(loginInfo)) {
+      confirmInstallSidekick(loginInfo);
       return;
     }
 
@@ -113,7 +148,7 @@ function createLoginButton(org, loginInfo, closeModal) {
           const orgTitle = loginButton.parentElement.parentElement;
           loginButton.replaceWith(createLoginButton(org, newLoginInfo));
           fetchUserInfo(orgTitle.querySelector('.user-info'), org, selectedSite);
-          dispatchProfileUpdateEvent(newLoginInfo, org, selectedSite, action);
+          dispatchProfileUpdateEvent(newLoginInfo);
         }, 200);
         if (closeModal) {
           // close modal after login
@@ -145,20 +180,6 @@ function updateButtons(dialog, orgs, focusedOrg) {
 
   let addButton = dialog.querySelector('#profile-add-project');
   if (!addButton) {
-    // form to add new project
-    const form = document.createElement('form');
-    form.classList.add('profile-add-form');
-    form.action = '#';
-    form.innerHTML = `
-      <p>Add a new project:</p>
-      <input type="text" id="profile-add-org" placeholder="org" mandatory="true" value="${orgs[0] || ''}">
-      <input type="text" id="profile-add-site" placeholder="site" mandatory="true">
-      <div class="button-wrapper">
-        <button class="button " type="submit" id="profile-add-save">Save</button>
-        <button class="button outline" type="reset" id="profile-add-cancel">Cancel</button>
-      </div>
-    `;
-
     // button to add new project
     addButton = document.createElement('button');
     addButton.id = 'profile-add-project';
@@ -168,9 +189,24 @@ function updateButtons(dialog, orgs, focusedOrg) {
       target.closest('dialog').querySelectorAll('button, input').forEach((control) => {
         control.disabled = true;
       });
+
+      // form to add new project
+      const form = document.createElement('form');
+      form.classList.add('profile-add-form');
+      form.action = '#';
+      form.innerHTML = `
+        <p>Add a new project:</p>
+        <input type="text" id="profile-add-org" placeholder="org" mandatory="true" value="${orgs[0] || ''}">
+        <input type="text" id="profile-add-site" placeholder="site" mandatory="true">
+        <div class="button-wrapper">
+          <button class="button " type="submit" id="profile-add-save">Save</button>
+          <button class="button outline" type="reset" id="profile-add-cancel">Cancel</button>
+        </div>
+      `;
       dialog.append(form);
 
       const resetForm = () => {
+        form.querySelector('button').disabled = false;
         form.remove();
         target.closest('dialog').querySelectorAll('button, input').forEach((control) => {
           control.disabled = false;
@@ -182,18 +218,26 @@ function updateButtons(dialog, orgs, focusedOrg) {
       if (orgField.value) {
         orgField.select();
       }
-      form.addEventListener('submit', async () => {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        form.querySelectorAll('button, input').forEach((control) => {
+          control.disabled = true;
+        });
         const org = form.querySelector('#profile-add-org').value;
         const site = form.querySelector('#profile-add-site').value;
-        if (addSite(org, site)) {
+        if (await addSite(org, site)) {
+          setTimeout(async () => {
+            resetForm();
+            // eslint-disable-next-line no-use-before-define
+            await updateProjects(dialog, focusedOrg);
+            // select new site and focus login button
+            dialog.querySelector(`#profile-projects .profile-sites > li[data-name="${site}"] input`).checked = true;
+            dialog.querySelector(`#profile-projects .profile-orgs > li[data-name="${org}"] .button`).focus();
+          }, 600);
+        } else {
           resetForm();
-          // eslint-disable-next-line no-use-before-define
-          await updateProjects(dialog, focusedOrg);
-          // select new site and focus login button
-          dialog.querySelector(`#profile-projects .profile-sites > li[data-name="${site}"] input`).checked = true;
-          dialog.querySelector(`#profile-projects .profile-orgs > li[data-name="${org}"] .button.login`).focus();
         }
-      });
+      }, { once: true });
       form.addEventListener('reset', resetForm);
     });
     wrapper.append(addButton);
@@ -220,20 +264,26 @@ function updateButtons(dialog, orgs, focusedOrg) {
 }
 
 async function updateProjects(dialog, focusedOrg) {
-  const profileInfo = JSON.parse(localStorage.getItem('aem-profile-info') || '{}');
-  const loginInfo = await getLoginInfo();
-
-  // merge with projects from sidekick if available
-  const sidekickProjects = await messageSidekick({ action: 'getSites' });
-
-  if (Array.isArray(sidekickProjects)) {
-    sidekickProjects.forEach(({ org, site }) => {
-      if (!profileInfo[org]) {
-        profileInfo[org] = { sites: [] };
-      }
-      profileInfo[org].sites.push(site);
-    });
+  let updatedProjects = await messageSidekick({ action: 'getSites' });
+  if (!Array.isArray(updatedProjects)) {
+    confirmInstallSidekick(updatedProjects);
+    updatedProjects = [];
   }
+
+  // sort projects by org
+  const profileInfo = {};
+  updatedProjects.forEach((project) => {
+    const { org } = project;
+    if (!profileInfo[org]) {
+      profileInfo[org] = { sites: [] };
+    }
+    profileInfo[org].sites.push({
+      site: project.repo,
+      title: project.project || '',
+    });
+  });
+
+  const loginInfo = await getLoginInfo();
 
   // list orgs
   const orgList = document.createElement('ul');
@@ -262,7 +312,7 @@ async function updateProjects(dialog, focusedOrg) {
     const sitesList = document.createElement('ul');
     sitesList.classList.add('profile-sites');
     const { sites = [] } = profileInfo[org];
-    sites.sort().forEach((site, i) => {
+    sites.sort().forEach(({ site, title }, i) => {
       if (!site) {
         return;
       }
@@ -273,7 +323,7 @@ async function updateProjects(dialog, focusedOrg) {
       siteItem.dataset.name = site;
       siteItem.innerHTML = `
         <input type="radio" id="profile-${org}-site-${i}" name="profile-${org}-site" value="${site}">
-        <label for="profile-${org}-site-${i}">${site}</label>
+        <label for="profile-${org}-site-${i}">${title || site}</label>
         <a
           target="_blank"
           href="https://main--${site}--${org}.aem.page/"
@@ -287,10 +337,13 @@ async function updateProjects(dialog, focusedOrg) {
       const deleteButton = document.createElement('button');
       deleteButton.classList.add('cross');
       deleteButton.title = `Delete ${site} from ${org}`;
-      deleteButton.addEventListener('click', () => {
+      deleteButton.addEventListener('click', async () => {
         if (confirm(`Are you sure you want to delete ${site} from ${org}?`)) {
-          deleteSite(org, site);
-          updateProjects(dialog, focusedOrg);
+          if (await removeSite(org, site)) {
+            setTimeout(async () => {
+              await updateProjects(dialog, focusedOrg);
+            }, 500);
+          }
         }
       });
       siteItem.append(deleteButton);
@@ -302,11 +355,19 @@ async function updateProjects(dialog, focusedOrg) {
 
   const projects = dialog.querySelector('#profile-projects');
   projects.innerHTML = `
-    <p>${orgs.length > 0 ? 'Sign into a project below to use this tool. Note that you may neeed to allow pop-ups from this site.' : 'No projects yet'}</p>
+    <p>${orgs.length > 0
+    ? 'Sign in to a project below. Note: You may neeed to allow pop-ups from this site.'
+    : 'No projects found'}</p>
   `;
   projects.append(orgList);
 
   updateButtons(dialog, orgs, focusedOrg);
+
+  if (focusedOrg && orgs.includes(focusedOrg) && loginInfo.includes(focusedOrg)) {
+    // project added and logged in, close dialog
+    dispatchProfileUpdateEvent(loginInfo);
+    dialog.close();
+  }
 
   return profileInfo;
 }

@@ -14,8 +14,9 @@ export function getSidekickId() {
  * Sends a message to the Sidekick extension.
  * @param {Object} message The message
  * @param {Function} [callback] The callback function
+ * @param {number} [timeout=200] The number of milliseconds to wait for a response
  */
-export async function messageSidekick(message, callback) {
+export async function messageSidekick(message, callback, timeout = 200) {
   return new Promise((resolve) => {
     const { chrome } = window;
     if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
@@ -38,7 +39,7 @@ export async function messageSidekick(message, callback) {
         if (!messageResolved) {
           resolve(NO_SIDEKICK);
         }
-      }, 200);
+      }, timeout);
     } else {
       resolve(NO_SIDEKICK);
     }
