@@ -1,4 +1,4 @@
-import { getMetadata } from '../../scripts/aem.js';
+import { getMetadata, loadBlock } from '../../scripts/aem.js';
 import { swapIcons } from '../../scripts/scripts.js';
 import { loadFragment } from '../fragment/fragment.js';
 
@@ -141,6 +141,13 @@ export default async function decorate(block) {
   navWrapper.className = 'nav-wrapper';
   navWrapper.append(nav);
   block.append(navWrapper);
+
+  // add login button
+  const loginBlock = document.createElement('div');
+  loginBlock.classList.add('profile');
+  loginBlock.dataset.blockName = 'profile';
+  nav.querySelector('.nav-tools').append(loginBlock);
+  await loadBlock(loginBlock);
 
   swapIcons(block);
 }

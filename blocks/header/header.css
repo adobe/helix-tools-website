@@ -155,7 +155,7 @@ header .nav-sections i.symbol-chevron::after {
   header .nav-sections .subsection {
     position: relative;
   }
-  
+
   header .nav-sections .subsection button + ul {
     flex-direction: column;
     gap: 0;
@@ -193,6 +193,10 @@ header .nav-tools {
   grid-area: tools;
   align-self: flex-start;
   line-height: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-m);
 }
 
 header .nav-tools p {
@@ -220,7 +224,7 @@ header .nav-tools a.button:hover {
   header .nav-tools {
     align-self: center;
   }
-  
+
   header .nav-tools p.button-wrapper {
     margin: 0;
   }
@@ -250,7 +254,7 @@ header .nav-hamburger button:hover,
 header .nav-hamburger button:focus {
   background-color: var(--gray-100);
 }
-  
+
 header .nav-hamburger i.symbol-hamburger,
 header .nav-hamburger i.symbol-hamburger::before,
 header .nav-hamburger i.symbol-hamburger::after {

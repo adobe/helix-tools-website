@@ -1,3 +1,5 @@
+import { ensureLogin } from '../../blocks/profile/profile.js';
+
 const log = document.getElementById('logger');
 const adminVersion = new URLSearchParams(window.location.search).get('hlx-admin-version');
 const adminVersionSuffix = adminVersion ? `?hlx-admin-version=${adminVersion}` : '';
@@ -19,14 +21,37 @@ function sleep(ms) {
   });
 }
 
+function extractOrgSite(url) {
+  const { hostname } = new URL(url);
+  const [, site, org] = hostname.split('.')[0].split('--');
+  return { org, site };
+}
+
 document.getElementById('urls-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   let counter = 0;
   const urls = document.getElementById('urls').value
     .split('\n')
     .map((u) => u.trim())
-    .filter((u) => u.length > 0);
+    .filter((u) => u.length > 0 && u.startsWith('https://'));
   const total = urls.length;
+
+  if (urls.length === 0) {
+    append('No valid URLs provided');
+    return false;
+  }
+
+  const { org, site } = extractOrgSite(urls[0]);
+  if (!await ensureLogin(org, site)) {
+    window.addEventListener('profile-update', ({ detail: loginInfo }) => {
+      if (loginInfo.includes(org)) {
+        e.target.querySelector('button[type="submit"]').click();
+      }
+    }, { once: true });
+    append(`Awaiting sign in to ${org}...`);
+    return false;
+  }
+
   const operation = document.getElementById('operation').dataset.value;
   const slow = document.getElementById('slow').checked;
   const forceUpdate = document.getElementById('force').checked;
@@ -114,7 +139,7 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
               bulkLog.textContent = bulkText.replace('$1', processed);
               const duration = (new Date(stopTime).valueOf()
                 - new Date(startTime).valueOf()) / 1000;
-              append(`bulk ${operation} completed in ${duration}s`);
+              append(`Bulk ${operation} completed in ${duration}s`);
             } else {
               // show job progress
               bulkLog.textContent = bulkText.replace('$1', processed);
@@ -142,6 +167,7 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
       dequeue(urls);
     }
   }
+  return true;
 });
 
 function registerListeners(doc) {
