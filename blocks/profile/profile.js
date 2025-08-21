@@ -131,7 +131,7 @@ function createLoginButton(org, loginInfo, closeModal) {
     if (!loggedIn) {
       if (opsMode) {
         loginUrl.searchParams.append('idp', 'microsoft');
-        loginUrl.searchParams.append('tenant', 'common');
+        loginUrl.searchParams.append('tenantId', 'common');
         loginUrl.searchParams.append('selectAccount', true);
       }
     }
