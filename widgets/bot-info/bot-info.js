@@ -12,6 +12,17 @@ export default function decorate(widget) {
     const contentSource = document.querySelector('.bot-info-content-source');
     const authorUrl = new URL(url.replace('https://content.da.live', 'https://da.live#'));
 
+    if (!user) {
+      const userElement = document.querySelector('.bot-info-user');
+      userElement.closest('li').setAttribute('aria-hidden', true);
+
+      const adminNote = document.querySelector('.bot-info-admin-note');
+      adminNote.setAttribute('aria-hidden', true);
+
+      const adminNoteNoUser = document.querySelector('.bot-info-no-user');
+      adminNoteNoUser.removeAttribute('aria-hidden');
+    }
+
     if (authorUrl.protocol === 'https:') {
       const editUrl = authorUrl.toString();
 
