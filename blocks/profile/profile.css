@@ -15,15 +15,17 @@
   height: 100%;
 }
 
-.profile button.login.ops:not(.quiet) {
+.profile button.login.ops:not(.quiet),
+.profile #profile-add-save.ops {
   color: white;
   background-color: var(--gray-800);
   border-color: var(--gray-800);
 }
 
-.profile button.login.ops[disabled] {
-  background-color: var(--gray-500);
-  border-color: var(--gray-500);
+.profile button.login.ops[disabled],
+.profile #profile-add-save.ops[disabled] {
+  background-color: var(--gray-400);
+  border-color: var(--gray-400);
 }
 
 .profile button.login.quiet.ops {

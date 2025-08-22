@@ -37,7 +37,7 @@ async function waitForSiteAdded(org, site) {
   return false;
 }
 
-async function addSite(org, site) {
+async function addSite(org, site, opsMode = false) {
   if (!org || !site) {
     return false;
   }
@@ -55,6 +55,8 @@ async function addSite(org, site) {
   await messageSidekick({
     action: 'addSite',
     config: { org, site },
+    idp: opsMode ? 'microsoft' : undefined,
+    tenant: opsMode ? 'common' : undefined,
   }, null, 10000);
 
   if (await waitForSiteAdded(org, site)) {
@@ -225,7 +227,8 @@ function updateButtons(dialog, orgs, focusedOrg) {
         });
         const org = form.querySelector('#profile-add-org').value;
         const site = form.querySelector('#profile-add-site').value;
-        if (await addSite(org, site)) {
+        const opsMode = target.classList.contains('ops');
+        if (await addSite(org, site, opsMode)) {
           setTimeout(async () => {
             resetForm();
             // eslint-disable-next-line no-use-before-define
