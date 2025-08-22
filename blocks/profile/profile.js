@@ -55,7 +55,8 @@ async function addSite(org, site, opsMode = false) {
   await messageSidekick({
     action: 'addSite',
     config: { org, site },
-    opsMode,
+    idp: opsMode ? 'microsoft' : undefined,
+    tenantId: opsMode ? 'common' : undefined,
   }, null, 10000);
 
   if (await waitForSiteAdded(org, site)) {
