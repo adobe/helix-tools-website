@@ -55,6 +55,10 @@
   display: none;
 }
 
+[aria-hidden="true"] {
+  display: none;
+}
+
 .bot-info-alert[aria-hidden="false"],
 .bot-info-success[aria-hidden="false"] {
   display: block;
