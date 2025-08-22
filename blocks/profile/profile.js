@@ -56,7 +56,7 @@ async function addSite(org, site, opsMode = false) {
     action: 'addSite',
     config: { org, site },
     idp: opsMode ? 'microsoft' : undefined,
-    tenantId: opsMode ? 'common' : undefined,
+    tenant: opsMode ? 'common' : undefined,
   }, null, 10000);
 
   if (await waitForSiteAdded(org, site)) {
