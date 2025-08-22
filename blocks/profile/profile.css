@@ -30,7 +30,8 @@
   color: var(--gray-800);
 }
 
-.profile .modal {
+
+.profile .profile-modal {
   box-sizing: border-box;
   position: relative;
   width: 600px;
@@ -40,9 +41,11 @@
   line-height: 1.5;
   border: none;
   border-radius: 1rem;
-  box-shadow: var(--shadow-default);}
+  box-shadow: var(--shadow-default);
+  overscroll-behavior: initial;
+}
 
-.profile .modal .cross {
+.profile .profile-modal .cross {
   position: relative;
   font-size: 1rem;
   text-align: center;
@@ -57,7 +60,7 @@
   cursor: pointer;
 }
 
-.profile .modal .cross::before {
+.profile .profile-modal .cross::before {
   content: '×';
   position: absolute;
   left: 50%;
@@ -67,21 +70,28 @@
   font-size: var(--font-size-800);
 }
 
-.profile .modal #profile-close {
+.profile .profile-modal #profile-close {
   position: absolute;
   top: 1.5rem;
   right: 1.5rem;
 }
 
-.profile .modal #profile-close::before {
+.profile .profile-modal #profile-close::before {
   color: var(--gray-600);
 }
 
-.profile .modal h2 {
+/* override default modal styles */
+.profile .profile-modal>div {
+  padding: 0;
+  max-height: unset;
+  overflow-y: unset;
+}
+
+.profile .profile-modal h2 {
   margin-top: 0;
 }
 
-.profile .modal .profile-add-form {
+.profile .profile-modal .profile-add-form {
   position: fixed;
   top: 50%;
   left: 50%;
@@ -94,47 +104,47 @@
   box-shadow: var(--shadow-default);
 }
 
-.profile .modal .profile-add-form p {
+.profile .profile-modal .profile-add-form p {
   margin: 0 0 2rem;
   font-weight: bold;
   font-size: var(--body-size-xl);
 }
 
-.profile .modal .profile-add-form input {
+.profile .profile-modal .profile-add-form input {
   margin: 0 0 1rem;
 }
 
-.profile .modal #profile-projects {
+.profile .profile-modal #profile-projects {
   margin: 1rem 0;
   border-bottom: 1px solid var(--gray-400);
 }
 
-.profile .modal #profile-projects > p {
+.profile .profile-modal #profile-projects>p {
   margin-bottom: 3rem;
 }
 
-.profile .modal .profile-orgs {
+.profile .profile-modal .profile-orgs {
   margin-top: 2rem;
 }
 
-.profile .modal .profile-orgs > li {
+.profile .profile-modal .profile-orgs>li {
   border-top: 1px solid var(--gray-400);
   padding: 1rem 0;
 }
 
-.profile .modal .profile-orgs h3 {
+.profile .profile-modal .profile-orgs h3 {
   margin-top: 0;
   position: relative;
 }
 
-.profile .modal .profile-orgs h3 .user-info {
+.profile .profile-modal .profile-orgs h3 .user-info {
   font-size: var(--body-size-m);
   font-weight: normal;
   color: var(--gray-600);
-  margin-left: 0.5rem;
+  display: block;
 }
 
-.profile .modal .profile-orgs h3 .button {
+.profile .profile-modal .profile-orgs h3 .button {
   position: absolute;
   top: 0;
   right: 0;
@@ -142,7 +152,7 @@
   line-height: normal;
 }
 
-.profile .modal .profile-orgs .profile-sites li {
+.profile .profile-modal .profile-orgs .profile-sites li {
   line-height: 2rem;
   display: flex;
   flex-flow: row nowrap;
@@ -151,23 +161,23 @@
   margin-bottom: 0.5rem;
 }
 
-.profile .modal:not(.edit-mode) .profile-orgs .profile-sites li .cross {
+.profile .profile-modal:not(.edit-mode) .profile-orgs .profile-sites li .cross {
   display: none;
 }
 
-.profile .modal .profile-orgs .profile-sites li input[type="radio"] {
+.profile .profile-modal .profile-orgs .profile-sites li input[type="radio"] {
   margin: 0;
 }
 
-.profile .modal .profile-orgs .profile-sites li label {
+.profile .profile-modal .profile-orgs .profile-sites li label {
   margin: 2px 0;
 }
 
-.profile .modal .profile-orgs .profile-sites li input:checked ~ label {
+.profile .profile-modal .profile-orgs .profile-sites li input:checked~label {
   font-weight: bold;
 }
 
-.profile .modal .external-link {
+.profile .profile-modal .external-link {
   color: var(--color-link);
   margin: 0 0 -4px;
   box-sizing: border-box;
@@ -180,8 +190,8 @@
   border-radius: 4px;
 }
 
-.profile .modal .external-link::after,
-.profile .modal .external-link::before {
+.profile .profile-modal .external-link::after,
+.profile .profile-modal .external-link::before {
   content: "";
   display: block;
   box-sizing: border-box;
@@ -189,7 +199,7 @@
   right: 4px;
 }
 
-.profile .modal .external-link::after {
+.profile .profile-modal .external-link::after {
   width: 10px;
   height: 2px;
   background: currentcolor;
@@ -197,10 +207,17 @@
   bottom: 8px;
 }
 
-.profile .modal .external-link::before {
+.profile .profile-modal .external-link::before {
   width: 6px;
   height: 6px;
   top: 4px;
   border-top: 2px solid;
   border-right: 2px solid;
+}
+
+@media (width >=900px) {
+  .profile .profile-modal .profile-orgs h3 .user-info {
+    display: inline;
+    margin-left: 0.5rem;
+  }
 }

@@ -10,9 +10,9 @@ async function getLoginInfo() {
   return messageSidekick({ action: 'getAuthInfo' });
 }
 
-function dispatchProfileUpdateEvent(loginInfo) {
+function dispatchProfileEvent(event, detail = {}) {
   window.dispatchEvent(
-    new CustomEvent('profile-update', { detail: loginInfo }),
+    new CustomEvent(`profile-${event}`, { detail }),
   );
 }
 
@@ -131,7 +131,7 @@ function createLoginButton(org, loginInfo, closeModal) {
     if (!loggedIn) {
       if (opsMode) {
         loginUrl.searchParams.append('idp', 'microsoft');
-        loginUrl.searchParams.append('tenant', 'common');
+        loginUrl.searchParams.append('tenantId', 'common');
         loginUrl.searchParams.append('selectAccount', true);
       }
     }
@@ -148,7 +148,7 @@ function createLoginButton(org, loginInfo, closeModal) {
           const orgTitle = loginButton.parentElement.parentElement;
           loginButton.replaceWith(createLoginButton(org, newLoginInfo));
           fetchUserInfo(orgTitle.querySelector('.user-info'), org, selectedSite);
-          dispatchProfileUpdateEvent(newLoginInfo);
+          dispatchProfileEvent('update', newLoginInfo);
         }, 200);
         if (closeModal) {
           // close modal after login
@@ -365,7 +365,7 @@ async function updateProjects(dialog, focusedOrg) {
 
   if (focusedOrg && orgs.includes(focusedOrg) && loginInfo.includes(focusedOrg)) {
     // project added and logged in, close dialog
-    dispatchProfileUpdateEvent(loginInfo);
+    dispatchProfileEvent('update', loginInfo);
     dialog.close();
   }
 
@@ -376,7 +376,7 @@ async function showModal(block, focusedOrg) {
   let dialog = block.querySelector('dialog');
   if (!dialog) {
     dialog = document.createElement('dialog');
-    dialog.classList.add('modal');
+    dialog.classList.add('profile-modal');
     dialog.id = 'profile-modal';
     dialog.closedBy = 'any';
     block.append(dialog);
@@ -409,17 +409,17 @@ export default async function decorate(block) {
   const avatar = document.createElement('button');
   avatar.innerHTML = `
     <span class="icon" title="Manage projects and sign in">
-      <img src="/icons/user.svg" alt="User">
+      <img src="/blocks/profile/profile.svg" alt="User">
     </span>
   `;
   avatar.id = 'profile';
   avatar.href = window.location.href;
-  avatar.classList.add('profile');
   avatar.addEventListener('click', (e) => {
     e.preventDefault();
     showModal(block);
   });
   block.append(avatar);
+  dispatchProfileEvent('loaded');
 }
 
 /**
@@ -434,6 +434,13 @@ export async function ensureLogin(org, site) {
   if (!loggedIn) {
     // show the profile modal
     const block = document.querySelector('header .profile');
+    if (!block) {
+      // wait for profile to be loaded
+      window.addEventListener('profile-loaded', () => {
+        ensureLogin(org, site);
+      }, { once: true });
+      return false;
+    }
     await showModal(block, org);
 
     const orgItems = [...block.querySelectorAll('#profile-projects .profile-orgs > li')];
