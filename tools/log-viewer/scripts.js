@@ -119,7 +119,7 @@ function showLoadingButton(button) {
   button.style.minWidth = `${width}px`;
   button.style.minHeight = `${height}px`;
   // stores original button text content
-  button.dataset.label = button.textContent;
+  button.dataset.label = button.textContent || 'Submit';
   button.innerHTML = '<i class="symbol symbol-loading"></i>';
 }
 
