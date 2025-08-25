@@ -233,6 +233,12 @@ function updateButtons(dialog, orgs, focusedOrg) {
         const org = form.querySelector('#profile-add-org').value;
         const site = form.querySelector('#profile-add-site').value;
         const opsMode = isOpsMode(target);
+
+        if (!org || !site) {
+          alert('Please provide an org and site.');
+          return;
+        }
+
         if (await addSite(org, site, opsMode)) {
           setTimeout(async () => {
             resetForm();
