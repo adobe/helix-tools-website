@@ -93,16 +93,18 @@ async function removeSite(org, site) {
   });
 }
 
-async function fetchUserInfo(userInfoElem, org, site) {
-  let userInfo = '';
-  const resp = await fetch(`https://admin.hlx.page/profile/${org}/${site}`);
-  if (resp.ok) {
-    const { profile } = await resp.json();
-    if (profile) {
-      userInfo = `(${profile.email})`;
+async function fetchUserInfo(userInfoElem, org, site, loginInfo) {
+  if (Array.isArray(loginInfo) && loginInfo.includes(org)) {
+    let userInfo = '';
+    const resp = await fetch(`https://admin.hlx.page/profile/${org}/${site}`);
+    if (resp.ok) {
+      const { profile } = await resp.json();
+      if (profile) {
+        userInfo = `(${profile.email})`;
+      }
     }
+    userInfoElem.textContent = userInfo;
   }
-  userInfoElem.textContent = userInfo;
 }
 
 function createLoginButton(org, loginInfo, closeModal) {
@@ -154,7 +156,7 @@ function createLoginButton(org, loginInfo, closeModal) {
           const newLoginInfo = await getLoginInfo();
           const orgTitle = loginButton.parentElement.parentElement;
           loginButton.replaceWith(createLoginButton(org, newLoginInfo));
-          fetchUserInfo(orgTitle.querySelector('.user-info'), org, selectedSite);
+          fetchUserInfo(orgTitle.querySelector('.user-info'), org, selectedSite, newLoginInfo);
           dispatchProfileEvent('update', newLoginInfo);
         }, 200);
         if (closeModal) {
@@ -331,7 +333,7 @@ async function updateProjects(dialog, focusedOrg) {
         return;
       }
       if (i === 0) {
-        fetchUserInfo(userInfo, org, site);
+        fetchUserInfo(userInfo, org, site, loginInfo);
       }
       const siteItem = document.createElement('li');
       siteItem.dataset.name = site;
