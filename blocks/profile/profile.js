@@ -94,8 +94,8 @@ async function removeSite(org, site) {
 }
 
 async function fetchUserInfo(userInfoElem, org, site, loginInfo) {
+  let userInfo = '';
   if (Array.isArray(loginInfo) && loginInfo.includes(org)) {
-    let userInfo = '';
     const resp = await fetch(`https://admin.hlx.page/profile/${org}/${site}`);
     if (resp.ok) {
       const { profile } = await resp.json();
@@ -103,8 +103,8 @@ async function fetchUserInfo(userInfoElem, org, site, loginInfo) {
         userInfo = `(${profile.email})`;
       }
     }
-    userInfoElem.textContent = userInfo;
   }
+  userInfoElem.textContent = userInfo;
 }
 
 function createLoginButton(org, loginInfo, closeModal) {
