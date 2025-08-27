@@ -77,3 +77,11 @@
   font-weight: bold;
   color: var(--blue-900);
 }
+
+.bot-info-welcome {
+  margin-top: 20px;
+  background-color: var(--green-100);
+  border: 1px solid var(--green-900);
+  border-radius: 10px;
+  padding: 10px;
+}
