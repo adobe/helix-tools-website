@@ -27,6 +27,7 @@ export default function decorate(widget) {
       const editUrl = authorUrl.toString();
 
       const editLink = document.createElement('a');
+      editLink.target = '_blank';
       editLink.href = editUrl;
       editLink.textContent = editUrl;
       contentSource.textContent = '';
