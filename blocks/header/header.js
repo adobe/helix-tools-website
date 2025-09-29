@@ -24,7 +24,7 @@ function keyToggleListener(e) {
 
 function closeOnFocusLost(e) {
   const nav = e.currentTarget;
-  if (!nav.contains(e.relatedTarget)) {
+  if ((nav && e.relatedTarget) && !nav.contains(e.relatedTarget)) {
     const button = nav.querySelector('.toggle-nav');
     const sections = nav.querySelector('.nav-sections');
     // eslint-disable-next-line no-use-before-define
@@ -36,6 +36,7 @@ function toggleNav(button, sections) {
   const expanded = button.getAttribute('aria-expanded') === 'true';
   button.setAttribute('aria-expanded', !expanded);
   sections.setAttribute('aria-hidden', expanded);
+  button.setAttribute('aria-label', !expanded ? 'Close navigation' : 'Open navigation');
 
   const nav = button.closest('#nav');
   if (!expanded) {
@@ -65,7 +66,7 @@ export default async function decorate(block) {
   nav.classList.add('header-nav');
   while (fragment.firstElementChild) nav.append(fragment.firstElementChild);
 
-  const classes = ['title', 'sections', 'user'];
+  const classes = ['title', 'sections', 'tools'];
   classes.forEach((c, i) => {
     const section = nav.children[i];
     if (section) {
@@ -83,6 +84,7 @@ export default async function decorate(block) {
       const button = document.createElement('button');
       button.classList.add('button', 'outline', 'toggle-nav');
       button.id = 'toggle-nav';
+      button.setAttribute('aria-label', 'Open navigation');
       button.setAttribute('aria-haspopup', true);
       button.setAttribute('aria-expanded', false);
       button.setAttribute('aria-controls', 'nav-sections');
@@ -129,24 +131,41 @@ export default async function decorate(block) {
       const url = new URL(a.href);
       if (url.hostname === 'labs.aem.live') {
         a.classList.add('lab-link');
-      } else if (url.hostname !== 'tools.aem.live') {
-        a.classList.add('button', 'emphasis');
-        a.target = '_blank';
       }
     });
   }
 
   // add login button
-  const user = nav.querySelector('.nav-user');
-  if (user) {
+  const tools = nav.querySelector('.nav-tools');
+  if (tools) {
+    const toolsList = tools.querySelector('ul');
+    toolsList.classList.add('tools-list');
+
+    toolsList.querySelectorAll('a').forEach((a) => {
+      const url = new URL(a.href);
+      if (url.hostname !== 'tools.aem.live' && url.hostname !== window.location.hostname) {
+        a.classList.add('button', 'outline');
+        a.target = '_blank';
+        a.title = a.textContent;
+      }
+
+      const icon = a.querySelector('.icon');
+      if (icon) {
+        const label = document.createElement('span');
+        label.classList.add('label');
+        label.textContent = a.textContent;
+        a.replaceChildren(label, icon);
+      }
+    });
+
     const loginBlock = document.createElement('div');
     loginBlock.classList.add('profile');
     loginBlock.dataset.blockName = 'profile';
 
-    if (user.querySelector('.icon-user')) {
-      user.querySelector('.icon-user').replaceWith(loginBlock);
+    if (tools.querySelector('.icon-user')) {
+      tools.querySelector('.icon-user').replaceWith(loginBlock);
     } else {
-      user.append(loginBlock);
+      tools.append(loginBlock);
     }
     await loadBlock(loginBlock);
   }

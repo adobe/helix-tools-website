@@ -111,6 +111,38 @@ header.header-wrapper {
           }
         }
       }
+
+      .nav-tools {
+        .tools-list {
+          display: flex;
+          gap: var(--spacing-m);
+          align-items: center;
+          justify-content: center;
+        }
+
+        .button {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: var(--spacing-s);
+          font-size: var(--body-size-m);
+          color: var(--color-text);
+          border-color: var(--color-text);
+          
+          .icon {
+            line-height: 0;
+          }
+
+          @media screen and (width <= 600px) {
+            border-radius: 100%;
+            padding: .4em;
+
+            .label {
+              display: none;
+            }
+          }
+        }
+      }
     }
   }
 }

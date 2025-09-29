@@ -3,7 +3,7 @@
 }
 
 .profile #profile {
-  display: inline-block;
+  display: block;
   width: 32px;
   height: 32px;
   border-radius: 50%;
