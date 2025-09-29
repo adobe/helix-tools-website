@@ -21,6 +21,5 @@ export default function decorate(block) {
     li.className = 'cards-card-linked';
     li.addEventListener('click', () => a.click());
   });
-  block.textContent = '';
-  block.append(ul);
+  block.replaceChildren(ul);
 }
