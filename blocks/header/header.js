@@ -91,6 +91,10 @@ export default async function decorate(block) {
       button.textContent = title.textContent;
       title.replaceWith(button);
 
+      const buttonIcon = document.createElement('span');
+      buttonIcon.classList.add('toggle-nav-icon');
+      button.append(buttonIcon);
+
       button.addEventListener('click', () => {
         toggleNav(button, sections);
       });

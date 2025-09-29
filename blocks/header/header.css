@@ -28,23 +28,42 @@ header.header-wrapper {
         position: relative;
         padding-inline-end: calc(1.15em + 1em);
 
-        &::after {
-          content: '';
-          display: inline-block;
+        .toggle-nav-icon {
           position: absolute;
+          right: 0.5em;
           top: 50%;
-          right: 1em;
-          transform: translateY(-50%) rotate(-45deg);
-          width: .5rem;
-          height: .5rem;
-          border-top: 2px solid currentcolor;
-          border-right: 2px solid currentcolor;
-          transition: transform 0.3s ease-in-out;
+          transform: translate(0%, -50%);
+          width: 1em;
+          height: 1em;
+
+          &::before, &::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            right: 0;
+            width: 50%;
+            height: 2px;
+            background-color: currentcolor;
+            transform: translate(0%, -50%) rotate(-45deg);
+            transition: all 0.3s ease-in-out;
+          }
+
+          &::after {
+            right: 50%;
+            transform: translate(50%, -50%) rotate(45deg);
+          }
         }
 
         &[aria-expanded='true'] {
-          &::after {
-            transform: translateY(-50%) rotate(135deg);
+          .toggle-nav-icon {
+            &::before, &::after {
+              width: 100%;
+              transform: translate(0%, -50%) rotate(45deg);
+            }
+
+            &::after {
+              transform: translate(50%, -50%) rotate(-45deg);
+            }
           }
         }
       }
