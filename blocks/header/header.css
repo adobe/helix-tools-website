@@ -139,7 +139,7 @@ header.header-wrapper {
           justify-content: center;
         }
 
-        .button {
+        .button.outline {
           display: flex;
           align-items: center;
           justify-content: center;
