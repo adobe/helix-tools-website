@@ -21,6 +21,7 @@ header.header-wrapper {
       position: relative;
       gap: var(--spacing-m);
       margin: 0 auto;
+      max-width: 1200px;
 
       button.toggle-nav {
         color: var(--color-text);
@@ -72,13 +73,13 @@ header.header-wrapper {
       .nav-sections {
         position: fixed;
         top: calc(var(--header-height) + var(--spacing-s));
-        left: var(--horizontal-spacing);
         bottom: var(--spacing-s);
+        max-width: 325px;
         display: none;
         opacity: 0;
-        background: white;
+        background: var(--color-background);
         padding: var(--spacing-l);
-        box-shadow: var(--shadow-hover);
+        box-shadow: var(--shadow-default);
         z-index: 1;
         border-radius: var(--rounding-l);
         transition-property: all;
@@ -117,13 +118,13 @@ header.header-wrapper {
             ul {
               display: grid;
               gap: var(--spacing-s);
-              margin-block-end: var(--spacing-xl);
+              margin-block-end: var(--spacing-s);
             }
           }
 
           a {
             &.lab-link::after {
-              content: '🧪';
+              content: '🧪' / "Experimental tools from our labs";
               font-size: .8em;
               margin-inline: 1ch;
             }
