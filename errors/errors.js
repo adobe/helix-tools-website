@@ -14,8 +14,7 @@ async function loadCSS(href) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const devMode = !document.querySelector('script[src*="errors.js"]').src.startsWith('tools.aem.live');
-  await loadCSS(`${!devMode ? 'https://tools.aem.live' : ''}/errors/errors.css`);
+  await loadCSS('https://tools.aem.live/errors/errors.css');
 
   const description = document.querySelector('p');
   const { hostname } = window.location;
