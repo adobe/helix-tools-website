@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const description = document.querySelector('p');
   const { hostname } = window.location;
   const rso = hostname.split('.')[0];
-  const suffix = hostname.split('.')[2] === 'page' ? '.page' : '.live';
+  const suffix = hostname.split('.')[2] === 'page' ? 'page' : 'live';
 
   description.innerHTML = `Your request has been blocked, please use <a href="https://${rso}.aem.${suffix}" target="_blank">${rso}.aem.live</a> instead.<br><br>
     See <a href="https://www.aem.live/developer/upgrade" target="_blank">https://www.aem.live/developer/upgrade</a> for more information.`;
