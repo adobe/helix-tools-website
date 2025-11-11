@@ -1,0 +1,160 @@
+/* Form layout */
+@media (width >= 900px) {
+  .json2html form#config-form {
+    display: grid;
+    grid-template:
+      'config' auto
+      'button' 1fr / 1fr;
+    gap: var(--spacing-l);
+  }
+
+  .json2html form#config-form > .config-field {
+    grid-area: config;
+  }
+
+  .json2html form#config-form > .button-wrapper {
+    grid-area: button;
+  }
+}
+
+/* Config field layout */
+.json2html .config-field {
+  display: grid;
+  gap: var(--spacing-m);
+}
+
+@media (width >= 600px) {
+  .json2html .config-field {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.json2html .branch-field input {
+  width: 100%;
+}
+
+/* Configuration display */
+.json2html .config-display {
+  margin-top: var(--spacing-xxl);
+  padding-top: var(--spacing-l);
+  border-top: var(--border-m) solid var(--gray-200);
+}
+
+.json2html .config-display[aria-hidden='true'] {
+  display: none;
+}
+
+.json2html .config-display h2 {
+  margin-bottom: var(--spacing-l);
+}
+
+.json2html .config-content {
+  margin-bottom: var(--spacing-l);
+}
+
+.json2html .config-json {
+  background-color: var(--gray-50);
+  border: var(--border-s) solid var(--gray-200);
+  border-radius: var(--rounding-m);
+  padding: var(--spacing-m);
+  overflow-x: auto;
+}
+
+.json2html .config-json pre {
+  margin: 0;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: var(--detail-size-s);
+  line-height: 1.5;
+}
+
+.json2html .config-json code {
+  background-color: transparent;
+  padding: 0;
+}
+
+/* Update form */
+.json2html #update-form textarea {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: var(--detail-size-s);
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 200px;
+}
+
+/* Result display states */
+.json2html .result-display {
+  margin-top: var(--spacing-l);
+}
+
+.json2html .result-display[aria-hidden='true'] {
+  display: none;
+}
+
+.json2html .result-display .no-results[aria-hidden='true'],
+.json2html .result-display .error[aria-hidden='true'],
+.json2html .result-display .login[aria-hidden='true'],
+.json2html .result-display .loading[aria-hidden='true'],
+.json2html .result-display .success[aria-hidden='true'] {
+  display: none;
+}
+
+.json2html .result-display .no-results > div,
+.json2html .result-display .error > div,
+.json2html .result-display .login > div,
+.json2html .result-display .loading > div,
+.json2html .result-display .success > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-m);
+  padding: var(--spacing-xxl) 0;
+  min-height: 200px;
+}
+
+.json2html .result-display .no-results span.icon,
+.json2html .result-display .error span.icon,
+.json2html .result-display .login span.icon,
+.json2html .result-display .success span.icon {
+  font-size: var(--heading-size-xxxxl);
+  line-height: 0;
+}
+
+.json2html .result-display .no-results p strong,
+.json2html .result-display .error p strong,
+.json2html .result-display .success p strong {
+  font-size: var(--detail-size-xl);
+}
+
+.json2html .result-display .login > div {
+  flex-direction: column;
+  gap: 0;
+}
+
+.json2html .result-display .login p {
+  text-align: center;
+}
+
+.json2html .result-display .error span.icon,
+.json2html .result-display .error p strong {
+  color: var(--red-900);
+}
+
+.json2html .result-display .success span.icon,
+.json2html .result-display .success p strong {
+  color: var(--green-900);
+}
+
+.json2html .result-display .loading i.symbol {
+  --border-m: 7px;
+
+  width: 5em;
+  height: 5em;
+  color: var(--gray-200);
+}
+
+/* Button wrapper */
+.json2html .button-wrapper {
+  display: flex;
+  gap: var(--spacing-m);
+  flex-wrap: wrap;
+}

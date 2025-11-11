@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSON2HTML Configuration</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/json2html/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/json2html/styles.css" />
+</head>
+
+<body class="json2html">
+  <header></header>
+  <main>
+    <!-- TITLE -->
+    <div>
+      <h1>JSON2HTML Configuration</h1>
+      <p>The <strong>JSON2HTML Configuration</strong> tool provides an interface to configure the JSON2HTML endpoint for an AEM project.</p>
+      <p>Access to configuration is determined by user permissions.</p>
+      <p>To configure JSON2HTML, log in to the AEM sidekick for the relevant site in a separate tab, then return here to manage the configuration.</p>
+    </div>
+
+    <!-- FORM -->
+    <div>
+      <form id="config-form">
+
+        <section class="form-field config-field">
+          <div class="form-field org-field">
+            <label for="org">Organization</label>
+            <input name="org" id="org" list="org-list" autocomplete="off" required />
+            <datalist id="org-list"></datalist>
+          </div>
+          <div class="form-field site-field">
+            <label for="site">Site</label>
+            <input name="site" id="site" list="site-list" autocomplete="off" disabled required />
+            <datalist id="site-list"></datalist>
+          </div>
+          <div class="form-field branch-field">
+            <label for="branch">Branch</label>
+            <input name="branch" id="branch" value="main" autocomplete="off" required />
+          </div>
+        </section>
+
+        <p class="button-wrapper">
+          <button type="submit" class="button">Load Configuration</button>
+          <button type="reset" id="config-reset" class="button outline">Reset</button>
+        </p>
+      </form>
+    </div>
+
+    <!-- CONFIGURATION DISPLAY -->
+    <div class="config-display" aria-hidden="true">
+      <h2>Current Configuration</h2>
+
+      <div class="config-content">
+        <div class="config-json">
+          <pre><code id="config-output"></code></pre>
+        </div>
+      </div>
+
+      <form id="update-form">
+        <div class="form-field">
+          <label for="config-input">Configuration JSON</label>
+          <textarea
+            name="config-input"
+            id="config-input"
+            rows="10"
+            placeholder='Enter JSON configuration, e.g.:
+{
+  "data": "/news/query-index.json",
+  "filter": "article"
+}'
+            required
+          ></textarea>
+        </div>
+
+        <p class="button-wrapper">
+          <button type="submit" class="button">Save Configuration</button>
+        </p>
+      </form>
+    </div>
+
+    <!-- RESULTS/ERROR STATES -->
+    <div class="result-display">
+      <div class="no-results" aria-hidden="false">
+        <div>
+          <span class="icon icon-search"></span>
+          <div>
+            <p><strong>No configuration loaded</strong></p>
+            <p>Submit the form above to load the current configuration.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="error" aria-hidden="true">
+        <div>
+          <span class="icon icon-notice"></span>
+          <div>
+            <p><strong>Error</strong></p>
+            <p id="error-message">Unable to load the configuration.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="login" aria-hidden="true">
+        <div>
+          <span class="icon icon-user"></span>
+          <div>
+            <p>Sign in to view the configuration.</p>
+            <p></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="loading" aria-hidden="true">
+        <div>
+          <i class="symbol symbol-loading"></i>
+        </div>
+      </div>
+
+      <div class="success" aria-hidden="true">
+        <div>
+          <span class="icon icon-check"></span>
+          <div>
+            <p><strong>Success</strong></p>
+            <p id="success-message">Configuration saved successfully.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+  <footer></footer>
+</body>
+
+</html>
