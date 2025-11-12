@@ -1,5 +1,5 @@
 import {
-  // buildBlock,
+  buildBlock,
   loadHeader,
   loadFooter,
   decorateIcons,
@@ -10,10 +10,8 @@ import {
   loadSection,
   loadSections,
   loadCSS,
-  sampleRUM,
   getMetadata,
   loadBlock,
-  buildBlock,
   decorateBlock,
   loadScript,
 } from './aem.js';
@@ -83,19 +81,6 @@ export function swapIcons() {
     observer.observe(icon);
   });
 }
-
-/**
- * Builds all synthetic blocks in a container element.
- * @param {Element} main The container element
- */
-// function buildAutoBlocks(main) {
-//   try {
-//     // build auto blocks
-//   } catch (error) {
-//     // eslint-disable-next-line no-console
-//     console.error('Auto Blocking failed', error);
-//   }
-// }
 
 /**
  * Decorates links with appropriate classes to style them as buttons
@@ -195,10 +180,35 @@ export async function decorateGuideTemplateCodeBlock() {
 export function decorateMain(main) {
   decorateIcons(main);
   decorateImages(main);
-  // buildAutoBlocks(main);
   decorateSections(main);
   decorateBlocks(main);
   decorateButtons(main);
+}
+
+async function toolReady() {
+  const isToolPage = window.location.pathname.includes('/tools/') && window.location.pathname.endsWith('.html');
+  if (isToolPage) {
+    try {
+      const toolScript = [...document.querySelectorAll('script')].find((s) => {
+        if (s.src && s.src.includes('/tools/')) {
+          const toolName = s.src.split('/tools/').pop().split('/')[0];
+          return s.src.endsWith(`${toolName}.js`) || s.src.endsWith('scripts.js');
+        }
+
+        return false;
+      });
+      if (toolScript) {
+        const mod = await import(toolScript.src);
+        if (mod && mod.ready) {
+          return mod.ready();
+        }
+      }
+    } catch {
+      // do nothing
+    }
+  }
+
+  return Promise.resolve();
 }
 
 /**
@@ -213,9 +223,8 @@ async function loadEager(doc) {
     decorateMain(main);
     document.body.classList.add('appear');
     await loadSection(main.querySelector('.section'), waitForFirstImage);
+    await toolReady();
   }
-
-  sampleRUM.enhance();
 
   try {
     /* if desktop (proxy for fast connection) or fonts already loaded, load fonts.css */

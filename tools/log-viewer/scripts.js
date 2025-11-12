@@ -843,4 +843,9 @@ async function populateForm(doc) {
   await initConfigField();
 }
 
-populateForm(document);
+const isReady = populateForm(document);
+
+// eslint-disable-next-line import/prefer-default-export
+export async function ready() {
+  await isReady;
+}
