@@ -52,6 +52,10 @@
   background-color: var(--color-background);
 }
 
+.console tbody td {
+  white-space: nowrap;
+}
+
 .console tbody tr:first-of-type td {
   padding-top: 0;
 }
