@@ -130,13 +130,6 @@ export default async function decorate(block) {
         }
       }
     });
-
-    sections.querySelectorAll('a').forEach((a) => {
-      const url = new URL(a.href);
-      if (url.hostname === 'labs.aem.live') {
-        a.classList.add('lab-link');
-      }
-    });
   }
 
   // add login button

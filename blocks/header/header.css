@@ -121,14 +121,6 @@ header.header-wrapper {
               margin-block-end: var(--spacing-s);
             }
           }
-
-          a {
-            &.lab-link::after {
-              content: '🧪' / "Experimental tools from our labs";
-              font-size: .8em;
-              margin-inline: 1ch;
-            }
-          }
         }
       }
 
