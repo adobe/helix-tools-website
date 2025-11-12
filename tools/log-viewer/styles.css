@@ -327,3 +327,12 @@
 .log-viewer table[data-path-expand='true'] td i.symbol-error {
   display: none;
 }
+
+/* Constrain User column width */
+.log-viewer table thead th#logs-user,
+.log-viewer table tbody td:nth-child(3) {
+  max-width: 12ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

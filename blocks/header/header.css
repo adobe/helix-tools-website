@@ -164,5 +164,32 @@ header.header-wrapper {
         }
       }
     }
+
+    .experimental-ribbon {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: fit-content;
+      border-bottom-left-radius: var(--rounding-l);
+      border-bottom-right-radius: var(--rounding-l);
+      padding: var(--spacing-xs) var(--spacing-m);
+      background-color: var(--purple-900);
+      color: white;
+      font-size: var(--detail-size-xs);
+      font-weight: var(--weight-bold);
+      text-align: center;
+      text-transform: uppercase;
+      box-shadow: var(--shadow-default);
+      z-index: 2;
+
+      @media (width >= 1200px) {
+        top: 30px;
+        left: -105px;
+        width: 300px;
+        border-radius: 0;
+        transform: rotate(-45deg);
+      }
+    }
   }
 }

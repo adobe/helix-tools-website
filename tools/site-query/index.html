@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>Site Query</title>
+  <script src="/scripts/aem.js" type="module"></script>
+  <script src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script src="./scripts.js" type="module" defer></script>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body class="site-query">
+  <header></header>
+  <main>
+    <div>
+      <h1>Site Query</h1>
+      <p>Search all of your site's content to find block usages and more.</p>
+    </div>
+
+    <div>
+      <form id="search-form" aria-hidden="false">
+        <section class="form-field config-field">
+          <div class="form-field org-field">
+            <label for="org">Organization</label>
+            <input name="org" id="org" list="org-list" autocomplete="off" required />
+            <datalist id="org-list"></datalist>
+          </div>
+          <div class="form-field site-field">
+            <label for="site">Site</label>
+            <input name="site" id="site" list="site-list" autocomplete="off" disabled required />
+            <datalist id="site-list"></datalist>
+          </div>
+        </section>
+
+        <div class="field-group">
+          <div class="form-field text-field">
+            <label for="query">Query</label>
+            <input name="query" id="query" required />
+            <div class="field-help-text">
+              <p>Query is executed against the undecorated page HTML</p>
+            </div>
+          </div>
+
+          <div class="form-field select-field">
+            <label for="queryType">Query Type</label>
+            <select name="queryType" id="queryType">
+              <option value="selector" selected>CSS Selector</option>
+              <option value="media">Media Source</option>
+              <option value="Text">Text Content</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="form-field text-field">
+            <label for="sitemap">Sitemap or Query Index</label>
+            <input name="sitemap" id="sitemap" data-default-value="/sitemap-index.xml" placeholder="/sitemap-index.xml" />
+            <div class="field-help-text">
+              <p>Path to sitemap or query index to find pages</p>
+            </div>
+          </div>
+
+          <div class="form-field text-field">
+            <label for="path">Path Filter</label>
+            <input name="path" id="path" data-default-value="/" placeholder="/" />
+          </div>
+        </div>
+
+        <p class="button-wrapper">
+          <button type="submit" class="button">Submit</button>
+          <button type="reset" id="form-reset" class="button outline">Reset</button>
+        </p>
+      </form>
+    </div>
+
+    <div>
+      <div class="table">
+        <table>
+          <caption aria-hidden="true">
+            <span class="caption-text">Search for <span class="term"></span> found on <span class="results-found"></span>
+            of <span class="results-of"></span> pages</span>
+            <button type="button" id="stop-search" class="button outline" aria-hidden="true">Stop</button>
+          </caption>
+          <thead>
+            <tr>
+              <th id="page-path">Path</th>
+              <th id="page-occurences">Occurences</th>
+            </tr>
+          </thead>
+          <tbody class="results" aria-hidden="true"></tbody>
+          <tbody class="no-results" aria-hidden="false">
+            <tr>
+              <td colspan="2">
+                <div>
+                  <span class="icon icon-search"></span>
+                  <div>
+                    <p><strong>No results</strong></p>
+                    <p>Submit the form above to display results</p>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+          <tbody class="error" aria-hidden="true">
+            <tr>
+              <td colspan="2">
+                <div>
+                  <span class="icon icon-notice"></span>
+                  <div>
+                    <p><strong class="error-title">Error</strong></p>
+                    <p class="error-msg">Unable to display the page status.</p>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+          </table>
+      </div>
+    </div>
+  </main>
+  <footer></footer>
+</body>
+
+</html>

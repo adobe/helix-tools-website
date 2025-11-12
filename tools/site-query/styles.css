@@ -1,0 +1,92 @@
+.site-query .table {
+  margin-top: var(--spacing-l);
+  padding-top: 0;
+}
+
+.site-query .table caption {
+  visibility: hidden;
+  padding: 0 11.2px;
+  font-size: var(--heading-size-s);
+  font-weight: var(--weight-bold);
+  margin-bottom: var(--spacing-m);
+}
+
+.site-query .table caption[aria-hidden='false'] {
+  visibility: visible;
+}
+
+.site-query .table caption #stop-search {
+  font-size: var(--body-size-s);
+  padding: var(--spacing-xs) var(--spacing-s);
+  margin-left: var(--spacing-m);
+  vertical-align: baseline;
+}
+
+.site-query .table caption #stop-search[aria-hidden='true'] {
+  display: none;
+}
+
+.site-query table tbody[aria-hidden='true'],
+.site-query table tbody.results tr[aria-hidden='true'] {
+  display: none;
+}
+
+.site-query .field-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.site-query .field-group .form-field {
+  flex-grow: 1;
+}
+
+@media (width >= 900px) {
+  .site-query .field-group .form-field:has([name="queryType"]) {
+    flex-grow: 0;
+  }
+}
+
+
+.site-query .field-group .form-field + .form-field {
+  margin-top: 0;
+}
+
+.site-query table tbody.no-results td > div,
+.site-query table tbody.error td > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-m);
+  padding: var(--spacing-xxl) var(--spacing-l);
+  min-height: 200px;
+}
+
+.site-query table tbody.no-results span.icon,
+.site-query table tbody.error span.icon {
+  font-size: var(--heading-size-xxxxl);
+  line-height: 0;
+}
+
+.site-query table tbody.no-results p strong,
+.site-query table tbody.error p strong {
+  font-size: var(--detail-size-xl);
+}
+
+.site-query table tbody.error span.icon,
+.site-query table tbody.error p strong {
+  color: var(--red-900);
+}
+
+.site-query table a.edit-link {
+  font-size: var(--body-size-s);
+}
+
+.site-query table a.edit-link.disabled {
+  color: var(--red-900);
+  font-weight: 500;
+  text-decoration: none;
+  cursor: default;
+}

@@ -179,5 +179,14 @@ export default async function decorate(block) {
   navWrapper.append(nav);
   block.replaceChildren(navWrapper);
 
+  // add experimental ribbon for pages with lab metadata
+  const isLab = getMetadata('lab') === 'true';
+  if (isLab) {
+    const ribbon = document.createElement('div');
+    ribbon.className = 'experimental-ribbon';
+    ribbon.textContent = 'Experimental';
+    block.prepend(ribbon);
+  }
+
   swapIcons(block);
 }
