@@ -12,18 +12,40 @@ const accessConfig = { type: 'org', users: [], originalSiteAccess: {} };
 const addUserDetails = document.getElementById('add-user-details');
 const addUserForm = document.getElementById('add-user-form');
 const addUserEmail = document.getElementById('add-user-email');
-const addUserRoles = document.getElementById('add-user-roles');
 const addUserSave = document.getElementById('add-user-save');
 const addUserCancel = document.getElementById('add-user-cancel');
 
 const ROLES = ['admin', 'author', 'publish', 'develop', 'basic_author', 'basic_publish', 'config', 'config_admin'];
 
-function isValidRoles(roles) {
-  if (!roles.value) {
+function createRolesCheckboxGroup(id, legendText, selectedRoles = []) {
+  const checkboxes = ROLES.map((role) => {
+    const checked = selectedRoles.includes(role) ? 'checked' : '';
+    return `<label><input type="checkbox" name="role" value="${role}" ${checked}>${role}</label>`;
+  }).join('');
+
+  return `<fieldset id="${id}" class="roles-checkbox-group">
+    <legend>${legendText}</legend>
+    ${checkboxes}
+  </fieldset>
+  <div class="field-help-text">
+    <p>See <a href="https://www.aem.live/docs/authentication-setup-authoring#admin-roles" target="_blank">https://www.aem.live/docs/authentication-setup-authoring#admin-roles</a> to learn more about roles and permissions.</p>
+  </div>`;
+}
+
+const addUserRolesContainer = document.getElementById('add-user-roles-container');
+if (addUserRolesContainer) {
+  addUserRolesContainer.innerHTML = createRolesCheckboxGroup('add-user-roles', 'Roles');
+}
+
+const addUserRoles = document.getElementById('add-user-roles');
+
+function isValidRoles(rolesContainer) {
+  const checkboxes = rolesContainer.querySelectorAll('input[type="checkbox"]:checked');
+  if (!checkboxes || checkboxes.length === 0) {
     return false;
   }
 
-  const userRoles = roles.value.split(',').map((role) => role.trim());
+  const userRoles = [...checkboxes].map((cb) => cb.value);
   return userRoles.every((role) => ROLES.includes(role));
 }
 
@@ -119,16 +141,12 @@ async function updateSiteUserRoles(user) {
 
 function displayUserDetails(elem, user) {
   const email = user.email.replace('@', '-at-');
+  const rolesGroup = createRolesCheckboxGroup(`${email}-roles`, `${user.email} roles`, user.roles);
+
   elem.innerHTML = `<form id=${email}>
         <fieldset>
         <div class="form-field roles-field">
-          <label for="${email}-roles">${user.email} roles</label>
-          <input value="${user.roles.join(', ')}" name="${email}-roles" id="${email}-roles" required/>
-          <div class="field-help-text">
-            <p>
-              Enter comma separated list of roles for the user
-            </p>
-          </div>
+          ${rolesGroup}
         </div>
         <p class="button-wrapper">
           <button type="submit" id="${email}-save" class="button">Save</button>
@@ -138,17 +156,10 @@ function displayUserDetails(elem, user) {
     </form>`;
   const fs = elem.querySelector('fieldset');
 
-  const roles = document.getElementById(`${email}-roles`);
-  roles.addEventListener('input', () => {
-    if (!isValidRoles(roles)) {
-      // eslint-disable-next-line no-use-before-define
-      save.disabled = true;
-      roles.setCustomValidity('Invalid roles');
-    } else {
-      // eslint-disable-next-line no-use-before-define
-      save.disabled = false;
-      roles.setCustomValidity('');
-    }
+  const rolesContainer = document.getElementById(`${email}-roles`);
+  rolesContainer.addEventListener('change', () => {
+    // eslint-disable-next-line no-use-before-define
+    save.disabled = !isValidRoles(rolesContainer);
   });
 
   const save = document.getElementById(`${email}-save`);
@@ -156,7 +167,8 @@ function displayUserDetails(elem, user) {
     fs.disabled = 'disabled';
     save.innerHTML += ' <i class="symbol symbol-loading"></i>';
     e.preventDefault();
-    user.roles = roles.value.split(',').map((role) => role.trim());
+    const checkboxes = rolesContainer.querySelectorAll('input[type="checkbox"]:checked');
+    user.roles = [...checkboxes].map((cb) => cb.value);
     if (accessConfig.type === 'site') {
       await updateSiteUserRoles(user);
     } else {
@@ -202,38 +214,70 @@ async function getSiteAccessConfig() {
 
 const createUserItem = (user) => {
   const li = document.createElement('li');
-  const span = document.createElement('span');
-  span.classList.add('user-name');
-  span.textContent = `${user.email} (${user.roles.join(', ')})`;
-  li.append(span);
+  const userInfo = document.createElement('div');
+  userInfo.classList.add('user-info');
+  const emailSpan = document.createElement('span');
+  emailSpan.classList.add('user-email');
+  emailSpan.textContent = user.email;
+  userInfo.append(emailSpan);
+  const rolesContainer = document.createElement('div');
+  rolesContainer.classList.add('user-roles');
+
+  user.roles.forEach((role) => {
+    const rolePill = document.createElement('span');
+    rolePill.classList.add('role-pill');
+    rolePill.textContent = role;
+    rolesContainer.append(rolePill);
+  });
+
+  userInfo.append(rolesContainer);
+  li.append(userInfo);
   const buttonContainer = document.createElement('span');
   buttonContainer.classList.add('button-wrapper');
+
   const editButton = document.createElement('button');
   editButton.classList.add('button');
   editButton.textContent = 'Edit';
   buttonContainer.append(editButton);
+
+  const cancelButton = document.createElement('button');
+  cancelButton.classList.add('button', 'outline');
+  cancelButton.textContent = 'Cancel';
+  cancelButton.setAttribute('aria-hidden', 'true');
+  buttonContainer.append(cancelButton);
   li.append(buttonContainer);
+
   const userDetails = document.createElement('div');
   userDetails.classList.add('user-details');
   li.append(userDetails);
+
   editButton.addEventListener('click', () => {
     displayUserDetails(userDetails, user);
+    editButton.setAttribute('aria-hidden', 'true');
+    cancelButton.removeAttribute('aria-hidden');
+  });
+
+  cancelButton.addEventListener('click', () => {
+    userDetails.innerHTML = '';
+    cancelButton.setAttribute('aria-hidden', 'true');
+    editButton.removeAttribute('aria-hidden');
   });
   return li;
 };
 
-function isValidNewUser(email, roles) {
+function isValidNewUser(email, rolesContainer) {
   if (!email.checkValidity()) {
     return false;
   }
   if (accessConfig.users.find((user) => user.email === email.value)) {
     return false;
   }
-  if (!roles.value) {
+  const checkboxes = rolesContainer.querySelectorAll('input[type="checkbox"]:checked');
+  if (!checkboxes || checkboxes.length === 0) {
     return false;
   }
 
-  const userRoles = roles.value.split(',').map((role) => role.trim());
+  const userRoles = [...checkboxes].map((cb) => cb.value);
   return userRoles.every((role) => ROLES.includes(role));
 }
 
@@ -298,9 +342,10 @@ addUserForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   addUserSave.disabled = true;
   addUserSave.innerHTML += ' <i class="symbol symbol-loading"></i>';
+  const checkboxes = addUserRoles.querySelectorAll('input[type="checkbox"]:checked');
   const user = {
     email: addUserEmail.value,
-    roles: addUserRoles.value.split(',').map((role) => role.trim()),
+    roles: [...checkboxes].map((cb) => cb.value),
   };
   if (accessConfig.type === 'site') {
     await addUserToSite(user);
@@ -318,12 +363,18 @@ addUserCancel.addEventListener('click', () => {
 });
 
 addUserEmail.addEventListener('input', () => {
-  addUserSave.disabled = !isValidNewUser(addUserEmail, addUserRoles);
+  const rolesFieldset = document.getElementById('add-user-roles');
+  addUserSave.disabled = !isValidNewUser(addUserEmail, rolesFieldset);
 });
 
-addUserRoles.addEventListener('input', () => {
-  addUserSave.disabled = !isValidNewUser(addUserEmail, addUserRoles);
-});
+const rolesFieldset = document.getElementById('add-user-roles');
+if (rolesFieldset) {
+  rolesFieldset.addEventListener('change', (e) => {
+    if (e.target.type === 'checkbox') {
+      addUserSave.disabled = !isValidNewUser(addUserEmail, rolesFieldset);
+    }
+  });
+}
 
 async function init() {
   await initConfigField();
