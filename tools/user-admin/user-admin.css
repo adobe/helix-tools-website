@@ -1,0 +1,74 @@
+.user-admin .block[aria-hidden='true'],
+.user-admin #add-user-details[aria-hidden='true'] {
+  display: none;
+}
+
+.user-admin #admin-form {
+  display: grid;
+  gap: var(--spacing-s);
+}
+
+@media (width >= 720px) {
+  .user-admin #admin-form {
+    grid-template-columns: 1fr max-content;
+    gap: var(--spacing-l);
+  }
+
+  .user-admin #admin-form .config-field {
+    grid-column: 1 / span 2;
+  }
+
+  .user-admin #admin-form .url-field {
+    margin-top: 0;
+  }
+}
+
+#users .button-wrapper {
+  grid-area: button;
+}
+
+.user-admin #admin-form .button-wrapper {
+  align-self: center;
+}
+
+.user-admin .body-wrapper {
+  position: relative;
+  height: 66vmin;
+}
+
+#users {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+#users li {
+  grid-template-areas: "user-name button" "details details";
+  grid-template-columns: 1fr max-content;
+  display: grid;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5em 0;
+  margin: 0;
+}
+
+#users .user-name {
+  grid-area: user-name;
+}
+
+#users .user-details {
+  grid-area: details;
+  margin-top: var(--spacing-m);
+  padding-top: var(--spacing-m);
+  border-top: var(--border-s) solid var(--gray-300);
+}
+
+.user-admin #add-user-wrapper {
+  display: grid;
+  gap: var(--spacing-m);
+}
+
+.user-admin #add-user-details {
+  display: grid;
+  gap: var(--spacing-m);
+}

@@ -32,6 +32,7 @@ function validDOM() {
  * Sets field value and marks as autofilled (if it hasn't been autofilled already).
  * @param {HTMLElement} field - Input field.
  * @param {string} value - Value to set.
+ * @param {string} type - Type of autofill (params, storage, sidekick).
  * @returns {string} the fields new value
  */
 function setFieldValue(field, value, type) {
@@ -104,21 +105,23 @@ function updateStorage(org, site) {
       projects.orgs = projects.orgs.filter((o) => o !== org);
     }
     projects.orgs.unshift(org);
-    // ensure site is most recent in site array
-    if (projects.sites[org]) {
-      if (projects.sites[org].includes(site)) {
-        projects.sites[org] = projects.sites[org].filter((s) => s !== site);
+    // ensure site is most recent in site array (only if site has a value)
+    if (site) {
+      if (projects.sites[org]) {
+        if (projects.sites[org].includes(site)) {
+          projects.sites[org] = projects.sites[org].filter((s) => s !== site);
+        }
+        projects.sites[org].unshift(site);
+      } else {
+        projects.sites[org] = [site];
       }
-      projects.sites[org].unshift(site);
-    } else {
-      projects.sites[org] = [site];
     }
     localStorage.setItem('aem-projects', JSON.stringify(projects));
   } else {
     // init project org and site storage
     const project = {
       orgs: [org],
-      sites: { [org]: [site] },
+      sites: site ? { [org]: [site] } : {},
     };
     localStorage.setItem('aem-projects', JSON.stringify(project));
   }
@@ -229,7 +232,9 @@ async function populateFromSidekick(org, orgList, site, siteList) {
     const selectedOrg = setFieldValue(org, lastProject.org, 'sidekick');
 
     populateList(siteList, sites[selectedOrg] || []);
-    setFieldValue(site, sites[selectedOrg][0], 'sidekick');
+    if (sites[selectedOrg] && sites[selectedOrg][0]) {
+      setFieldValue(site, sites[selectedOrg][0], 'sidekick');
+    }
   }
 }
 
