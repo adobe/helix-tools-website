@@ -5,6 +5,7 @@ import { ensureLogin } from '../../blocks/profile/profile.js';
 /* eslint-disable no-alert */
 const adminForm = document.getElementById('site-admin-form');
 const org = document.getElementById('org');
+const siteField = document.getElementById('site');
 const consoleBlock = document.querySelector('.console');
 const sitesElem = document.querySelector('div#sites');
 
@@ -139,8 +140,7 @@ function displaySiteDetails(path, name, elem, site = {
   });
 
   // config field update
-  const siteConfigField = document.getElementById('site');
-  siteConfigField.value = name;
+  siteField.value = name;
   updateConfig();
 }
 
@@ -247,7 +247,8 @@ async function displaySitesForOrg(orgValue) {
  */
 adminForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  if (!await ensureLogin(org.value)) {
+  // siteField may be empty for org-level operations, pass undefined if so
+  if (!await ensureLogin(org.value, siteField.value || undefined)) {
     // not logged in yet, listen for profile-update event
     window.addEventListener('profile-update', ({ detail: loginInfo }) => {
       // check if user is logged in now
