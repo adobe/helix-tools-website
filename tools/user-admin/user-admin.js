@@ -61,6 +61,7 @@ async function getOrgConfig() {
 }
 
 function displayAddUserDetails() {
+  addUserSave.disabled = 'disabled';
   addUserDetails.removeAttribute('aria-hidden');
   addUserDetails.querySelector('input[name="add-user-email"]').focus();
 }
