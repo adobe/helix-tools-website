@@ -141,3 +141,25 @@ a.disabled {
   background-color: var(--color-background);
   color: var(--gray-400);
 }
+
+/* status-light indicators */
+.page-status .status-light::before {
+  content: '';
+  display: inline-block;
+  height: 0.5em;
+  width: 0.5em;
+  margin-right: 0.9ch;
+  border-radius: 50%;
+}
+
+.page-status .status-light.positive::before {
+  background-color: var(--green-800);
+}
+
+.page-status .status-light.notice::before {
+  background-color: var(--orange-800);
+}
+
+.page-status .status-light.negative::before {
+  background-color: var(--red-800);
+}
