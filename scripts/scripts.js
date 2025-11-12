@@ -172,6 +172,15 @@ export async function decorateGuideTemplateCodeBlock() {
   intersectionObserver.observe(firstCodeBlock);
 }
 
+function decorateLinks(main) {
+  main.querySelectorAll('a').forEach((a) => {
+    const url = new URL(a.href);
+    if (url.hostname === 'tools.aem.live') {
+      a.href = url.pathname;
+    }
+  });
+}
+
 /**
  * Decorates the main element.
  * @param {Element} main The main element
@@ -180,6 +189,7 @@ export async function decorateGuideTemplateCodeBlock() {
 export function decorateMain(main) {
   decorateIcons(main);
   decorateImages(main);
+  decorateLinks(main);
   decorateSections(main);
   decorateBlocks(main);
   decorateButtons(main);
