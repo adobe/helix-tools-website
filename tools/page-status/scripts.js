@@ -2,13 +2,6 @@ import { decorateIcons } from '../../scripts/aem.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import loadingMessages from './loading-messages.js';
 
-let initPromise;
-
-// eslint-disable-next-line import/prefer-default-export
-export function ready() {
-  return initPromise;
-}
-
 const FORM = document.getElementById('status-form');
 const TABLE = document.querySelector('table');
 const CAPTION = TABLE.querySelector('caption');
@@ -698,4 +691,9 @@ async function init() {
   runFromParams(window.location.search);
 }
 
-initPromise = init();
+const initPromise = init();
+
+// eslint-disable-next-line import/prefer-default-export
+export function ready() {
+  return initPromise;
+}

@@ -2,13 +2,6 @@ import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 
-let initPromise;
-
-// eslint-disable-next-line import/prefer-default-export
-export function ready() {
-  return initPromise;
-}
-
 const adminForm = document.getElementById('admin-form');
 const site = document.getElementById('site');
 const org = document.getElementById('org');
@@ -340,4 +333,9 @@ async function init() {
   }
 }
 
-initPromise = init();
+const initPromise = init();
+
+// eslint-disable-next-line import/prefer-default-export
+export function ready() {
+  return initPromise;
+}

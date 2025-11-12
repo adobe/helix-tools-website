@@ -2,13 +2,6 @@ import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 
-let initPromise;
-
-// eslint-disable-next-line import/prefer-default-export
-export function ready() {
-  return initPromise;
-}
-
 /* eslint-disable no-alert */
 const adminForm = document.getElementById('site-admin-form');
 const org = document.getElementById('org');
@@ -277,4 +270,9 @@ async function init() {
   if (org.value) displaySitesForOrg(org.value);
 }
 
-initPromise = init();
+const initPromise = init();
+
+// eslint-disable-next-line import/prefer-default-export
+export function ready() {
+  return initPromise;
+}
