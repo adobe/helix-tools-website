@@ -12,3 +12,5 @@ MIGRATION_PLAN.md
 # Ensure these files are tracked
 !CLAUDE.md
 !AGENTS.md
+
+.playwright-mcp/
