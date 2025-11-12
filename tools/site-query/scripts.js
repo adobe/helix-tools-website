@@ -299,7 +299,8 @@ async function fetchHosts(org, site) {
 
 let initPromise;
 
-export function ready() {
+// eslint-disable-next-line import/prefer-default-export
+export async function ready() {
   return initPromise;
 }
 
@@ -313,7 +314,7 @@ async function init(doc) {
   const error = table.querySelector('tbody.error');
   const noResults = table.querySelector('tbody.no-results');
   const stopButton = doc.querySelector('#stop-search');
-
+  const caption = table.querySelector('caption');
   let stopped = false;
 
   stopButton.addEventListener('click', () => {
@@ -353,7 +354,6 @@ async function init(doc) {
 
       let searched = 0;
 
-      const caption = table.querySelector('caption');
       caption.setAttribute('aria-hidden', false);
       stopButton.setAttribute('aria-hidden', 'false');
       caption.querySelector('.term').textContent = query;
