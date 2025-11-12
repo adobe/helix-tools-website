@@ -1,5 +1,6 @@
 import { decorateIcons } from '../../scripts/aem.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
+import { ensureLogin } from '../../blocks/profile/profile.js';
 import loadingMessages from './loading-messages.js';
 
 const FORM = document.getElementById('status-form');
@@ -609,11 +610,26 @@ async function init() {
   FORM.addEventListener('submit', async (e) => {
     e.preventDefault();
     const { target, submitter } = e;
+    const data = getFormData(target);
+    const { org, site } = data;
+
+    if (!await ensureLogin(org, site)) {
+      // not logged in yet, listen for profile-update event
+      window.addEventListener('profile-update', ({ detail: loginInfo }) => {
+        // check if user is logged in now
+        if (loginInfo.includes(org)) {
+          // logged in, restart action (e.g. resubmit form)
+          submitter.click();
+        }
+      }, { once: true });
+      // abort action
+      return;
+    }
+
     try {
       // initial setup
       setupJob(target, submitter);
-      const data = getFormData(target);
-      const { org, site, path } = data;
+      const { path } = data;
       // fetch host config
       const { live, preview } = await validateHosts(org, site);
       updateConfig();
