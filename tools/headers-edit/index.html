@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>HTTP Headers Editor | AEM Tools</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/utils/config/config.css" />
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/headers-edit/headers-edit.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/headers-edit/headers-edit.css" />
+</head>
+<body class="headers-edit">
+  <header></header>
+  <main>
+    <div>
+      <h1>HTTP Headers Editor</h1>
+    </div>
+
+    <div>
+      <form id="admin-form">
+        <section class="form-field config-field">
+          <div class="form-field org-field">
+            <label for="org">Organization</label>
+            <input name="org" id="org" list="org-list" autocomplete="off" required />
+            <datalist id="org-list"></datalist>
+          </div>
+          <div class="form-field site-field">
+            <label for="site">Site</label>
+            <input name="site" id="site" list="site-list" autocomplete="off" disabled />
+            <datalist id="site-list"></datalist>
+          </div>
+        </section>
+        <p class="button-wrapper">
+          <button type="submit" id="fetch" class="button">Fetch</button>
+        </p>
+      </form>
+    </div>
+
+    <div>
+      <form id="headers-form">
+        <div class="headers-container">
+          <div aria-hidden="true" class="headers-non-standard-warning">
+            <p>
+              <strong>Note:</strong>
+              This site configuration contains non-standard path mapping patterns.
+              Please use <a href="https://tools.aem.live/tools/admin-edit/index.html">Admin Edit</a> to edit these headers.
+            </p>
+          </div>
+          <div class="headers-list" id="headers-list">
+            <!-- Headers will be dynamically added here -->
+          </div>
+        </div>
+        <div class="button-bar" aria-hidden="true">
+          <div class="button-wrapper">
+            <button type="button" id="add-header" class="button outline">Add Header...</button>
+          </div>
+          <div class="button-wrapper">
+            <button type="submit" id="save" class="button">Save</button>
+          </div>
+        </div>
+        <datalist id="header-keys">
+          <option value="content-security-policy">content-security-policy</option>
+          <option value="access-control-allow-origin">access-control-allow-origin</option>
+        </datalist>
+      </form>
+    </div>
+
+    <div>
+      <div class="console"></div>
+    </div>
+  </main>
+  <footer></footer>
+</body>
+</html> 

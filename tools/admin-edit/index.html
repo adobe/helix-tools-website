@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>Admin Edit</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/admin-edit/admin-edit.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/admin-edit/admin-edit.css" />
+</head>
+
+<body class="admin-edit">
+  <header></header>
+  <main>
+    <!-- TITLE -->
+    <div>
+      <h1>Admin Edit</h1>
+    </div>
+
+    <!-- ADMIN FORM -->
+    <div>
+      <form id="admin-form">
+        <div class="form-field url-field">
+          <label for="admin-url">Admin URL</label>
+          <input name="admin-url" id="admin-url" type="url" list="admin-url-list" required />
+          <datalist id="admin-url-list"></datalist>
+          <div class="field-help-text">
+            <p>
+              See supported calls at <a href="https://www.aem.live/docs/admin.html"
+                target="_blank">aem.live/docs/admin</a>.
+            </p>
+          </div>
+        </div>
+        <p class="button-wrapper">
+          <button type="submit" id="fetch" class="button">Fetch</button>
+          <button type="reset" id="site-reset" class="button outline">Reset</button>
+        </p>
+      </form>
+    </div>
+
+    <!-- BODY FORM -->
+    <div>
+      <form id="body-form">
+        <div class="form-field textarea-field">
+          <label for="body">Body</label>
+          <div class="body-wrapper">
+            <textarea id="body" spellcheck="false"></textarea>
+            <pre id="preview-wrapper" aria-hidden="true">
+              <code id="preview" class="language-js"></code>
+            </pre>
+          </div>
+        </div>
+        <div class="save-wrapper">
+          <div class="form-field picker-field">
+            <label for="method">Method</label>
+            <input name="method" id="method" type="text" aria-haspopup="listbox" value="POST" readonly />
+            <i class="symbol symbol-chevron"></i>
+            <ul class="menu" id="method-menu" aria-labelledby="method" role="listbox" hidden>
+              <li role="option" aria-selected="true">POST</li>
+              <li role="option" aria-selected="false">PUT</li>
+            </ul>
+          </div>
+          <p class="button-wrapper">
+            <button type="submit" id="save" disabled class="button">Save</button>
+          </p>
+        </div>
+      </form>
+    </div>
+
+    <!-- CONSOLE -->
+    <div>
+      <div class="table" aria-hidden="true">
+        <table id="console">
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+  <footer></footer>
+</body>
+
+</html>

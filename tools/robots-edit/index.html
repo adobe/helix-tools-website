@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>robots.txt Editor | AEM Tools</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/utils/config/config.css" />
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/robots-edit/robots-edit.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/robots-edit/robots-edit.css" />
+</head>
+<body class="robots-edit">
+  <header></header>
+  <main>
+    <div>
+      <h1>robots.txt Editor</h1>
+    </div>
+
+    <div>
+      <form id="admin-form">
+        <section class="form-field config-field">
+          <div class="form-field org-field">
+            <label for="org">Organization</label>
+            <input name="org" id="org" list="org-list" autocomplete="off" required />
+            <datalist id="org-list"></datalist>
+          </div>
+          <div class="form-field site-field">
+            <label for="site">Site</label>
+            <input name="site" id="site" list="site-list" autocomplete="off" disabled />
+            <datalist id="site-list"></datalist>
+          </div>
+        </section>
+        <p class="button-wrapper">
+          <button type="submit" id="fetch" class="button">Fetch</button>
+        </p>
+      </form>
+    </div>
+
+    <div>
+      <form id="body-form">
+        <div class="form-field textarea-field">
+          <label for="body">robots.txt Content</label>
+          <div class="body-wrapper">
+            <textarea id="body" spellcheck="false"></textarea>
+          </div>
+        </div>
+        <div class="save-wrapper">
+          <p class="button-wrapper">
+            <button type="submit" id="save" class="button">Save</button>
+          </p>
+        </div>
+      </form>
+    </div>
+
+    <div>
+      <div class="console"></div>
+    </div>
+  </main>
+  <footer></footer>
+</body>
+</html> 

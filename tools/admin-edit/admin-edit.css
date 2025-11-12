@@ -1,0 +1,285 @@
+.admin-edit .block[aria-hidden='true'] {
+  display: none;
+}
+
+.admin-edit #admin-form {
+  display: grid;
+  gap: var(--spacing-s);
+}
+
+@media (width >= 720px) {
+  .admin-edit #admin-form {
+    grid-template-columns: 1fr max-content;
+    gap: var(--spacing-l);
+  }
+
+  .admin-edit #admin-form .config-field {
+    grid-column: 1 / span 2;
+  }
+
+  .admin-edit #admin-form .url-field {
+    margin-top: 0;
+  }
+}
+
+.admin-edit #admin-form .button-wrapper {
+  align-self: center;
+}
+
+.admin-edit .body-wrapper {
+  position: relative;
+  height: 66vmin;
+}
+
+.admin-edit textarea#body.error {
+  border-color: var(--red-900);
+}
+
+/**
+ * "Creating an Editable Textarea That Supports Syntax Highlighted Code" by Oliver Geer
+ * Published on CSS-Tricks: https://css-tricks.com/creating-an-editable-textarea-that-supports-syntax-highlighted-code/
+ */
+
+.admin-edit #body,
+.admin-edit #preview-wrapper,
+.admin-edit #preview {
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+  line-height: var(--line-height-l);
+  tab-size: 2;
+}
+
+.admin-edit #body,
+.admin-edit #preview-wrapper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0.4em 0.85em;
+  padding-bottom: calc(0.85em + (var(--body-size-s) * var(--line-height-l)));
+  border: var(--border-m) solid var(--gray-300);
+  border-radius: var(--rounding-m);
+  overflow: auto;
+  white-space: nowrap;
+}
+
+.admin-edit #body {
+  background-color: transparent;
+  color: transparent;
+  caret-color: var(--color-text);
+  z-index: 1;
+  resize: none;
+}
+
+.admin-edit #preview-wrapper {
+  z-index: 0;
+}
+
+.admin-edit #preview {
+  padding: 0;
+}
+
+.admin-edit #preview-wrapper::-webkit-scrollbar,
+.admin-edit #body::-webkit-scrollbar {
+  width: 24px;
+  height: 24px;
+}
+
+.admin-edit #body::-webkit-scrollbar-thumb {
+  background-color: var(--gray-500);
+  border: 8px solid var(--layer-depth);
+  border-radius: 12px;
+}
+
+.admin-edit #body::-webkit-scrollbar-thumb:hover {
+  background-color: var(--gray-600);
+  cursor: move;
+}
+
+.admin-edit #body::-webkit-scrollbar-corner {
+  background-color: var(--layer-depth);
+  border-radius: 0 0 var(--rounding-m);
+}
+
+.admin-edit #body-form .save-wrapper {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  gap: var(--spacing-s);
+  margin-top: 0.5em;
+}
+
+.admin-edit #body-form .save-wrapper .button-wrapper {
+  align-self: flex-end;
+  margin: 0;
+}
+
+.admin-edit .status-light {
+  white-space: nowrap;
+}
+
+.admin-edit .status-light::before {
+  color: var(--red-900);
+}
+
+.admin-edit .status-light.http1::before {
+  color: var(--blue-900);
+}
+
+.admin-edit .status-light.http2::before {
+  color: var(--green-900);
+}
+
+.admin-edit .status-light.http3::before {
+  color: var(--yellow-900);
+}
+
+/* PrismJS 1.29.0 (Default), slightly altered
+https://prismjs.com/download.html#themes=prism&languages=markup+css+clike+javascript+json */
+
+code[class*='language-'],
+pre[class*='language-'] {
+  color: var(--color-text);
+  text-align: left;
+  white-space: pre;
+  word-break: normal;
+  word-spacing: normal;
+  word-wrap: normal;
+  hyphens: none;
+  tab-size: 2;
+}
+
+pre[class*='language-'] {
+  overflow: auto;
+}
+
+.token.cdata,
+.token.comment,
+.token.doctype,
+.token.prolog {
+  color: #708090;
+}
+
+.token.punctuation {
+  color: #999;
+}
+
+.token.namespace {
+  opacity: 0.8;
+}
+
+.token.property {
+  color: #4b0082;
+}
+
+.token.boolean,
+.token.constant,
+.token.deleted,
+.token.number,
+.token.symbol,
+.token.tag {
+  color: #905;
+}
+
+.token.attr-name,
+.token.builtin,
+.token.char,
+.token.inserted,
+.token.selector,
+.token.string {
+  color: #690;
+}
+
+.language-css .token.string,
+.style .token.string,
+.token.entity,
+.token.operator,
+.token.url {
+  color: #9a6e3a;
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+  color: #07a;
+}
+
+.token.class-name,
+.token.function {
+  color: #dd4a68;
+}
+
+.token.important,
+.token.regex,
+.token.variable {
+  color: #e90;
+}
+
+.token.bold,
+.token.important {
+  font-weight: 700;
+}
+
+.token.italic {
+  font-style: italic;
+}
+
+.token.entity {
+  cursor: help;
+}
+
+/* PrismJS Line Highlight Plugin, slightly altered
+https://prismjs.com/plugins/line-highlight/ */
+
+.line-highlight {
+  position: absolute;
+  left: 0;
+  right: 0;
+  margin-top: calc(var(--body-size-s) / 2.5);
+  border-bottom: var(--border-m) dotted var(--red-900);
+  background-color: #d7322026;
+  line-height: var(--line-height-l);
+  pointer-events: none;
+  white-space: pre;
+  transition: background-color 0.3s;
+}
+
+.line-highlight::before,
+.line-highlight::after {
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.line-highlight::before {
+  content: '';
+  position: absolute;
+  top: calc(100% - (2 * var(--border-m)));
+  left: calc(2 * 0.85em);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 8px solid var(--layer-elevated);
+  z-index: 1;
+}
+
+.line-highlight::after {
+  content: attr(data-error);
+  position: absolute;
+  top: calc(100% + (2 * var(--border-m)));
+  left: 0.85em;
+  max-width: 100%;
+  border-radius: var(--rounding-s);
+  padding: 0.4em 0.85em;
+  box-shadow: var(--shadow-hover);
+  background-color: var(--layer-elevated);
+  color: var(--red-1100);
+  font-size: var(--body-size-xs);
+}
+
+.line-highlight.error-hover {
+  background-color: #d7322038;
+}
+
+.line-highlight.error-hover::before,
+.line-highlight.error-hover::after {
+  opacity: 1;
+}

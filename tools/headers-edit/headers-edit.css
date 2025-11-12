@@ -1,0 +1,111 @@
+.headers-edit .block[aria-hidden='true'] {
+  display: none;
+}
+
+.headers-edit #admin-form {
+  display: grid;
+  gap: var(--spacing-s);
+}
+
+@media (width >= 720px) {
+  .headers-edit #admin-form {
+    grid-template-columns: 1fr max-content;
+    gap: var(--spacing-l);
+  }
+
+  .headers-edit #admin-form .config-field {
+    grid-column: 1 / span 2;
+  }
+}
+
+.headers-edit .button-bar {
+  margin-top: var(--spacing-m);
+  display: flex;
+  justify-content: space-between;
+}
+
+.headers-edit #admin-form .button-wrapper {
+  align-self: center;
+}
+
+.headers-edit .headers-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-m);
+}
+
+.headers-edit .headers-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+.headers-edit .header-item {
+  display: grid;
+  grid-template-columns: 1fr 2fr auto;
+  gap: var(--spacing-s);
+  align-items: start;
+  padding: var(--spacing-s);
+  border: var(--border-m) solid var(--gray-300);
+  border-radius: var(--rounding-m);
+}
+
+.headers-edit .header-item input,
+.headers-edit .header-item textarea {
+  width: 100%;
+  padding: 0.4em 0.85em;
+  border: var(--border-m) solid var(--gray-300);
+  border-radius: var(--rounding-m);
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+  line-height: var(--line-height-l);
+}
+
+.headers-edit .header-item textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.headers-edit .header-item .remove-header {
+  color: var(--red-900);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.4em;
+}
+
+.headers-edit .add-header {
+  margin-top: var(--spacing-s);
+}
+
+.headers-edit .save-wrapper {
+  display: grid;
+  margin-top: var(--spacing-m);
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.headers-edit .save-wrapper .button-wrapper {
+  align-self: flex-end;
+  margin: 0;
+}
+
+.headers-edit .button-bar[aria-hidden='true'] {
+  display: none;
+}
+
+.headers-edit .headers-non-standard-warning {
+  background-color: var(--yellow-100);
+  padding: var(--spacing-s);
+  border-radius: var(--rounding-m);
+  border: var(--border-m) solid var(--yellow-900);
+  color: black;
+}
+
+.headers-edit .headers-non-standard-warning a:any-link{
+  color: black;
+  font-weight: bold;
+}
+
+.headers-edit .headers-non-standard-warning[aria-hidden='true'] {
+  display: none;
+}
