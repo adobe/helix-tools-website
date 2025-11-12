@@ -33,15 +33,9 @@ function validDOM() {
  * @param {HTMLElement} field - Input field.
  * @param {string} value - Value to set.
  * @param {string} type - Type of autofill (params, storage, sidekick).
- * @param {boolean} optional - If true, only autofill from params, not from storage/sidekick.
  * @returns {string} the fields new value
  */
-function setFieldValue(field, value, type, optional = false) {
-  // If field is optional and type is not 'params', don't autofill
-  if (optional && type !== 'params') {
-    return field.value;
-  }
-
+function setFieldValue(field, value, type) {
   if (!field.dataset.autofill) {
     field.value = value;
     field.dataset.autofill = type;
@@ -192,7 +186,6 @@ function populateFromParams(fields, search) {
  * Populates org and site fields from local storage.
  */
 function populateFromStorage(org, orgList, site, siteList) {
-  const siteOptional = !site.hasAttribute('required');
   const projects = JSON.parse(localStorage.getItem('aem-projects'));
   if (projects) {
     if (projects.orgs && projects.orgs[0]) {
@@ -205,9 +198,9 @@ function populateFromStorage(org, orgList, site, siteList) {
         // populate site list
         const sites = projects.sites[selectedOrg];
         populateList(siteList, sites);
-        // populate site field (only if required)
+        // populate site field
         const lastSite = sites[0];
-        if (lastSite) setFieldValue(site, lastSite, 'storage', siteOptional);
+        if (lastSite) setFieldValue(site, lastSite, 'storage');
       }
     }
   }
@@ -217,7 +210,6 @@ function populateFromStorage(org, orgList, site, siteList) {
  * Populates org field from sidekick.
  */
 async function populateFromSidekick(org, orgList, site, siteList) {
-  const siteOptional = !site.hasAttribute('required');
   const projects = await messageSidekick({ action: 'getSites' });
   if (Array.isArray(projects) && projects.length > 0) {
     updateStorageFromSidekick(projects);
@@ -238,10 +230,7 @@ async function populateFromSidekick(org, orgList, site, siteList) {
     const selectedOrg = setFieldValue(org, lastProject.org, 'sidekick');
 
     populateList(siteList, sites[selectedOrg] || []);
-    // only populate site field if required
-    if (sites[selectedOrg] && sites[selectedOrg][0]) {
-      setFieldValue(site, sites[selectedOrg][0], 'sidekick', siteOptional);
-    }
+    setFieldValue(site, sites[selectedOrg][0], 'sidekick');
   }
 }
 
