@@ -1,0 +1,54 @@
+.robots-edit .block[aria-hidden='true'] {
+  display: none;
+}
+
+.robots-edit #admin-form {
+  display: grid;
+  gap: var(--spacing-s);
+}
+
+@media (width >= 720px) {
+  .robots-edit #admin-form {
+    grid-template-columns: 1fr max-content;
+    gap: var(--spacing-l);
+  }
+
+  .robots-edit #admin-form .config-field {
+    grid-column: 1 / span 2;
+  }
+}
+
+.robots-edit #admin-form .button-wrapper {
+  align-self: center;
+}
+
+.robots-edit .body-wrapper {
+  position: relative;
+  height: 66vmin;
+}
+
+.robots-edit #body {
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+  line-height: var(--line-height-l);
+  tab-size: 2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0.4em 0.85em;
+  padding-bottom: calc(0.85em + (var(--body-size-s) * var(--line-height-l)));
+  border: var(--border-m) solid var(--gray-300);
+  border-radius: var(--rounding-m);
+  overflow: auto;
+}
+
+.robots-edit #body-form .save-wrapper {
+  display: grid;
+  margin-top: 0.5em;
+}
+
+.robots-edit #body-form .save-wrapper .button-wrapper {
+  align-self: flex-end;
+  margin: 0;
+} 
