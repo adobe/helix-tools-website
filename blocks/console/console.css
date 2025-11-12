@@ -1,0 +1,99 @@
+/* Console block styles */
+.console {
+  max-width: 100%;
+  padding: 0.6em 0;
+  overflow-x: auto;
+  max-height: calc(100dvh - var(--header-height));
+}
+
+@media (width >= 600px) {
+  .console {
+    max-height: unset;
+  }
+}
+
+.console table {
+  width: calc(100% - 1px);
+  border-collapse: collapse;
+  font-size: var(--body-size-m);
+}
+
+.console tbody {
+  position: relative;
+}
+
+.console tbody::before,
+.console tbody::after {
+  content: '';
+  position: absolute;
+  left: calc(-0.5 * var(--border-s));
+  right: calc(-0.5 * var(--border-s));
+  height: 0.6em;
+  border: var(--border-s) solid var(--gray-300);
+  background-color: var(--color-background);
+}
+
+.console tbody::before {
+  top: calc(-1 * 0.6em);
+  border-bottom: 0;
+  border-radius: var(--rounding-m) var(--rounding-m) 0 0;
+}
+
+.console tbody::after {
+  top: 100%;
+  border-top: 0;
+  border-radius: 0 0 var(--rounding-m) var(--rounding-m);
+}
+
+.console th,
+.console td {
+  padding: 0.6em 0.7em;
+  text-align: left;
+  background-color: var(--color-background);
+}
+
+.console tbody tr:first-of-type td {
+  padding-top: 0;
+}
+
+.console tbody tr:last-of-type td {
+  padding-bottom: 0;
+}
+
+.console tbody tr {
+  font-family: monospace;
+  font-size: var(--body-size-xs);
+  border-left: var(--border-s) solid var(--gray-300);
+  border-right: var(--border-s) solid var(--gray-300);
+}
+
+.console tbody tr + tr {
+  border-top: var(--border-s) solid var(--gray-300);
+}
+
+.console .status-light {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.console .status-light.http2 {
+  background-color: var(--status-ok-bg, #d4edda);
+  color: var(--status-ok-text, #155724);
+}
+
+.console .status-light.http3 {
+  background-color: var(--status-redirect-bg, #fff3cd);
+  color: var(--status-redirect-text, #856404);
+}
+
+.console .status-light.http4 {
+  background-color: var(--status-error-bg, #f8d7da);
+  color: var(--status-error-text, #721c24);
+}
+
+.console .status-light.http5 {
+  background-color: var(--status-error-bg, #f8d7da);
+  color: var(--status-error-text, #721c24);
+}

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>User Admin</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/user-admin/user-admin.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/user-admin/user-admin.css" />
+</head>
+
+<body class="user-admin">
+  <header></header>
+  <main>
+    <!-- TITLE -->
+    <div>
+      <h1>User Admin</h1>
+    </div>
+
+    <!-- ADMIN FORM -->
+    <div>
+      <form id="admin-form">
+        <section class="form-field config-field">
+          <div class="form-field org-field">
+            <label for="org">Organization</label>
+            <input name="org" id="org" list="org-list" autocomplete="off" required />
+            <datalist id="org-list"></datalist>
+          </div>
+          <div class="form-field site-field">
+            <label for="site">Site</label>
+            <input name="site" id="site" list="site-list" autocomplete="off" />
+            <datalist id="site-list"></datalist>
+          </div>
+        </section>
+        <p class="button-wrapper">
+          <button type="submit" id="fetch" class="button">Fetch</button>
+          <button type="reset" id="site-reset" class="button outline">Reset</button>
+        </p>
+      </form>
+    </div>
+
+    <!-- BODY FORM -->
+    <div>
+      <h2 id="users-title"></h2>
+      <div id="add-user-wrapper">
+        <div class="button-wrapper">
+          <button id="add-user" class="button">Add User...</button>
+        </div>
+        <div id="add-user-details" aria-hidden="true">
+          <section class="form-field">
+            <form id="add-user-form">
+            <fieldset>
+              <div class="form-field">
+                <label for="add-user-email">Email</label>
+                <input id="add-user-email" name="add-user-email" type="email" />
+              </div>
+              <div class="form-field">
+                <label for="add-user-roles">Roles</label>
+                <input id="add-user-roles" name="add-user-roles" type="text" />
+              </div>
+            </fieldset>
+          </section>
+            <span class="button-wrapper">
+              <button id="add-user-save" class="button" type="submit">Save</button>
+              <button id="add-user-cancel" class="button outline" type="reset">Cancel</button>
+            </span>
+          </form>
+        </div>
+      </div>
+      <ul id="users">
+      </ul>
+    </div>
+
+    <!-- CONSOLE -->
+    <div>
+      <div class="console"></div>
+    </div>
+
+  </main>
+  <footer></footer>
+</body>
+
+</html>

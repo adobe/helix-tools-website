@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>Bulk Page Status Viewer</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="./scripts.js" type="module" defer></script>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body class="page-status">
+  <header></header>
+  <main>
+    <div>
+      <h1>Page Status</h1>
+      <p>
+        The <em>Page Status</em> tool allows users to display the current preview/publish status of a site or subpath in a site.
+      </p>
+    </div>
+
+    <div>
+      <form id="status-form" aria-hidden="false">
+        <section class="form-field config-field">
+          <div class="form-field org-field">
+            <label for="org">Organization</label>
+            <input name="org" id="org" list="org-list" autocomplete="off" required />
+            <datalist id="org-list"></datalist>
+          </div>
+          <div class="form-field site-field">
+            <label for="site">Site</label>
+            <input name="site" id="site" list="site-list" autocomplete="off" disabled required />
+            <datalist id="site-list"></datalist>
+          </div>
+        </section>
+
+        <div class="form-field text-field">
+          <label for="path">Path</label>
+          <input name="path" id="path" />
+          <div class="field-help-text">
+            <p>
+              Leave blank to query whole site or specify a subpath by ending with <code>/</code>.
+            </p>
+          </div>
+      </div>
+     
+
+        <p class="button-wrapper">
+          <button type="submit" class="button">Submit</button>
+          <button type="reset" id="path-reset" class="button outline">Reset</button>
+          <button type="button" class="button outline download" id="download-csv">Download CSV</button>
+        </p>
+      </form>
+    </div>
+    <!-- TABLE -->
+    <div>
+      <div>
+        <form class="filter-form">
+          <div class="form-field search-field">
+            <label for="status-filter">Filter status by:</label>
+            <input name="status-filter" id="status-filter" type="search" disabled />
+          </div>
+        </form>
+      </div>
+      <div class="table">
+        <table>
+          <caption aria-hidden="true">Page Status Results as of <span class="as-of"></span></caption>
+          <thead>
+            <tr>
+              <th id="page-path">Path</th>
+              <th id="page-redirect">Redirect</th>
+              <th id="page-status">Status</th>
+              <th id="page-source">Source Modified</th>
+              <th id="page-preview">Last Preview</th>
+              <th id="page-publish">Last Publish</th>
+            </tr>
+          </thead>
+          <tbody class="results" aria-hidden="true"></tbody>
+          <tbody class="no-results" aria-hidden="false">
+            <tr>
+              <td colspan="6">
+                <div>
+                  <span class="icon icon-search"></span>
+                  <div>
+                    <p><strong>No results</strong></p>
+                    <p>Submit the form above to display page status.</p>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+          <tbody class="error" aria-hidden="true">
+            <tr>
+              <td colspan="6">
+                <div>
+                  <span class="icon icon-notice"></span>
+                  <div>
+                    <p><strong>Error</strong></p>
+                    <p>Unable to display the page status.</p>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+          <tbody class="loading" aria-hidden="true">
+            <tr>
+              <td colspan="6">
+                <div>
+                  <i class="symbol symbol-loading"></i>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+  <footer></footer>
+</body>
+</html>

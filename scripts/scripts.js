@@ -174,9 +174,14 @@ export async function decorateGuideTemplateCodeBlock() {
 
 function decorateLinks(main) {
   main.querySelectorAll('a').forEach((a) => {
-    const url = new URL(a.href);
-    if (url.hostname === 'tools.aem.live') {
-      a.href = url.pathname;
+    if (!a.href) return; // Skip anchors without href
+    try {
+      const url = new URL(a.href);
+      if (url.hostname === 'tools.aem.live') {
+        a.href = url.pathname;
+      }
+    } catch (e) {
+      // Skip invalid URLs
     }
   });
 }

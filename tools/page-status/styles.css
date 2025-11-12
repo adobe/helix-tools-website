@@ -1,0 +1,143 @@
+@media (width >= 900px) {
+  .page-status form#status-form {
+    display: grid;
+    grid-template:
+      'config path' auto
+      'checkbox checkbox' auto
+      'button button' 1fr / 1fr 1fr;
+    align-items: baseline;
+    gap: 0 var(--spacing-l);
+  }
+
+  .page-status form#status-form > .config-field {
+    grid-area: config;
+  }
+
+  .page-status form#status-form > .text-field {
+    grid-area: path;
+  }
+
+  .page-status form#status-form > .button-wrapper {
+    grid-area: button;
+  }
+}
+
+.page-status .filter-form-wrapper {
+  margin-bottom: 0;
+}
+
+.page-status table tbody.no-results td > div,
+.page-status table tbody.error td > div,
+.page-status table tbody.loading td > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-m);
+  padding: var(--spacing-xxl) 0;
+  min-height: 200px;
+}
+
+.page-status table tbody.loading td > div {
+  flex-direction: column;
+  min-height: 230px;
+}
+
+.page-status .table-container > div:first-child {
+  margin-bottom: var(--spacing-xs);
+}
+
+.page-status .table-container > .table-wrapper {
+  margin-top: 0;
+}
+
+.page-status .filter-form .form-field {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--spacing-s);
+  align-items: center;
+}
+
+.page-status .filter-form .form-field label {
+  margin: 0;
+}
+
+.page-status .table {
+  margin-top: var(--spacing-l);
+  padding-top: 0;
+}
+
+.page-status .table caption {
+  visibility: hidden;
+  padding: 0 11.2px;
+  font-size: var(--heading-size-s);
+  font-weight: var(--weight-bold);
+}
+
+.page-status .table caption[aria-hidden='false'] {
+  visibility: visible;
+}
+
+.page-status table tbody[aria-hidden='true'],
+.page-status table tbody.results tr[aria-hidden='true'] {
+  display: none;
+}
+
+.page-status table tbody.results td .icon-wrapper {
+  position: relative;
+  display: grid;
+  place-items: center; 
+}
+
+.page-status table tbody.results td .icon-wrapper .redirect-location {
+  display: none;
+}
+
+.page-status table tbody.results td .icon-wrapper .redirect-location.open {
+  display: block;
+  position: absolute;
+  top: -100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  padding: .75rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 0 0.5rem rgba(0 0 0 / 25%);
+  width: max-content;
+  z-index: 1;
+}
+
+.page-status table tbody.no-results span.icon,
+.page-status table tbody.error span.icon {
+  font-size: var(--heading-size-xxxxl);
+  line-height: 0;
+}
+
+.page-status table tbody.no-results p strong,
+.page-status table tbody.error p strong {
+  font-size: var(--detail-size-xl);
+}
+
+.page-status table tbody.error span.icon,
+.page-status table tbody.error p strong {
+  color: var(--red-900);
+}
+
+.page-status table tbody.loading i.symbol {
+  --border-m: 7px;
+
+  width: 5em;
+  height: 5em;
+  color: var(--gray-200);
+}
+
+.page-status table tbody.loading p {
+  font-size: var(--detail-size-xl);
+  text-align: center;
+}
+
+a.disabled {
+  pointer-events: none;
+  border-color: var(--gray-100);
+  background-color: var(--color-background);
+  color: var(--gray-400);
+}
