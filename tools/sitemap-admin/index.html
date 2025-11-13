@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';" move-to-http-header="true">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>Sitemap Admin | AEM Tools</title>
+  <meta name="description" content="Manage the sitemaps for your site.">
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/utils/config/config.css" />
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/sitemap-admin/sitemap-admin.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/sitemap-admin/sitemap-admin.css" />
+</head>
+
+<body class="sitemap-admin">
+  <header></header>
+  <main>
+    <div>
+      <h1>Sitemap Admin</h1>
+      <p>
+        Manage the sitemaps for your site. See <a href="https://www.aem.live/developer/sitemap" target="_blank">Sitemap
+          Documentation</a> for more information.
+      </p>
+    </div>
+
+    <div>
+      <form id="admin-form">
+        <section class="form-field config-field">
+          <div class="form-field org-field">
+            <label for="org">Organization</label>
+            <input name="org" id="org" list="org-list" autocomplete="off" required />
+            <datalist id="org-list"></datalist>
+          </div>
+          <div class="form-field site-field">
+            <label for="site">Site</label>
+            <input name="site" id="site" list="site-list" autocomplete="off" disabled />
+            <datalist id="site-list"></datalist>
+          </div>
+        </section>
+        <p class="button-wrapper">
+          <button type="submit" id="fetch" class="button">Fetch</button>
+        </p>
+      </form>
+    </div>
+
+    <div>
+      <h2>Sitemaps</h2>
+      <p class="button-wrapper">
+        <button type="button" id="add-sitemap" class="button outline" disabled>Add Sitemap</button>
+      </p>
+      <ul id="sitemaps-list">
+      </ul>
+    </div>
+
+    <div>
+      <div class="console"></div>
+    </div>
+  </main>
+  <footer></footer>
+  <template id="sitemap-card-template">
+    <li class="sitemap-card">
+      <p class="sitemap-name"></p>
+      <div class="sitemap-attributes">
+        <div class="sitemap-attribute"><span class="sitemap-attribute-name">Source:</span>
+          <div class="sitemap-attribute-value sitemap-attribute-value-source"></div>
+        </div>
+        <div class="sitemap-attribute"><span class="sitemap-attribute-name">Destination:</span>
+          <div class="sitemap-attribute-value sitemap-attribute-value-destination"></div>
+        </div>
+        <div class="sitemap-attribute"><span class="sitemap-attribute-name">Origin:</span>
+          <div class="sitemap-attribute-value sitemap-attribute-value-origin"></div>
+        </div>
+      </div>
+      <div class="sitemap-actions">
+        <button type="button" class="button outline edit-sitemap-btn">Edit</button>
+        <button type="button" class="button generate-sitemap-btn">Generate</button>
+        <button type="button" class="button danger remove-sitemap-btn">Remove</button>
+      </div>
+    </li>
+  </template>
+  <template id="sitemap-details-dialog-template">
+    <dialog class="sitemap-details">
+      <div class="sitemap-details-content">
+        <div class="sitemap-details-header">
+          <h3>Edit Sitemap</h3>
+        </div>
+        <div class="sitemap-details-body">
+          <form>
+            <div class="form-field">
+              <label for="sitemap-name">Name</label>
+              <input type="text" id="sitemap-name" name="sitemap-name" required />
+            </div>
+            <div class="form-field">
+              <label for="sitemap-source">Source</label>
+              <input type="text" id="sitemap-source" name="sitemap-source" required />
+            </div>
+            <div class="form-field">
+              <label for="sitemap-destination">Destination</label>
+              <input type="text" id="sitemap-destination" name="sitemap-destination" required />
+            </div>
+            <div class="form-field">
+              <label for="sitemap-origin">Origin</label>
+              <input type="text" id="sitemap-origin" name="sitemap-origin" placeholder="Optional" />
+            </div>
+            <div class="form-field">
+              <label for="sitemap-lastmod">Last Modified Format</label>
+              <input type="text" id="sitemap-lastmod" name="sitemap-lastmod" placeholder="e.g., YYYY-MM-DD" />
+            </div>
+            <div class="form-field">
+              <label for="sitemap-extension">Extension</label>
+              <input type="text" id="sitemap-extension" name="sitemap-extension" placeholder="e.g., .html" />
+            </div>
+            <div class="button-area">
+              <p class="button-wrapper">
+                <button type="submit" id="save-sitemap" class="button">Save</button>
+              </p>
+              <p class="button-wrapper" id="back-sitemap-wrapper" style="display: none;">
+                <button type="button" id="back-sitemap" class="button outline">Back</button>
+              </p>
+              <p class="button-wrapper">
+                <button type="button" id="cancel-sitemap" class="button outline">Cancel</button>
+              </p>
+            </div>
+          </form>
+        </div>
+      </div>
+    </dialog>
+  </template>
+  <template id="sitemap-multilang-card-template">
+    <li class="sitemap-card multilang-sitemap">
+      <p class="sitemap-name"></p>
+      <div class="sitemap-attributes">
+        <div class="sitemap-attribute"><span class="sitemap-attribute-name">Type:</span>
+          <div class="sitemap-attribute-value">Multi-Language</div>
+        </div>
+        <div class="sitemap-attribute"><span class="sitemap-attribute-name">Languages:</span>
+          <div class="sitemap-attribute-value sitemap-attribute-value-languages"></div>
+        </div>
+        <div class="sitemap-attribute"><span class="sitemap-attribute-name">Origin:</span>
+          <div class="sitemap-attribute-value sitemap-attribute-value-origin"></div>
+        </div>
+        <div class="sitemap-attribute"><span class="sitemap-attribute-name">Default:</span>
+          <div class="sitemap-attribute-value sitemap-attribute-value-default"></div>
+        </div>
+        <div class="sitemap-attribute languages-list-container">
+          <div class="languages-list-header">
+            <span class="sitemap-attribute-name">Configured Languages:</span>
+            <button type="button" class="button outline small add-language-btn">Add Language</button>
+          </div>
+          <div class="languages-list"></div>
+        </div>
+      </div>
+      <div class="sitemap-actions">
+        <button type="button" class="button outline edit-sitemap-btn">Edit</button>
+        <button type="button" class="button generate-sitemap-btn">Generate</button>
+        <button type="button" class="button danger remove-sitemap-btn">Remove</button>
+      </div>
+    </li>
+  </template>
+  <template id="sitemap-multilang-dialog-template">
+    <dialog class="sitemap-details multilang-dialog">
+      <div class="sitemap-details-content">
+        <div class="sitemap-details-header">
+          <h3>Edit Multi-Language Sitemap</h3>
+          <p>Edit top-level settings. Use the language buttons to add or edit individual languages.</p>
+        </div>
+        <div class="sitemap-details-body">
+          <form>
+            <div class="form-field">
+              <label for="sitemap-name">Name</label>
+              <input type="text" id="sitemap-name" name="sitemap-name" required />
+            </div>
+            <div class="form-field">
+              <label for="sitemap-origin">Origin</label>
+              <input type="text" id="sitemap-origin" name="sitemap-origin" placeholder="Optional" />
+              </div>
+              <div class="form-field">
+              <label for="sitemap-default">Default Language</label>
+              <input type="text" id="sitemap-default" name="sitemap-default" placeholder="e.g., en-US" />
+            </div>
+            <div class="form-field">
+              <label for="sitemap-lastmod">Last Modified Format</label>
+              <input type="text" id="sitemap-lastmod" name="sitemap-lastmod" placeholder="e.g., YYYY-MM-DD" />
+            </div>
+            <div class="form-field">
+              <label for="sitemap-extension">Extension</label>
+              <input type="text" id="sitemap-extension" name="sitemap-extension" placeholder="e.g., .html" />
+            </div>
+            <div class="button-area">
+              <p class="button-wrapper">
+                <button type="submit" id="save-sitemap" class="button">Save</button>
+              </p>
+              <p class="button-wrapper" style="display: none;">
+                <button type="button" id="back-sitemap" class="button outline">Back</button>
+              </p>
+              <p class="button-wrapper">
+                <button type="button" id="cancel-sitemap" class="button outline">Cancel</button>
+              </p>
+            </div>
+          </form>
+        </div>
+      </div>
+    </dialog>
+  </template>
+  <template id="language-item-template">
+    <div class="language-item">
+      <div class="language-info">
+        <strong class="lang-code"></strong>
+        <span class="lang-destination"></span>
+      </div>
+      <div class="language-actions">
+        <button type="button" class="button outline small edit-language-btn">Edit</button>
+        <button type="button" class="button danger small remove-language-btn">Remove</button>
+      </div>
+    </div>
+  </template>
+  <template id="language-edit-dialog-template">
+    <dialog class="language-edit-dialog">
+      <div class="language-edit-content">
+        <div class="language-edit-header">
+          <h3>Edit Language Configuration</h3>
+        </div>
+        <div class="language-edit-body">
+          <form>
+            <div class="form-field">
+              <label for="lang-code">Language Code</label>
+              <input type="text" id="lang-code" name="lang-code" placeholder="e.g., en-US" required />
+            </div>
+            <div class="form-field">
+              <label for="lang-source">Source</label>
+              <input type="text" id="lang-source" name="lang-source" placeholder="e.g., /us/en/query-index.json" required />
+            </div>
+            <div class="form-field">
+              <label for="lang-destination">Destination</label>
+              <input type="text" id="lang-destination" name="lang-destination" placeholder="e.g., /us/en/sitemap.xml" required />
+            </div>
+            <div class="form-field">
+              <label for="lang-hreflang">Hreflang</label>
+              <input type="text" id="lang-hreflang" name="lang-hreflang" placeholder="e.g., en-US or en-US, en-CA" />
+            </div>
+            <div class="form-field">
+              <label for="lang-alternate">Alternate Pattern</label>
+              <input type="text" id="lang-alternate" name="lang-alternate" placeholder="e.g., /us/en/{path}" />
+            </div>
+            <div class="button-area">
+              <p class="button-wrapper">
+                <button type="submit" id="save-language" class="button">Save</button>
+              </p>
+              <p class="button-wrapper">
+                <button type="button" id="cancel-language" class="button outline">Cancel</button>
+              </p>
+            </div>
+          </form>
+        </div>
+      </div>
+    </dialog>
+  </template>
+  <template id="sitemap-type-dialog-template">
+    <dialog class="sitemap-type-dialog">
+      <div class="sitemap-type-content">
+        <div class="sitemap-type-header">
+          <h3>Choose Sitemap Type</h3>
+          <p>Select the type of sitemap you want to create:</p>
+        </div>
+        <div class="sitemap-type-options">
+          <button type="button" id="simple-sitemap-btn" class="button type-option">
+            <strong>Simple Sitemap</strong>
+            <span>Single source and destination</span>
+          </button>
+          <button type="button" id="multilang-sitemap-btn" class="button type-option">
+            <strong>Multi-Language Sitemap</strong>
+            <span>Multiple languages with hreflang support</span>
+          </button>
+        </div>
+        <div class="button-area">
+          <p class="button-wrapper">
+            <button type="button" id="cancel-type-btn" class="button outline">Cancel</button>
+          </p>
+        </div>
+      </div>
+    </dialog>
+  </template>
+</body>
+
+</html>
+
