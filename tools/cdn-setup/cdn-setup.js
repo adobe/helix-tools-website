@@ -195,8 +195,11 @@ async function init() {
     }
 
     const aggregateConfig = await fetch(`https://admin.hlx.page/config/${org.value}/aggregated/${site.value}.json`);
-    const aggregate = await aggregateConfig.json();
-    const aggConfig = aggregate.cdn.prod;
+    let aggConfig = {};
+    if (aggregateConfig.ok) {
+      const aggregate = await aggregateConfig.json();
+      aggConfig = aggregate.cdn?.prod || {};
+    }
 
     const cdnUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}.json`;
     const resp = await fetch(cdnUrl);
