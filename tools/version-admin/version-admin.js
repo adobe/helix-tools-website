@@ -1,6 +1,7 @@
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { diffJson } from './diff.js';
 import { logResponse } from '../../blocks/console/console.js';
+import { initConfigField, updateConfig } from '../../utils/config/config.js';
 
 const adminForm = document.getElementById('admin-form');
 const typeSelect = document.getElementById('type');
@@ -355,6 +356,9 @@ function updateFieldVisibility() {
   // Update required attributes
   profile.required = selectedType === 'profile';
   site.required = selectedType === 'site';
+
+  // Enable/disable site field based on type (for config utility compatibility)
+  site.disabled = selectedType !== 'site';
 }
 
 /**
@@ -407,16 +411,18 @@ adminForm.addEventListener('submit', async (e) => {
   versions.innerHTML = '';
   currentVersionInfo.style.display = 'none';
 
-  // Update URL
-  const params = new URLSearchParams();
-  params.set('type', typeSelect.value);
-  params.set('org', org.value);
-  if (typeSelect.value === 'profile') {
-    params.set('profile', profile.value);
-  } else if (typeSelect.value === 'site') {
-    params.set('site', site.value);
+  // Update URL and storage (org/site handled by config utility)
+  if (typeSelect.value === 'site') {
+    updateConfig();
   }
-  window.history.pushState(null, '', `?${params.toString()}`);
+
+  // Add type and profile to URL params
+  const url = new URL(window.location.href);
+  url.searchParams.set('type', typeSelect.value);
+  if (typeSelect.value === 'profile') {
+    url.searchParams.set('profile', profile.value);
+  }
+  window.history.replaceState(null, '', url.href);
 
   // Update title
   let titleText = `${org.value}`;
@@ -458,36 +464,39 @@ adminForm.addEventListener('submit', async (e) => {
   fetchButton.disabled = false;
 });
 
-// Initialize from URL parameters
-const params = new URLSearchParams(window.location.search);
-const typeParam = params.get('type');
-const orgParam = params.get('org');
-const profileParam = params.get('profile');
-const siteParam = params.get('site');
+// Initialize
+async function init() {
+  // Initialize config field utility (handles org/site autofill from params/storage/sidekick)
+  await initConfigField();
 
-if (typeParam) {
-  typeSelect.value = typeParam;
+  // Initialize from URL parameters (type and profile are tool-specific)
+  const params = new URLSearchParams(window.location.search);
+  const typeParam = params.get('type');
+  const profileParam = params.get('profile');
+
+  if (typeParam) {
+    typeSelect.value = typeParam;
+  }
+
+  // Update field visibility after type is set (or use default)
   updateFieldVisibility();
-}
-if (orgParam) {
-  org.value = orgParam;
-}
-if (profileParam) {
-  profile.value = profileParam;
-}
-if (siteParam) {
-  site.value = siteParam;
+
+  if (profileParam) {
+    profile.value = profileParam;
+  }
+
+  // Auto-submit if we have the required parameters
+  if (typeParam && org.value
+      && ((typeParam === 'org')
+       || (typeParam === 'profile' && profileParam)
+       || (typeParam === 'site' && site.value))) {
+    adminForm.dispatchEvent(new Event('submit'));
+  }
 }
 
-// Auto-submit if we have the required parameters
-if (typeParam && orgParam
-    && ((typeParam === 'org')
-     || (typeParam === 'profile' && profileParam)
-     || (typeParam === 'site' && siteParam))) {
-  adminForm.dispatchEvent(new Event('submit'));
-}
+const initPromise = init();
 
 // eslint-disable-next-line import/prefer-default-export
 export function ready() {
-  return Promise.resolve();
+  return initPromise;
 }

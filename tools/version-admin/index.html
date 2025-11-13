@@ -13,6 +13,7 @@
   <title>Version Admin</title>
   <script nonce="aem" src="/scripts/aem.js" type="module"></script>
   <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/utils/config/config.css" />
   <link rel="stylesheet" href="/styles/styles.css" />
   <script nonce="aem" src="/tools/version-admin/version-admin.js" type="module"></script>
   <link rel="stylesheet" href="/tools/version-admin/version-admin.css" />
@@ -44,15 +45,14 @@
             <input name="org" id="org" list="org-list" autocomplete="off" required />
             <datalist id="org-list"></datalist>
           </div>
-          <div class="form-field site-field" style="display: none;">
+          <div class="form-field site-field">
             <label for="site">Site</label>
-            <input name="site" id="site" list="site-list" autocomplete="off" />
+            <input name="site" id="site" list="site-list" autocomplete="off" disabled />
             <datalist id="site-list"></datalist>
           </div>
-          <div class="form-field profile-field" style="display: none;">
+          <div class="form-field profile-field">
             <label for="profile">Profile</label>
-            <input name="profile" id="profile" list="profile-list" autocomplete="off" />
-            <datalist id="profile-list"></datalist>
+            <input name="profile" id="profile" autocomplete="off" />
           </div>
         </section>
         <p class="button-wrapper">
