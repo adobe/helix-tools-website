@@ -1,0 +1,36 @@
+.cdn-setup .form-field {
+  margin-bottom: 20px;
+}
+
+.cdn-setup label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.cdn-setup input,
+.cdn-setup select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.cdn-setup input:focus,
+.cdn-setup select:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.cdn-setup .button-wrapper {
+    font-size: 14px;
+}
+
+.cdn-setup .form-field:has(#route) {
+    display: none;
+}
+
+.cdn-setup [aria-hidden="true"] {
+    display: none;
+} 

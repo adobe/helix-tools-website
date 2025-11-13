@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>CDN Setup | AEM Tools</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/utils/config/config.css" />
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/cdn-setup/cdn-setup.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/cdn-setup/cdn-setup.css" />
+</head>
+<body class="cdn-setup">
+  <header></header>
+  <main>
+    <div>
+      <h1>CDN Setup</h1>
+    </div>
+
+    <div>
+      <form id="admin-form">
+        <section class="form-field config-field">
+          <div class="form-field org-field">
+            <label for="org">Organization</label>
+            <input name="org" id="org" list="org-list" autocomplete="off" required />
+            <datalist id="org-list"></datalist>
+          </div>
+          <div class="form-field site-field">
+            <label for="site">Site</label>
+            <input name="site" id="site" list="site-list" autocomplete="off" disabled />
+            <datalist id="site-list"></datalist>
+          </div>
+        </section>
+        <p class="button-wrapper">
+          <button type="submit" id="fetch" class="button">Fetch</button>
+        </p>
+      </form>
+    </div>
+
+    <div>
+      <form id="cdn-form" aria-hidden="true" disabled>
+        <div class="form-field">
+          <label for="host">Production Host</label>
+          <input id="host" name="host" type="text" />
+        </div>
+        <div class="cdn-container">
+          <div class="form-field">
+            <label for="cdn-type">CDN Type</label>
+            <select id="cdn-type" name="cdn-type">
+              <option value="">(No CDN Type Selected)</option>
+              <option value="fastly">Fastly</option>
+              <option value="cloudflare">Cloudflare</option>
+              <option value="akamai">Akamai</option>
+              <option value="managed">Managed</option>
+              <option value="cloudfront">CloudFront</option>
+            </select>
+          </div>
+
+          <div id="cdn-fields">
+            <!-- CDN-specific fields will be dynamically added here -->
+          </div>
+        </div>
+        <div class="button-bar">
+          <div class="button-wrapper">
+            <button type="submit" id="save" class="button">Save</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div>
+      <div class="console"></div>
+    </div>
+  </main>
+  <footer></footer>
+</body>
+</html> 
