@@ -383,6 +383,11 @@ async function init() {
 
         populateIndexes(loadedIndices.indices);
         addIndexButton.disabled = false;
+      } else if (resp.status === 404) {
+        // No index exists yet, but allow creating one
+        loadedIndices = { indices: {} };
+        populateIndexes(loadedIndices.indices);
+        addIndexButton.disabled = false;
       } else if (resp.status === 401) {
         ensureLogin(org.value, site.value);
       }

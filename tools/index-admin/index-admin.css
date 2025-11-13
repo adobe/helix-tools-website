@@ -179,6 +179,7 @@
         }
 
         input, textarea, select {
+          width: 100%;
           padding: var(--spacing-s);
           border: 1px solid var(--gray-300);
           border-radius: 6px;
