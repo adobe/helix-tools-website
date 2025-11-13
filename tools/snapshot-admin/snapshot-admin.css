@@ -1,0 +1,983 @@
+/* Snapshot Admin Styles - Aligned with Project Design System */
+/* stylelint-disable no-descending-specificity */
+
+/* Use existing project variables instead of custom ones */
+.snapshot-admin {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--horizontal-spacing);
+  font-family: var(--body-font-family);
+  color: var(--color-text);
+  background-color: var(--color-background);
+}
+
+.snapshot-admin * {
+  box-sizing: border-box;
+}
+
+/* Typography using project system */
+.snapshot-admin h1 {
+  font-size: var(--heading-size-xl);
+  line-height: var(--line-height-l);
+  margin: 0 0 var(--spacing-400) 0;
+  font-weight: var(--weight-extrabold);
+}
+
+.snapshot-admin h2 {
+  font-size: var(--heading-size-l);
+  font-weight: var(--weight-bold);
+  margin: var(--spacing-500) 0 var(--spacing-200) 0;
+}
+
+.snapshot-admin h3 {
+  font-size: var(--heading-size-m);
+  font-weight: var(--weight-bold);
+  margin: 0;
+}
+
+.snapshot-admin h4 {
+  font-size: var(--heading-size-s);
+  font-weight: var(--weight-bold);
+  margin: 0 0 var(--spacing-200) 0;
+}
+
+.snapshot-admin p {
+  margin: 0;
+  font-size: var(--body-size-m);
+}
+
+.snapshot-admin .button-wrapper {
+  margin-top: var(--spacing-300);
+}
+
+/* Site path form using project form styles */
+#site-path-form {
+  margin-bottom: var(--spacing-500);
+}
+
+#site-path-form .button-wrapper {
+  display: flex;
+  gap: var(--spacing-200);
+}
+
+/* Config field styling for org/site fields */
+.form-field.config-field {
+  display: grid;
+}
+
+@media (width >= 600px) {
+  .form-field.config-field {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-l);
+  }
+
+  .form-field.config-field .form-field {
+    margin-top: 0;
+  }
+
+  .form-field.config-field .site-field {
+    position: relative;
+  }
+
+  .form-field.config-field .site-field::before {
+    content: '/';
+    position: absolute;
+    left: calc((var(--spacing-l) + 0.5ch) / -2);
+    bottom: calc(var(--border-m) + 0.4em);
+  }
+}
+
+/* Snapshot list */
+.snapshots-container {
+  margin-top: var(--spacing-500);
+}
+
+.snapshots-list-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  margin-bottom: var(--spacing-300);
+}
+
+.snapshots-list {
+  border: var(--border-m) solid var(--gray-300);
+  border-radius: var(--rounding-m);
+  overflow: hidden;
+  background-color: var(--color-background);
+}
+
+.snapshots-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.snapshots-list li {
+  display: block;
+  border-bottom: var(--border-s) solid var(--gray-200);
+}
+
+.snapshots-list li:last-child {
+  border-bottom: none;
+}
+
+/* URLs list - moved here to fix specificity order */
+.sa-snapshot-urls {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  height: 388px;
+  overflow-y: auto;
+  border: var(--border-m) solid var(--gray-300);
+  border-radius: var(--rounding-m);
+  background-color: var(--color-background);
+}
+
+.sa-snapshot-urls a {
+  padding: var(--spacing-100) var(--spacing-200);
+  color: var(--color-text);
+  text-decoration: none;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  transition: background-color 0.2s;
+}
+
+.sa-snapshot-urls a:hover {
+  background-color: var(--gray-100);
+  color: var(--color-link);
+}
+
+.sa-snapshot-urls a span {
+  line-height: 40px;
+  font-family: var(--code-font-family);
+  font-size: var(--detail-size-m);
+}
+
+.sa-snapshot-urls .icon-wrap {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--rounding-s);
+  background-color: var(--gray-100);
+}
+
+.sa-snapshot-urls li {
+  border-bottom: var(--border-s) solid var(--gray-200);
+}
+
+.sa-snapshot-urls li:last-child {
+  border-bottom: none;
+  margin-bottom: var(--spacing-400);
+}
+
+.sa-snapshot-urls li:hover .icon-wrap {
+  display: flex;
+}
+
+/* Snapshot cards */
+.snapshot-card {
+  border: var(--border-m) solid var(--gray-300);
+  border-radius: var(--rounding-m);
+  margin: var(--spacing-400) 0;
+  padding: var(--spacing-400);
+  background: var(--color-background);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.snapshot-card:hover {
+  border-color: var(--gray-400);
+  box-shadow: var(--shadow-default);
+}
+
+.snapshot-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-300);
+}
+
+.snapshot-header h3 {
+  color: var(--color-text);
+  font-size: var(--heading-size-s);
+}
+
+.snapshot-actions {
+  display: flex;
+  gap: var(--spacing-200);
+  flex-wrap: wrap;
+}
+
+.snapshot-details {
+  border-top: var(--border-s) solid var(--gray-200);
+  padding-top: var(--spacing-400);
+  margin-top: var(--spacing-400);
+}
+
+.snapshot-edit-form .form-field {
+  margin-bottom: var(--spacing-400);
+}
+
+.snapshot-edit-form label {
+  /* Inherits from project's label styles */
+  font-size: var(--body-size-m);
+  color: var(--gray-700);
+}
+
+.snapshot-edit-form input,
+.snapshot-edit-form textarea {
+  /* Inherits from project's input/textarea styles */
+  font-family: var(--body-font-family);
+}
+
+.snapshot-edit-form textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+}
+
+/* Review actions section */
+.review-actions {
+  margin-top: var(--spacing-500);
+  padding-top: var(--spacing-400);
+  border-top: var(--border-s) solid var(--gray-200);
+}
+
+.review-actions h4 {
+  color: var(--color-text);
+}
+
+/* Review button styling */
+.review-actions button[data-action="approve-review"] {
+  --button-color: var(--green-900);
+  --button-color-hover: var(--green-800);
+}
+
+.review-actions button[data-action="reject-review"] {
+  --button-color: var(--red-900);
+  --button-color-hover: var(--red-800);
+}
+
+/* Lock/Unlock button styling */
+.snapshot-actions button[data-action="lock"] {
+  --button-color: var(--red-900);
+  --button-color-hover: var(--red-800);
+}
+
+.snapshot-actions button[data-action="unlock"] {
+  --button-color: var(--green-900);
+  --button-color-hover: var(--green-800);
+}
+
+.review-actions button, .snapshot-actions button {
+  --button-color: var(--blue-900);
+  --button-color-hover: var(--blue-800);
+}
+
+#snapshot-details .review-actions button, #snapshot-details .snapshot-actions button {
+  background: white;
+  border-color: var(--button-color);
+  color: var(--button-color);
+  border-width: 2px;
+}
+
+#snapshot-details .review-actions button:hover, #snapshot-details .snapshot-actions button:hover {
+  background-color: var(--button-color-hover);
+  border-color: var(--button-color-hover);
+  color: white;
+}
+
+
+/* Disabled lock/unlock button styles */
+#snapshot-details .snapshot-actions button:disabled, #snapshot-details .review-actions button:disabled {
+  background-color: var(--gray-100);
+  border-color: var(--gray-200);
+  color: var(--gray-400);
+  cursor: not-allowed;
+}
+
+#snapshot-details .snapshot-actions button:disabled:hover, #snapshot-details .review-actions button:disabled:hover {
+  background-color: var(--gray-100);
+  border-color: var(--gray-200);
+  color: var(--gray-400);
+}
+
+/* Create snapshot section */
+#create-snapshot-section {
+  margin-top: var(--spacing-600);
+  padding: var(--spacing-400);
+  background: var(--gray-100);
+  border-radius: var(--rounding-m);
+  border: var(--border-s) solid var(--gray-200);
+}
+
+#create-snapshot-section h3 {
+  color: var(--color-text);
+  margin-bottom: var(--spacing-300);
+}
+
+/* Status lights using project pattern */
+.status-light {
+  display: inline-block;
+  padding: var(--spacing-50) var(--spacing-200);
+  border-radius: var(--rounding-s);
+  font-size: var(--detail-size-s);
+  font-weight: var(--weight-medium);
+  color: white;
+}
+
+.status-light.http2 {
+  background-color: var(--green-800);
+}
+
+.status-light.http3 {
+  background-color: var(--cyan-800);
+}
+
+.status-light.http4 {
+  background-color: var(--orange-800);
+}
+
+.status-light.http5 {
+  background-color: var(--red-800);
+}
+
+/* Console table */
+#console {
+  font-family: var(--code-font-family);
+  font-size: var(--detail-size-s);
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--spacing-400);
+}
+
+#console td {
+  padding: var(--spacing-100) var(--spacing-200);
+  border-bottom: var(--border-s) solid var(--gray-200);
+  vertical-align: top;
+}
+
+#console tr:hover {
+  background-color: var(--gray-100);
+}
+
+/* Dialog styles using project modal patterns */
+.sa-dialog-container {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+
+.sa-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+}
+
+.sa-dialog-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: var(--transparent-black-600);
+  cursor: pointer;
+}
+
+.sa-dialog-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100% - (2 * var(--horizontal-spacing)));
+  max-width: 500px;
+  border-radius: var(--rounding-m);
+  background-color: var(--color-background);
+  box-shadow: var(--shadow-dragged);
+}
+
+.sa-dialog-inner {
+  padding: var(--spacing-500);
+}
+
+.sa-dialog-header-area {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-300);
+}
+
+.sa-dialog-heading {
+  font-size: var(--heading-size-s);
+  font-weight: var(--weight-bold);
+  margin: 0;
+  color: var(--color-text);
+}
+
+.sa-dialog-close-btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--rounding-s);
+  background-color: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.sa-dialog-close-btn:hover {
+  background-color: var(--gray-100);
+}
+
+.sa-dialog hr {
+  margin: 0 0 var(--spacing-400) 0;
+  border: none;
+  border-top: var(--border-s) solid var(--gray-200);
+}
+
+.sa-dialog-content-area {
+  padding: 0 0 var(--spacing-500) 0;
+}
+
+.sa-dialog-message {
+  margin: 0;
+  font-size: var(--body-size-m);
+  line-height: var(--line-height-m);
+  color: var(--color-text);
+}
+
+.sa-dialog-action-group {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-300);
+}
+
+.sa-dialog-ok-btn {
+  /* Uses project button styles as base */
+  padding: var(--spacing-200) var(--spacing-400);
+  background: var(--color-link);
+  color: var(--color-background);
+  border: var(--border-m) solid var(--color-link);
+  border-radius: var(--rounding-s);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.sa-dialog-ok-btn:hover {
+  background: var(--color-link-hover);
+  border-color: var(--color-link-hover);
+}
+
+/* Snapshot wrapper - specific to component */
+.sa-snapshot-wrapper {
+  position: relative;
+  padding: var(--spacing-300);
+  background-color: var(--gray-50);
+  transition: background-color 0.2s ease-in-out;
+  border-radius: var(--rounding-s);
+}
+
+.sa-snapshot-wrapper.is-open {
+  background-color: var(--blue-100);
+}
+
+.sa-snapshot-wrapper.is-saving::after {
+  content: 'Saving...';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--transparent-white-800);
+  border-radius: var(--rounding-s);
+  font-size: var(--body-size-m);
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+}
+
+.sa-snapshot-header {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 1fr auto;
+  gap: var(--spacing-400);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+}
+
+.sa-snapshot-header-title {
+  display: grid;
+  grid-template-columns: 1fr 64px;
+  gap: var(--spacing-400);
+  align-items: center;
+}
+
+/* Input styles - grouped together for specificity */
+.sa-snapshot-header input {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  line-height: 32px;
+  border-bottom: var(--border-m) dotted var(--gray-500);
+  font-weight: var(--weight-bold);
+  font-size: var(--body-size-m);
+  color: var(--color-text);
+}
+
+.sa-snapshot-header input:focus {
+  outline: none;
+  border-bottom: var(--border-m) dotted var(--color-link);
+}
+
+.sa-snapshot-meta input,
+.sa-snapshot-meta textarea {
+  width: 100%;
+  margin-bottom: var(--spacing-200);
+
+  /* Inherits border, padding, etc. from project form styles */
+}
+
+.sa-snapshot-meta textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.sa-snapshot-expand {
+  position: relative;
+  display: block;
+  width: 44px;
+  height: 32px;
+  border: none;
+  border-radius: var(--rounding-s);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.sa-snapshot-expand::after {
+  content: '▶';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: var(--body-size-m);
+  transition: transform 0.2s;
+}
+
+.sa-snapshot-expand:hover {
+  background: var(--transparent-black-100);
+}
+
+.sa-snapshot-wrapper.is-open .sa-snapshot-expand::after {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+/* Snapshot details */
+.sa-snapshot-details {
+  display: none;
+  grid-template-columns: 1.4fr 0.6fr;
+  gap: var(--spacing-400);
+  margin-top: var(--spacing-400);
+  padding-top: var(--spacing-400);
+  border-top: var(--border-s) solid var(--gray-300);
+}
+
+.sa-snapshot-wrapper.is-open .sa-snapshot-details {
+  display: grid;
+}
+
+.sa-snapshot-details-left {
+  position: relative;
+}
+
+.sa-snapshot-details-left.is-list::after {
+  pointer-events: none;
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 24px;
+  background: linear-gradient(transparent, var(--color-background));
+}
+
+
+
+/* Edit URLs textarea */
+.sa-snapshot-edit-urls {
+  height: 388px;
+  width: 100%;
+  padding: var(--spacing-300);
+  border: var(--border-m) solid var(--gray-300);
+  border-radius: var(--rounding-m);
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+  resize: none;
+  background-color: var(--color-background);
+  color: var(--color-text);
+}
+
+.sa-snapshot-edit-urls:focus {
+  outline: var(--border-m) solid var(--color-link);
+  outline-offset: var(--border-m);
+  border-color: var(--color-text);
+}
+
+/* Sub headings */
+.sa-snapshot-sub-heading {
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  font-size: var(--detail-size-s);
+  margin-bottom: var(--spacing-100);
+  color: var(--gray-700);
+}
+
+.sa-snapshot-sub-heading-urls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sa-snapshot-sub-heading-urls p {
+  display: flex;
+  justify-content: start;
+  align-items: center;
+  gap: var(--spacing-200);
+}
+
+.sa-snapshot-sub-heading-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-200);
+}
+
+.sa-snapshot-sub-heading button {
+  background: transparent;
+  color: var(--color-link);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  font-size: var(--detail-size-s);
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.sa-snapshot-sub-heading button:disabled {
+  color: var(--gray-400);
+  cursor: not-allowed;
+}
+
+.sa-snapshot-sub-heading button:hover:not(:disabled) {
+  color: var(--color-link-hover);
+  text-decoration: underline;
+}
+
+/* Action groups - button styles ordered for specificity */
+.sa-snapshot-action-group {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-200);
+  margin-bottom: var(--spacing-400);
+}
+
+.sa-snapshot-action-group:last-child {
+  margin-bottom: 0;
+}
+
+.sa-snapshot-action-group button {
+  color: var(--color-text);
+  font-size: var(--detail-size-s);
+  font-weight: var(--weight-bold);
+  text-align: center;
+  border: var(--border-m) solid var(--gray-300);
+  border-radius: var(--rounding-s);
+  padding: var(--spacing-200);
+  background-color: var(--color-background);
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+  min-height: 64px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-100);
+}
+
+.sa-snapshot-action-group button svg {
+  margin: 0 auto var(--spacing-100) auto;
+}
+
+.sa-snapshot-action-group button:hover:not(:disabled) {
+  background-color: var(--color-link-hover);
+  border-color: var(--color-link-hover);
+  color: var(--color-background);
+}
+
+.sa-snapshot-action-group button:disabled {
+  background: var(--gray-100);
+  border-color: var(--gray-200);
+  color: var(--gray-400);
+  cursor: not-allowed;
+}
+
+.sa-snapshot-action-group button:disabled:hover {
+  background-color: var(--gray-100);
+  border-color: var(--gray-200);
+  color: var(--gray-400);
+}
+
+.sa-snapshot-action-group button.is-editing {
+  background-color: var(--color-link);
+  border-color: var(--color-link);
+  color: var(--color-background);
+}
+
+/* Icon styles */
+.snapshot-admin svg.icon {
+  display: block;
+  width: 20px;
+  height: 20px;
+  fill: currentcolor;
+}
+
+/* Modal styles */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal[aria-hidden="true"] {
+  display: none;
+}
+
+.modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--transparent-black-600);
+  cursor: pointer;
+}
+
+.modal-content {
+  position: relative;
+  background-color: var(--color-background);
+  border-radius: var(--rounding-m);
+  border: var(--border-m) solid var(--gray-300);
+  box-shadow: var(--shadow-hover);
+  max-width: 400px;
+  width: calc(100% - 2 * var(--spacing-400));
+  max-height: 80vh;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-300);
+  border-bottom: var(--border-s) solid var(--gray-200);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: var(--heading-size-s);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: var(--heading-size-l);
+  color: var(--gray-500);
+  cursor: pointer;
+  padding: var(--spacing-50);
+  border-radius: var(--rounding-s);
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background-color: var(--gray-100);
+  color: var(--gray-700);
+}
+
+.modal-body {
+  padding: var(--spacing-300);
+}
+
+.modal-body p {
+  margin: 0;
+  color: var(--color-text);
+  line-height: var(--line-height-m);
+}
+
+.modal-footer {
+  padding: var(--spacing-300);
+  border-top: var(--border-s) solid var(--gray-200);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-200);
+}
+
+/* Hide elements with aria-hidden */
+[aria-hidden="true"] {
+  display: none !important;
+}
+
+/* Loading animation using project pattern */
+.loading {
+  border: currentcolor 3px solid;
+  border-radius: 50%;
+  border-right-color: transparent;
+  box-sizing: border-box;
+  display: inline-block;
+  position: relative;
+  width: 1em;
+  height: 1em;
+  vertical-align: middle;
+  transform: translateY(-0.05em);
+  animation: loading 1.5s ease-in-out infinite;
+}
+
+@keyframes loading {
+  from {
+    transform: rotate(0deg)
+  }
+
+  to {
+    transform: rotate(360deg)
+  }
+}
+
+/* Responsive design using project breakpoints */
+@media (width <= 900px) {
+  .snapshot-admin {
+    margin: var(--spacing-400) auto;
+    padding: 0 var(--spacing-400);
+  }
+  
+
+  
+  .sa-snapshot-details {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-400);
+  }
+  
+  .sa-snapshot-action-group {
+    grid-template-columns: 1fr;
+  }
+  
+  .sa-snapshot-action-group button {
+    min-height: 50px;
+  }
+  
+  .snapshot-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-300);
+  }
+  
+  .snapshot-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .snapshot-edit-form input,
+  .snapshot-edit-form textarea {
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+}
+
+/* Snapshot Details Page Specific Styles */
+.snapshot-info {
+  margin-bottom: var(--spacing-400);
+  padding: var(--spacing-300);
+  background-color: var(--gray-50);
+  border-radius: var(--rounding-m);
+  border: var(--border-s) solid var(--gray-200);
+}
+
+.snapshot-status-badge {
+  padding: var(--spacing-100) var(--spacing-200);
+  border-radius: var(--rounding-s);
+  font-size: var(--body-size-s);
+  font-weight: var(--weight-medium);
+  text-align: center;
+  min-width: 80px;
+}
+
+.snapshot-status-badge.locked {
+  background-color: var(--red-100);
+  color: var(--red-700);
+  border: var(--border-s) solid var(--red-200);
+}
+
+.snapshot-status-badge.unlocked {
+  background-color: var(--green-100);
+  color: var(--green-900);
+  border: var(--border-s) solid var(--green-200);
+}
+
+.danger-actions h4 {
+  color: var(--red-900);
+  margin-bottom: var(--spacing-200);
+}
+
+.button.danger {
+  color: var(--red-900);
+  background-color: white;
+  border-color: var(--red-900);
+  border-width: 2px;
+}
+
+.button.danger:hover {
+  background-color: var(--red-800);
+  border-color: var(--red-800);
+  color: white;
+}
+
+/* Make edit button look like a button but behave like a link */
+.edit-snapshot {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+#snapshot-details .snapshot-card {
+  border: none;
+  padding: 0;
+  box-shadow: none;
+
+}
+
+#snapshot-details .danger-actions {
+  border: none;
+  margin-top: var(--spacing-500);
+  border-top: 1px solid var(--red-600);
+  padding: 0;
+  padding-top: var(--spacing-300);
+}
+
+#snapshot-details .review-actions button {
+  margin-right: var(--spacing-200);
+}
+
+#console tr:last-of-type td {
+  border-bottom: none;
+}
