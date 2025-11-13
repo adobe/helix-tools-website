@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>Version Admin</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/utils/config/config.css" />
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/version-admin/version-admin.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/version-admin/version-admin.css" />
+</head>
+
+<body class="version-admin">
+  <header></header>
+  <main>
+    <!-- TITLE -->
+    <div>
+      <h1>Version Admin</h1>
+    </div>
+
+    <!-- ADMIN FORM -->
+    <div>
+      <form id="admin-form">
+        <div class="form-field type-field">
+          <label for="type">Type</label>
+          <select name="type" id="type" required>
+            <option value="">Select type...</option>
+            <option value="site">Site</option>
+            <option value="org">Organization</option>
+            <option value="profile">Profile</option>
+          </select>
+        </div>
+        <section class="form-field config-field">
+          <div class="form-field org-field">
+            <label for="org">Organization</label>
+            <input name="org" id="org" list="org-list" autocomplete="off" required />
+            <datalist id="org-list"></datalist>
+          </div>
+          <div class="form-field site-field">
+            <label for="site">Site</label>
+            <input name="site" id="site" list="site-list" autocomplete="off" disabled />
+            <datalist id="site-list"></datalist>
+          </div>
+          <div class="form-field profile-field">
+            <label for="profile">Profile</label>
+            <input name="profile" id="profile" autocomplete="off" />
+          </div>
+        </section>
+        <p class="button-wrapper">
+          <button type="submit" id="fetch" class="button">Fetch Versions</button>
+          <button type="reset" id="reset" class="button outline">Reset</button>
+        </p>
+      </form>
+    </div>
+
+    <!-- VERSIONS BODY -->
+    <div>
+      <h2 id="versions-title"></h2>
+      <div id="current-version-info" style="display: none;">
+        <p><strong>Current Version:</strong> <span id="current-version-number"></span></p>
+      </div>
+      <ul id="versions">
+      </ul>
+    </div>
+
+    <!-- CONSOLE -->
+    <div>
+      <div class="console"></div>
+    </div>
+
+  </main>
+  <footer></footer>
+</body>
+
+</html>

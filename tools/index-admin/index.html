@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';" move-to-http-header="true">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>Index Admin | AEM Tools</title>
+  <meta name="description" content="Manage the indexes for your site.">
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/utils/config/config.css" />
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/index-admin/index-admin.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/index-admin/index-admin.css" />
+</head>
+
+<body class="index-admin">
+  <header></header>
+  <main>
+    <div>
+      <h1>Index Admin</h1>
+      <p>
+        Manage the indexes for your site. See <a href="https://www.aem.live/developer/indexing" target="_blank">Indexing
+          Documentation</a> for more information.
+      </p>
+    </div>
+
+    <div>
+      <form id="admin-form">
+        <section class="form-field config-field">
+          <div class="form-field org-field">
+            <label for="org">Organization</label>
+            <input name="org" id="org" list="org-list" autocomplete="off" required />
+            <datalist id="org-list"></datalist>
+          </div>
+          <div class="form-field site-field">
+            <label for="site">Site</label>
+            <input name="site" id="site" list="site-list" autocomplete="off" disabled />
+            <datalist id="site-list"></datalist>
+          </div>
+        </section>
+        <p class="button-wrapper">
+          <button type="submit" id="fetch" class="button">Fetch</button>
+        </p>
+      </form>
+    </div>
+
+    <div>
+      <h2>Indices</h2>
+      <p class="button-wrapper">
+        <button type="button" id="add-index" class="button outline" disabled>Add Index</button>
+      </p>
+      <ul id="indexes-list">
+      </ul>
+    </div>
+
+    <div>
+      <div class="console"></div>
+    </div>
+  </main>
+  <footer></footer>
+  <template id="index-card-template">
+    <li class="index-card">
+      <p class="index-name"></p>
+      <div class="index-attributes">
+        <div class="index-attribute"><span class="index-attribute-name">Target:</span>
+          <div class="index-attribute-value index-attribute-value-target"></div>
+        </div>
+        <div class="index-attribute"><span class="index-attribute-name">Include:</span>
+          <div class="index-attribute-value index-attribute-value-include"></div>
+        </div>
+        <div class="index-attribute"><span class="index-attribute-name">Exclude:</span>
+          <div class="index-attribute-value index-attribute-value-exclude"></div>
+        </div>
+      </div>
+      <div class="index-card-buttons">
+        <button type="button" class="button outline edit-index-btn">Edit</button>
+        <button type="button" class="button reindex-btn">Reindex</button>
+      </div>
+    </li>
+  </template>
+  <template id="index-details-dialog-template">
+    <dialog class="index-details">
+      <div class="index-details-content">
+        <div class="index-details-header">
+          <h3>Edit Index</h3>
+        </div>
+        <div class="index-details-body">
+          <form>
+            <div class="form-field">
+              <label for="index-name">Name</label>
+              <input type="text" id="index-name" name="index-name" required />
+            </div>
+            <div class="form-field">
+              <label for="index-target">Target</label>
+              <input type="text" id="index-target" name="index-target" required />
+            </div>
+            <div class="form-field">
+              <label for="index-include">Include</label>
+              <textarea id="index-include" name="index-include" required></textarea>
+            </div>
+            <div class="form-field">
+              <label for="index-exclude">Exclude</label>
+              <textarea id="index-exclude" name="index-exclude"></textarea>
+            </div>
+            <div class="index-properties">
+              <div class="properties-header-section">
+                <h4>Properties</h4>
+                <button type="button" class="button outline add-property-btn">Add Property</button>
+              </div>
+              <div class="properties-container">
+                <div class="properties-header">
+                  <div class="header-cell">Name</div>
+                  <div class="header-cell">Select</div>
+                  <div class="header-cell">Select First</div>
+                  <div class="header-cell">Type</div>
+                  <div class="header-cell">Value(s)</div>
+                  <div class="header-cell"></div>
+                </div>
+              </div>
+            </div>
+            <div class="button-area">
+              <p class="button-wrapper">
+                <button type="submit" id="save-index" class="button">Save</button>
+              </p>
+              <p class="button-wrapper">
+                <button type="button" id="cancel-index" class="button outline">Cancel</button>
+              </p>
+            </div>
+          </form>
+        </div>
+      </div>
+    </dialog>
+  </template>
+  <template id="index-property-row-template">
+    <div class="index-property">
+      <div class="form-field">
+        <label for="index-property-name">Property Name</label>
+        <input type="text" id="index-property-name" name="index-property-name" required />
+      </div>
+      <div class="form-field">
+        <label for="index-property-select">Property Select</label>
+        <input type="text" id="index-property-select" name="index-property-select" />
+      </div>
+      <div class="form-field">
+        <label for="index-property-select-first">Property Select First</label>
+        <input type="text" id="index-property-select-first" name="index-property-select-first" />
+      </div>
+      <div class="form-field">
+        <label for="index-property-value-type">Type</label>
+        <select id="index-property-value-type" name="index-property-value-type">
+          <option value="value">Single</option>
+          <option value="values">Multiple</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label for="index-property-value">Property Value/Values</label>
+        <input type="text" id="index-property-value" name="index-property-value" required />
+      </div>
+      <div class="form-field remove-field">
+        <button type="button" class="remove-property-btn" title="Remove Property"></button>
+      </div>
+    </div>
+  </template>
+  <template id="reindex-status-dialog-template">
+    <dialog class="reindex-status-dialog">
+      <div class="reindex-status-content">
+        <div class="reindex-status-header">
+          <h3>Reindex Job Status</h3>
+          <button type="button" class="close-status-btn" title="Close">&times;</button>
+        </div>
+        <div class="reindex-status-body">
+          <pre class="job-details"></pre>
+        </div>
+      </div>
+    </dialog>
+  </template>
+</body>
+
+</html>

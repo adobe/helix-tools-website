@@ -158,6 +158,40 @@ main .section.dark {
   color: var(--gray-25);
 }
 
+/* dialog */
+dialog {
+  position: fixed;
+  width: calc(100% - (2 * var(--horizontal-spacing)));
+  max-width: 875px;
+  border: 0;
+  border-radius: var(--rounding-xl);
+  padding: calc(44px + (2 * var(--border-l))) 0 0;
+  overscroll-behavior: none;
+}
+
+dialog > div:not(main > .section > div) {
+  max-height: calc(100dvh - 44px - (2 * var(--horizontal-spacing)));
+  padding: 0 var(--horizontal-spacing) var(--horizontal-spacing);
+  overflow-y: auto;
+}
+
+dialog button.close-modal {
+  position: absolute;
+  top: var(--border-l);
+  right: var(--border-l);
+  width: 44px;
+  height: 44px;
+  border-color: transparent;
+  border-radius: 0 var(--rounding-xl) 0 0;
+  padding: 0;
+  background-color: transparent;
+  color: var(--color-text);
+}
+
+dialog::backdrop {
+  background-color: var(--transparent-black-600);
+}
+
 /* images and icons */
 p.img-wrapper {
   margin: 0;

@@ -1,0 +1,11 @@
+.cdn-setup .form-field {
+  margin-bottom: var(--spacing-l);
+}
+
+.cdn-setup .form-field:has(#route) {
+  display: none;
+}
+
+.cdn-setup [aria-hidden="true"] {
+  display: none;
+} 
