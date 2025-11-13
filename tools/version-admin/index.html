@@ -30,16 +30,16 @@
     <!-- ADMIN FORM -->
     <div>
       <form id="admin-form">
+        <div class="form-field type-field">
+          <label for="type">Type</label>
+          <select name="type" id="type" required>
+            <option value="">Select type...</option>
+            <option value="site">Site</option>
+            <option value="org">Organization</option>
+            <option value="profile">Profile</option>
+          </select>
+        </div>
         <section class="form-field config-field">
-          <div class="form-field type-field">
-            <label for="type">Type</label>
-            <select name="type" id="type" required>
-              <option value="">Select type...</option>
-              <option value="site">Site</option>
-              <option value="org">Organization</option>
-              <option value="profile">Profile</option>
-            </select>
-          </div>
           <div class="form-field org-field">
             <label for="org">Organization</label>
             <input name="org" id="org" list="org-list" autocomplete="off" required />

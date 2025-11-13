@@ -85,22 +85,6 @@
   grid-column: 1 / -1;
 }
 
-.version-admin select {
-  width: 100%;
-  padding: 0.5em;
-  border: var(--border-s) solid var(--gray-300);
-  border-radius: var(--border-radius);
-  background-color: var(--white);
-  font-family: inherit;
-  font-size: inherit;
-}
-
-.version-admin select:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px var(--primary-color-25);
-}
-
 #current-version-info {
   background-color: var(--gray-100);
   border: var(--border-s) solid var(--gray-300);
