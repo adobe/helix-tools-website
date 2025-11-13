@@ -1,0 +1,171 @@
+.version-admin .block[aria-hidden='true'],
+.version-admin #version-details[aria-hidden='true'] {
+  display: none;
+}
+
+.version-admin #admin-form {
+  display: grid;
+  gap: var(--spacing-s);
+}
+
+@media (width >= 720px) {
+  .version-admin #admin-form {
+    grid-template-columns: 1fr max-content;
+    gap: var(--spacing-l);
+  }
+
+  .version-admin #admin-form .config-field {
+    grid-column: 1 / span 2;
+  }
+}
+
+#versions .button-wrapper {
+  grid-area: button;
+}
+
+.version-admin #admin-form .button-wrapper {
+  align-self: center;
+}
+
+.version-admin .body-wrapper {
+  position: relative;
+  height: 66vmin;
+}
+
+#versions {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+#versions li {
+  grid-template-areas: "version-info button" "details details";
+  grid-template-columns: 1fr max-content;
+  display: grid;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5em 0;
+  margin: 0;
+  border-bottom: var(--border-s) solid var(--gray-200);
+}
+
+#versions li:last-child {
+  border-bottom: none;
+}
+
+#versions .version-info {
+  grid-area: version-info;
+}
+
+#versions .version-name {
+  font-weight: bold;
+  margin-bottom: 0.25em;
+}
+
+#versions .version-meta {
+  font-size: 0.9em;
+  color: var(--gray-600);
+  margin: 0;
+}
+
+#versions .version-details {
+  grid-area: details;
+  margin-top: var(--spacing-m);
+  padding-top: var(--spacing-m);
+  border-top: var(--border-s) solid var(--gray-300);
+}
+
+.version-admin .config-field {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-m);
+}
+
+.version-admin .type-field {
+  grid-column: 1 / -1;
+}
+
+.version-admin select {
+  width: 100%;
+  padding: 0.5em;
+  border: var(--border-s) solid var(--gray-300);
+  border-radius: var(--border-radius);
+  background-color: var(--white);
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.version-admin select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px var(--primary-color-25);
+}
+
+#current-version-info {
+  background-color: var(--gray-100);
+  border: var(--border-s) solid var(--gray-300);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-m);
+  margin-bottom: var(--spacing-m);
+}
+
+.version-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-wrap: wrap;
+}
+
+.version-actions .button {
+  padding: 0.25em 0.5em;
+  font-size: 0.9em;
+}
+
+#versions li.version-current {
+  background-color: var(--green-100);
+  border-left: 4px solid var(--green-500);
+  padding: var(--spacing-s);
+}
+
+.version-data {
+  background-color: var(--gray-50);
+  border: var(--border-s) solid var(--gray-300);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-m);
+  margin-top: var(--spacing-m);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.version-data pre {
+  margin: 0;
+  font-family: var(--code-font-family);
+  font-size: 0.9em;
+  line-height: 1.4;
+}
+
+.edit-name-form {
+  display: flex;
+  gap: var(--spacing-xs);
+  align-items: center;
+  margin-top: var(--spacing-s);
+}
+
+.edit-name-form input {
+  flex: 1;
+  min-width: 200px;
+}
+
+.edit-name-form .button {
+  padding: 0.25em 0.5em;
+  font-size: 0.9em;
+}
+
+.diff-added {
+  background-color: var(--green-200);
+  color: var(--green-900);
+}
+
+.diff-removed {
+  background-color: var(--red-200);
+  color: var(--red-900);
+}
