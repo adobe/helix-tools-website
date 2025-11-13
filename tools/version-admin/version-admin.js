@@ -60,6 +60,9 @@ async function fetchVersions() {
     currentConfig.currentVersion = data.current;
     return data;
   }
+  if (resp.status === 401) {
+    await ensureLogin(org.value, site.value);
+  }
   return null;
 }
 
@@ -74,6 +77,9 @@ async function fetchVersionData(versionId) {
 
   if (resp.status === 200) {
     return resp.json();
+  }
+  if (resp.status === 401) {
+    await ensureLogin(org.value, site.value);
   }
   return null;
 }
@@ -94,6 +100,9 @@ async function updateVersionName(versionId, newName) {
   });
   logResponse(consoleBlock, [resp.status, 'POST', url, resp.headers.get('x-error') || '']);
 
+  if (resp.status === 401) {
+    await ensureLogin(org.value, site.value);
+  }
   return resp.status === 200;
 }
 
@@ -116,6 +125,9 @@ async function restoreVersion(versionId) {
   });
   logResponse(consoleBlock, [resp.status, 'PUT', url, resp.headers.get('x-error') || '']);
 
+  if (resp.status === 401) {
+    await ensureLogin(org.value, site.value);
+  }
   return resp.status === 200;
 }
 
@@ -130,6 +142,9 @@ async function deleteVersion(versionId) {
   });
   logResponse(consoleBlock, [resp.status, 'DELETE', url, resp.headers.get('x-error') || '']);
 
+  if (resp.status === 401) {
+    await ensureLogin(org.value, site.value);
+  }
   return resp.status === 200;
 }
 
