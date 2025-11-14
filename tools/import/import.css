@@ -74,34 +74,6 @@
   width: unset;
 }
 
-/* Override global form button styles to restore proper button appearance */
-.import .form .button {
-  background-color: var(--color-link);
-  color: var(--color-background);
-  padding: 0.4em 1.15em;
-  font-size: inherit;
-  border-radius: 1.15em;
-}
-
-.import .form .button:hover,
-.import .form .button:focus {
-  background-color: var(--color-link-hover);
-  border-color: var(--color-link-hover);
-  color: var(--color-background);
-}
-
-.import .form .button.outline {
-  background-color: transparent;
-  color: var(--color-link);
-}
-
-.import .form .button.outline:hover,
-.import .form .button.outline:focus {
-  background-color: var(--color-link-hover);
-  border-color: var(--color-link-hover);
-  color: var(--color-background);
-}
-
 .import .form + div > div:has(#results) {
   margin-top: var(--spacing-m);
   border-top: var(--border-m) solid var(--gray-300);
