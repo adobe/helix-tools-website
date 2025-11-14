@@ -949,6 +949,24 @@ main .form .button:hover::before {
   left: 0%;
 }
 
+/* Restore outline button styles in forms */
+main .form .button.outline {
+  background-color: var(--color-background);
+  color: var(--color-link);
+  border-color: var(--color-link);
+}
+
+main .form .button.outline::before {
+  display: none;
+}
+
+main .form .button.outline:hover,
+main .form .button.outline:focus {
+  background-color: var(--blue-100);
+  color: var(--color-link-hover);
+  border-color: var(--color-link-hover);
+}
+
 /* secondary button: grey border transparent bg -> border button */
 .redesign a.button.secondary:any-link {
   color: var(--color-font-grey);
