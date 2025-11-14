@@ -1,0 +1,326 @@
+/* Mobile-first base styles */
+.config-editor [aria-hidden='true'] {
+  display: none;
+}
+
+.config-editor #config-selection-form {
+  display: grid;
+  gap: var(--spacing-s);
+}
+
+.config-editor #config-selection-form .button-wrapper {
+  align-self: center;
+}
+
+.config-editor-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-s);
+  margin-bottom: var(--spacing-m);
+}
+
+.config-editor-header h2 {
+  margin: 0;
+}
+
+.config-editor-actions {
+  display: flex;
+  gap: var(--spacing-s);
+  align-items: center;
+}
+
+#toggle-inherited {
+  font-size: var(--font-size-s);
+  padding: var(--spacing-xs) var(--spacing-s);
+}
+
+.changed-value {
+  background-color: #e3f2fd !important; /* Light blue background for changed values */
+}
+
+.placeholder-text {
+  color: var(--gray-500);
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.inherited-value {
+  background-color: var(--gray-50);
+  opacity: 0.8;
+}
+
+.inherited-value .button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sensitive-value {
+  font-family: var(--font-mono);
+  letter-spacing: 0.1em;
+  color: var(--gray-600);
+}
+
+.config-table-container {
+  overflow-x: auto;
+  border: var(--border-s) solid var(--gray-300);
+  border-radius: var(--border-radius-m);
+  margin-bottom: var(--spacing-m);
+}
+
+.config-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.config-table th {
+  background: var(--gray-100);
+  padding: var(--spacing-xs) var(--spacing-s);
+  text-align: left;
+  font-weight: 600;
+  border-bottom: var(--border-s) solid var(--gray-300);
+}
+
+.config-table td {
+  padding: var(--spacing-xs) var(--spacing-s);
+  border-bottom: var(--border-s) solid var(--gray-200);
+  vertical-align: top;
+}
+
+.config-table tr:last-child td {
+  border-bottom: none;
+}
+
+.config-table tr:hover {
+  background: var(--gray-50);
+}
+
+.config-key-cell {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  min-width: 100px;
+}
+
+.config-value-cell {
+  min-width: 120px;
+}
+
+.config-value-input {
+  width: 100%;
+  padding: var(--spacing-xs) var(--spacing-s);
+  border: var(--border-s) solid var(--gray-300);
+  border-radius: var(--border-radius-s);
+  font-family: var(--font-mono);
+  font-size: var(--body-size-s);
+}
+
+.config-value-input:focus {
+  outline: none;
+  border-color: var(--blue-500);
+  box-shadow: 0 0 0 2px var(--blue-100);
+}
+
+.config-value-textarea {
+  width: 100%;
+  min-height: 60px;
+  padding: var(--spacing-xs) var(--spacing-s);
+  border: var(--border-s) solid var(--gray-300);
+  border-radius: var(--border-radius-s);
+  font-family: var(--font-mono);
+  font-size: var(--body-size-s);
+  resize: vertical;
+}
+
+.config-value-textarea:focus {
+  outline: none;
+  border-color: var(--blue-500);
+  box-shadow: 0 0 0 2px var(--blue-100);
+}
+
+.config-actions-cell {
+  width: 140px;
+}
+
+.property-type {
+  font-size: var(--body-size-xs);
+  color: var(--blue-600);
+  font-weight: 500;
+  margin-left: var(--spacing-xs);
+}
+
+.property-type::before {
+  content: '(';
+}
+
+.property-type::after {
+  content: ')';
+}
+
+.config-value-display {
+  font-family: var(--font-mono);
+  font-size: var(--body-size-s);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.inherited-value .config-value-display {
+  color: var(--gray-600);
+  font-style: italic;
+}
+
+.config-value-display.object {
+  background: var(--gray-50);
+  padding: var(--spacing-xs);
+  border-radius: var(--border-radius-s);
+  border: var(--border-s) solid var(--gray-200);
+}
+
+.console {
+  margin-top: var(--spacing-l);
+  padding-top: var(--spacing-l);
+  border-top: var(--border-m) solid var(--gray-300);
+}
+
+.console h3 {
+  margin-bottom: var(--spacing-m);
+}
+
+.log-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--body-size-s);
+}
+
+.log-table th {
+  background: var(--gray-100);
+  padding: var(--spacing-xs) var(--spacing-s);
+  text-align: left;
+  font-weight: 600;
+  border-bottom: var(--border-s) solid var(--gray-300);
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.log-table td {
+  padding: var(--spacing-xs) var(--spacing-s);
+  border-bottom: var(--border-s) solid var(--gray-200);
+  font-family: var(--font-mono);
+}
+
+.log-table tr:last-child td {
+  border-bottom: none;
+}
+
+.log-status.success {
+  color: var(--green-700);
+}
+
+.log-status.error {
+  color: var(--red-700);
+}
+
+.log-status.info {
+  color: var(--blue-700);
+}
+
+.log-status.warning {
+  color: var(--yellow-700);
+}
+
+/* Tablet and up (600px+) */
+@media (width >= 600px) {
+  .config-editor-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .config-editor-actions {
+    flex-direction: row;
+  }
+
+  .config-table th,
+  .config-table td {
+    padding: var(--spacing-s) var(--spacing-m);
+  }
+
+  .config-key-cell {
+    min-width: 150px;
+  }
+
+  .config-value-cell {
+    min-width: 160px;
+  }
+}
+
+/* Desktop and up (900px+) */
+@media (width >= 900px) {
+  .config-editor #config-selection-form {
+    gap: var(--spacing-m);
+  }
+
+  .config-table-container {
+    margin-bottom: var(--spacing-l);
+  }
+
+  .config-editor-header {
+    margin-bottom: var(--spacing-l);
+  }
+
+  .config-actions-cell {
+    display: flex;
+    gap: var(--spacing-xs);
+    width: 240px;
+  }
+
+  .config-actions-cell .button {
+    flex: 1;
+    min-width: auto;
+  }
+
+  .console {
+    margin-top: var(--spacing-xl);
+    padding-top: var(--spacing-xl);
+  }
+}
+
+/* Large desktop and up (1200px+) */
+@media (width >= 1200px) {
+  .config-table-container {
+    border-radius: var(--border-radius-l);
+  }
+
+  .config-table th {
+    padding: var(--spacing-m) var(--spacing-l);
+  }
+
+  .config-table td {
+    padding: var(--spacing-m) var(--spacing-l);
+  }
+
+  .config-key-cell {
+    min-width: 200px;
+  }
+
+  .config-value-cell {
+    min-width: 220px;
+  }
+
+  .config-value-input,
+  .config-value-textarea {
+    font-size: var(--body-size-m);
+  }
+
+  .config-value-display {
+    font-size: var(--body-size-m);
+  }
+
+  .log-table {
+    font-size: var(--body-size-m);
+  }
+
+  .log-table th,
+  .log-table td {
+    padding: var(--spacing-s) var(--spacing-m);
+  }
+}
