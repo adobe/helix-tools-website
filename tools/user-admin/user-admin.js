@@ -52,7 +52,7 @@ function isValidRoles(rolesContainer) {
 async function getOrgConfig() {
   const adminURL = `https://admin.hlx.page/config/${org.value}.json`;
   const resp = await fetch(adminURL);
-  logResponse(consoleBlock, [resp.status, 'GET', adminURL, resp.headers.get('x-error') || '']);
+  logResponse(consoleBlock, resp.status, ['GET', adminURL, resp.headers.get('x-error') || '']);
   if (resp.status === 200) {
     const json = await resp.json();
     return json;
@@ -90,7 +90,7 @@ async function updateSiteAccess() {
       'Content-Type': 'application/json',
     },
   });
-  logResponse(consoleBlock, [resp.status, 'POST', adminURL, resp.headers.get('x-error') || '']);
+  logResponse(consoleBlock, resp.status, ['POST', adminURL, resp.headers.get('x-error') || '']);
 }
 
 async function addUserToSite(user) {
@@ -107,7 +107,7 @@ async function updateOrgUserRoles(user) {
       'Content-Type': 'application/json',
     },
   });
-  logResponse(consoleBlock, [resp.status, 'POST', adminURL, resp.headers.get('x-error') || '']);
+  logResponse(consoleBlock, resp.status, ['POST', adminURL, resp.headers.get('x-error') || '']);
 }
 
 async function deleteUserFromSite(user) {
@@ -120,7 +120,7 @@ async function deleteUserFromOrg(user) {
   const resp = await fetch(adminURL, {
     method: 'DELETE',
   });
-  logResponse(consoleBlock, [resp.status, 'DELETE', adminURL, resp.headers.get('x-error') || '']);
+  logResponse(consoleBlock, resp.status, ['DELETE', adminURL, resp.headers.get('x-error') || '']);
 }
 
 async function addUserToOrg(user) {
@@ -132,7 +132,7 @@ async function addUserToOrg(user) {
       'Content-Type': 'application/json',
     },
   });
-  logResponse(consoleBlock, [resp.status, 'POST', adminURL, resp.headers.get('x-error') || '']);
+  logResponse(consoleBlock, resp.status, ['POST', adminURL, resp.headers.get('x-error') || '']);
 }
 
 async function updateSiteUserRoles(user) {
@@ -201,7 +201,7 @@ async function getSiteAccessConfig() {
   addUserDetails.setAttribute('aria-hidden', 'true');
   const adminURL = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/access.json`;
   const resp = await fetch(adminURL);
-  logResponse(consoleBlock, [resp.status, 'GET', adminURL, resp.headers.get('x-error') || '']);
+  logResponse(consoleBlock, resp.status, ['GET', adminURL, resp.headers.get('x-error') || '']);
   if (resp.status === 200) {
     const json = await resp.json();
     return json;

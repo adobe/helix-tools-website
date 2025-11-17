@@ -103,7 +103,7 @@ function displaySitemapDetails(sitemapName, sitemapDef, newSitemap = false) {
       body: yamlText,
     });
 
-    logResponse(consoleBlock, [resp.status, 'POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, resp.headers.get('x-error') || '']);
+    logResponse(consoleBlock, resp.status, ['POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, resp.headers.get('x-error') || '']);
 
     if (resp.ok) {
       sitemapDetails.close();
@@ -249,7 +249,7 @@ function displayLanguageEditDialog(sitemapName, langCode, langDef, isNew = false
       body: yamlText,
     });
 
-    logResponse(consoleBlock, [resp.status, 'POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, resp.headers.get('x-error') || '']);
+    logResponse(consoleBlock, resp.status, ['POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, resp.headers.get('x-error') || '']);
 
     if (resp.ok) {
       langDialog.close();
@@ -299,7 +299,7 @@ async function removeLanguage(sitemapName, langCode) {
     body: yamlText,
   });
 
-  logResponse([resp.status, 'POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, resp.headers.get('x-error') || '']);
+  logResponse(consoleBlock, resp.status, ['POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, resp.headers.get('x-error') || '']);
 
   if (resp.ok) {
     const sitemapsList = document.getElementById('sitemaps-list');
@@ -314,13 +314,14 @@ async function removeLanguage(sitemapName, langCode) {
 async function generateSitemap(destination) {
   const sitemapUrl = `https://admin.hlx.page/sitemap/${org.value}/${site.value}/main${destination}`;
   const resp = await fetch(sitemapUrl, { method: 'POST' });
-  logResponse([resp.status, 'POST', sitemapUrl, resp.headers.get('x-error') || '']);
 
   if (resp.ok) {
     const result = await resp.json();
-    logResponse(consoleBlock, [200, 'INFO', `Generated sitemap(s): ${result.paths?.join(', ') || destination}`, '']);
+    logResponse(consoleBlock, 200, ['POST', sitemapUrl, `Generated sitemap(s): ${result.paths?.join(', ') || destination}`]);
   } else if (resp.status === 204) {
-    logResponse(consoleBlock, [204, 'WARN', 'Path is not a destination for any configured sitemap', '']);
+    logResponse(consoleBlock, 204, ['POST', sitemapUrl, 'Path is not a destination for any configured sitemap']);
+  } else {
+    logResponse(consoleBlock, resp.status, ['POST', sitemapUrl, resp.headers.get('x-error') || '']);
   }
 }
 
@@ -341,7 +342,7 @@ async function removeSitemap(name) {
     body: yamlText,
   });
 
-  logResponse([resp.status, 'POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, resp.headers.get('x-error') || '']);
+  logResponse(consoleBlock, resp.status, ['POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, resp.headers.get('x-error') || '']);
 
   if (resp.ok) {
     const sitemapsList = document.getElementById('sitemaps-list');
@@ -467,7 +468,7 @@ async function init() {
 
     const sitemapUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`;
     const resp = await fetch(sitemapUrl);
-    logResponse(consoleBlock, [resp.status, 'GET', sitemapUrl, resp.headers.get('x-error') || '']);
+    logResponse(consoleBlock, resp.status, ['GET', sitemapUrl, resp.headers.get('x-error') || '']);
 
     if (resp.ok) {
       updateConfig();

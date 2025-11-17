@@ -1,4 +1,5 @@
-// Removed config.js import since we're not using datalist functionality
+import { logResponse, logMessage } from '../../blocks/console/console.js';
+import { ensureLogin } from '../../blocks/profile/profile.js';
 
 let currentConfig = {};
 // eslint-disable-next-line no-unused-vars
@@ -77,7 +78,7 @@ const org = document.getElementById('org');
 const site = document.getElementById('site');
 const configEditor = document.getElementById('config-editor');
 const configTbody = document.getElementById('config-tbody');
-const logTbody = document.getElementById('log-tbody');
+const consoleBlock = document.querySelector('.console');
 
 // Utility functions
 
@@ -130,32 +131,13 @@ function isValidPropertyKey(key) {
 
 /**
  * Logs a message to the console table
- * @param {string} status - Status type (success, error, info, warning)
+ * @param {string} level - Log level: 'info', 'success', 'warning', or 'error'
  * @param {string} action - Action performed
  * @param {string} message - Log message
  */
-function logMessage(status, action, message) {
-  const row = document.createElement('tr');
-  const time = new Date().toLocaleTimeString();
-
-  // Escape all user input to prevent XSS
-  const escapedStatus = escapeHtml(status);
-  const escapedAction = escapeHtml(action);
-  const escapedMessage = escapeHtml(message);
-
-  row.innerHTML = `
-    <td>${escapeHtml(time)}</td>
-    <td class="log-status ${escapedStatus}">${escapedStatus.toUpperCase()}</td>
-    <td>${escapedAction}</td>
-    <td>${escapedMessage}</td>
-  `;
-
-  logTbody.prepend(row);
-
-  // Keep only last 50 log entries
-  while (logTbody.children.length > 50) {
-    logTbody.removeChild(logTbody.lastChild);
-  }
+function log(level, action, message) {
+  // Add empty string to align with logResponse's 5 columns (status, method, url, error, time)
+  logMessage(consoleBlock, level, [action, message, '']);
 }
 
 /**
@@ -781,9 +763,9 @@ function editProperty(key, path) {
       populateConfigTable();
 
       const actionText = isNewProperty ? 'Added' : 'Updated';
-      logMessage('info', actionText.toUpperCase(), `${actionText} property: ${fullKey} (pending save)`);
+      log('info', actionText.toUpperCase(), `${actionText} property: ${fullKey} (pending save)`);
     } catch (error) {
-      logMessage('error', 'EDIT', `Failed to update property: ${error.message}`);
+      log('error', 'EDIT', `Failed to update property: ${error.message}`);
     }
   };
 
@@ -791,9 +773,9 @@ function editProperty(key, path) {
     // If this was a new property being added (empty value), remove it from local config
     if (currentValue === '') {
       removeNestedValue(currentConfig, path, key);
-      logMessage('info', 'CANCEL', `Cancelled adding property: ${path ? `${path}.${key}` : key}`);
+      log('info', 'CANCEL', `Cancelled adding property: ${path ? `${path}.${key}` : key}`);
     } else {
-      logMessage('info', 'CANCEL', `Cancelled editing property: ${path ? `${path}.${key}` : key}`);
+      log('info', 'CANCEL', `Cancelled editing property: ${path ? `${path}.${key}` : key}`);
     }
     populateConfigTable();
   };
@@ -835,7 +817,7 @@ function removeProperty(key, path) {
   // Refresh the table to show the change
   populateConfigTable();
 
-  logMessage('info', 'REMOVE', `Removed property: ${fullKey} (pending save)`);
+  log('info', 'REMOVE', `Removed property: ${fullKey} (pending save)`);
 }
 
 /**
@@ -852,14 +834,14 @@ function addProperty() {
 
   // Validate the key format
   if (!isValidPropertyKey(sanitizedKey)) {
-    logMessage('error', 'ADD', 'Property key contains invalid characters. Only alphanumeric characters, dots, underscores, and hyphens are allowed.');
+    log('error', 'ADD', 'Property key contains invalid characters. Only alphanumeric characters, dots, underscores, and hyphens are allowed.');
     return;
   }
 
   // Check if the key starts with an allowed prefix
   const hasAllowedPrefix = allowedPrefixes.some((prefix) => sanitizedKey.startsWith(prefix));
   if (!hasAllowedPrefix) {
-    logMessage('error', 'ADD', `Property key must start with one of: ${allowedPrefixes.join(', ')}`);
+    log('error', 'ADD', `Property key must start with one of: ${allowedPrefixes.join(', ')}`);
     return;
   }
 
@@ -883,7 +865,7 @@ function addProperty() {
       editProperty(finalKey, path);
     }, 100);
 
-    logMessage('info', 'ADD', `Added nested property to table: ${sanitizedKey}`);
+    log('info', 'ADD', `Added nested property to table: ${sanitizedKey}`);
   } else {
     // Add the property to local config with empty value
     currentConfig[sanitizedKey] = '';
@@ -896,7 +878,7 @@ function addProperty() {
       editProperty(sanitizedKey, '');
     }, 100);
 
-    logMessage('info', 'ADD', `Added property to table: ${sanitizedKey}`);
+    log('info', 'ADD', `Added property to table: ${sanitizedKey}`);
   }
 }
 
@@ -905,7 +887,7 @@ function addProperty() {
  */
 async function loadConfig() {
   if (!org.value || !site.value) {
-    logMessage('error', 'LOAD', 'Please select both organization and site');
+    log('error', 'LOAD', 'Please select both organization and site');
     return;
   }
 
@@ -914,7 +896,7 @@ async function loadConfig() {
     const adminURL = `https://admin.hlx.page${configPath}`;
     const aggregateURL = `https://admin.hlx.page/config/${org.value}/aggregated/${site.value}.json`;
 
-    logMessage('info', 'LOAD', `Loading config from: ${configPath}`);
+    log('info', 'LOAD', `Loading config from: ${configPath}`);
 
     // Fetch both current config and aggregate config
     const [configResponse, aggregateResponse] = await Promise.all([
@@ -922,8 +904,31 @@ async function loadConfig() {
       fetch(aggregateURL),
     ]);
 
+    // Log the HTTP responses
+    logResponse(consoleBlock, configResponse.status, [
+      'GET',
+      adminURL,
+      configResponse.headers.get('x-error') || '',
+    ]);
+
+    logResponse(consoleBlock, aggregateResponse.status, [
+      'GET',
+      aggregateURL,
+      aggregateResponse.headers.get('x-error') || '',
+    ]);
+
+    if (configResponse.status === 401) {
+      await ensureLogin(org.value, site.value);
+      return;
+    }
+
     if (!configResponse.ok) {
       throw new Error(`HTTP ${configResponse.status}: ${configResponse.statusText}`);
+    }
+
+    if (aggregateResponse.status === 401) {
+      await ensureLogin(org.value, site.value);
+      return;
     }
 
     if (!aggregateResponse.ok) {
@@ -948,9 +953,9 @@ async function loadConfig() {
     populateConfigTable();
     updateSaveButton(); // Hide save button initially
 
-    logMessage('success', 'LOAD', 'Configuration loaded successfully');
+    log('success', 'LOAD', 'Configuration loaded successfully');
   } catch (error) {
-    logMessage('error', 'LOAD', `Failed to load configuration: ${error.message}`);
+    log('error', 'LOAD', `Failed to load configuration: ${error.message}`);
   }
 }
 
@@ -999,7 +1004,7 @@ function loadFromURLParams() {
  */
 async function saveAllChanges() {
   if (pendingChanges.size === 0) {
-    logMessage('warning', 'SAVE', 'No changes to save');
+    log('warning', 'SAVE', 'No changes to save');
     return;
   }
 
@@ -1007,6 +1012,18 @@ async function saveAllChanges() {
     // Fetch current config from server to get latest state
     const adminURL = `https://admin.hlx.page${configPath}`;
     const response = await fetch(adminURL);
+
+    // Log the GET request
+    logResponse(consoleBlock, response.status, [
+      'GET',
+      adminURL,
+      response.headers.get('x-error') || '',
+    ]);
+
+    if (response.status === 401) {
+      await ensureLogin(org.value, site.value);
+      return;
+    }
 
     if (!response.ok) {
       throw new Error(`Failed to fetch current config: HTTP ${response.status}`);
@@ -1039,6 +1056,18 @@ async function saveAllChanges() {
       },
     });
 
+    // Log the POST request
+    logResponse(consoleBlock, saveResponse.status, [
+      'POST',
+      adminURL,
+      saveResponse.headers.get('x-error') || '',
+    ]);
+
+    if (saveResponse.status === 401) {
+      await ensureLogin(org.value, site.value);
+      return;
+    }
+
     if (!saveResponse.ok) {
       throw new Error(`Failed to save config: HTTP ${saveResponse.status}`);
     }
@@ -1057,9 +1086,9 @@ async function saveAllChanges() {
     populateConfigTable();
     updateSaveButton();
 
-    logMessage('success', 'SAVE', `Successfully saved ${changesCount} changes`);
+    log('success', 'SAVE', `Successfully saved ${changesCount} changes`);
   } catch (error) {
-    logMessage('error', 'SAVE', `Failed to save changes: ${error.message}`);
+    log('error', 'SAVE', `Failed to save changes: ${error.message}`);
   }
 }
 
@@ -1099,8 +1128,22 @@ function init() {
   });
 
   // Load config when form is submitted
-  document.getElementById('config-selection-form').addEventListener('submit', (e) => {
+  document.getElementById('config-selection-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    if (!await ensureLogin(org.value, site.value)) {
+      // not logged in yet, listen for profile-update event
+      window.addEventListener('profile-update', ({ detail: loginInfo }) => {
+        // check if user is logged in now
+        if (loginInfo.includes(org.value)) {
+          // logged in, restart action (e.g. resubmit form)
+          e.target.querySelector('button[type="submit"]').click();
+        }
+      }, { once: true });
+      // abort action
+      return;
+    }
+
     loadConfig();
   });
 
@@ -1115,11 +1158,11 @@ function init() {
 
   // Auto-load config if both org and site are set from URL params
   if (org.value && site.value) {
-    logMessage('info', 'AUTO-LOAD', 'Auto-loading configuration from URL parameters');
+    log('info', 'AUTO-LOAD', 'Auto-loading configuration from URL parameters');
     loadConfig();
   }
 
-  logMessage('info', 'INIT', 'Config Editor initialized');
+  log('info', 'INIT', 'Config Editor initialized');
 }
 
 init();

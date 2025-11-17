@@ -101,3 +101,24 @@
   background-color: var(--status-error-bg, #f8d7da);
   color: var(--status-error-text, #721c24);
 }
+
+/* Log level status lights */
+.console .status-light.level-info {
+  background-color: var(--status-info-bg, #d1ecf1);
+  color: var(--status-info-text, #0c5460);
+}
+
+.console .status-light.level-success {
+  background-color: var(--status-ok-bg, #d4edda);
+  color: var(--status-ok-text, #155724);
+}
+
+.console .status-light.level-warning {
+  background-color: var(--status-redirect-bg, #fff3cd);
+  color: var(--status-redirect-text, #856404);
+}
+
+.console .status-light.level-error {
+  background-color: var(--status-error-bg, #f8d7da);
+  color: var(--status-error-text, #721c24);
+}

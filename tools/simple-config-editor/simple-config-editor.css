@@ -176,57 +176,6 @@
   border: var(--border-s) solid var(--gray-200);
 }
 
-.console {
-  margin-top: var(--spacing-l);
-  padding-top: var(--spacing-l);
-  border-top: var(--border-m) solid var(--gray-300);
-}
-
-.console h3 {
-  margin-bottom: var(--spacing-m);
-}
-
-.log-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--body-size-s);
-}
-
-.log-table th {
-  background: var(--gray-100);
-  padding: var(--spacing-xs) var(--spacing-s);
-  text-align: left;
-  font-weight: 600;
-  border-bottom: var(--border-s) solid var(--gray-300);
-}
-
-/* stylelint-disable-next-line no-descending-specificity */
-.log-table td {
-  padding: var(--spacing-xs) var(--spacing-s);
-  border-bottom: var(--border-s) solid var(--gray-200);
-  font-family: var(--font-mono);
-}
-
-.log-table tr:last-child td {
-  border-bottom: none;
-}
-
-.log-status.success {
-  color: var(--green-700);
-}
-
-.log-status.error {
-  color: var(--red-700);
-}
-
-.log-status.info {
-  color: var(--blue-700);
-}
-
-.log-status.warning {
-  color: var(--yellow-700);
-}
-
 /* Tablet and up (600px+) */
 @media (width >= 600px) {
   .config-editor-header {
@@ -276,11 +225,6 @@
   .config-actions-cell .button {
     flex: 1;
     min-width: auto;
-  }
-
-  .console {
-    margin-top: var(--spacing-xl);
-    padding-top: var(--spacing-xl);
   }
 }
 
