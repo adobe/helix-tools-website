@@ -26,6 +26,8 @@
   --color-text: var(--gray-800);
   --color-link: var(--blue-900);
   --color-link-hover: var(--blue-1000);
+  --color-white: var(--gray-25);
+  --spectrum-blue: var(--blue-900);
 
   /* fonts */
   --body-font-family: robotoflex, robotoflex-fallback, sans-serif;
