@@ -145,6 +145,8 @@ function displayIndexDetails(indexName, indexDef, newIndex = false) {
       loadedIndices.indices[indexDetails.querySelector('#index-name').value.trim()].exclude = indexDetails.querySelector('#index-exclude').value.split('\n').map((line) => line.trim());
     }
 
+    // eslint-disable-next-line import/no-unresolved
+    YAML = YAML || await import('https://unpkg.com/yaml@2.8.1/browser/index.js');
     const yamlText = YAML.stringify(loadedIndices);
     const resp = await fetch(`https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`, {
       method: 'POST',
@@ -291,11 +293,11 @@ function populateIndexes(indexes) {
 
     const reindexBtn = indexItem.querySelector('.reindex-btn');
     let detailsUrl = null;
+    let jobStatusPoll = null;
 
     reindexBtn.addEventListener('click', async (e) => {
       e.preventDefault();
 
-      // If we have a detailsUrl, fetch and show job status
       if (detailsUrl) {
         const jobDetails = await fetchJobDetails(detailsUrl);
         if (jobDetails) {
@@ -304,20 +306,74 @@ function populateIndexes(indexes) {
         return;
       }
 
-      // Otherwise, start a new reindex job
-      // Show confirmation dialog
       // eslint-disable-next-line no-alert, no-restricted-globals
       const confirmed = confirm(`Start a Bulk Reindex Job for Index: ${name}?`);
       if (!confirmed) return;
 
+      reindexBtn.textContent = 'Starting...';
+      reindexBtn.disabled = true;
+
       const result = await reIndex([name]);
 
       if (result.success && result.detailsUrl) {
-        // Store the details URL for later clicks
         detailsUrl = result.detailsUrl;
 
-        // Update button state to show reindexing in progress
-        reindexBtn.textContent = 'Reindexing...';
+        jobStatusPoll = window.setInterval(async () => {
+          try {
+            const jobDetails = await fetchJobDetails(detailsUrl);
+            if (jobDetails) {
+              const {
+                state,
+                progress: {
+                  processed = 0,
+                  total = 0,
+                } = {},
+                startTime,
+                stopTime,
+              } = jobDetails;
+
+              if (state === 'stopped') {
+                window.clearInterval(jobStatusPoll);
+                jobStatusPoll = null;
+                detailsUrl = null;
+
+                const duration = stopTime && startTime
+                  ? ((new Date(stopTime) - new Date(startTime)) / 1000).toFixed(1)
+                  : 'unknown';
+
+                reindexBtn.textContent = 'Reindex Complete';
+                reindexBtn.disabled = false;
+
+                logResponse(consoleBlock, [200, 'JOB', `Index "${name}" reindexed: ${processed}/${total} in ${duration}s`, '']);
+              } else if (state === 'failed') {
+                window.clearInterval(jobStatusPoll);
+                jobStatusPoll = null;
+                detailsUrl = null;
+
+                reindexBtn.textContent = 'Reindex Failed';
+                reindexBtn.disabled = false;
+
+                logResponse(consoleBlock, [500, 'JOB', `Index "${name}" reindex failed`, '']);
+              } else {
+                reindexBtn.textContent = `Reindexing... ${processed}/${total}`;
+              }
+            }
+          } catch (error) {
+            // eslint-disable-next-line no-console
+            console.error(`Failed to get status for index ${name}: ${error}`);
+            window.clearInterval(jobStatusPoll);
+            jobStatusPoll = null;
+            reindexBtn.textContent = 'Reindex';
+            reindexBtn.disabled = false;
+            detailsUrl = null;
+          }
+        }, 10000);
+
+        reindexBtn.textContent = 'Reindexing... 0/0';
+      } else {
+        reindexBtn.textContent = 'Reindex Failed';
+        reindexBtn.disabled = false;
+        logResponse(consoleBlock, [result.status || 500, 'POST', `Index "${name}"`, result.error || 'Unknown error']);
       }
     });
   });
