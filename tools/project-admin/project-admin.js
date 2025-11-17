@@ -218,4 +218,9 @@ async function init() {
   }, 10000);
 }
 
-init();
+const initPromise = init();
+
+// eslint-disable-next-line import/prefer-default-export
+export function ready() {
+  return initPromise;
+}
