@@ -174,7 +174,7 @@ async function init() {
     });
 
     resp.text().then(() => {
-      logResponse(consoleBlock, [resp.status, 'POST', cdnUrl, resp.headers.get('x-error') || '']);
+      logResponse(consoleBlock, resp.status, ['POST', cdnUrl, resp.headers.get('x-error') || '']);
     });
   });
 
@@ -248,7 +248,7 @@ async function init() {
       cdnForm.setAttribute('disabled', '');
     }
 
-    logResponse(consoleBlock, [resp.status, 'GET', cdnUrl, resp.headers.get('x-error') || '']);
+    logResponse(consoleBlock, resp.status, ['GET', cdnUrl, resp.headers.get('x-error') || '']);
   });
 }
 

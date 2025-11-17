@@ -1,0 +1,428 @@
+/* Deep PSI specific styles */
+.deep-psi main {
+  max-width: 1400px;
+}
+
+.deep-psi form#psi-form {
+  display: grid;
+  grid-template:
+    'config' auto
+    'button' auto / 1fr;
+  gap: var(--spacing-l);
+  margin-bottom: var(--spacing-xl);
+}
+
+@media (width >= 900px) {
+  .deep-psi form#psi-form {
+    grid-template:
+      'config config' auto
+      'button button' auto / 1fr 1fr;
+  }
+}
+
+.deep-psi form#psi-form > .psi-form-section {
+  grid-area: config;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-m);
+}
+
+@media (width >= 900px) {
+  .deep-psi form#psi-form > .psi-form-section {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .deep-psi form#psi-form > .psi-form-section .form-field {
+    margin-top: 0;
+  }
+}
+
+.deep-psi form#psi-form > .psi-button-group {
+  grid-area: button;
+  align-items: center;
+}
+
+.deep-psi .psi-checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin: 0;
+}
+
+.deep-psi .psi-checkbox-wrapper input[type="checkbox"] {
+  margin: 0;
+}
+
+.deep-psi .psi-results-wrapper {
+  margin-top: var(--spacing-xl);
+}
+
+.deep-psi .psi-output-grid {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing-xl) * 2); /* 2x spacing-xl */
+}
+
+@media (width >= 900px) {
+  .deep-psi .psi-output-grid {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: calc(var(--spacing-xl) * 2); /* 2x spacing-xl */
+  }
+  
+  .deep-psi .psi-output-grid > div {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.deep-psi .psi-significance-wrapper {
+  margin-top: var(--spacing-xl);
+  padding: var(--spacing-l);
+  background: var(--layer-elevated);
+  border-radius: 0.5rem;
+}
+
+.deep-psi .psi-significance-wrapper h3 {
+  margin-top: 0;
+  margin-bottom: var(--spacing-m);
+}
+
+.deep-psi .psi-significance-wrapper ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.deep-psi .psi-significance-wrapper li {
+  padding: var(--spacing-xs) 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.deep-psi .psi-significance-wrapper li:last-child {
+  border-bottom: none;
+}
+
+/* Table styles */
+.deep-psi table {
+  width: 100%;
+  font-size: var(--detail-size-m);
+  border-collapse: collapse;
+  background: var(--layer-elevated);
+  border-radius: 0.5rem;
+  box-shadow: var(--shadow-default);
+  table-layout: fixed;
+}
+
+.deep-psi table th,
+.deep-psi table td {
+  width: auto;
+  max-width: none;
+}
+
+.deep-psi table th {
+  background: var(--gray-50);
+  padding: var(--spacing-m);
+  text-align: center;
+  font-weight: var(--weight-bold);
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.deep-psi table td {
+  padding: var(--spacing-m);
+  text-align: center;
+  border-bottom: 1px solid var(--gray-50);
+}
+
+.deep-psi table tr:nth-child(even) {
+  background-color: var(--gray-25);
+}
+
+/* Give more width to the Score column */
+.deep-psi table th:last-child,
+.deep-psi table td:last-child {
+  width: 80px;
+  min-width: 80px;
+}
+
+@media (width >= 900px) {
+  .deep-psi table th:last-child,
+  .deep-psi table td:last-child {
+    width: 100px;
+    min-width: 100px;
+  }
+}
+
+/* Mobile-specific table improvements */
+@media (width < 900px) {
+  .deep-psi table {
+    font-size: var(--detail-size-s);
+  }
+  
+  .deep-psi table th,
+  .deep-psi table td {
+    padding: var(--spacing-xs);
+    word-wrap: break-word;
+    hyphens: auto;
+    min-width: 60px;
+    max-width: 80px;
+  }
+  
+  /* Make score column slightly wider on mobile */
+  .deep-psi table th:last-child,
+  .deep-psi table td:last-child {
+    min-width: 70px;
+    max-width: 90px;
+  }
+}
+
+/* Extra small mobile styles for viewports below 600px */
+@media (width < 600px) {
+  .deep-psi table {
+    font-size: var(--detail-size-xs);
+    min-width: 500px; /* Force minimum width to prevent cramping */
+  }
+  
+  .deep-psi table th,
+  .deep-psi table td {
+    padding: var(--spacing-xs);
+    white-space: nowrap; /* Prevent text wrapping */
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  /* Set specific column widths for very small screens */
+  .deep-psi table th:nth-child(1),
+  .deep-psi table td:nth-child(1) { width: 80px; } /* FCP */
+  .deep-psi table th:nth-child(2),
+  .deep-psi table td:nth-child(2) { width: 80px; } /* SI */
+  .deep-psi table th:nth-child(3),
+  .deep-psi table td:nth-child(3) { width: 80px; } /* LCP */
+  .deep-psi table th:nth-child(4),
+  .deep-psi table td:nth-child(4) { width: 80px; } /* TTI */
+  .deep-psi table th:nth-child(5),
+  .deep-psi table td:nth-child(5) { width: 80px; } /* TBT */
+  .deep-psi table th:nth-child(6),
+  .deep-psi table td:nth-child(6) { width: 80px; } /* CLS */
+  .deep-psi table th:nth-child(7),
+  .deep-psi table td:nth-child(7) { width: 100px; } /* Score */
+}
+
+@media (width >= 900px) {
+  .deep-psi table {
+    font-size: var(--detail-size-s);
+  }
+  
+  .deep-psi table th,
+  .deep-psi table td {
+    padding: var(--spacing-s);
+  }
+}
+
+.deep-psi .table-container {
+  max-height: 400px;
+  overflow: auto;
+  border-radius: 0.5rem;
+  box-shadow: var(--shadow-default);
+  background: var(--layer-elevated);
+}
+
+@media (width >= 900px) {
+  .deep-psi .table-container {
+    max-height: 500px;
+  }
+}
+
+.deep-psi .table-container table {
+  margin: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.deep-psi .table-container table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--gray-50);
+}
+
+.deep-psi table tr.average {
+  font-weight: var(--weight-bold);
+  background-color: var(--gray-100);
+  border-top: 2px solid var(--gray-200);
+}
+
+.deep-psi .table-container table tbody tr.average {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  background: var(--gray-100);
+}
+
+.deep-psi table tr.average td {
+  padding: var(--spacing-l);
+}
+
+/* Score circle styles - fixed sizing for all viewports */
+.deep-psi .score-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-weight: var(--weight-bold);
+  font-size: var(--detail-size-l);
+  color: white;
+  box-shadow: var(--shadow-default);
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
+/* Ensure score circles maintain shape on all screen sizes */
+@media (width < 900px) {
+  .deep-psi .score-circle {
+    width: 40px;
+    height: 40px;
+    font-size: var(--detail-size-s);
+    min-width: 40px;
+    min-height: 40px;
+  }
+  
+  .deep-psi table tr.average .score-circle {
+    width: 40px;
+    height: 40px;
+    font-size: var(--detail-size-s);
+    min-width: 40px;
+    min-height: 40px;
+  }
+}
+
+@media (width >= 900px) {
+  .deep-psi .score-circle {
+    width: 45px;
+    height: 45px;
+    font-size: var(--detail-size-m);
+    min-width: 45px;
+    min-height: 45px;
+  }
+  
+  .deep-psi table tr.average .score-circle {
+    width: 45px;
+    height: 45px;
+    font-size: var(--detail-size-m);
+    min-width: 45px;
+    min-height: 45px;
+  }
+}
+
+.deep-psi .score-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+}
+
+@media (width < 900px) {
+  .deep-psi .score-container {
+    min-height: 40px;
+  }
+}
+
+@media (width >= 900px) {
+  .deep-psi .score-container {
+    min-height: 45px;
+  }
+}
+
+/* Score circles for very small screens */
+@media (width < 600px) {
+  .deep-psi .score-circle {
+    width: 35px;
+    height: 35px;
+    font-size: var(--detail-size-xs);
+    min-width: 35px;
+    min-height: 35px;
+  }
+  
+  .deep-psi table tr.average .score-circle {
+    width: 35px;
+    height: 35px;
+    font-size: var(--detail-size-xs);
+    min-width: 35px;
+    min-height: 35px;
+  }
+  
+  .deep-psi .score-container {
+    min-height: 35px;
+  }
+}
+
+/* Loading and status messages */
+.deep-psi .status-message {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--gray-600);
+  grid-column: 1 / -1;
+  background: var(--layer-elevated);
+  border-radius: 0.5rem;
+  margin: var(--spacing-l) 0;
+}
+
+.deep-psi .error-message {
+  color: var(--red-900);
+  background: var(--red-50);
+  padding: var(--spacing-m);
+  border-radius: 0.5rem;
+  border: 1px solid var(--red-100);
+}
+
+/* Loading spinner animation */
+.deep-psi .loading-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentcolor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: var(--spacing-xs);
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.deep-psi button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* URL header styles */
+.deep-psi .table-url-header {
+  margin: 0 0 var(--spacing-m) 0;
+  font-size: var(--detail-size-l);
+  font-weight: var(--weight-bold);
+  color: var(--gray-700);
+  padding: var(--spacing-s) var(--spacing-m);
+  background: var(--gray-50);
+  border-radius: 0.5rem;
+  border-left: 4px solid var(--blue-500);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+}
+
+.deep-psi .table-url-header.loading {
+  color: var(--gray-600);
+  border-left-color: var(--orange-500);
+}
+
+.deep-psi .table-url-header .loading-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentcolor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+} 

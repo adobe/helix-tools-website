@@ -29,7 +29,7 @@ async function init() {
     });
 
     resp.text().then(() => {
-      logResponse(consoleBlock, [resp.status, 'POST', robotsUrl, resp.headers.get('x-error') || '']);
+      logResponse(consoleBlock, resp.status, ['POST', robotsUrl, resp.headers.get('x-error') || '']);
     });
   });
 
@@ -45,7 +45,7 @@ async function init() {
     const resp = await fetch(robotsUrl);
     const text = await resp.text();
     body.value = text;
-    logResponse(consoleBlock, [resp.status, 'GET', robotsUrl, resp.headers.get('x-error') || '']);
+    logResponse(consoleBlock, resp.status, ['GET', robotsUrl, resp.headers.get('x-error') || '']);
   });
 }
 
