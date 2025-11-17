@@ -1,5 +1,6 @@
 import { logResponse, logMessage } from '../../blocks/console/console.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
+import { initConfigField, updateConfig } from '../../utils/config/config.js';
 
 let currentConfig = {};
 // eslint-disable-next-line no-unused-vars
@@ -127,17 +128,6 @@ function isValidPropertyKey(key) {
   // Only allow alphanumeric characters, dots, underscores, and hyphens
   const validKeyPattern = /^[a-zA-Z0-9._-]+$/;
   return validKeyPattern.test(key);
-}
-
-/**
- * Logs a message to the console table
- * @param {string} level - Log level: 'info', 'success', 'warning', or 'error'
- * @param {string} action - Action performed
- * @param {string} message - Log message
- */
-function log(level, action, message) {
-  // Add empty string to align with logResponse's 5 columns (status, method, url, error, time)
-  logMessage(consoleBlock, level, [action, message, '']);
 }
 
 /**
@@ -763,9 +753,9 @@ function editProperty(key, path) {
       populateConfigTable();
 
       const actionText = isNewProperty ? 'Added' : 'Updated';
-      log('info', actionText.toUpperCase(), `${actionText} property: ${fullKey} (pending save)`);
+      logMessage(consoleBlock, 'info', [actionText.toUpperCase(), `${actionText} property: ${fullKey} (pending save)`, '']);
     } catch (error) {
-      log('error', 'EDIT', `Failed to update property: ${error.message}`);
+      logMessage(consoleBlock, 'error', ['EDIT', `Failed to update property: ${error.message}`, '']);
     }
   };
 
@@ -773,9 +763,9 @@ function editProperty(key, path) {
     // If this was a new property being added (empty value), remove it from local config
     if (currentValue === '') {
       removeNestedValue(currentConfig, path, key);
-      log('info', 'CANCEL', `Cancelled adding property: ${path ? `${path}.${key}` : key}`);
+      logMessage(consoleBlock, 'info', ['CANCEL', `Cancelled adding property: ${path ? `${path}.${key}` : key}`, '']);
     } else {
-      log('info', 'CANCEL', `Cancelled editing property: ${path ? `${path}.${key}` : key}`);
+      logMessage(consoleBlock, 'info', ['CANCEL', `Cancelled editing property: ${path ? `${path}.${key}` : key}`, '']);
     }
     populateConfigTable();
   };
@@ -817,7 +807,7 @@ function removeProperty(key, path) {
   // Refresh the table to show the change
   populateConfigTable();
 
-  log('info', 'REMOVE', `Removed property: ${fullKey} (pending save)`);
+  logMessage(consoleBlock, 'info', ['REMOVE', `Removed property: ${fullKey} (pending save)`, '']);
 }
 
 /**
@@ -834,14 +824,14 @@ function addProperty() {
 
   // Validate the key format
   if (!isValidPropertyKey(sanitizedKey)) {
-    log('error', 'ADD', 'Property key contains invalid characters. Only alphanumeric characters, dots, underscores, and hyphens are allowed.');
+    logMessage(consoleBlock, 'error', ['ADD', 'Property key contains invalid characters. Only alphanumeric characters, dots, underscores, and hyphens are allowed.', '']);
     return;
   }
 
   // Check if the key starts with an allowed prefix
   const hasAllowedPrefix = allowedPrefixes.some((prefix) => sanitizedKey.startsWith(prefix));
   if (!hasAllowedPrefix) {
-    log('error', 'ADD', `Property key must start with one of: ${allowedPrefixes.join(', ')}`);
+    logMessage(consoleBlock, 'error', ['ADD', `Property key must start with one of: ${allowedPrefixes.join(', ')}`, '']);
     return;
   }
 
@@ -865,7 +855,7 @@ function addProperty() {
       editProperty(finalKey, path);
     }, 100);
 
-    log('info', 'ADD', `Added nested property to table: ${sanitizedKey}`);
+    logMessage(consoleBlock, 'info', ['ADD', `Added nested property to table: ${sanitizedKey}`, '']);
   } else {
     // Add the property to local config with empty value
     currentConfig[sanitizedKey] = '';
@@ -878,7 +868,7 @@ function addProperty() {
       editProperty(sanitizedKey, '');
     }, 100);
 
-    log('info', 'ADD', `Added property to table: ${sanitizedKey}`);
+    logMessage(consoleBlock, 'info', ['ADD', `Added property to table: ${sanitizedKey}`, '']);
   }
 }
 
@@ -887,7 +877,7 @@ function addProperty() {
  */
 async function loadConfig() {
   if (!org.value || !site.value) {
-    log('error', 'LOAD', 'Please select both organization and site');
+    logMessage(consoleBlock, 'error', ['LOAD', 'Please select both organization and site', '']);
     return;
   }
 
@@ -896,7 +886,7 @@ async function loadConfig() {
     const adminURL = `https://admin.hlx.page${configPath}`;
     const aggregateURL = `https://admin.hlx.page/config/${org.value}/aggregated/${site.value}.json`;
 
-    log('info', 'LOAD', `Loading config from: ${configPath}`);
+    logMessage(consoleBlock, 'info', ['LOAD', `Loading config from: ${configPath}`, '']);
 
     // Fetch both current config and aggregate config
     const [configResponse, aggregateResponse] = await Promise.all([
@@ -952,50 +942,11 @@ async function loadConfig() {
 
     populateConfigTable();
     updateSaveButton(); // Hide save button initially
+    updateConfig(); // Update URL params and localStorage
 
-    log('success', 'LOAD', 'Configuration loaded successfully');
+    logMessage(consoleBlock, 'success', ['LOAD', 'Configuration loaded successfully', '']);
   } catch (error) {
-    log('error', 'LOAD', `Failed to load configuration: ${error.message}`);
-  }
-}
-
-/**
- * Updates URL parameters based on org/site values
- */
-function updateURLParams() {
-  const url = new URL(window.location.href);
-
-  if (org.value) {
-    url.searchParams.set('org', org.value);
-  } else {
-    url.searchParams.delete('org');
-  }
-
-  if (site.value) {
-    url.searchParams.set('site', site.value);
-  } else {
-    url.searchParams.delete('site');
-  }
-
-  window.history.replaceState({}, document.title, url.href);
-}
-
-/**
- * Loads org/site values from URL parameters
- */
-function loadFromURLParams() {
-  const urlParams = new URLSearchParams(window.location.search);
-
-  const orgParam = urlParams.get('org');
-  const siteParam = urlParams.get('site');
-
-  if (orgParam) {
-    org.value = orgParam;
-    site.disabled = false;
-  }
-
-  if (siteParam) {
-    site.value = siteParam;
+    logMessage(consoleBlock, 'error', ['LOAD', `Failed to load configuration: ${error.message}`, '']);
   }
 }
 
@@ -1004,7 +955,7 @@ function loadFromURLParams() {
  */
 async function saveAllChanges() {
   if (pendingChanges.size === 0) {
-    log('warning', 'SAVE', 'No changes to save');
+    logMessage(consoleBlock, 'warning', ['SAVE', 'No changes to save', '']);
     return;
   }
 
@@ -1086,9 +1037,9 @@ async function saveAllChanges() {
     populateConfigTable();
     updateSaveButton();
 
-    log('success', 'SAVE', `Successfully saved ${changesCount} changes`);
+    logMessage(consoleBlock, 'success', ['SAVE', `Successfully saved ${changesCount} changes`, '']);
   } catch (error) {
-    log('error', 'SAVE', `Failed to save changes: ${error.message}`);
+    logMessage(consoleBlock, 'error', ['SAVE', `Failed to save changes: ${error.message}`, '']);
   }
 }
 
@@ -1112,20 +1063,9 @@ function toggleInheritedProperties() {
 /**
  * Initializes the config editor
  */
-function init() {
-  // Load values from URL parameters first
-  loadFromURLParams();
-
-  // Enable site field when org has value
-  org.addEventListener('input', () => {
-    site.disabled = !org.value;
-    updateURLParams();
-  });
-
-  // Update URL when site changes
-  site.addEventListener('input', () => {
-    updateURLParams();
-  });
+async function init() {
+  // Initialize config field (handles URL params, localStorage, sidekick auto-population)
+  await initConfigField();
 
   // Load config when form is submitted
   document.getElementById('config-selection-form').addEventListener('submit', async (e) => {
@@ -1155,14 +1095,20 @@ function init() {
 
   // Toggle inherited properties button
   document.getElementById('toggle-inherited').addEventListener('click', toggleInheritedProperties);
-
-  // Auto-load config if both org and site are set from URL params
-  if (org.value && site.value) {
-    log('info', 'AUTO-LOAD', 'Auto-loading configuration from URL parameters');
-    loadConfig();
-  }
-
-  log('info', 'INIT', 'Config Editor initialized');
 }
 
-init();
+const initPromise = init();
+
+initPromise.then(async () => {
+  // Auto-load config if both org and site are set from URL params
+  if (org.value && site.value) {
+    logMessage(consoleBlock, 'info', ['AUTO-LOAD', 'Auto-loading configuration from URL parameters', '']);
+    await loadConfig();
+  }
+  logMessage(consoleBlock, 'info', ['INIT', 'Config Editor initialized', '']);
+});
+
+// eslint-disable-next-line import/prefer-default-export
+export function ready() {
+  return initPromise;
+}

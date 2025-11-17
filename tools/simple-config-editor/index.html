@@ -35,21 +35,13 @@
         <section class="form-field config-field">
           <div class="form-field org-field">
             <label for="org">Organization</label>
-            <input name="org" id="org" required />
-            <div class="field-help-text">
-              <p>
-                Enter the organization name to edit site configurations
-              </p>
-            </div>
+            <input name="org" id="org" list="org-list" autocomplete="off" required />
+            <datalist id="org-list"></datalist>
           </div>
           <div class="form-field site-field">
             <label for="site">Site</label>
-            <input name="site" id="site" disabled />
-            <div class="field-help-text">
-              <p>
-                Enter the site name to edit its configuration
-              </p>
-            </div>
+            <input name="site" id="site" list="site-list" autocomplete="off" required />
+            <datalist id="site-list"></datalist>
           </div>
         </section>
         <p class="button-wrapper">
@@ -92,6 +84,7 @@
       <div class="console"></div>
     </div>
   </main>
+  <footer></footer>
 </body>
 
 </html>

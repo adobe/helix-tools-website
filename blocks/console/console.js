@@ -12,6 +12,30 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// queue any messages that attempt to log before ready
+const preInitQ = [];
+
+/**
+ * Appends a row to the console table
+ * @param {HTMLElement} block - The console block element
+ * @param {HTMLElement} row - The row to append
+ */
+function appendRow(block, row) {
+  // show the console when the first row is added
+  block.removeAttribute('aria-hidden');
+
+  const tbody = block.querySelector('tbody');
+  if (tbody) {
+    while (preInitQ.length > 0) {
+      const nextRow = preInitQ.shift();
+      tbody.prepend(nextRow);
+    }
+    tbody.prepend(row);
+  } else {
+    preInitQ.push(row);
+  }
+}
+
 /**
  * Logs an HTTP response to the console table.
  * @param {HTMLElement} block - The console block element.
@@ -19,16 +43,12 @@ function escapeHtml(text) {
  * @param {Array} cols - Array containing [method, url, error].
  */
 export function logResponse(block, httpStatus, cols) {
-  const tbody = block.querySelector('tbody');
-
-  // Show the console when first log entry is added
-  block.removeAttribute('aria-hidden');
-
   const row = document.createElement('tr');
-  // get the current time in hh:mm:ss format
+  // get the current time in hh:mm:ss.mmm format
   const now = new Date();
   const pad = (num) => num.toString().padStart(2, '0');
-  const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  const padMs = (num) => num.toString().padStart(3, '0');
+  const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}.${padMs(now.getMilliseconds())}`;
 
   // Status code cell with status light
   const statusCell = document.createElement('td');
@@ -47,7 +67,7 @@ export function logResponse(block, httpStatus, cols) {
   timeCell.textContent = time;
   row.append(timeCell);
 
-  tbody.prepend(row);
+  appendRow(block, row);
 }
 
 /**
@@ -57,16 +77,12 @@ export function logResponse(block, httpStatus, cols) {
  * @param {Array} cols - Array containing columns to display (e.g., [action, message]).
  */
 export function logMessage(block, level, cols) {
-  const tbody = block.querySelector('tbody');
-
-  // Show the console when first log entry is added
-  block.removeAttribute('aria-hidden');
-
   const row = document.createElement('tr');
-  // get the current time in hh:mm:ss format
+  // get the current time in hh:mm:ss.mmm format
   const now = new Date();
   const pad = (num) => num.toString().padStart(2, '0');
-  const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  const padMs = (num) => num.toString().padStart(3, '0');
+  const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}.${padMs(now.getMilliseconds())}`;
 
   // Level cell with status light (escape level to prevent XSS)
   const levelCell = document.createElement('td');
@@ -85,7 +101,7 @@ export function logMessage(block, level, cols) {
   timeCell.textContent = time;
   row.append(timeCell);
 
-  tbody.prepend(row);
+  appendRow(block, row);
 }
 
 export default function decorate(block) {
