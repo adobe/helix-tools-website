@@ -1,30 +1,107 @@
 /**
- * Logs a response to the console table.
- * @param {HTMLElement} block - The console block element.
- * @param {Array} cols - Array containing response information [status, method, url, error].
+ * Escapes HTML to prevent XSS attacks
+ * @param {string} text - Text to escape
+ * @returns {string} - Escaped HTML
  */
-export function logResponse(block, cols) {
-  const tbody = block.querySelector('tbody');
+function escapeHtml(text) {
+  if (typeof text !== 'string') {
+    return String(text);
+  }
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
 
-  // Show the console when first log entry is added
+// queue any messages that attempt to log before ready
+const preInitQ = [];
+
+/**
+ * Appends a row to the console table
+ * @param {HTMLElement} block - The console block element
+ * @param {HTMLElement} row - The row to append
+ */
+function appendRow(block, row) {
+  // show the console when the first row is added
   block.removeAttribute('aria-hidden');
 
+  const tbody = block.querySelector('tbody');
+  if (tbody) {
+    while (preInitQ.length > 0) {
+      const nextRow = preInitQ.shift();
+      tbody.prepend(nextRow);
+    }
+    tbody.prepend(row);
+  } else {
+    preInitQ.push(row);
+  }
+}
+
+/**
+ * Logs an HTTP response to the console table.
+ * @param {HTMLElement} block - The console block element.
+ * @param {number} httpStatus - HTTP status code.
+ * @param {Array} cols - Array containing [method, url, error].
+ */
+export function logResponse(block, httpStatus, cols) {
   const row = document.createElement('tr');
-  // get the current time in hh:mm:ss format
+  // get the current time in hh:mm:ss.mmm format
   const now = new Date();
   const pad = (num) => num.toString().padStart(2, '0');
-  const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  const padMs = (num) => num.toString().padStart(3, '0');
+  const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}.${padMs(now.getMilliseconds())}`;
 
-  // add each column (including time) to the row
-  [...cols, time].forEach((col, i) => {
+  // Status code cell with status light
+  const statusCell = document.createElement('td');
+  statusCell.innerHTML = `<span class="status-light http${Math.floor(httpStatus / 100) % 10}">${httpStatus}</span>`;
+  row.append(statusCell);
+
+  // Add remaining columns (escaped for security)
+  cols.forEach((col) => {
     const cell = document.createElement('td');
-    if (!i) { // decorate status code
-      const code = `<span class="status-light http${Math.floor(col / 100) % 10}">${col}</span>`;
-      cell.innerHTML = code;
-    } else cell.textContent = col;
+    cell.textContent = escapeHtml(col);
     row.append(cell);
   });
-  tbody.prepend(row);
+
+  // Time cell
+  const timeCell = document.createElement('td');
+  timeCell.textContent = time;
+  row.append(timeCell);
+
+  appendRow(block, row);
+}
+
+/**
+ * Logs a message to the console table with a log level.
+ * @param {HTMLElement} block - The console block element.
+ * @param {string} level - Log level: 'info', 'success', 'warning', or 'error'.
+ * @param {Array} cols - Array containing columns to display (e.g., [action, message]).
+ */
+export function logMessage(block, level, cols) {
+  const row = document.createElement('tr');
+  // get the current time in hh:mm:ss.mmm format
+  const now = new Date();
+  const pad = (num) => num.toString().padStart(2, '0');
+  const padMs = (num) => num.toString().padStart(3, '0');
+  const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}.${padMs(now.getMilliseconds())}`;
+
+  // Level cell with status light (escape level to prevent XSS)
+  const levelCell = document.createElement('td');
+  levelCell.innerHTML = `<span class="status-light level-${escapeHtml(level)}">${escapeHtml(level.toUpperCase())}</span>`;
+  row.append(levelCell);
+
+  // Add remaining columns (escaped for security)
+  cols.forEach((col) => {
+    const cell = document.createElement('td');
+    cell.textContent = escapeHtml(col);
+    row.append(cell);
+  });
+
+  // Time cell
+  const timeCell = document.createElement('td');
+  timeCell.textContent = time;
+  row.append(timeCell);
+
+  appendRow(block, row);
 }
 
 export default function decorate(block) {

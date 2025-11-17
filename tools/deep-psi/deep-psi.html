@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>Deep PSI</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="deep-psi.js" type="module"></script>
+  <link rel="stylesheet" href="deep-psi.css" />
+</head>
+
+<body class="deep-psi">
+  <header></header>
+  <main>
+    <div>
+      <h1>Deep PSI</h1>
+      <p>
+        Compare the Average PSI of two URLs over multiple PSI reports to analyze performance consistency and identify optimization opportunities.
+      </p>
+    </div>
+
+    <div>
+      <form id="psi-form" aria-hidden="false">
+        <section class="psi-form-section">
+          <div class="form-field psi-url-field">
+            <label for="url1">First URL</label>
+            <input name="url1" id="url1" type="url" autocomplete="on" required />
+          </div>
+          <div class="form-field psi-url-field">
+            <label for="url2">Second URL (Optional)</label>
+            <input name="url2" id="url2" type="url" autocomplete="on" />
+          </div>
+        </section>
+
+        <p class="button-wrapper psi-button-group">
+          <button type="submit" id="button" class="button">Submit</button>
+          <button type="reset" class="button outline">Reset</button>
+          <label class="psi-checkbox-wrapper">
+            <input type="checkbox" id="clear">
+            <span>Clear Results</span>
+          </label>
+        </p>
+      </form>
+    </div>
+    
+          <div class="psi-results-wrapper">
+            <div>
+        <div class="psi-output-grid">
+          <div id="output1"></div>
+          <div id="output2"></div>
+        </div>
+        </div>
+        <div id="psi-significance-container" style="display: none;">
+          <div class="psi-significance-wrapper">
+            <h3>Statistical Significance Test</h3>
+            <ul id="significancetestresults"></ul>
+          </div>
+        </div>
+      </div>
+    
+  </main>
+  <footer></footer>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';" move-to-http-header="true">
+  <meta charset="UTF-8">
+  <script nonce="aem" type="importmap">{"imports": {
+    "@adobe/rum-distiller": "https://esm.sh/@adobe/rum-distiller@1.19.1",
+    "echarts": "https://cdn.jsdelivr.net/npm/echarts@6/dist/echarts.esm.min.js"
+  }}</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>Error Analyzer</title>
+  <meta name="description"
+    content="Analyze JavaScript errors occurring on your site based on Operational Telemetry (OpTel) data.">
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="./error-analyzer.js" type="module" defer></script>
+  <link rel="stylesheet" href="./error-analyzer.css" />
+</head>
+
+<body class="error-analyzer">
+  <header></header>
+  <main>
+    <div>
+      <h1>Error Analyzer</h1>
+      <p>
+        Analyze JavaScript errors occurring on your site based on Operational Telemetry (OpTel) data.
+      </p>
+    </div>
+
+    <div>
+      <form class="prompt-form">
+        <div class="domain-info">
+          <div class="favicon">
+            <img src="https://www.google.com/s2/favicons?domain=www.aem.live&amp;sz=64" alt="favicon for www.aem.live"
+              style="display: none;">
+          </div>
+          <div class="domain-name">www.aem.live</div>
+          <button type="button" id="domain-trigger" class="button domain-trigger" title="Change Domain">
+            <span class="icon icon-settings"></span>
+          </button>
+          <a href="https://www.aem.live/tools/rum/explorer.html" class="button outline explorer-trigger" target="_blank"
+            rel="noopener noreferrer" title="Open in Explorer">
+            <span class="icon icon-compass"></span>
+          </a>
+        </div>
+        <div class="form-field">
+          <label for="date-range">Date Range</label>
+          <select name="dateRange" id="date-range" class="date-range" required>
+            <option value="week">last week</option>
+            <option value="month" selected>last month</option>
+            <option value="year">last year</option>
+          </select>
+        </div>
+      </form>
+      <dialog id="domain-modal" class="domain-modal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Configure Domain</h2>
+          </div>
+          <form id="domain-form">
+            <div class="form-field text-field">
+              <label for="modal-domain">Domain</label>
+              <input name="domain" id="modal-domain" type="text" required placeholder="www.aem.live" />
+            </div>
+
+            <div class="form-field text-field">
+              <label for="modal-domain-key">RUM Domain Key</label>
+              <input name="domainKey" id="modal-domain-key" type="password" autocomplete="off" required />
+            </div>
+
+            <div class="modal-actions">
+              <button type="submit" class="button">Save</button>
+              <button type="button" id="modal-cancel" class="button outline">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </dialog>
+    </div>
+
+    <div class="error-graph-container">
+      <h2>Error Trends</h2>
+    </div>
+
+    <div class="error-list-container">
+      <ul id="error-list" class="error-list">
+      </ul>
+    </div>
+  </main>
+  <footer></footer>
+</body>
+
+</html>

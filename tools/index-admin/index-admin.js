@@ -156,7 +156,7 @@ function displayIndexDetails(indexName, indexDef, newIndex = false) {
       body: yamlText,
     });
 
-    logResponse(consoleBlock, [resp.status, 'POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`, resp.headers.get('x-error') || '']);
+    logResponse(consoleBlock, resp.status, ['POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`, resp.headers.get('x-error') || '']);
 
     if (resp.ok) {
       indexDetails.close();
@@ -237,7 +237,7 @@ async function reIndex(indexNames) {
     });
 
     const errorMsg = resp.headers.get('x-error') || '';
-    logResponse(consoleBlock, [resp.status, 'POST', indexUrl, errorMsg]);
+    logResponse(consoleBlock, resp.status, ['POST', indexUrl, errorMsg]);
 
     // If 202 status, return job info
     if (resp.status === 202) {
@@ -252,7 +252,7 @@ async function reIndex(indexNames) {
 
     return { success: false, status: resp.status, error: errorMsg };
   } catch (error) {
-    logResponse(consoleBlock, [0, 'POST', indexUrl, error.message]);
+    logResponse(consoleBlock, 0, ['POST', indexUrl, error.message]);
     return { success: false, error: error.message };
   }
 }
@@ -260,14 +260,14 @@ async function reIndex(indexNames) {
 async function fetchJobDetails(detailsUrl) {
   try {
     const detailsResp = await fetch(detailsUrl);
-    logResponse(consoleBlock, [detailsResp.status, 'GET', detailsUrl, detailsResp.headers.get('x-error') || '']);
+    logResponse(consoleBlock, detailsResp.status, ['GET', detailsUrl, detailsResp.headers.get('x-error') || '']);
 
     if (detailsResp.ok) {
       return await detailsResp.json();
     }
     return null;
   } catch (error) {
-    logResponse(consoleBlock, [0, 'GET', detailsUrl, error.message]);
+    logResponse(consoleBlock, 0, ['GET', detailsUrl, error.message]);
     return null;
   }
 }
@@ -427,7 +427,7 @@ async function init() {
     try {
       const indexUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`;
       const resp = await fetch(indexUrl);
-      logResponse(consoleBlock, [resp.status, 'GET', indexUrl, resp.headers.get('x-error') || '']);
+      logResponse(consoleBlock, resp.status, ['GET', indexUrl, resp.headers.get('x-error') || '']);
 
       if (resp.ok) {
         updateConfig();
