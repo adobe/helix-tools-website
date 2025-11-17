@@ -367,7 +367,7 @@ function populateIndexes(indexes) {
             reindexBtn.disabled = false;
             detailsUrl = null;
           }
-        }, 1000);
+        }, 10000);
 
         reindexBtn.textContent = 'Reindexing... 0/0';
       } else {
