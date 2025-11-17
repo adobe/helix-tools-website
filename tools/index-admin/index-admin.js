@@ -145,6 +145,8 @@ function displayIndexDetails(indexName, indexDef, newIndex = false) {
       loadedIndices.indices[indexDetails.querySelector('#index-name').value.trim()].exclude = indexDetails.querySelector('#index-exclude').value.split('\n').map((line) => line.trim());
     }
 
+    // eslint-disable-next-line import/no-unresolved
+    YAML = YAML || await import('https://unpkg.com/yaml@2.8.1/browser/index.js');
     const yamlText = YAML.stringify(loadedIndices);
     const resp = await fetch(`https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`, {
       method: 'POST',
