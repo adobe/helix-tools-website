@@ -1,0 +1,185 @@
+.project-admin [aria-hidden='true'] {
+  display: none;
+}
+
+.project-admin #site-admin-form {
+  display: grid;
+  gap: var(--spacing-s);
+}
+
+.project-admin #site-admin-form .button-wrapper {
+  align-self: center;
+}
+
+.project-admin .status-light {
+  white-space: nowrap;
+}
+
+.project-admin .status-light::before {
+  color: var(--red-900);
+}
+
+.project-admin .status-light.http1::before {
+  color: var(--blue-900);
+}
+
+.project-admin .status-light.http2::before {
+  color: var(--green-900);
+}
+
+.project-admin .status-light.http3::before {
+  color: var(--yellow-900);
+}
+
+.project-admin .projects-org {
+  margin: 0 0 16px;
+}
+
+.project-admin .projects-title-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 6px;
+}
+
+.project-admin .projects-title-bar h3 {
+  margin-top: 0.25em;
+}
+
+.project-admin ol.projects-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.project-admin ol.projects-list li {
+  padding: var(--spacing-l) 0;
+  border-top: var(--border-s) solid var(--gray-300);
+  display: grid;
+  grid-template-areas: "id button" "details button";
+  grid-template-columns: 1fr max-content;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.project-admin ol.projects-list li:first-of-type {
+  border-top: var(--border-m) solid var(--gray-700);
+}
+
+.project-admin .projects-list-button-bar {
+  display: flex;
+  justify-content: end;
+}
+
+.project-admin .projects-project-title {
+  grid-area: id;
+  display: flex;
+  align-items: center;
+  font-size: var(--body-size-xl);
+  font-weight: bold;
+  padding-bottom: 16px;
+}
+
+.project-admin .projects-project-title h4 {
+  margin: 0 16px 0 0;
+}
+
+.project-admin .projects-project-title button {
+  transform: scale(0.8);
+}
+
+.project-admin .projects-project-details {
+  grid-area: details;
+  margin-bottom: var(--spacing-m);
+  font-size: var(--body-size-m);
+}
+
+.project-admin .projects-project-details > div {
+  display: flex;
+  margin-bottom: 8px;
+}
+
+.project-admin .projects-project-details > div > div:first-child {
+  min-width: 100px;
+}
+
+.project-admin .form-field.picker-field  {
+  width: 200px;
+  display: flex;
+  justify-content: end;
+  user-select: none;
+}
+
+.project-admin .form-field.picker-field input.button {
+  background-color: initial;
+  border-color: initial;
+  padding-right: 36px;
+  padding-left: 16px;
+  box-sizing: border-box;
+  width: max-content;
+}
+
+.project-admin .form-field.picker-field i.symbol {
+  display: block;
+  border-left: solid 1px var(--color-link);
+  padding: 0 18px 0 8px;
+  height: 38px;
+  color: var(--color-link);
+  top: 3px;
+  right: 3px;
+  cursor: pointer;
+}
+
+.project-admin .form-field.picker-field i.symbol[aria-hidden="true"] {
+  display: none;
+}
+
+.project-admin .form-field.picker-field input[disabled] {
+  padding-right: 16px;
+}
+
+.project-admin .form-field.picker-field input[disabled] ~ i.symbol {
+  color: var(--gray-400);
+}
+
+.project-admin .form-field.picker-field ul li[data-value="default"] {
+  font-weight: 700;
+}
+
+.project-admin-oinw {
+  margin-bottom: -2px;
+  margin-left: 4px;
+  box-sizing: border-box;
+  position: relative;
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  border: 2px solid;
+  transform: 1;
+  border-radius: 4px;
+}
+
+.project-admin-oinw::after,
+.project-admin-oinw::before {
+  content: "";
+  display: block;
+  box-sizing: border-box;
+  position: absolute;
+  right: 4px;
+}
+
+.project-admin-oinw::after {
+  width: 10px;
+  height: 2px;
+  background: currentcolor;
+  transform: rotate(-45deg);
+  bottom: 8px;
+}
+
+.project-admin-oinw::before {
+  width: 6px;
+  height: 6px;
+  top: 4px;
+  border-top: 2px solid;
+  border-right: 2px solid;
+}
