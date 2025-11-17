@@ -338,10 +338,10 @@ function populateIndexes(indexes) {
                 detailsUrl = null;
 
                 const duration = stopTime && startTime
-                  ? ((new Date(stopTime).valueOf() - new Date(startTime).valueOf()) / 1000).toFixed(1)
+                  ? ((new Date(stopTime) - new Date(startTime)) / 1000).toFixed(1)
                   : 'unknown';
 
-                reindexBtn.textContent = `Reindex Complete (${duration}s)`;
+                reindexBtn.textContent = 'Reindex Complete';
                 reindexBtn.disabled = false;
 
                 logResponse(consoleBlock, [200, 'JOB', `Index "${name}" reindexed: ${processed}/${total} in ${duration}s`, '']);
