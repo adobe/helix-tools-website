@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Config Editor</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/simple-config-editor/simple-config-editor.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/simple-config-editor/simple-config-editor.css" />
+</head>
+
+<body class="config-editor">
+  <header></header>
+  <main>
+    <!-- TITLE -->
+    <div>
+      <h1>Simple Config Editor</h1>
+      <p>
+        Edit site configuration properties in a simple table format. Only shows properties that start with <code>cdn</code>, <code>access</code>, or <code>metadata</code>.
+      </p>
+    </div> 
+
+    <!-- CONFIG SELECTION -->
+    <div>
+      <form id="config-selection-form">
+        <section class="form-field config-field">
+          <div class="form-field org-field">
+            <label for="org">Organization</label>
+            <input name="org" id="org" required />
+            <div class="field-help-text">
+              <p>
+                Enter the organization name to edit site configurations
+              </p>
+            </div>
+          </div>
+          <div class="form-field site-field">
+            <label for="site">Site</label>
+            <input name="site" id="site" disabled />
+            <div class="field-help-text">
+              <p>
+                Enter the site name to edit its configuration
+              </p>
+            </div>
+          </div>
+        </section>
+        <p class="button-wrapper">
+          <button type="submit" id="load-config" class="button">Load Config</button>
+          <button type="reset" id="reset" class="button outline">Reset</button>
+        </p>
+      </form>
+    </div>
+
+    <!-- CONFIG EDITOR -->
+    <div id="config-editor" aria-hidden="true">
+      <div class="config-editor-header">
+        <h2>Configuration Properties (cdn, access, metadata only)</h2>
+        <div class="config-editor-actions">
+          <button id="add-property" class="button">Add Property</button>
+        </div>
+      </div>
+      
+      <div class="config-table-container">
+        <table id="config-table" class="config-table">
+          <thead>
+            <tr>
+              <th>Key</th>
+              <th>Value</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="config-tbody">
+            <!-- Config properties will be populated here -->
+          </tbody>
+        </table>
+      </div>
+      <div class="config-editor-actions">
+        <button id="save-all-changes" class="button primary" style="display: none;">Save All Changes</button>
+        <button id="toggle-inherited" class="button outline">Show Inherited</button>
+      </div>
+    </div>
+
+    <!-- CONSOLE -->
+    <div id="console" class="console">
+      <h3>Console</h3>
+      <table id="log-table" class="log-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Status</th>
+            <th>Action</th>
+            <th>Message</th>
+          </tr>
+        </thead>
+        <tbody id="log-tbody">
+        </tbody>
+      </table>
+    </div>
+  </main>
+</body>
+
+</html>
