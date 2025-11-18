@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Audit</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/image-audit/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/image-audit/styles.css" />
+</head>
+
+<body class="image-audit">
+  <header></header>
+  <main>
+    <div>
+      <h1>Image Audit</h1>
+      <p>
+        The <strong>Image Audit</strong> tool provides a way to analyze images on AEM websites. The tool offers insights into image use across a site, including identifying gaps in alt text usage.
+      </p>
+    </div>
+
+    <div>
+      <form id="search-form" aria-hidden="false">
+        <section class="form-field config-field">
+          <div class="form-field url-field">
+            <label for="url">Site, Sitemap or Query Index</label>
+            <input name="url" id="url" required />
+          </div>
+        </section>
+
+        <div class="field-group">
+          
+          <div class="form-field text-field path-filter-field">
+            <label for="path">Path Filter</label>
+            <input name="path" id="path" data-default-value="/" placeholder="/" />
+          </div>
+        </div>
+
+        <p class="button-wrapper">
+          <button type="submit" class="button">Start Audit</button>
+          <button type="reset" id="form-reset" class="button outline">Reset</button>
+        </p>
+      </form>
+    </div>
+    <div id="audit-results" aria-hidden="true">
+      <p id="info">
+        <span id="images-counter">0</span> images found on <span id="pages-counter">0</span>  pages in <span id="elapsed">0</span> s.
+      </p>
+      <p class="button-wrapper">
+        <button type="button" class="button" id="download-report" disabled>Download Audit Report</button>
+      </p>
+    </div>
+    <div class="canvas" id="canvas">
+      <div class="action-bar">
+        <form>
+          <div class="form-field radio-field">
+            <p>Sort by:</p>
+            <ul>
+              <li>
+                <label>
+                  <input type="radio" name="sort" value="count" id="sort-count" data-order="-1">
+                  <span>Appearances</span>
+                </label>
+              </li>
+              <li>
+                <label>
+                  <input type="radio" name="sort" value="aspect" id="sort-aspect" data-order="-1">
+                  <span>Aspect Ratio</span>
+                </label>
+              </li>
+            </ul>
+          </div>
+      
+          <div class="form-field checkbox-field">
+            <p>Filter by:</p>
+            <ul>
+              <li>
+                <label>
+                  <input placeholder="Search" type="input" name="filter" id="filter-text">
+                </label>
+              </li>
+              <li>
+                <label>
+                  <input type="checkbox" name="filter" value="missing-alt" id="filter-missing-alt">
+                  <span>Missing Alt Text</span>
+                </label>
+              </li>
+              <li>
+                <label>
+                  <input type="checkbox" name="filter" value="square" aria-label="Square aspect ratio" id="filter-square">
+                  <span><i class="symbol symbol-square"></i></span>
+                </label>
+              </li>
+              <li>
+                <label>
+                  <input type="checkbox" name="filter" value="portrait" aria-label="Portrait aspect ratio" id="filter-portrait">
+                  <span><i class="symbol symbol-portrait"></i></span>
+                </label>
+              </li>
+              <li>
+                <label>
+                  <input type="checkbox" name="filter" value="landscape" aria-label="Landscape aspect ratio" id="filter-landscape">
+                  <span><i class="symbol symbol-landscape"></i></span>
+                </label>
+              </li>
+              <li>
+                <label>
+                  <input type="checkbox" name="filter" value="widescreen" aria-label="Widescreen aspect ratio" id="filter-widescreen">
+                  <span><i class="symbol symbol-widescreen"></i></span>
+                </label>
+              </li>
+            </ul>
+          </div>
+        </form>
+      </div>
+      <div class="gallery" id="image-gallery"></div>
+    </div>
+
+      <div class="error-wrapper" aria-hidden="true">
+          <span class="icon icon-notice"></span>
+        <div>
+           <span> <strong class="error-title">Error</strong></span>
+          <p class="error-msg">Unable to display the page status.</p>
+        </div>
+ 
+      </div>
+
+  </main>
+  
+  <footer></footer>
+</body>
+
+</html>
