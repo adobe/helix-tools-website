@@ -96,7 +96,7 @@ header {
   top: 0;
   width: 100%;
   min-height: var(--header-height);
-  height: var(--nav-height);
+  height: var(--header-height);
   background-color: #fff;
   z-index: 9999;
   transition: height 0.2s, min-height 0.2s;
