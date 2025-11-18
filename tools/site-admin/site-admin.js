@@ -49,7 +49,7 @@ async function saveSiteConfig(path, site, codeSrc, contentSrc) {
     },
   });
   await resp.text();
-  logResponse(consoleBlock, [resp.status, 'POST', adminURL, resp.headers.get('x-error') || '']);
+  logResponse(consoleBlock, resp.status, ['POST', adminURL, resp.headers.get('x-error') || '']);
   // eslint-disable-next-line no-use-before-define
   displaySitesForOrg(org.value);
 }
@@ -60,7 +60,7 @@ async function deleteSiteConfig(path) {
     method: 'DELETE',
   });
   await resp.text();
-  logResponse(consoleBlock, [resp.status, 'DELETE', adminURL, resp.headers.get('x-error') || '']);
+  logResponse(consoleBlock, resp.status, ['DELETE', adminURL, resp.headers.get('x-error') || '']);
   // eslint-disable-next-line no-use-before-define
   displaySitesForOrg(org.value);
 }
@@ -178,7 +178,7 @@ function displaySite(site, sitesList, editMode = false) {
       edit.ariaHidden = true;
       details.ariaHidden = false;
     }
-    logResponse(consoleBlock, [resp.status, 'GET', adminURL, resp.headers.get('x-error') || '']);
+    logResponse(consoleBlock, resp.status, ['GET', adminURL, resp.headers.get('x-error') || '']);
   });
 
   cancel.addEventListener('click', async () => {
@@ -238,7 +238,7 @@ async function displaySitesForOrg(orgValue) {
     const { sites } = await resp.json();
     displaySites(sites);
   }
-  logResponse(consoleBlock, [resp.status, 'GET', adminURL, resp.headers.get('x-error') || '']);
+  logResponse(consoleBlock, resp.status, ['GET', adminURL, resp.headers.get('x-error') || '']);
 }
 
 /**

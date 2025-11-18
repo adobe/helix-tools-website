@@ -500,10 +500,10 @@ async function fetchJobUrl(org, site, path) {
 /**
  * Polls job URL then fetches additional details and returns job resources.
  * @param {string} url - Job URL.
- * @param {number} [retry=2000] - Delay (in ms) between polling attempts.
+ * @param {number} [retry=10000] - Delay (in ms) between polling attempts.
  * @returns {Promise<Object[]>} Array of resources.
  */
-async function runJob(url, retry = 2000) {
+async function runJob(url, retry = 10000) {
   try {
     const jobRes = await fetch(url, { mode: 'cors' });
     if (!jobRes.ok) throw jobRes;

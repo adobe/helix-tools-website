@@ -1,5 +1,6 @@
 import { loadScript } from '../../scripts/aem.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
+import { logResponse } from '../../blocks/console/console.js';
 
 const adminForm = document.getElementById('admin-form');
 const adminURL = document.getElementById('admin-url');
@@ -12,7 +13,7 @@ const preview = document.getElementById('preview');
 const reqMethod = document.getElementById('method');
 const methodDropdown = document.querySelector('.picker-field ul');
 const methodOptions = methodDropdown.querySelectorAll('li');
-const logTable = document.querySelector('table tbody');
+const consoleBlock = document.querySelector('.console');
 
 // load Prism.js libraries (and remove event listeners to prevent reloading)
 async function loadPrism() {
@@ -154,30 +155,6 @@ function syncScroll(target, el) {
 }
 
 /**
- * Logs the response information to the log table.
- * @param {Array} cols - Array containing response information
- */
-function logResponse(cols) {
-  const hidden = logTable.closest('[aria-hidden]');
-  if (hidden) hidden.removeAttribute('aria-hidden');
-  const row = document.createElement('tr');
-  // get the current time in hh:mm:ss format
-  const now = new Date();
-  const pad = (num) => num.toString().padStart(2, '0');
-  const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-  // add each column (including time) to the row
-  [...cols, time].forEach((col, i) => {
-    const cell = document.createElement('td');
-    if (!i) { // decorate status code
-      const code = `<span class="status-light http${Math.floor(col / 100) % 10}">${col}</span>`;
-      cell.innerHTML = code;
-    } else cell.textContent = col;
-    row.append(cell);
-  });
-  logTable.prepend(row);
-}
-
-/**
  * Extracts the organization from an admin URL.
  * @param {string} url - URL to extract org from
  * @returns {string|null} The organization name or null if not found
@@ -258,7 +235,7 @@ async function init() {
     });
 
     resp.text().then(() => {
-      logResponse([resp.status, reqMethod.value, adminURL.value, resp.headers.get('x-error') || '']);
+      logResponse(consoleBlock, resp.status, [reqMethod.value, adminURL.value, resp.headers.get('x-error') || '']);
     });
   });
 
@@ -357,7 +334,7 @@ async function init() {
     const text = await resp.text();
     body.value = text;
     formatCode(preview, text);
-    logResponse([resp.status, 'GET', adminURL.value, resp.headers.get('x-error') || '']);
+    logResponse(consoleBlock, resp.status, ['GET', adminURL.value, resp.headers.get('x-error') || '']);
   });
 
   // handles admin form reset, clearing the body field

@@ -157,7 +157,7 @@ function pollJob(detailsURL) {
         });
       });
     }
-  }, 1000);
+  }, 10000);
 }
 
 async function init() {

@@ -52,7 +52,7 @@ function formatDate(dateString) {
 async function fetchVersions() {
   const url = buildApiUrl('versions.json');
   const resp = await fetch(url);
-  logResponse(consoleBlock, [resp.status, 'GET', url, resp.headers.get('x-error') || '']);
+  logResponse(consoleBlock, resp.status, ['GET', url, resp.headers.get('x-error') || '']);
 
   if (resp.status === 200) {
     const data = await resp.json();
@@ -73,7 +73,7 @@ async function fetchVersions() {
 async function fetchVersionData(versionId) {
   const url = buildApiUrl(`versions/${versionId}.json`);
   const resp = await fetch(url);
-  logResponse(consoleBlock, [resp.status, 'GET', url, resp.headers.get('x-error') || '']);
+  logResponse(consoleBlock, resp.status, ['GET', url, resp.headers.get('x-error') || '']);
 
   if (resp.status === 200) {
     return resp.json();
@@ -98,7 +98,7 @@ async function updateVersionName(versionId, newName) {
     },
     body: JSON.stringify({ name: newName }),
   });
-  logResponse(consoleBlock, [resp.status, 'POST', url, resp.headers.get('x-error') || '']);
+  logResponse(consoleBlock, resp.status, ['POST', url, resp.headers.get('x-error') || '']);
 
   if (resp.status === 401) {
     await ensureLogin(org.value, site.value);
@@ -123,7 +123,7 @@ async function restoreVersion(versionId) {
   const resp = await fetch(url, {
     method: 'PUT',
   });
-  logResponse(consoleBlock, [resp.status, 'PUT', url, resp.headers.get('x-error') || '']);
+  logResponse(consoleBlock, resp.status, ['PUT', url, resp.headers.get('x-error') || '']);
 
   if (resp.status === 401) {
     await ensureLogin(org.value, site.value);
@@ -140,7 +140,7 @@ async function deleteVersion(versionId) {
   const resp = await fetch(url, {
     method: 'DELETE',
   });
-  logResponse(consoleBlock, [resp.status, 'DELETE', url, resp.headers.get('x-error') || '']);
+  logResponse(consoleBlock, resp.status, ['DELETE', url, resp.headers.get('x-error') || '']);
 
   if (resp.status === 401) {
     await ensureLogin(org.value, site.value);

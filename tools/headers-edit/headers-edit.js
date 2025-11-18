@@ -97,7 +97,7 @@ async function init() {
     });
 
     resp.text().then(() => {
-      logResponse(consoleBlock, [resp.status, 'POST', headersUrl, resp.headers.get('x-error') || '']);
+      logResponse(consoleBlock, resp.status, ['POST', headersUrl, resp.headers.get('x-error') || '']);
     });
   });
 
@@ -140,7 +140,7 @@ async function init() {
       buttonBar.setAttribute('aria-hidden', 'false');
     }
 
-    logResponse(consoleBlock, [resp.status, 'GET', headersUrl, resp.headers.get('x-error') || '']);
+    logResponse(consoleBlock, resp.status, ['GET', headersUrl, resp.headers.get('x-error') || '']);
   });
 }
 
