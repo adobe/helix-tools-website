@@ -1,0 +1,221 @@
+/* Main container - override default main styles for full viewport layout */
+.media-library main {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  max-width: unset;
+  margin: 0;
+  padding: 0;
+}
+
+.media-library main > .section > div {
+  padding: 0;
+}
+
+.media-library main > div:not(.media-library-container) {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 var(--horizontal-spacing);
+}
+
+.media-library main > div:first-of-type {
+  padding: var(--spacing-s) var(--spacing-l) var(--spacing-xs);
+  margin-bottom: 0;
+}
+
+.media-library main > div:first-of-type h1 {
+  margin: 0 0 var(--spacing-xs);
+  font-size: 1.5rem;
+}
+
+.media-library main > div:first-of-type p {
+  margin: 0 0 var(--spacing-s);
+  font-size: 0.9rem;
+}
+
+/* Media Library Container - takes all remaining height */
+.media-library main > .media-library-container.section {
+  max-width: unset;
+  margin: unset;
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  overflow: hidden;
+}
+
+.media-library .media-library-container {
+  border: none;
+  border-radius: 0;
+  overflow: hidden;
+  background: white;
+  box-shadow: none;
+  width: 100%;
+  height: 100%;
+}
+
+/* General form field and button styles - must come before specific selectors */
+.media-library .form-field + table,
+.media-library table + .form-field,
+.media-library .form-field + .form-field {
+  margin-top: 0;
+}
+
+.media-library .form-field.config-field .site-field::before {
+  content: none;
+}
+
+.media-library .button-wrapper .button {
+  min-width: 100px;
+  padding: var(--spacing-s) var(--spacing-m);
+  font-size: 0.9rem;
+}
+
+/* Form layout - specific ID selectors */
+.media-library #media-config-form {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-m);
+  flex-wrap: nowrap;
+  max-width: 100%;
+  overflow: visible;
+  margin-bottom: var(--spacing-l);
+  padding: var(--spacing-l);
+  background: white;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--rounding-m);
+  box-shadow: var(--shadow-default);
+  transition: box-shadow 0.2s ease;
+}
+
+.media-library #media-config-form:focus-within {
+  box-shadow: var(--shadow-hover);
+}
+
+.media-library #media-config-form .form-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.media-library #media-config-form .site-url-field,
+.media-library #media-config-form .sitemap-field {
+  flex: 1.2 1 auto;
+}
+
+.media-library #media-config-form .saved-sites-field {
+  flex: 1 1 auto;
+  min-width: 180px;
+}
+
+.media-library #media-config-form .saved-sites-field select {
+  width: 100%;
+}
+
+.media-library #media-config-form .form-field label {
+  font-weight: 600;
+  color: var(--gray-700);
+  font-size: 0.875rem;
+  margin-bottom: var(--spacing-xs);
+}
+
+.media-library #media-config-form .form-field input,
+.media-library #media-config-form .form-field select {
+  padding: var(--spacing-s);
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.media-library #media-config-form .form-field input:focus,
+.media-library #media-config-form .form-field select:focus {
+  outline: none;
+  border-color: var(--blue-500);
+  box-shadow: 0 0 0 3px var(--blue-100);
+}
+
+.media-library #media-config-form .button {
+  flex-shrink: 0;
+  margin-bottom: 0;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.media-library #media-config-form .button:hover {
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-1px);
+}
+
+.media-library #media-config-form .button:active {
+  transform: translateY(0);
+}
+
+.media-library #media-config-form .button.danger {
+  display: none;
+  background-color: var(--red-800);
+  border-color: var(--red-800);
+  color: white;
+}
+
+.media-library #media-config-form .button.danger:hover,
+.media-library #media-config-form .button.danger:focus {
+  background-color: var(--red-900);
+  border-color: var(--red-900);
+}
+
+.media-library #media-config-form .form-separator {
+  padding: 0 var(--spacing-xs) var(--spacing-s);
+  color: var(--gray-600);
+  font-size: var(--body-size-m);
+  flex-shrink: 0;
+}
+
+.media-library #media-config-form .form-divider {
+  width: 2px;
+  height: 40px;
+  background: var(--gray-300);
+  margin: 0 var(--spacing-xs);
+  flex-shrink: 0;
+  align-self: flex-end;
+  border-radius: 1px;
+}
+
+/* Responsive design */
+@media (width <= 1024px) {
+  .media-library #media-config-form {
+    flex-wrap: wrap;
+  }
+}
+
+@media (width <= 768px) {
+  .media-library .media-library-top-bar {
+    padding: var(--spacing-l);
+    flex-direction: column;
+    gap: var(--spacing-l);
+    align-items: stretch;
+  }
+
+  .media-library .media-library-actions {
+    justify-content: center;
+  }
+
+  .media-library .button-wrapper {
+    flex-direction: column;
+  }
+
+  .media-library .button-wrapper .button {
+    width: 100%;
+  }
+
+  .media-library #media-config-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .media-library #media-config-form .form-field {
+    min-width: auto;
+  }
+
+  .media-library #media-config-form .config-field {
+    min-width: auto;
+  }
+}

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+  <g id="filter">
+    <path fill="currentColor" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-.293.707L12 11.414V16a1 1 0 01-.553.894l-2 1A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V4z"/>
+  </g>
+</svg>
+

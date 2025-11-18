@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Media Library - AEM Tools</title>
+  <meta name="description" content="Scan and manage media files across your AEM site">
+  
+  <!-- Conditional loading based on environment -->
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  
+  <!-- Media library web component (IIFE version with bundled Lit) -->
+  <script nonce="aem" src="deps/media-library.iife.js"></script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="media-library appear">
+  <header></header>
+  <main>
+    <div>
+      <h1>Media Library</h1>
+    </div>
+
+    <div>
+      <form id="media-config-form">
+        <div class="form-field site-url-field" id="site-url-field">
+          <label for="site-url">Website URL</label>
+          <input name="site-url" id="site-url" type="url" placeholder="https://example.com" />
+        </div>
+        
+        <div class="form-separator">(or)</div>
+        
+        <div class="form-field sitemap-field" id="sitemap-field">
+          <label for="sitemap-url">Sitemap URL</label>
+          <input name="sitemap-url" id="sitemap-url" type="url" placeholder="https://example.com/sitemap.xml" />
+        </div>
+        
+        <button type="button" id="start-new-scan" class="button">Scan</button>
+        
+        <div class="form-divider"></div>
+        
+        <div class="form-field saved-sites-field">
+          <label for="saved-sites">Load Previous</label>
+          <select name="saved-sites" id="saved-sites">
+            <option value="">Select a site...</option>
+          </select>
+        </div>
+        
+        <button type="button" id="clear-site-data" class="button danger">Clear Data</button>
+      </form>
+    </div>
+    
+    <!-- MEDIA LIBRARY COMPONENT -->
+    <div class="media-library-container section">
+      <div>
+        <media-library 
+          id="media-library"
+          storage="indexeddb"
+          site-key=""
+          cors-proxy="https://little-forest-58aa.david8603.workers.dev/">
+        </media-library>
+      </div>
+    </div>
+  </main>
+  <footer></footer>
+  
+  <script nonce="aem" type="module">
+    import { initialize } from './scripts.js';
+    
+    // Initialize the Media Library with AEM functionality
+    await initialize();
+  </script>
+</body>
+</html>
