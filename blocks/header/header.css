@@ -1,6 +1,6 @@
 /* stylelint-disable no-descending-specificity */
 header.header-wrapper {
-  padding: var(--spacing-m) var(--horizontal-spacing);
+  padding: var(--spacing-xs) var(--horizontal-spacing);
 
   .header {
     a:any-link:not(.button) {
