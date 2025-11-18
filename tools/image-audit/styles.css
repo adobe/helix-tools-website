@@ -200,3 +200,33 @@ label, legend, .field-help-text, .form-error {
   padding: 0.2em 0.5em;
 }
 
+/* Canvas layout styles */
+.image-audit main > .canvas {
+  display: none;
+  border-top: var(--border-m) solid var(--layer-pasteboard);
+  padding: 1px 0;
+  background-color: var(--layer-pasteboard);
+}
+
+.image-audit main[data-canvas] > .canvas {
+  display: block;
+}
+
+@media (width >= 1200px) {
+  .image-audit main[data-canvas] {
+    max-width: calc(100vw - (2 * var(--horizontal-spacing)));
+    min-height: calc(100dvh - (2.2 * var(--header-height)));
+    padding-right: calc(100vw - 340px - (2 * var(--horizontal-spacing)));
+    padding-bottom: var(--horizontal-spacing);
+  }
+
+  .image-audit main[data-canvas] > .canvas {
+    position: absolute;
+    inset: 0;
+    left: 340px;
+    right: 0;
+    max-width: unset;
+    margin-top: 0;
+    border-top: 0;
+  }
+}
