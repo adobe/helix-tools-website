@@ -1,0 +1,378 @@
+:root {
+  --color-white: #fff;
+  --bg-color-grey-2: #d6d6d6;
+  --color-success: #0d9f54;
+  --color-success-highlight: #2dd17c;
+  --color-error: #f31616;
+  --color-error-highlight: #fc0909;
+  --overlay-curtain-bg-color: rgb(0 0 0 / 60%);
+  --overlay-curtain-bg-filter: blur(0.05em);
+  --input-border-radius: 4px;
+  --image-border-radius-m: 8px;
+  --image-border-radius-l: 16px;
+  --image-border-radius-xl: 24px;
+  --image-border-radius-xxl: 30px;
+  --spacing-xxxs: 4px;
+  --spacing-xxs: 8px;
+  --spacing-xs: 16px;
+  --spacing-s: 24px;
+  --spacing-m: 32px;
+  --spacing-ml: 40px;
+  --spacing-l: 48px;
+  --spacing-xl: 56px;
+  --spacing-xxl: 80px;
+  --spacing-xxxl: 104px;
+  --type-detail-m-lh: 15px;
+}
+
+#results .see-all {
+  margin: 6px 0;
+}
+
+.button {
+  max-width: 750px;
+}
+
+div.form {
+  display: flex;
+  gap: 14px;
+}
+
+div.field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 750px;
+}
+
+div.purge-form {
+  flex-direction: column;
+}
+
+div.field label {
+  font-size: 0.8em;
+  line-height: 1.2em;
+  font-weight: bold;
+}
+
+input#url-input {
+  width: 100%;
+  max-width: 750px;
+}
+
+.tile {
+  box-shadow: 3px 3px 4px rgba(0 0 0 0.1);
+  border-radius: 8px;
+  margin: 12px 0;
+  padding: 12px 0;
+}
+
+div.row {
+  display: flex;
+}
+
+div.row span.key {
+  min-width: 200px;
+}
+
+div.row span.val.list {
+  margin: auto -4px;
+}
+
+div.row span.val.bad {
+  color: red;
+}
+
+.pill {
+  border-radius: 20px;
+  padding: 4px 8px;
+  margin: 0 4px;
+  font-size: 0.8em;
+  border: 1px solid #000;
+  white-space: nowrap;
+  line-height: 2.2;
+}
+
+.pill.badge {
+  margin-left: -2px;
+}
+
+.pill.good {
+  background-color: #0F0;
+  border: 1px solid #0F0;
+
+}
+
+.pill.bad {
+  background-color: #F00;
+  border: 1px solid #F00;
+
+}
+
+.pill.warn {
+  background-color: #FFA500;
+  border: 1px solid #FFA500;
+}
+
+pre {
+  max-height: 70vh;
+  overflow: scroll;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: #000000a1;
+}
+
+.modal-container {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+}
+
+.modal {
+  position: absolute;
+  background-color: #fff;
+  z-index: 9999;
+  left: 50vw;
+  transform: translateX(-50%);
+  top: 10vh;
+  width: min(850px, 90vw);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  margin: 20px;
+}
+
+.modal-header h3 {
+  margin: 0 0 0 20px;
+  font-size: 1.5em;
+}
+
+button.modal-close {
+  padding: 5px;
+  cursor: pointer;
+}
+
+.modal-content {
+  width: 90%;
+  margin: auto auto 60px;
+}
+
+.modal-content .code-panel {
+  position: relative;
+}
+
+.modal-content .code-panel .code-actions {
+  position: absolute;
+  right: 0;
+  margin: 10px;
+}
+
+.code-actions a.code-button {
+  display: inline-block;
+  padding: 5px;
+  cursor: pointer;
+}
+
+.code-actions a.code-button span.icon {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.code-actions a.code-button.copy::before {
+  content: 'Copied to clipboard';
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  background-color: #2c2c2c;
+  color: #fff;
+  padding: 5px;
+  border-radius: 5px;
+  transform: translateX(-50%);
+  font-size: 14px;
+  text-wrap-mode: nowrap;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.1s;
+} 
+
+.code-actions a.code-button.copy.show-message::before {
+  opacity: 1;
+}
+
+.code-actions a.code-button.copy span.icon {
+  background-image: url('/icons/spectrum-copy.svg');
+}
+
+.code-actions a.code-button.download span.icon {
+  background-image: url('/icons/spectrum-download.svg');
+}
+
+.fold-stack {
+  margin-left: 20px;
+}
+
+.fold-stack > summary {
+  margin-left: -15px;
+}
+
+.token.fold-close {
+  margin-left: 20px;
+}
+
+
+/* PrismJS 1.29.0 (Default), slightly altered
+https://prismjs.com/download.html#themes=prism&languages=markup+css+clike+javascript+json */
+
+code[class*='language-'],
+pre[class*='language-'] {
+  color: var(--color-text);
+  text-align: left;
+  white-space: pre;
+  word-break: normal;
+  word-spacing: normal;
+  word-wrap: normal;
+  hyphens: none;
+  tab-size: 2;
+}
+
+pre[class*='language-'] {
+  overflow: auto;
+}
+
+.token.cdata,
+.token.comment,
+.token.doctype,
+.token.prolog {
+  color: #708090;
+}
+
+.token.punctuation {
+  color: #999;
+}
+
+.token.namespace {
+  opacity: 0.8;
+}
+
+.token.property {
+  color: #4b0082;
+}
+
+.token.boolean,
+.token.constant,
+.token.deleted,
+.token.number,
+.token.symbol,
+.token.tag {
+  color: #905;
+}
+
+.token.attr-name,
+.token.builtin,
+.token.char,
+.token.inserted,
+.token.selector,
+.token.string {
+  color: #690;
+}
+
+.language-css .token.string,
+.style .token.string,
+.token.entity,
+.token.operator,
+.token.url {
+  color: #9a6e3a;
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+  color: #07a;
+}
+
+.token.class-name,
+.token.function {
+  color: #dd4a68;
+}
+
+.token.important,
+.token.regex,
+.token.variable {
+  color: #e90;
+}
+
+.token.bold,
+.token.important {
+  font-weight: 700;
+}
+
+.token.italic {
+  font-style: italic;
+}
+
+.token.entity {
+  cursor: help;
+}
+
+/* PrismJS Line Highlight Plugin, slightly altered
+https://prismjs.com/plugins/line-highlight/ */
+
+.line-highlight {
+  position: absolute;
+  left: 0;
+  right: 0;
+  margin-top: calc(var(--body-size-s) / 2.5);
+  border-bottom: var(--border-m) dotted var(--red-900);
+  background-color: #d7322026;
+  line-height: var(--line-height-l);
+  pointer-events: none;
+  white-space: pre;
+  transition: background-color 0.3s;
+}
+
+.line-highlight::before,
+.line-highlight::after {
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.line-highlight::before {
+  content: '';
+  position: absolute;
+  top: calc(100% - (2 * var(--border-m)));
+  left: calc(2 * 0.85em);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 8px solid var(--layer-elevated);
+  z-index: 1;
+}
+
+.line-highlight::after {
+  content: attr(data-error);
+  position: absolute;
+  top: calc(100% + (2 * var(--border-m)));
+  left: 0.85em;
+  max-width: 100%;
+  border-radius: var(--rounding-s);
+  padding: 0.4em 0.85em;
+  box-shadow: var(--shadow-hover);
+  background-color: var(--layer-elevated);
+  color: var(--red-1100);
+  font-size: var(--body-size-xs);
+}
+
+.line-highlight.error-hover {
+  background-color: #d7322038;
+}
+
+.line-highlight.error-hover::before,
+.line-highlight.error-hover::after {
+  opacity: 1;
+}

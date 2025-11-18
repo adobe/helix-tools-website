@@ -1,0 +1,143 @@
+.pdp-scanner main, .pdp-scanner main > .section {
+  max-width: unset;
+}
+
+.pdp-scanner .block[aria-hidden='true'] {
+  display: none;
+}
+
+.pdp-scanner #scanner-form {
+  display: grid;
+  gap: var(--spacing-s);
+}
+
+@media (width >= 720px) {
+  .pdp-scanner #scanner-form {
+    grid-template-columns: 1fr max-content;
+    gap: var(--spacing-l);
+  }
+}
+
+.pdp-scanner #scanner-form .button-wrapper {
+  align-self: center;
+}
+
+.pdp-scanner .url-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.pdp-scanner .url-field input {
+  width: 100%;
+  padding: 0.4em 0.85em;
+  border: var(--border-m) solid var(--gray-300);
+  border-radius: var(--rounding-m);
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+  line-height: var(--line-height-l);
+}
+
+.pdp-scanner .table {
+  margin-top: var(--spacing-l);
+  overflow-x: auto;
+}
+
+.pdp-scanner table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.pdp-scanner th,
+.pdp-scanner td {
+  padding: var(--spacing-s);
+  text-align: left;
+}
+
+.pdp-scanner th {
+  font-weight: bold;
+  background-color: var(--gray-100);
+}
+
+.pdp-scanner .status-light {
+  white-space: nowrap;
+}
+
+.pdp-scanner .status-light::before {
+  color: var(--red-900);
+}
+
+.pdp-scanner .status-light.pass::before {
+  color: var(--green-900);
+}
+
+.pdp-scanner .status-light.warning::before {
+  color: var(--yellow-900);
+}
+
+.pdp-scanner .status-light.fail::before {
+  color: var(--red-900);
+} 
+
+.pdp-scanner .fail {
+  background-color: var(--red-100);
+  color: var(--red-900);
+}
+
+.pdp-scanner td.img-container {
+  font-size: var(--body-size-xs);
+  text-align: right;
+  position: relative;
+}
+
+.pdp-scanner td.img-container span {
+  display: block;
+  padding: 4px 8px;
+  border-radius: 20px;
+  background-color: var(--gray-100);
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+}
+
+.pdp-scanner.focus-images td, .pdp-scanner.focus-images th {
+  display: none;
+}
+
+.pdp-scanner.focus-images .img-container, .pdp-scanner.focus-images .url, .pdp-scanner.focus-images .status {
+  display: table-cell;
+}
+
+.pdp-scanner.share h1, .pdp-scanner.share #scanner-form, .pdp-scanner.share header, .pdp-scanner.share footer {
+  display: none;
+}
+
+td.url {
+  min-width: 300px;
+}
+
+#share-selected {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  z-index: 1000;
+}
+
+#share-selected:disabled {
+  display: none;
+}
+
+.diff-added {
+  background-color: var(--green-300);
+  color: var(--green-900);
+  padding: 0 4px;
+  border-radius: 2px;
+}
+
+.diff-removed {
+  background-color: var(--red-300);
+  color: var(--red-900);
+  text-decoration: line-through;
+  padding: 0 4px;
+  border-radius: 2px;
+}

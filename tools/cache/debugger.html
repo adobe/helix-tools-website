@@ -1,0 +1,36 @@
+<html>
+
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <title>Cache Debugger | AEM Live</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="./debugger.js" type="module"></script>
+  <link rel="stylesheet" href="./debugger.css">
+</head>
+
+<body>
+  <header></header>
+  <main>
+    <div>
+      <div>
+        <h1>Cache Debugger</h1>
+        <div class="form">
+          <div class="field">
+            <label for="url-input">URL</label>
+            <input id="url-input" type="text" placeholder="https://www.adobe.com" pattern="[^.]+\.[^.]+" />
+          </div>
+          <button class="button" id="search-button">Go</button>
+        </div>
+        <div id="results"></div>
+      </div>
+    </div>
+  </main>
+  <footer></footer>
+</body>
