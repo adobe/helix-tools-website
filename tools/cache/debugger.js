@@ -383,7 +383,7 @@ const renderDetails = (data) => {
   renderPurgeSection(resultsContainer, data);
 };
 
-(async () => {
+export async function ready() {
   const loc = new URL(window.location.href);
   if (loc.searchParams.has('url')) {
     input.value = loc.searchParams.get('url');
@@ -428,4 +428,4 @@ const renderDetails = (data) => {
     }
   });
   sampleRUM.enhance();
-})();
+}

@@ -112,29 +112,29 @@
   display: none;
 }
 
-td.url {
+.pdp-scanner td.url {
   min-width: 300px;
 }
 
-#share-selected {
+.pdp-scanner #share-selected {
   position: fixed;
   bottom: 32px;
   right: 32px;
   z-index: 1000;
 }
 
-#share-selected:disabled {
+.pdp-scanner #share-selected:disabled {
   display: none;
 }
 
-.diff-added {
+.pdp-scanner .diff-added {
   background-color: var(--green-300);
   color: var(--green-900);
   padding: 0 4px;
   border-radius: 2px;
 }
 
-.diff-removed {
+.pdp-scanner .diff-removed {
   background-color: var(--red-300);
   color: var(--red-900);
   text-decoration: line-through;

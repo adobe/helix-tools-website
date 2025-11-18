@@ -377,7 +377,7 @@ async function runScan(url, focus, share) {
   }
 }
 
-function init() {
+export async function ready() {
   const urlInput = document.getElementById('url');
 
   // Populate from URL parameter if present
@@ -405,5 +405,3 @@ function init() {
     await runScan(url, focus, share);
   });
 }
-
-init();
