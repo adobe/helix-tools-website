@@ -718,4 +718,9 @@ async function init() {
   registerListeners(document);
 }
 
-init();
+const initPromise = init();
+
+// eslint-disable-next-line import/prefer-default-export
+export function ready() {
+  return initPromise;
+}
