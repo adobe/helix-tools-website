@@ -1,0 +1,102 @@
+.action-bar {
+  display: flex;
+  align-items: center;
+  min-height: 72px;
+  border-radius: var(--rounding-l);
+  padding: var(--spacing-m) var(--horizontal-spacing);
+  box-shadow: var(--shadow-default);
+  background-color: var(--layer-elevated);
+  font-size: var(--body-size-s);
+}
+
+.action-bar form,
+.action-bar form .form-field,
+.action-bar form .form-field ul {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex: 0 1 max-content;
+}
+
+.action-bar form {
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--spacing-m);
+}
+
+.action-bar form .form-field {
+  flex-wrap: wrap;
+}
+
+.action-bar form .form-field + .form-field {
+  margin-top: 0;
+}
+
+.action-bar form .form-field p {
+  flex: 1 0 100%;
+  max-width: max-content;
+  align-self: flex-start;
+  margin: 0;
+}
+
+@media (width >= 600px) {
+  .action-bar .form-field p {
+    min-width: max-content;
+    line-height: calc((1em * var(--line-height-l)) + (0.25em + 0.35em));
+  }
+}
+
+.action-bar form .form-field ul {
+  list-style: none;
+  flex-wrap: wrap;
+  gap: var(--spacing-s) var(--spacing-xs);
+  margin: 0;
+  padding: 0;
+}
+
+.action-bar label {
+  position: relative;
+  min-width: max-content;
+  margin-bottom: 0;
+  cursor: pointer;
+}
+
+.action-bar label input + span {
+  border-color: var(--gray-100);
+  border-radius: 0.45em;
+  background-color: var(--gray-100);
+  color: var(--color-text);
+  padding: 0.25em 0.55em 0.35em;
+  font-size: var(--body-size-s);
+  font-weight: var(--weight-medium);
+  text-align: center;
+  text-decoration: none;
+  transition: border-color 0.2s, background-color 0.2s, color 0.2s;
+}
+
+.action-bar label input:hover + span,
+.action-bar label input:focus + span {
+  border-color: var(--gray-200);
+  background-color: var(--gray-200);
+}
+
+.action-bar label input:focus + span {
+  outline: var(--border-m) solid var(--color-link);
+  outline-offset: var(--border-m);
+}
+
+.action-bar label input:checked + span {
+  border-color: var(--gray-400);
+  background-color: var(--gray-400);
+}
+
+.action-bar input[type='checkbox'],
+.action-bar input[type='radio'] {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
