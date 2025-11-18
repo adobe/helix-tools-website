@@ -377,6 +377,7 @@ async function runScan(url, focus, share) {
   }
 }
 
+// eslint-disable-next-line import/prefer-default-export
 export async function ready() {
   const urlInput = document.getElementById('url');
 

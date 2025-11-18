@@ -383,6 +383,7 @@ const renderDetails = (data) => {
   renderPurgeSection(resultsContainer, data);
 };
 
+// eslint-disable-next-line import/prefer-default-export
 export async function ready() {
   const loc = new URL(window.location.href);
   if (loc.searchParams.has('url')) {

@@ -62,7 +62,7 @@
 }
 
 .cache .tile {
-  box-shadow: 3px 3px 4px rgba(0 0 0 0.1);
+  box-shadow: 3px 3px 4px rgb(0 0 0 / 10%);
   border-radius: 8px;
   margin: 12px 0;
   padding: 12px 0;
@@ -237,7 +237,7 @@ https://prismjs.com/download.html#themes=prism&languages=markup+css+clike+javasc
   white-space: pre;
   word-break: normal;
   word-spacing: normal;
-  word-wrap: normal;
+  overflow-wrap: normal;
   hyphens: none;
   tab-size: 2;
 }
