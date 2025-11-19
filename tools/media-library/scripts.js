@@ -7,6 +7,7 @@ const CONFIG = {
   DEFAULT_STORAGE: 'indexeddb',
   DEFAULT_MODE: 'site-url',
   MEDIA_LIBRARY_READY_EVENT: 'media-library-ready',
+  MEDIA_LIBRARY_SCRIPT: 'deps/media-library.iife.js',
   STORAGE_TYPES: {
     INDEXED_DB: 'indexeddb',
     NONE: 'none',
@@ -17,11 +18,20 @@ const CONFIG = {
   },
 };
 
+// Track lazy loading state
+const lazyLoadState = {
+  scriptLoaded: false,
+  scriptLoading: false,
+  preloadAttempted: false,
+};
+
 const SELECTORS = {
   MEDIA_LIBRARY: '#media-library',
+  MEDIA_LIBRARY_PLACEHOLDER: '#media-library-placeholder',
   SITE_URL_INPUT: '#site-url',
   SITEMAP_INPUT: '#sitemap-url',
   START_SCAN_BUTTON: '#start-new-scan',
+  LOAD_PREVIOUS_BUTTON: '#load-previous-button',
   SAVED_SITES_SELECT: '#saved-sites',
   CLEAR_SITE_BUTTON: '#clear-site-data',
   MEDIA_CONFIG_FORM: '#media-config-form',
@@ -29,23 +39,127 @@ const SELECTORS = {
 
 const domCache = {
   mediaLibrary: null,
+  mediaLibraryPlaceholder: null,
   siteUrlInput: null,
   sitemapInput: null,
   startScanButton: null,
+  loadPreviousButton: null,
   savedSitesSelect: null,
   clearSiteButton: null,
   form: null,
 
   init() {
     this.mediaLibrary = document.querySelector(SELECTORS.MEDIA_LIBRARY);
+    this.mediaLibraryPlaceholder = document.querySelector(SELECTORS.MEDIA_LIBRARY_PLACEHOLDER);
     this.siteUrlInput = document.querySelector(SELECTORS.SITE_URL_INPUT);
     this.sitemapInput = document.querySelector(SELECTORS.SITEMAP_INPUT);
     this.startScanButton = document.querySelector(SELECTORS.START_SCAN_BUTTON);
+    this.loadPreviousButton = document.querySelector(SELECTORS.LOAD_PREVIOUS_BUTTON);
     this.savedSitesSelect = document.querySelector(SELECTORS.SAVED_SITES_SELECT);
     this.clearSiteButton = document.querySelector(SELECTORS.CLEAR_SITE_BUTTON);
     this.form = document.querySelector(SELECTORS.MEDIA_CONFIG_FORM);
   },
 };
+
+/**
+ * Load the media library script dynamically
+ * @returns {Promise<void>}
+ */
+async function loadMediaLibraryScript() {
+  if (lazyLoadState.scriptLoaded) {
+    return;
+  }
+
+  if (lazyLoadState.scriptLoading) {
+    // Wait for the existing load to complete
+    await new Promise((resolve) => {
+      const checkLoaded = setInterval(() => {
+        if (lazyLoadState.scriptLoaded) {
+          clearInterval(checkLoaded);
+          resolve();
+        }
+      }, 100);
+    });
+    return;
+  }
+
+  lazyLoadState.scriptLoading = true;
+
+  await new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = CONFIG.MEDIA_LIBRARY_SCRIPT;
+    script.nonce = 'aem';
+    script.onload = () => {
+      lazyLoadState.scriptLoaded = true;
+      lazyLoadState.scriptLoading = false;
+      resolve();
+    };
+    script.onerror = () => {
+      lazyLoadState.scriptLoading = false;
+      reject(new Error('Failed to load media library script'));
+    };
+    document.head.appendChild(script);
+  });
+}
+
+/**
+ * Preload the media library script in the background
+ */
+function preloadMediaLibraryScript() {
+  if (lazyLoadState.preloadAttempted || lazyLoadState.scriptLoaded) {
+    return;
+  }
+
+  lazyLoadState.preloadAttempted = true;
+
+  // Start loading in the background
+  loadMediaLibraryScript().catch((error) => {
+    console.error('Failed to preload media library:', error);
+  });
+}
+
+/**
+ * Show loading state in placeholder
+ */
+function showPlaceholderLoading() {
+  if (domCache.mediaLibraryPlaceholder) {
+    domCache.mediaLibraryPlaceholder.classList.add('loading');
+    domCache.mediaLibraryPlaceholder.innerHTML = `
+      <div class="placeholder-content">
+        <div class="loading-spinner"></div>
+        <p class="placeholder-message">Loading media library...</p>
+      </div>
+    `;
+  }
+}
+
+/**
+ * Hide placeholder and show media library
+ */
+function showMediaLibrary() {
+  if (domCache.mediaLibraryPlaceholder) {
+    domCache.mediaLibraryPlaceholder.style.display = 'none';
+  }
+  if (domCache.mediaLibrary) {
+    domCache.mediaLibrary.style.display = 'block';
+  }
+
+  // Add class to trigger layout changes
+  const section = document.querySelector('.media-library-container.section');
+  if (section) {
+    section.classList.add('loaded');
+  }
+}
+
+/**
+ * Ensure media library is loaded and ready
+ */
+async function ensureMediaLibraryLoaded() {
+  if (!lazyLoadState.scriptLoaded) {
+    showPlaceholderLoading();
+    await loadMediaLibraryScript();
+  }
+}
 
 function getFormData() {
   const siteUrl = domCache.siteUrlInput?.value?.trim() || '';
@@ -143,16 +257,17 @@ async function loadAvailableSites() {
       option.textContent = 'No saved sites';
       option.disabled = true;
       domCache.savedSitesSelect.appendChild(option);
-      return;
+    } else {
+      sites.forEach((site) => {
+        const option = document.createElement('option');
+        option.value = site.siteKey;
+        option.textContent = `${site.siteKey} (${site.itemCount} refs)`;
+        domCache.savedSitesSelect.appendChild(option);
+      });
     }
 
-    sites.forEach((site) => {
-      const option = document.createElement('option');
-      option.value = site.siteKey;
-      option.textContent = `${site.siteKey} (${site.itemCount} refs)`;
-      domCache.savedSitesSelect.appendChild(option);
-    });
-
+    // Enable the dropdown after loading sites
+    domCache.savedSitesSelect.disabled = false;
     domCache.savedSitesSelect.value = '';
     updateClearButtonVisibility(false);
   } catch (error) {
@@ -221,11 +336,67 @@ async function waitForMediaLibraryReady(mediaLibrary) {
 }
 
 export async function setupMediaLibrary() {
+  // Ensure script is loaded
+  await ensureMediaLibraryLoaded();
+
+  // Wait for custom element to be defined
   await customElements.whenDefined('media-library');
+
+  // Show the component
+  showMediaLibrary();
 
   if (domCache.mediaLibrary) {
     domCache.mediaLibrary.corsProxy = CONFIG.CORS_PROXY_URL;
   }
+}
+
+async function discoverSitemapUrl(baseUrl) {
+  // Try to find sitemap from robots.txt first
+  try {
+    const robotsUrl = `${baseUrl}/robots.txt`;
+    const fetchUrl = `${CONFIG.CORS_PROXY_URL}?url=${encodeURIComponent(robotsUrl)}`;
+    const res = await fetch(fetchUrl);
+
+    if (res.ok) {
+      const robotsTxt = await res.text();
+      const sitemapMatch = robotsTxt.match(/^Sitemap:\s*(.+)$/im);
+      if (sitemapMatch) {
+        return sitemapMatch[1].trim();
+      }
+    }
+  } catch (error) {
+    console.warn('Could not fetch robots.txt:', error);
+  }
+
+  // Try common sitemap locations in parallel
+  const commonLocations = [
+    `${baseUrl}/sitemap.xml`,
+    `${baseUrl}/sitemap_index.xml`,
+    `${baseUrl}/sitemap-index.xml`,
+    `${baseUrl}/sitemap1.xml`,
+  ];
+
+  const checkPromises = commonLocations.map(async (location) => {
+    try {
+      const fetchUrl = `${CONFIG.CORS_PROXY_URL}?url=${encodeURIComponent(location)}`;
+      const res = await fetch(fetchUrl);
+      if (res.ok) {
+        return location;
+      }
+      return null;
+    } catch (error) {
+      return null;
+    }
+  });
+
+  const results = await Promise.all(checkPromises);
+  const foundLocation = results.find((location) => location !== null);
+
+  if (foundLocation) {
+    return foundLocation;
+  }
+
+  throw new Error('No sitemap found. Please provide a direct sitemap URL.');
 }
 
 async function discoverContent(inputUrl, mode) {
@@ -237,7 +408,7 @@ async function discoverContent(inputUrl, mode) {
       sitemapUrl = normalizedUrl;
     } else {
       const baseUrl = normalizedUrl.endsWith('/') ? normalizedUrl.slice(0, -1) : normalizedUrl;
-      sitemapUrl = `${baseUrl}/sitemap.xml`;
+      sitemapUrl = await discoverSitemapUrl(baseUrl);
     }
 
     const fetchedUrls = await fetchSitemap(sitemapUrl);
@@ -312,9 +483,22 @@ export async function startScan() {
     const formData = await validateAndPrepareScan();
     if (!formData) return;
 
+    // Ensure media library is loaded before starting scan
+    await setupMediaLibrary();
+
     await configureMediaLibrary(formData);
     const mediaData = await performScan(formData);
     await saveResults(mediaData);
+  } catch (error) {
+    handleError(error);
+  }
+}
+
+async function loadPreviousSites() {
+  try {
+    // Load media library script and populate dropdown
+    await setupMediaLibrary();
+    await loadAvailableSites();
   } catch (error) {
     handleError(error);
   }
@@ -326,9 +510,14 @@ async function loadSelectedSite() {
 
     if (!siteKey) {
       updateClearButtonVisibility(false);
-      await domCache.mediaLibrary.clearData();
+      if (domCache.mediaLibrary?.clearData) {
+        await domCache.mediaLibrary.clearData();
+      }
       return;
     }
+
+    // Ensure media library is loaded before loading site data
+    await setupMediaLibrary();
 
     const storageType = getStorageType();
 
@@ -417,6 +606,8 @@ function setupEventDelegation() {
 
     if (target.matches(SELECTORS.START_SCAN_BUTTON)) {
       startScan();
+    } else if (target.matches(SELECTORS.LOAD_PREVIOUS_BUTTON)) {
+      loadPreviousSites();
     } else if (target.matches(SELECTORS.CLEAR_SITE_BUTTON)) {
       clearSelectedSiteData();
     }
@@ -437,8 +628,32 @@ function setupEventDelegation() {
   });
 }
 
+function setupPreloadListeners() {
+  // Preload when user starts interacting with form inputs
+  const preloadTriggers = [
+    domCache.siteUrlInput,
+    domCache.sitemapInput,
+  ];
+
+  preloadTriggers.forEach((element) => {
+    if (element) {
+      element.addEventListener('focus', preloadMediaLibraryScript, { once: true });
+      element.addEventListener('mouseenter', preloadMediaLibraryScript, { once: true });
+    }
+  });
+
+  // Also preload when hovering over scan or load buttons
+  if (domCache.startScanButton) {
+    domCache.startScanButton.addEventListener('mouseenter', preloadMediaLibraryScript, { once: true });
+  }
+  if (domCache.loadPreviousButton) {
+    domCache.loadPreviousButton.addEventListener('mouseenter', preloadMediaLibraryScript, { once: true });
+  }
+}
+
 export async function initializeEventListeners() {
   setupEventDelegation();
+  setupPreloadListeners();
 
   const params = new URLSearchParams(window.location.search);
   const siteUrlParam = params.get('site-url');
@@ -451,14 +666,12 @@ export async function initializeEventListeners() {
   if (sitemapParam && domCache.sitemapInput) {
     domCache.sitemapInput.value = sitemapParam;
   }
-
-  await loadAvailableSites();
 }
 
 export async function initialize() {
   try {
     domCache.init();
-    await setupMediaLibrary();
+    // Don't load media library immediately - it will be lazy loaded when user clicks Load or Scan
     await initializeEventListeners();
   } catch (error) {
     handleError(error);

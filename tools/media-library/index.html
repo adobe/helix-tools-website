@@ -16,8 +16,7 @@
   <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
   <link rel="stylesheet" href="/styles/styles.css" />
   
-  <!-- Media library web component (IIFE version with bundled Lit) -->
-  <script nonce="aem" src="deps/media-library.iife.js"></script>
+  <!-- Media library web component (lazy loaded for performance) -->
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body class="media-library appear">
@@ -47,11 +46,12 @@
         
         <div class="form-field saved-sites-field">
           <label for="saved-sites">Load Previous</label>
-          <select name="saved-sites" id="saved-sites">
+          <select name="saved-sites" id="saved-sites" disabled>
             <option value="">Select a site...</option>
           </select>
         </div>
         
+        <button type="button" id="load-previous-button" class="button">Load</button>
         <button type="button" id="clear-site-data" class="button danger">Clear Data</button>
       </form>
     </div>
@@ -59,11 +59,20 @@
     <!-- MEDIA LIBRARY COMPONENT -->
     <div class="media-library-container section">
       <div>
+        <!-- Placeholder shown until component is loaded -->
+        <div id="media-library-placeholder" class="media-library-placeholder">
+          <div class="placeholder-content">
+            <p class="placeholder-message">Please scan or load previously scanned data</p>
+          </div>
+        </div>
+        
+        <!-- Web component (lazy loaded) -->
         <media-library 
           id="media-library"
           storage="indexeddb"
           site-key=""
-          cors-proxy="https://little-forest-58aa.david8603.workers.dev/">
+          cors-proxy="https://little-forest-58aa.david8603.workers.dev/"
+          style="display: none;">
         </media-library>
       </div>
     </div>
