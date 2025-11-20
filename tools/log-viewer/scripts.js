@@ -22,6 +22,7 @@ const LOGIN = TABLE.querySelector('.login');
 const SOURCE_EXPANDER = TABLE.querySelector('#source-expander');
 const PATH_EXPANDER = TABLE.querySelector('#path-expander');
 const FILTER = document.getElementById('logs-filter');
+const DOWNLOADCSV = document.getElementById('download-csv');
 
 // utility functions
 /**
@@ -292,6 +293,8 @@ async function updateTableError(status, org, site) {
     message.textContent = text;
   }
   updateTableDisplay(status === 401 ? 'login' : 'error');
+  DOWNLOADCSV.classList.remove('outline');
+  DOWNLOADCSV.classList.add('disabled');
 }
 
 /**
@@ -301,6 +304,8 @@ async function updateTableError(status, org, site) {
 function clearTable(table) {
   table.innerHTML = '';
   updateTableDisplay('no-results');
+  DOWNLOADCSV.classList.remove('outline');
+  DOWNLOADCSV.classList.add('disabled');
 }
 
 /**
@@ -536,6 +541,15 @@ function displayLogs(logs, live, preview) {
     RESULTS.prepend(row);
   });
   updateTableDisplay(logs.length ? 'results' : 'no-results');
+
+  // Enable download button only if there are logs to export
+  if (logs.length > 0) {
+    DOWNLOADCSV.classList.add('outline');
+    DOWNLOADCSV.classList.remove('disabled');
+  } else {
+    DOWNLOADCSV.classList.remove('outline');
+    DOWNLOADCSV.classList.add('disabled');
+  }
 }
 
 /**
@@ -640,6 +654,51 @@ function updateParams(data) {
 }
 
 /**
+ * Downloads CSV file with the provided data.
+ * @param {string} csvData - CSV formatted data string.
+ */
+function downloadCSVFile(csvData) {
+  // Create a Blob from the CSV data
+  const csvBlob = new Blob([csvData], { type: 'text/csv' });
+
+  // Create a temporary link element
+  const tempLink = document.createElement('a');
+  tempLink.href = URL.createObjectURL(csvBlob);
+  tempLink.download = 'log-viewer.csv';
+
+  // Append the link to the document, trigger the download, and remove the link
+  document.body.appendChild(tempLink);
+  tempLink.click();
+  document.body.removeChild(tempLink);
+}
+
+/**
+ * Extracts text content from a cell, handling links and formatted content.
+ * @param {HTMLTableCellElement} cell - Table cell element.
+ * @returns {string} Text content of the cell.
+ */
+function getCellText(cell) {
+  // If cell contains a link, get the link text
+  if (cell.querySelector('a')) {
+    return cell.querySelector('a').textContent;
+  }
+  // If cell contains a button, get the button value
+  if (cell.querySelector('button')) {
+    return cell.querySelector('button').getAttribute('value') || cell.querySelector('button').textContent;
+  }
+  // If cell contains a status light, extract just the text
+  if (cell.querySelector('.status-light')) {
+    return cell.querySelector('.status-light').textContent;
+  }
+  // If cell contains code, get the code text
+  if (cell.querySelector('code')) {
+    return cell.querySelector('code').textContent;
+  }
+  // Otherwise just get text content
+  return cell.textContent;
+}
+
+/**
  * Checks if the user is logged in to the specified org/site.
  * @returns {Promise<boolean>} True if logged in, false otherwise.
  */
@@ -740,6 +799,53 @@ async function registerListeners() {
     }
 
     enableForm(target, submitter);
+  });
+
+  // enable CSV download
+  DOWNLOADCSV.addEventListener('click', () => {
+    let csvData = [];
+    // Get the header data
+    const headers = [];
+    const headerCols = TABLE.querySelector('thead').querySelectorAll('tr > th');
+    for (let i = 0; i < headerCols.length; i += 1) {
+      // Get header text, excluding any button text inside
+      const header = headerCols[i].cloneNode(true);
+      const buttons = header.querySelectorAll('button');
+      buttons.forEach((btn) => btn.remove());
+      headers.push(`"${header.textContent.trim()}"`);
+    }
+    csvData.push(headers.join(','));
+
+    // Get each row data
+    const rows = RESULTS.getElementsByTagName('tr');
+    for (let i = 0; i < rows.length; i += 1) {
+      // Skip hidden rows
+      if (rows[i].getAttribute('aria-hidden') === 'true') {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      // Get each column data
+      const cols = rows[i].querySelectorAll('td');
+
+      // Stores each csv row data
+      const csvrow = [];
+      for (let j = 0; j < cols.length; j += 1) {
+        const text = getCellText(cols[j]).trim();
+        // Escape quotes and wrap in quotes if contains comma, quote, or newline
+        if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+          csvrow.push(`"${text.replace(/"/g, '""')}"`);
+        } else {
+          csvrow.push(text);
+        }
+      }
+
+      // Combine each column value with comma
+      csvData.push(csvrow.join(','));
+    }
+    // Combine each row data with new line character
+    csvData = csvData.join('\n');
+    downloadCSVFile(csvData);
   });
 
   // enable table results filtering

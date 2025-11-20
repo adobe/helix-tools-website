@@ -14,3 +14,4 @@ MIGRATION_PLAN.md
 !AGENTS.md
 
 .playwright-mcp/
+.claude/settings.local.json
