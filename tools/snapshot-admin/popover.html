@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Snapshot Admin</title>
+  <meta name="description" content="Tool for managing snapshots in AEM">
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script src="/tools/snapshot-admin/popover.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/snapshot-admin/popover.css" />
+</head>
+<script>
+</script>
+<body class="appear">
+  <div id="snapshot-selector-wrapper">
+    <p><label for="snapshot-select">Select Snapshot:</label></p>
+    <select id="snapshot-select" disabled>
+      <option value="">Loading snapshots...</option>
+    </select>
+  </div>
+  <div id="page-status-wrapper">
+    <p><span id="page-status">Select a snapshot to view status...</span></p>
+    <p class="buttons">
+    <button disabled id="update">Update</button>
+    <button disabled id="add-page">Add</button>
+    <button disabled id="remove-page">Remove</button>
+    </p>
+    <p><a href="https://aem.reviews" id="go-to-review" target="_blank">Review...<span class="snapshot-admin-oinw"></span></a></p>
+  </div>
+  <div id="review-status-wrapper">
+    <p><span id="review-status">Select a snapshot to view review status...</span></p>
+    <p class="buttons">
+    <button disabled id="request" title="Locks the snapshot for review">Submit</button>
+    <button disabled id="reject" title="Unlocks the snapshot from review mode">Reject</button>
+    <button disabled id="approve" title="Bulk publishes the snapshot">Approve</button>
+    </p>
+  </div>
+  <p><a href="/tools/snapshot-admin/index.html" target="_blank" id="go-to-admin"></span>Edit Snapshots...<span class="snapshot-admin-oinw"></span></a></p>
+  <details>
+    <summary>Pages in Selected Snapshot</summary>
+    <ul id="page-list"></ul>
+  </details>
+  <div id="spinner"><span class="loading"></span></div>
+</body>
+</html>

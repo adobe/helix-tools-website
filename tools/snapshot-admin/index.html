@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snapshot Admin</title>
+  <meta name="description" content="Tool for managing snapshots in AEM">
+  <meta name="lab" content="true">
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/snapshot-admin/snapshot-admin.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/snapshot-admin/snapshot-admin.css" />
+</head>
+<body class="snapshot-admin appear">
+  <header></header>
+  <main>
+    <!-- TITLE -->
+    <div>
+      <h1>Snapshot Admin</h1>
+    </div> 
+    <!-- SITE PATH FORM -->
+    <div>
+      <form id="site-path-form">
+        <section class="form-field config-field">
+          <div class="form-field org-field">
+            <label for="org">Organization</label>
+            <input name="org" id="org" list="org-list" autocomplete="off" required />
+            <datalist id="org-list"></datalist>
+          </div>
+          <div class="form-field site-field">
+            <label for="site">Site</label>
+            <input name="site" id="site" list="site-list" autocomplete="off" disabled />
+            <datalist id="site-list"></datalist>
+          </div>
+        </section>
+        <p class="button-wrapper">
+          <button type="submit" id="load-snapshots" class="button">Load Snapshots</button>
+          <button type="reset" id="reset" class="button outline">Reset</button>
+        </p>
+      </form>
+    </div>
+    <!-- SNAPSHOTS LIST -->
+    <div id="snapshots-container" aria-hidden="true">
+      <h2>Snapshots</h2>
+      <div id="snapshots-list"></div>      
+      <!-- CREATE NEW SNAPSHOT -->
+      <div id="create-snapshot-section">
+        <h3>Create New Snapshot</h3>
+        <form id="create-snapshot-form">
+          <div class="form-field">
+            <label for="new-snapshot-name">Snapshot Name</label>
+            <input name="new-snapshot-name" id="new-snapshot-name" autocomplete="off" required />
+          </div>
+          <p class="button-wrapper">
+            <button type="submit" class="button">Create Snapshot</button>
+          </p>
+        </form>
+      </div>
+    </div>
+    <!-- CONSOLE -->
+    <div>
+      <div class="table" aria-hidden="true">
+        <table id="console">
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+  <footer></footer>
+
+  <!-- MODAL -->
+  <div id="modal" class="modal" aria-hidden="true">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title">Message</h3>
+        <button type="button" class="modal-close" aria-label="Close modal">×</button>
+      </div>
+      <div class="modal-body">
+        <p id="modal-message"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="button modal-ok">OK</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

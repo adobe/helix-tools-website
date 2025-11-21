@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html></html>
+<head>
+  <title>Snapshot Admin</title>
+  <script src="/tools/snapshot-admin/palette.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/snapshot-admin/palette.css" />
+  <link rel="stylesheet" href="/tools/snapshot-admin/snapshot-admin.css" />
+</head>
+<script>
+</script>
+<body>
+  <div id="page-status-wrapper">
+    <p><span id="page-status">Loading...</span></p>
+    <p class="buttons">
+    <button disabled id="update">Update</button>
+    <button disabled id="add-page">Add</button>
+    <button disabled id="remove-page">Remove</button>
+    </p>
+    <p><a href="https://aem.reviews" id="go-to-review" target="_blank">Review...<span class="snapshot-admin-oinw"></span></a></p>
+  </div>
+  <div id="review-status-wrapper">
+    <p><span id="review-status">Loading...</span></p>
+    <p class="buttons">
+    <button disabled id="request">Submit</button>
+    <button disabled id="reject">Reject</button>
+    <button disabled id="approve">Approve</button>
+    </p>
+  </div>
+  <p><a href="/tools/snapshot-admin/index.html" target="_blank" id="go-to-admin"></span>Edit Snapshot...<span class="snapshot-admin-oinw"></span></a></p>
+  <details>
+    <summary>Pages</summary>
+    <ul id="page-list"></ul>
+  </details>
+  <div id="spinner"><span class="loading"></span></div>
+</body>
+</html>

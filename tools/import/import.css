@@ -1,0 +1,185 @@
+.import p.small {
+  font-size: var(--font-size-50);
+}
+
+.import > .section > div:first-child > div {
+  display: flex;
+  justify-content: space-between;
+}
+
+.import #environment {
+  background-color: var(--celery-400);
+  border-radius: 14px;
+  padding: 8px;
+  height: 2.5rem;
+  margin-top: -3rem;
+  opacity: 0.7;
+}
+
+.import #environment:empty {
+  display: none;
+}
+
+.import .form .field {
+  margin-bottom: var(--spacing-400);
+}
+
+.import .form .field label {
+  font-weight: bold;
+}
+
+.import .form .field .field-group {
+  width: 100%;
+  border: var(--border-m) solid var(--gray-300);
+  border-radius: var(--rounding-m);
+  padding: 0.85em;
+  color: var(--color-text);
+}
+
+.import .form .field .field-group div {
+  margin-bottom: var(--spacing-200);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-100);
+}
+
+.import .form .field .field-group div:last-child {
+  margin-bottom: 0;
+}
+
+.import .form .field .field-group div label {
+  width: 160px;
+  font-size: var(--body-size-s);
+  margin: unset;
+}
+
+.import .form .field textarea {
+  resize: vertical;
+  min-height: 200px;
+}
+
+.import .form .field input[type="file"] {
+  position: relative;
+  inset: unset;
+  appearance: unset;
+  opacity: unset;
+  outline: none;
+}
+
+.import .form .field input[type="file"] ~ span {
+  margin-left: var(--spacing-100);
+}
+
+.import .form .field input[type="checkbox"] {
+  width: unset;
+}
+
+.import .form + div > div:has(#results) {
+  margin-top: var(--spacing-m);
+  border-top: var(--border-m) solid var(--gray-300);
+}
+
+.import .form .dragover {
+  border: var(--border-l) solid var(--green-500);
+}
+
+.import .heading {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin: 1em 0 0.5em;
+  gap: var(--spacing-xs);
+}
+
+.import .heading h2 {
+  margin: 0;
+}
+
+.import .heading a {
+  font-size: var(--body-size-xs);
+  cursor: pointer;
+}
+
+.import .invalid {
+  border-color: var(--red-800);
+}
+
+#results {
+ padding-top: var(--spacing-s);
+}
+
+.import .hidden {
+  display: none;
+}
+
+.import button.negative,
+.import button.negative:focus {
+  background-color: var(--gray-100);
+  color: var(--red-800);
+  border-color: var(--red-800);
+}
+
+.import button.negative:focus {
+  outline-color: var(--red-800);
+}
+
+.import button.negative:hover {
+  background-color: var(--red-100);
+  color: var(--red-800);
+}
+
+#results table {
+  display: grid;
+  min-width: 100%;
+  grid-template-columns: auto minmax(150px, 1.67fr);
+  border-collapse: separate;
+  border: var(--border-s) solid var(--gray-300);
+  border-radius: var(--rounding-m);
+  border-spacing: 0;
+  overflow: hidden;
+}
+
+#results thead,
+#results tbody,
+#results tr {
+  display: contents;
+}
+
+#results table td {
+  padding: var(--spacing-200);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#results table td:first-child {
+  font-weight: bold;
+  background-color: var(--gray-400);
+}
+
+#results table tr:nth-child(odd) td:last-child {
+  background-color: var(--gray-100);
+}
+
+#results table tr:nth-child(even) td:last-child {
+  background-color: var(--gray-25);
+}
+
+#results table + a.button {
+  margin-top: var(--spacing-l);
+}
+
+.spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  margin: 6px 0 0 1rem;
+  border: 3px solid rgb(0 0 0 / 30%);
+  border-radius: 50%;
+  border-top-color: var(--cyan-700);
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
