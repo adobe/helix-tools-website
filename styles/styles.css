@@ -49,14 +49,14 @@
   --shadow-dragged: 0 3px 12px 0 var(--transparent-black-300);
 
   /* widths and heights */
-  --header-height: 72px;
+  --header-height: 82px;
   --horizontal-spacing: var(--spacing-l);
 }
 
 @media (width >=900px) {
   :root {
     /* widths and heights */
-    --header-height: 68px;
+    --header-height: 74px;
     --horizontal-spacing: var(--spacing-xl);
   }
 }
@@ -97,7 +97,7 @@ header {
   top: 0;
   width: 100%;
   min-height: var(--header-height);
-  height: var(--nav-height);
+  height: var(--header-height);
   background-color: #fff;
   z-index: 9999;
   transition: height 0.2s, min-height 0.2s;

@@ -336,3 +336,12 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Download button disabled state */
+a.disabled,
+button.disabled {
+  pointer-events: none;
+  border-color: var(--gray-100);
+  background-color: var(--color-background);
+  color: var(--gray-400);
+}
