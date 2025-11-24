@@ -1,0 +1,150 @@
+.media-library main:has(.section.loaded) {
+  padding-bottom: 0;
+}
+
+.media-library main > .media-library-container.section {
+  margin-left: calc(-50vw + 50%);
+  margin-right: calc(-50vw + 50%);
+}
+
+.media-library .form-field.config-field .site-field::before {
+  content: none;
+}
+
+.media-library .button-wrapper .button {
+  min-width: 100px;
+  padding: var(--spacing-s) var(--spacing-m);
+  font-size: 0.9rem;
+}
+
+/* Form layout - specific ID selectors */
+.media-library #media-config-form {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-m);
+  flex-wrap: nowrap;
+  max-width: 100%;
+  overflow: visible;
+}
+
+.media-library #media-config-form .form-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.media-library #media-config-form .site-url-field,
+.media-library #media-config-form .sitemap-field {
+  flex: 1 1 200px;
+}
+
+.media-library #media-config-form .saved-sites-field {
+  flex: 0 1 280px;
+  min-width: 200px;
+  max-width: 280px;
+}
+
+.media-library #media-config-form .saved-sites-field select {
+  width: 100%;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.media-library #media-config-form .button {
+  flex-shrink: 0;
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+
+.media-library #media-config-form .button.danger {
+  display: none;
+  background-color: var(--red-800);
+  border-color: var(--red-800);
+  color: white;
+}
+
+.media-library #media-config-form .button.danger:hover,
+.media-library #media-config-form .button.danger:focus {
+  background-color: var(--red-900);
+  border-color: var(--red-900);
+}
+
+.media-library #media-config-form .form-separator {
+  padding: 0 var(--spacing-xs) var(--spacing-s);
+  color: var(--gray-600);
+  font-size: var(--body-size-m);
+  flex-shrink: 0;
+}
+
+.media-library #media-config-form .form-divider {
+  width: 2px;
+  height: 40px;
+  background: var(--gray-300);
+  margin: 0 var(--spacing-xs);
+  flex-shrink: 0;
+  align-self: flex-end;
+  border-radius: 1px;
+}
+
+/* Media Library Placeholder */
+.media-library-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  padding: var(--spacing-xxl) 0;
+}
+
+/* Placeholder - stays in normal constrained width */
+.media-library .media-library-placeholder {
+  max-width: var(--section-width, 1200px);
+  margin: 0 auto;
+}
+
+.media-library-placeholder .placeholder-content {
+  text-align: center;
+}
+
+.media-library-placeholder .placeholder-message {
+  font-size: var(--body-size-m);
+  color: var(--gray-600);
+  margin: 0;
+}
+
+.media-library-placeholder.loading .placeholder-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-m);
+  align-items: center;
+}
+
+.media-library-placeholder .loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--gray-200);
+  border-top-color: var(--blue-500);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive design */
+@media (width <= 768px) {
+  .media-library #media-config-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .media-library #media-config-form .form-field {
+    min-width: auto;
+  }
+
+  .media-library #media-config-form .button {
+    width: 100%;
+  }
+}
