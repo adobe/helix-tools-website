@@ -106,7 +106,7 @@ header {
 main {
   max-width: 1200px;
   margin: 0 var(--horizontal-spacing);
-  padding: var(--horizontal-spacing) 0;
+  padding: var(--header-height) 0;
   border-radius: var(--rounding-xl);
   background-color: var(--color-background);
 }
