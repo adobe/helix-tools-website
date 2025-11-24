@@ -101,7 +101,7 @@
   background: white;
   padding: .75rem;
   border-radius: 0.5rem;
-  box-shadow: 0 0 0.5rem rgba(0 0 0 / 25%);
+  box-shadow: 0 0 0.5rem rgb(0 0 0 / 25%);
   width: max-content;
   z-index: 1;
 }

@@ -59,13 +59,13 @@
   color: var(--red-900);
 }
 
-.image-audit .field-help-text {
-  margin-top: 0.5em;
-}
-
 label, legend, .field-help-text, .form-error {
   color: var(--gray-700);
   font-size: var(--body-size-m);
+}
+
+.image-audit .field-help-text {
+  margin-top: 0.5em;
 }
 
 .image-audit .gallery button {

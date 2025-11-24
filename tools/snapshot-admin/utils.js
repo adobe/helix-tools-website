@@ -117,7 +117,7 @@ export async function fetchSnapshots() {
   return { snapshots, status: resp.status };
 }
 
-export async function deleteSnapshot(name, paths = ['/*']) {
+export async function deleteSnapshotUrls(name, paths = ['/*']) {
   const results = await Promise.all(paths.map(async (path) => {
     const opts = {
       method: 'DELETE',
@@ -134,6 +134,18 @@ export async function deleteSnapshot(name, paths = ['/*']) {
   return results[0];
 }
 
+export async function deleteSnapshot(name) {
+  const opts = {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  };
+  const resp = await fetch(`${AEM_ORIGIN}/snapshot/${org}/${site}/main/${name}`, opts);
+  if (!resp.ok) return formatError(resp);
+  return { status: resp.status };
+}
+
 export function setOrgSite(suppliedOrg, suppliedSite) {
   org = suppliedOrg;
   site = suppliedSite;
@@ -145,7 +157,7 @@ export async function updatePaths(name, currPaths, editedHrefs) {
 
   // Handle deletes
   if (removed.length > 0) {
-    const deleteResult = await deleteSnapshot(name, removed);
+    const deleteResult = await deleteSnapshotUrls(name, removed);
     if (deleteResult.error) return deleteResult;
   }
 

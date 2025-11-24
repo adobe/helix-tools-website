@@ -80,6 +80,7 @@ export async function isRegisteredForSnapshotScheduler(org, site) {
     const resp = await fetch(adminURL);
     return resp.status === 200;
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error('Error checking if registered for snapshot scheduler', error);
     return false;
   }

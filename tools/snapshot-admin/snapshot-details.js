@@ -2,6 +2,7 @@ import {
   fetchManifest,
   saveManifest,
   setOrgSite,
+  deleteSnapshotUrls,
   deleteSnapshot,
   reviewSnapshot,
   updatePaths,
@@ -375,7 +376,7 @@ async function deleteSnapshotAction(snapshotName) {
   if (!confirmed) return;
 
   try {
-    const result = await deleteSnapshot(snapshotName);
+    const result = await deleteSnapshotUrls(snapshotName);
 
     if (result.error) {
       logResponse([result.status, 'DELETE', `snapshot/${snapshotName}`, result.error]);
@@ -383,9 +384,17 @@ async function deleteSnapshotAction(snapshotName) {
       return;
     }
 
-    logResponse([200, 'DELETE', `snapshot/${snapshotName}`, 'Deleted successfully']);
-    await showModal('Success', 'Snapshot deleted successfully!');
+    logResponse([200, 'DELETE', `snapshot/${snapshotName}/*`, 'Snapshot URLs deleted successfully']);
 
+    // Now delete the snapshot
+    const deleteResult = await deleteSnapshot(snapshotName);
+    if (deleteResult.error) {
+      logResponse([deleteResult.status, 'DELETE', `snapshot/${snapshotName}`, deleteResult.error]);
+      await showModal('Error', `Error deleting snapshot: ${deleteResult.error}`);
+      return;
+    }
+    logResponse([deleteResult.status, 'DELETE', `snapshot/${snapshotName}`, 'Snapshot deleted successfully']);
+    await showModal('Success', 'Snapshot deleted successfully!');
     // Redirect back to the main snapshot admin page
     window.location.href = 'index.html';
   } catch (error) {

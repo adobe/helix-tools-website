@@ -456,7 +456,7 @@
         font-size: 0.875rem;
         line-height: 1.5;
         white-space: pre-wrap;
-        word-wrap: break-word;
+        overflow-wrap: break-word;
       }
     }
   }

@@ -1,16 +1,5 @@
 /* Snapshot Admin Styles - Aligned with Project Design System */
 /* stylelint-disable no-descending-specificity */
-
-/* Use existing project variables instead of custom ones */
-.snapshot-admin {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: var(--horizontal-spacing);
-  font-family: var(--body-font-family);
-  color: var(--color-text);
-  background-color: var(--color-background);
-}
-
 .snapshot-admin * {
   box-sizing: border-box;
 }

@@ -848,6 +848,7 @@ table+.form-field,
 /* Redesign button animation */
 
 /* primary button: blue bg */
+/* stylelint-disable no-descending-specificity */
 .redesign a.button:any-link,
 main .form .button,
 .feed.blog .read-more {
@@ -880,7 +881,6 @@ main .form .button {
   font-weight: 500;
 }
 
-/* stylelint-disable-next-line no-descending-specificity */
 .redesign a.button:any-link span {
   color: var(--color-white);
   transition: all 0.3s ease-in-out;
@@ -922,8 +922,10 @@ main .form .button::before {
 main .form .button:hover::before {
   left: 0%;
 }
+/* stylelint-enable no-descending-specificity */
 
 /* Restore outline button styles in forms */
+/* stylelint-disable-next-line no-descending-specificity */
 main .form .button.outline {
   background-color: var(--color-background);
   color: var(--color-link);

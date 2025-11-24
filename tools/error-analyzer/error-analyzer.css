@@ -400,7 +400,6 @@
             background-color: var(--layer-depth);
             padding: var(--spacing-100) var(--spacing-100);
             border-radius: var(--rounding-s);
-            word-break: break-word;
             overflow-wrap: break-word;
             display: block;
             width: 100%;
