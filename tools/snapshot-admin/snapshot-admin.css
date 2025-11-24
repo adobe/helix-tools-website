@@ -853,14 +853,7 @@
 }
 
 /* Responsive design using project breakpoints */
-@media (width <= 900px) {
-  .snapshot-admin {
-    margin: var(--spacing-400) auto;
-    padding: 0 var(--spacing-400);
-  }
-  
-
-  
+@media (width <= 900px) {  
   .sa-snapshot-details {
     grid-template-columns: 1fr;
     gap: var(--spacing-400);
