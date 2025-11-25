@@ -162,7 +162,7 @@
   .deep-psi table th,
   .deep-psi table td {
     padding: var(--spacing-xs);
-    word-wrap: break-word;
+    overflow-wrap: break-word;
     hyphens: auto;
     min-width: 60px;
     max-width: 80px;

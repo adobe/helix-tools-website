@@ -148,6 +148,16 @@ function decorateImages(main) {
   });
 }
 
+/**
+ * Loads theme-specific styles based on the theme meta tag.
+ */
+async function loadThemeStyles() {
+  const theme = getMetadata('theme');
+  if (theme === 'powerscore') {
+    await loadCSS(`${window.hlx.codeBasePath}/styles/powerscore-styles.css`);
+  }
+}
+
 function updateGuideTemplateStyleBasedOnHero() {
   const isHeroContentExist = document.querySelector(
     '.guides-template .section.heading',
@@ -269,6 +279,7 @@ async function toolReady() {
 async function loadEager(doc) {
   document.documentElement.lang = 'en';
   decorateTemplateAndTheme();
+  loadThemeStyles();
   const main = doc.querySelector('main');
   if (main) {
     decorateMain(main);
