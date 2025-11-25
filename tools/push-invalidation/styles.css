@@ -9,9 +9,7 @@
 
 .push-invalidation pre code {
   white-space: pre-wrap;
-  /* stylelint-disable-next-line declaration-property-value-keyword-no-deprecated */
-  word-break: break-word;
-  overflow-wrap: break-word;
+overflow-wrap: break-word;
 }
 
 .push-invalidation form table {

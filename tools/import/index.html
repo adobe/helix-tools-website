@@ -1,0 +1,88 @@
+<html lang="en">
+
+<head>
+    <meta
+        http-equiv="Content-Security-Policy"
+        content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+        move-to-http-header="true"
+    >
+    <title>Bulk Import | AEM Live</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="description" content="Bulk import content to your EDS instance using your existing import scripts."/>
+    <meta name="lab" content="true">
+    <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+    <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+    <link rel="stylesheet" href="/styles/styles.css"/>
+    <script nonce="aem" src="./import.js" type="module"></script>
+    <link rel="stylesheet" href="./import.css">
+</head>
+
+<body>
+<header></header>
+<main class="import">
+    <div>
+        <div>
+            <h1>Bulk Import</h1>
+            <p id="environment"></p>
+        </div>
+        <p>Perform bulk imports using your existing import scripts. <a href="https://www.aem.live/developer/importer" target="_blank">Learn more</a> about importing content.</p>
+        <div>
+            <form class="form">
+                <div class="field">
+                    <label for="apiKey-input">API Key</label>
+                    <input id="apiKey-input" type="password" autocomplete="apiKey" required/>
+                </div>
+                <div class="field" id="url-drop-zone">
+                    <label for="url-input">URLs</label>
+                    <textarea id="url-input" required placeholder="One URL per line"></textarea>
+                    <div class="field-help-text">
+                        <p>
+                            A text file with one URL per line may be dropped onto this field to populate it.
+                        </p>
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="import-script">Import Script</label>
+                    <input type="file" id="import-script" hidden>
+                    <button id="script-button" class="button outline">Browse</button>
+                    <span id="script-name">No script selected</span>
+                    <p class="small">Use <a href="https://www.npmjs.com/package/aem-import-helper" target="_blank">aem-import-helper</a> to bundle your import script.</p>
+                </div>
+                <div class="field">
+                    <label>Options</label>
+                    <div class="field-group">
+                        <div>
+                            <label for="timeout-input">Page load timeout</label>
+                            <input id="timeout-input" type="number" value="10000" min="0" step="1000">
+                        </div>
+                        <div>
+                            <label for="enableJavascript">Enable JavaScript</label>
+                            <input type="checkbox" id="enableJavascript" name="enableJavascript">
+                        </div>
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="headers-input">Custom headers</label>
+                    <textarea id="headers-input" placeholder="Provide a valid JSON object: { &quot;x-login&quot;: &quot;1234-asdf-1234&quot; }"></textarea>
+                </div>
+                <button id="start-button" class="button">Start</button>
+            </form>
+            <div>
+                <div class="job-details hidden">
+                    <div class="heading">
+                        <h2>Job Details</h2>
+                        <span class="job-list"></span>
+                        <a id="clear-button">Clear history</a>
+                    </div>
+                    <div id="results"></div>
+                </div>
+            </div>
+            <p class="button-wrapper hidden" id="stop-import-job">
+                <button type="button" class="button negative">Stop job</button>
+                <span class="error-messages"></span>
+            </p>
+        </div>
+    </div>
+</main>
+<footer></footer>
+</body>
