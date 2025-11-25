@@ -1,20 +1,19 @@
-  :root {
-    /* colors */
-    --link-color: #035fe6;
-    --link-hover-color: #136ff6;
-    --background-color: white;
-    --light-color: #eee;
-    --dark-color: #ccc;
-    --text-color: black;
-    --success-color: rgb(0 136 0);
-    --improve-color: rgb(255 170 51);
-    --error-color: rgb(217 48 37);
-  }
+:root {
+  /* powerscore colors */
+  --link-color: #035fe6;
+  --link-hover-color: #136ff6;
+  --background-color: white;
+  --light-color: #eee;
+  --dark-color: #ccc;
+  --text-color: black;
+  --success-color: rgb(0 136 0);
+  --improve-color: rgb(255 170 51);
+  --error-color: rgb(217 48 37);
+}
 
-
-/* buttons */
-a.button:any-link,
-button {
+/* powerscore-specific styles scoped to main */
+main a.button:any-link,
+main button {
   font-family: var(--body-font-family);
   display: inline-block;
   box-sizing: border-box;
@@ -34,27 +33,27 @@ button {
   border-radius: 30px;
 }
 
-a.button:hover,
-a.button:focus,
-button:hover,
-button:focus {
+main a.button:hover,
+main a.button:focus,
+main button:hover,
+main button:focus {
   background-color: var(--link-hover-color);
   cursor: pointer;
 }
 
-button:disabled,
-button:disabled:hover {
+main button:disabled,
+main button:disabled:hover {
   background-color: var(--light-color);
   cursor: unset;
 }
 
-a.button.secondary,
-button.secondary {
+main a.button.secondary,
+main button.secondary {
   background-color: unset;
   border: 2px solid currentcolor;
-  color: var(--text-color)
+  color: var(--text-color);
 }
 
-.icon {
+main .icon {
   font-size: 24px;
 }
