@@ -1,0 +1,59 @@
+:root {
+  /* powerscore colors */
+  --link-color: #035fe6;
+  --link-hover-color: #136ff6;
+  --background-color: white;
+  --light-color: #eee;
+  --dark-color: #ccc;
+  --text-color: black;
+  --success-color: rgb(0 136 0);
+  --improve-color: rgb(255 170 51);
+  --error-color: rgb(217 48 37);
+}
+
+/* powerscore-specific styles scoped to main */
+main a.button:any-link,
+main button {
+  font-family: var(--body-font-family);
+  display: inline-block;
+  box-sizing: border-box;
+  text-decoration: none;
+  border: 2px solid transparent;
+  padding: 5px 30px;
+  text-align: center;
+  font-style: normal;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--background-color);
+  background-color: var(--link-color);
+  margin: 16px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-radius: 30px;
+}
+
+main a.button:hover,
+main a.button:focus,
+main button:hover,
+main button:focus {
+  background-color: var(--link-hover-color);
+  cursor: pointer;
+}
+
+main button:disabled,
+main button:disabled:hover {
+  background-color: var(--light-color);
+  cursor: unset;
+}
+
+main a.button.secondary,
+main button.secondary {
+  background-color: unset;
+  border: 2px solid currentcolor;
+  color: var(--text-color);
+}
+
+main .icon {
+  font-size: 24px;
+}

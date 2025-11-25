@@ -876,7 +876,9 @@ main .form .button,
   /* fix for ios overflow with border-radius not working */
   isolation: isolate;
 }
+/* stylelint-enable no-descending-specificity */
 
+/* stylelint-disable-next-line no-descending-specificity */
 main .form .button {
   font-weight: 500;
 }

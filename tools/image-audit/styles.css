@@ -59,6 +59,7 @@
   color: var(--red-900);
 }
 
+/* stylelint-disable-next-line no-descending-specificity */
 label, legend, .field-help-text, .form-error {
   color: var(--gray-700);
   font-size: var(--body-size-m);
