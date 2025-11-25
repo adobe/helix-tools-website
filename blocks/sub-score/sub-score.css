@@ -1,0 +1,60 @@
+main .sub-score {
+  --guage-color: #c9e4de;
+
+  &[data-metric="code-complexity"] {
+    --guage-color: #f76b8a;
+  }
+  
+  &[data-metric="import-complexity"] {
+    --guage-color: #5072A7;
+  }
+
+  h3 {
+    font-size: var(--heading-font-size-xxs);
+    text-align: center;
+  }
+
+  .sub-score-inner {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    
+
+    .calculated-score {
+      position: absolute;
+      bottom: 1.5rem;
+      font-size: var(--body-font-size-xs);
+      border: 1px solid var(--light-color);
+      width: 60px;
+      height: 1.25rem;
+      text-align: center;
+    }
+
+    .meter {
+      .outer {
+        fill: none;
+        stroke: #BCBEC0;
+        stroke-width: 2;
+      }
+
+      .inner {
+        fill: none;
+        stroke: var(--guage-color);
+        stroke-width: 5;
+        transform: rotate(138.898deg);
+        transform-origin: 50% 50%;
+        stroke-dasharray: 235.6192 314.159;
+      }
+
+      .pointer {
+        fill: var(--guage-color);
+        transform-origin: 50% 66%;
+        transform: rotate(-100deg);
+        transition: transform 2.5s ease;
+      }
+    }
+  } 
+}

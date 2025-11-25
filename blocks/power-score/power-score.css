@@ -1,0 +1,47 @@
+main .power-score {
+  h2 {
+    text-align: center;
+    margin-block-end: .5em;
+  }
+
+  .power-score-inner {
+    .power-score-diagram {
+      --diagram-border-color: black;
+
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border: 4px solid var(--diagram-border-color);
+      mask: linear-gradient(var(--diagram-border-color), var(--diagram-border-color)) padding-box, 
+                    conic-gradient(var(--diagram-border-color) var(--overall-score, 0%), transparent 0%), border-box;
+
+      &:not(.loading) {
+        background: conic-gradient(#f76b8a var(--slice1-start) var(--slice1-end), #5072A7 var(--slice2-start) var(--slice2-end), #c9e4de var(--slice3-start) var(--slice3-end));
+      }
+
+      .powerscore-label {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: white;
+        border: 2px solid var(--light-color);
+        border-radius: 50%;
+        aspect-ratio: 1;
+        width: 100px;
+        font-size: var(--heading-font-size-s);
+        font-weight: 500;
+      }
+    }
+
+    .view-calculator {      
+      min-height: 2em;
+
+      p {
+        text-align: center;
+      }
+    }
+  }
+}
