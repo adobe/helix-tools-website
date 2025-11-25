@@ -394,7 +394,7 @@ const metrics = {
       if (isCalculator) {
         const select = blockInner.querySelector('select');
         select.value = popularityNumber;
-      } else {
+      } else if (dataCopy.formFactors) {
         blockInner.querySelector('.traffic-split-mobile').textContent = dataCopy.formFactors.Mobile;
         blockInner.querySelector('.traffic-split-desktop').textContent = dataCopy.formFactors.Desktop;
       }
