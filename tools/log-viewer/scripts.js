@@ -392,7 +392,7 @@ class RewrittenData {
       return changes.join('<br /><br />');
     }
     if (type === 'job' || type.includes('-job')) {
-      return writeAdminDetails(`${ADMIN}/job/${this.data.owner}/${this.data.repo}/${this.data.ref}${value}/details`, value);
+      return writeAdminDetails(`${ADMIN}/job/${this.data.org}/${this.data.site}/${this.data.ref}${value}/details`, value);
     }
     if (type === 'preview') {
       return writeA(`${this.preview}${value}`, value);
