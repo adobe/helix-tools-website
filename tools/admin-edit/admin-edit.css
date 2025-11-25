@@ -144,7 +144,7 @@ pre[class*='language-'] {
   white-space: pre;
   word-break: normal;
   word-spacing: normal;
-  word-wrap: normal;
+  overflow-wrap: normal;
   hyphens: none;
   tab-size: 2;
 }

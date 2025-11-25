@@ -400,6 +400,7 @@
             background-color: var(--layer-depth);
             padding: var(--spacing-100) var(--spacing-100);
             border-radius: var(--rounding-s);
+            /* stylelint-disable-next-line declaration-property-value-keyword-no-deprecated */
             word-break: break-word;
             overflow-wrap: break-word;
             display: block;

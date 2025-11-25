@@ -63,6 +63,7 @@
   margin-top: 0.5em;
 }
 
+/* stylelint-disable-next-line no-descending-specificity */
 label, legend, .field-help-text, .form-error {
   color: var(--gray-700);
   font-size: var(--body-size-m);
