@@ -23,6 +23,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   description.innerHTML = `Your request has been blocked, please use <a href="https://${rso}.aem.${suffix}" target="_blank">${rso}.aem.live</a> instead.<br><br>
     See <a href="https://www.aem.live/developer/upgrade" target="_blank">https://www.aem.live/developer/upgrade</a> for more information.`;
+
+  if (window.location.origin === 'http://localhost:3000') {
+    description.innerHTML += `
+    <br><br>Please update <a href="https://www.aem.live/developer/cli-reference" target="_blank">aem cli</a> to the latest version: <code>npm install -g @adobe/aem-cli</code>`;
+  }
 });
 
 const style = document.createElement('style');
