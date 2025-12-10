@@ -114,13 +114,17 @@ function filterPendingPages(resources) {
   });
 }
 
+// CORS proxy for fetching cross-origin content
+const CORS_PROXY = 'https://www.fcors.org/?url=';
+
 /**
- * Fetches HTML content from a URL.
+ * Fetches HTML content from a URL via CORS proxy.
  * @param {string} url - URL to fetch
  * @returns {Promise<string>} HTML content
  */
 async function fetchHtml(url) {
-  const res = await fetch(url);
+  const proxyUrl = `${CORS_PROXY}${encodeURIComponent(url)}`;
+  const res = await fetch(proxyUrl);
   if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
   return res.text();
 }
