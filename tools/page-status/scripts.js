@@ -10,6 +10,7 @@ const RESULTS = TABLE.querySelector('.results');
 const ERROR = TABLE.querySelector('.error');
 const FILTER = document.getElementById('status-filter');
 const DOWNLOADCSV = document.getElementById('download-csv');
+const DIFFMODE = document.getElementById('diff-mode');
 let intervalId;
 const oneSecondFunction = () => loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
 
@@ -177,6 +178,23 @@ function getFormData(form) {
 }
 
 /**
+ * Enables the action buttons (Download CSV and Diff Mode).
+ * Should only be called when results are successfully displayed.
+ */
+function enableActionButtons() {
+  DOWNLOADCSV.disabled = false;
+  DIFFMODE.disabled = false;
+}
+
+/**
+ * Disables the action buttons (Download CSV and Diff Mode).
+ */
+function disableActionButtons() {
+  DOWNLOADCSV.disabled = true;
+  DIFFMODE.disabled = true;
+}
+
+/**
  * Disables all form elements within specified form.
  * @param {HTMLFormElement} form - Form element.
  * @param {HTMLFormElement} button - Form's submit button.
@@ -186,8 +204,8 @@ function disableForm(form, button) {
   [...form.elements].forEach((el) => {
     el.disabled = true;
   });
-  DOWNLOADCSV.classList.remove('outline');
-  DOWNLOADCSV.classList.add('disabled');
+  // Disable action buttons when starting a new query
+  disableActionButtons();
 }
 
 /**
@@ -200,8 +218,8 @@ function enableForm(form, button) {
   [...form.elements].forEach((el) => {
     el.disabled = false;
   });
-  DOWNLOADCSV.classList.add('outline');
-  DOWNLOADCSV.classList.remove('disabled');
+  // Note: Action buttons (CSV, Diff Mode) are enabled separately
+  // only when results are successfully displayed
 }
 
 // table management
@@ -538,6 +556,7 @@ async function runAndDisplayJob(jobUrl, live, preview) {
   }
   displayResources(paths, live, preview);
   updateTableDisplay('results');
+  enableActionButtons();
 }
 
 /**
@@ -605,6 +624,7 @@ async function init() {
 
   FORM.addEventListener('reset', () => {
     clearTable(RESULTS);
+    disableActionButtons();
   });
 
   FORM.addEventListener('submit', async (e) => {
@@ -686,6 +706,28 @@ async function init() {
     // Combine each row data with new line character
     csvData = csvData.join('\n');
     downloadCSVFile(csvData);
+  });
+
+  // handle diff mode button click
+  DIFFMODE.addEventListener('click', () => {
+    if (DIFFMODE.disabled) return;
+
+    const data = getFormData(FORM);
+    const { org, site } = data;
+    if (!org || !site) return;
+
+    // Get the job ID from the current URL params
+    const currentParams = new URLSearchParams(window.location.search);
+    const job = currentParams.get('job');
+
+    // Navigate to diff page with org/site/job params
+    const diffUrl = new URL('./diff.html', window.location.href);
+    diffUrl.searchParams.set('org', org);
+    diffUrl.searchParams.set('site', site);
+    if (job) {
+      diffUrl.searchParams.set('job', job);
+    }
+    window.location.href = diffUrl.href;
   });
 
   // enable table results filtering
