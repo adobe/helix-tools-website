@@ -2,7 +2,7 @@
 
 /* Info section */
 .page-diff .diff-info {
-  background-color: var(--gray-100);
+  /* background-color: var(--gray-100); */
   border: var(--border-s) solid var(--gray-300);
   border-radius: var(--border-radius);
   padding: var(--spacing-m);
@@ -101,7 +101,8 @@
 .page-diff .diff-nav {
   border: var(--border-s) solid var(--gray-300);
   border-radius: var(--border-radius);
-  background: var(--gray-50);
+
+  /* background: var(--gray-50); */  
   max-height: 70vh;
   overflow-y: auto;
   position: sticky;
@@ -112,7 +113,7 @@
 .page-diff .diff-filters {
   padding: var(--spacing-s) var(--spacing-m);
   border-bottom: var(--border-s) solid var(--gray-300);
-  background: var(--gray-100);
+  background: var(--gray-50);
 }
 
 .page-diff .diff-filter-checkbox {
@@ -121,7 +122,9 @@
   gap: var(--spacing-xs);
   cursor: pointer;
   font-size: var(--body-size-s);
+  font-weight: var(--weight-bold);
   color: var(--gray-700);
+  margin: unset;
 }
 
 .page-diff .diff-filter-checkbox input[type="checkbox"] {
@@ -154,10 +157,11 @@
   color: var(--gray-800);
   word-break: break-all;
   transition: background-color 0.15s ease;
+  outline-offset: unset;
 }
 
 .page-diff .diff-page-list button:hover {
-  background-color: var(--gray-200);
+  background-color: var(--gray-50);
 }
 
 .page-diff .diff-page-list button.active {
@@ -203,7 +207,8 @@
   justify-content: space-between;
   align-items: center;
   padding: var(--spacing-s) var(--spacing-m);
-  background: var(--gray-100);
+  
+  /* background: var(--gray-100); */
   border-bottom: var(--border-s) solid var(--gray-300);
 }
 
@@ -267,7 +272,8 @@
   padding: 0 var(--spacing-s);
   text-align: right;
   color: var(--gray-500);
-  background: var(--gray-100);
+
+  /* background: var(--gray-100); */
   border-right: var(--border-s) solid var(--gray-300);
   user-select: none;
 }
@@ -330,7 +336,8 @@
   display: flex;
   gap: var(--spacing-m);
   padding: var(--spacing-s) var(--spacing-m);
-  background: var(--gray-100);
+  
+  /* background: var(--gray-100); */
   border-bottom: var(--border-s) solid var(--gray-300);
   font-size: var(--body-size-s);
 }
