@@ -115,7 +115,8 @@ function filterPendingPages(resources) {
 }
 
 // CORS proxy for fetching cross-origin content
-const CORS_PROXY = 'https://www.fcors.org/?url=';
+const CORS_PROXY = 'https://www.fcors.org/';
+const CORS_PROXY_KEY = 'gJwzLRfMLz8arkEZ';
 
 /**
  * Fetches HTML content from a URL via CORS proxy.
@@ -123,7 +124,7 @@ const CORS_PROXY = 'https://www.fcors.org/?url=';
  * @returns {Promise<string>} HTML content
  */
 async function fetchHtml(url) {
-  const proxyUrl = `${CORS_PROXY}${encodeURIComponent(url)}`;
+  const proxyUrl = `${CORS_PROXY}?url=${encodeURIComponent(url)}&key=${CORS_PROXY_KEY}`;
   const res = await fetch(proxyUrl);
   if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
   return res.text();
