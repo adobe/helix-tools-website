@@ -108,6 +108,27 @@
   top: var(--spacing-l);
 }
 
+/* Filters */
+.page-diff .diff-filters {
+  padding: var(--spacing-s) var(--spacing-m);
+  border-bottom: var(--border-s) solid var(--gray-300);
+  background: var(--gray-100);
+}
+
+.page-diff .diff-filter-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  cursor: pointer;
+  font-size: var(--body-size-s);
+  color: var(--gray-700);
+}
+
+.page-diff .diff-filter-checkbox input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
 .page-diff .diff-page-list {
   list-style: none;
   margin: 0;
@@ -241,7 +262,7 @@
 }
 
 .page-diff .diff-line-number {
-  width: 50px;
+  width: 80px;
   flex-shrink: 0;
   padding: 0 var(--spacing-s);
   text-align: right;

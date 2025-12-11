@@ -12,6 +12,7 @@ const DIFF_ERROR = document.querySelector('.diff-error');
 const DIFF_RESULTS = document.querySelector('.diff-results');
 const DIFF_PAGE_LIST = document.querySelector('.diff-page-list');
 const DIFF_CONTENT = document.querySelector('.diff-content');
+const HIDE_DRAFTS = document.getElementById('hide-drafts');
 
 // State
 let currentOrg = '';
@@ -357,20 +358,77 @@ async function loadPageDiff(page) {
 }
 
 /**
- * Renders the page list navigation.
+ * Gets the filtered list of pages based on current filter settings.
+ * @returns {Array} Filtered array of pages
  */
-function renderPageList() {
+function getFilteredPages() {
+  const hideDrafts = HIDE_DRAFTS?.checked ?? true;
+
+  return pendingPages.filter((page) => {
+    if (hideDrafts && page.path.startsWith('/drafts/')) {
+      return false;
+    }
+    return true;
+  });
+}
+
+/**
+ * Updates the count display based on filtered pages.
+ * @param {Array} filteredPages - The filtered list of pages
+ */
+function updateFilteredCount(filteredPages) {
+  const total = pendingPages.length;
+  const shown = filteredPages.length;
+
+  if (shown === total) {
+    DIFF_COUNT.textContent = `${total} page${total === 1 ? '' : 's'} with pending changes`;
+  } else {
+    DIFF_COUNT.textContent = `${shown} of ${total} pages shown (${total - shown} filtered)`;
+  }
+}
+
+/**
+ * Renders the page list navigation.
+ * @param {boolean} autoSelectFirst - Whether to auto-select and load the first item
+ */
+function renderPageList(autoSelectFirst = true) {
   DIFF_PAGE_LIST.innerHTML = '';
 
-  pendingPages.forEach((page, index) => {
+  const filteredPages = getFilteredPages();
+  updateFilteredCount(filteredPages);
+
+  // Check if we have any pages to show after filtering
+  if (filteredPages.length === 0) {
+    DIFF_CONTENT.innerHTML = `
+      <div class="diff-panel">
+        <div class="diff-panel-body">
+          <div class="diff-identical">No pages to display with current filters.</div>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  filteredPages.forEach((page, index) => {
     const li = document.createElement('li');
     const button = document.createElement('button');
     button.textContent = page.path;
 
+    // Check if this page was previously marked as no-diff
+    const cached = diffCache.get(page.path);
+    if (cached?.noDiff) {
+      button.classList.add('no-diff');
+    }
+
     // Add status indicator
     const indicator = document.createElement('span');
     indicator.className = 'page-status-indicator';
-    indicator.textContent = 'Pending changes';
+    if (cached?.noDiff) {
+      indicator.textContent = '✓ No diff';
+      indicator.classList.add('no-diff');
+    } else {
+      indicator.textContent = 'Pending changes';
+    }
     button.appendChild(indicator);
 
     button.addEventListener('click', () => {
@@ -385,13 +443,18 @@ function renderPageList() {
     });
 
     // Auto-select first item
-    if (index === 0) {
+    if (autoSelectFirst && index === 0) {
       button.classList.add('active');
     }
 
     li.appendChild(button);
     DIFF_PAGE_LIST.appendChild(li);
   });
+
+  // Load first page diff if auto-selecting
+  if (autoSelectFirst && filteredPages.length > 0) {
+    loadPageDiff(filteredPages[0]);
+  }
 }
 
 /**
@@ -451,19 +514,16 @@ async function init() {
       return;
     }
 
-    // Update count
-    DIFF_COUNT.textContent = `${pendingPages.length} page${pendingPages.length === 1 ? '' : 's'} with pending changes`;
-
-    // Render page list
-    renderPageList();
-
     // Show results
     updateDisplayState('results');
 
-    // Load first page diff
-    if (pendingPages.length > 0) {
-      loadPageDiff(pendingPages[0]);
-    }
+    // Render page list (this also updates count and loads first page)
+    renderPageList();
+
+    // Add event listener for the drafts filter checkbox
+    HIDE_DRAFTS?.addEventListener('change', () => {
+      renderPageList();
+    });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Error initializing diff view:', error);
