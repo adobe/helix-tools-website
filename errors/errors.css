@@ -3,3 +3,11 @@ body {
     margin: 3em;
     display: block;
 }
+
+code {
+    display: inline-block;
+    background-color: #ddd;
+    padding: 0.4em 0.6em;
+    border-radius: 0.4em;
+    font-size: 0.9em;
+}
