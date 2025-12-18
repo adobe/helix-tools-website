@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snapshot Scheduler</title>
+  <meta name="description" content="Tool for scheduling snapshots in AEM Edge Delivery Services">
+  <meta name="lab" content="true">
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/snapshot-scheduler/snapshot-scheduler.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/snapshot-scheduler/snapshot-scheduler.css" />
+</head>
+<body class="snapshot-scheduler appear">
+  <header></header>
+  <main>
+    <!-- TITLE -->
+    <div>
+      <h1>Snapshot Scheduler</h1>
+      <p class="description">Register your site for scheduled snapshot publishing.</p>
+    </div>
+    <!-- SITE PATH FORM -->
+    <div>
+      <form id="register-form">
+        <section class="form-field config-field">
+          <div class="form-field org-field">
+            <label for="org">Organization</label>
+            <input name="org" id="org" list="org-list" autocomplete="off" required />
+            <datalist id="org-list"></datalist>
+          </div>
+          <div class="form-field site-field">
+            <label for="site">Site</label>
+            <input name="site" id="site" list="site-list" autocomplete="off" disabled />
+            <datalist id="site-list"></datalist>
+          </div>
+        </section>
+        <p class="button-wrapper">
+          <button type="submit" id="register-btn" class="button">Register</button>
+          <button type="reset" id="reset" class="button outline">Reset</button>
+        </p>
+      </form>
+    </div>
+    <!-- STATUS MESSAGE -->
+    <div id="status-container" aria-hidden="true">
+      <div id="status-message"></div>
+    </div>
+    <!-- CONSOLE -->
+    <div>
+      <div class="table" aria-hidden="true">
+        <table id="console">
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+  <footer></footer>
+
+  <!-- MODAL -->
+  <div id="modal" class="modal" aria-hidden="true">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title">Message</h3>
+        <button type="button" class="modal-close" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="modal-message"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="button modal-ok">OK</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,270 @@
+/* Snapshot Scheduler Styles - Aligned with Project Design System */
+/* stylelint-disable no-descending-specificity */
+.snapshot-scheduler * {
+  box-sizing: border-box;
+}
+
+/* Typography using project system */
+.snapshot-scheduler h1 {
+  font-size: var(--heading-size-xl);
+  line-height: var(--line-height-l);
+  margin: 0 0 var(--spacing-200) 0;
+  font-weight: var(--weight-extrabold);
+}
+
+.snapshot-scheduler .description {
+  margin: 0 0 var(--spacing-400) 0;
+  font-size: var(--body-size-m);
+  color: var(--gray-700);
+}
+
+.snapshot-scheduler h2 {
+  font-size: var(--heading-size-l);
+  font-weight: var(--weight-bold);
+  margin: var(--spacing-500) 0 var(--spacing-200) 0;
+}
+
+.snapshot-scheduler h3 {
+  font-size: var(--heading-size-m);
+  font-weight: var(--weight-bold);
+  margin: 0;
+}
+
+.snapshot-scheduler p {
+  margin: 0;
+  font-size: var(--body-size-m);
+}
+
+.snapshot-scheduler .button-wrapper {
+  margin-top: var(--spacing-300);
+}
+
+/* Register form using project form styles */
+#register-form {
+  margin-bottom: var(--spacing-500);
+}
+
+#register-form .button-wrapper {
+  display: flex;
+  gap: var(--spacing-200);
+}
+
+/* Config field styling for org/site fields */
+.form-field.config-field {
+  display: grid;
+}
+
+@media (width >= 600px) {
+  .form-field.config-field {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-l);
+  }
+
+  .form-field.config-field .form-field {
+    margin-top: 0;
+  }
+
+  .form-field.config-field .site-field {
+    position: relative;
+  }
+
+  .form-field.config-field .site-field::before {
+    content: '/';
+    position: absolute;
+    left: calc((var(--spacing-l) + 0.5ch) / -2);
+    bottom: calc(var(--border-m) + 0.4em);
+  }
+}
+
+/* Status message container */
+#status-container {
+  margin-top: var(--spacing-400);
+}
+
+#status-message {
+  padding: var(--spacing-300) var(--spacing-400);
+  border-radius: var(--rounding-m);
+  font-size: var(--body-size-m);
+  line-height: var(--line-height-m);
+}
+
+#status-message a {
+  color: inherit;
+  font-weight: var(--weight-bold);
+  text-decoration: underline;
+}
+
+#status-message a:hover {
+  text-decoration: none;
+}
+
+#status-message.status-success {
+  background-color: var(--green-100);
+  color: var(--green-900);
+  border: var(--border-s) solid var(--green-200);
+}
+
+#status-message.status-error {
+  background-color: var(--red-100);
+  color: var(--red-900);
+  border: var(--border-s) solid var(--red-200);
+}
+
+#status-message.status-info {
+  background-color: var(--blue-100);
+  color: var(--blue-900);
+  border: var(--border-s) solid var(--blue-200);
+}
+
+/* Status lights using project pattern */
+.status-light {
+  display: inline-block;
+  padding: var(--spacing-50) var(--spacing-200);
+  border-radius: var(--rounding-s);
+  font-size: var(--detail-size-s);
+  font-weight: var(--weight-medium);
+  color: white;
+}
+
+.status-light.http2 {
+  background-color: var(--green-800);
+}
+
+.status-light.http3 {
+  background-color: var(--cyan-800);
+}
+
+.status-light.http4 {
+  background-color: var(--orange-800);
+}
+
+.status-light.http5 {
+  background-color: var(--red-800);
+}
+
+/* Console table */
+#console {
+  font-family: var(--code-font-family);
+  font-size: var(--detail-size-s);
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--spacing-400);
+}
+
+#console td {
+  padding: var(--spacing-100) var(--spacing-200);
+  border-bottom: var(--border-s) solid var(--gray-200);
+  vertical-align: top;
+}
+
+#console tr:hover {
+  background-color: var(--gray-100);
+}
+
+#console tr:last-of-type td {
+  border-bottom: none;
+}
+
+/* Modal styles */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal[aria-hidden="true"] {
+  display: none;
+}
+
+.modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--transparent-black-600);
+  cursor: pointer;
+}
+
+.modal-content {
+  position: relative;
+  background-color: var(--color-background);
+  border-radius: var(--rounding-m);
+  border: var(--border-m) solid var(--gray-300);
+  box-shadow: var(--shadow-hover);
+  max-width: 400px;
+  width: calc(100% - 2 * var(--spacing-400));
+  max-height: 80vh;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-300);
+  border-bottom: var(--border-s) solid var(--gray-200);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: var(--heading-size-s);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: var(--heading-size-l);
+  color: var(--gray-500);
+  cursor: pointer;
+  padding: var(--spacing-50);
+  border-radius: var(--rounding-s);
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background-color: var(--gray-100);
+  color: var(--gray-700);
+}
+
+.modal-body {
+  padding: var(--spacing-300);
+}
+
+.modal-body p {
+  margin: 0;
+  color: var(--color-text);
+  line-height: var(--line-height-m);
+}
+
+.modal-footer {
+  padding: var(--spacing-300);
+  border-top: var(--border-s) solid var(--gray-200);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-200);
+}
+
+/* Hide elements with aria-hidden */
+[aria-hidden="true"] {
+  display: none !important;
+}
+
+/* Responsive design using project breakpoints */
+@media (width <= 600px) {
+  #register-form .button-wrapper {
+    flex-direction: column;
+  }
+
+  #register-form .button-wrapper button {
+    width: 100%;
+  }
+}
