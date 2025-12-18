@@ -513,7 +513,7 @@
           .count-badge {
             font-weight: var(--weight-bold);
             font-size: var(--body-size-xs);
-            padding: var(--spacing-2xs) var(--spacing-xs);
+            padding: var(--spacing-75) var(--spacing-xs);
             border-radius: var(--rounding-s);
             display: inline-block;
             min-width: 35px;
@@ -521,7 +521,7 @@
 
             @media (width >= 900px) {
               font-size: var(--body-size-s);
-              padding: var(--spacing-2xs) var(--spacing-s);
+              padding: var(--spacing-75) var(--spacing-s);
               min-width: 45px;
             }
 
