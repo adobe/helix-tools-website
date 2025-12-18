@@ -5,36 +5,11 @@ const AEM_ADMIN_ORIGIN = 'https://admin.hlx.page';
 const SCHEDULER_ORIGIN = 'https://helix-snapshot-scheduler-prod.adobeaem.workers.dev';
 
 /**
- * Checks if running on localhost
- * @returns {boolean} - True if running on localhost
- */
-function isLocalhost() {
-  return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-}
-
-/**
- * Gets the value of a cookie by name
- * @param {string} name - Cookie name
- * @returns {string|null} - Cookie value or null if not found
- */
-function getCookie(name) {
-  const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
-  return match ? decodeURIComponent(match[2]) : null;
-}
-
-/**
- * Gets the ID token from the sidekick for the given org,
- * or from the auth_token cookie on localhost
+ * Gets the ID token from the sidekick for the given org
  * @param {string} org - Organization name
  * @returns {Promise<string|null>} - The ID token or null if not available
  */
 async function getIdToken(org) {
-  // On localhost, get token from cookie
-  if (isLocalhost()) {
-    return getCookie('auth_token');
-  }
-
-  // Otherwise, get token from sidekick
   const token = await messageSidekick({ action: 'getIdToken', org }, null, 1000);
   if (token === NO_SIDEKICK || !token) {
     return null;
