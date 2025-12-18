@@ -30,20 +30,22 @@ function extractOrgSite(url) {
 /**
  * Show a confirmation dialog with sanitization warnings
  * @param {Object} changes - Sanitization analysis results
- * @param {Array<{original: string, reason: string}>} changes.rejected - URLs that failed validation
- * @param {Array<{original: string, sanitized: string, changes: string[]}>} changes.modified - URLs that were sanitized
+ * @param {Array<{original: string, reason: string}>} changes.rejected
+ *   URLs that failed validation
+ * @param {Array<{original: string, sanitized: string, changes: string[]}>} changes.modified
+ *   URLs that were sanitized
  * @param {string[]} changes.deduplicated - Duplicate URLs that will be removed
  * @returns {Promise<boolean>} True if user confirms to proceed, false if cancelled
  */
 const showSanitizationWarning = (changes) => {
   const { rejected, modified, deduplicated } = changes;
-  
+
   return new Promise((resolve) => {
     const modal = document.createElement('dialog');
     modal.className = 'sanitization-warning';
-    
+
     let html = '<h2>URL Sanitization Warning</h2>';
-    
+
     if (rejected.length > 0) {
       html += `<h3>⚠️ ${rejected.length} URL(s) will be rejected:</h3>`;
       html += '<ul class="url-list rejected">';
@@ -52,20 +54,20 @@ const showSanitizationWarning = (changes) => {
       });
       html += '</ul>';
     }
-    
+
     if (modified.length > 0) {
       html += `<h3>🔧 ${modified.length} URL(s) will be modified:</h3>`;
       html += '<ul class="url-list modified">';
       modified.forEach(({ original, sanitized, changes: urlChanges }) => {
-        html += `<li><div class="url-change">`;
+        html += '<li><div class="url-change">';
         html += `<div><strong>Original:</strong> <code>${original}</code></div>`;
         html += `<div><strong>Sanitized:</strong> <code>${sanitized}</code></div>`;
         html += `<div class="change-reason">${urlChanges.join(', ')}</div>`;
-        html += `</div></li>`;
+        html += '</div></li>';
       });
       html += '</ul>';
     }
-    
+
     if (deduplicated.length > 0) {
       html += `<h3>🔗 ${deduplicated.length} duplicate URL(s) were detected:</h3>`;
       html += '<ul class="url-list deduplicated">';
@@ -74,32 +76,32 @@ const showSanitizationWarning = (changes) => {
       });
       html += '</ul>';
     }
-    
+
     html += '<div class="dialog-actions">';
     html += '<button class="button primary" id="confirm-sanitize">Proceed with sanitized URLs</button>';
     html += '<button class="button secondary" id="cancel-sanitize">Cancel</button>';
     html += '</div>';
-    
+
     modal.innerHTML = html;
     document.body.appendChild(modal);
-    
+
     modal.querySelector('#confirm-sanitize').addEventListener('click', () => {
       modal.close();
       modal.remove();
       resolve(true);
     });
-    
+
     modal.querySelector('#cancel-sanitize').addEventListener('click', () => {
       modal.close();
       modal.remove();
       resolve(false);
     });
-    
+
     modal.addEventListener('close', () => {
       modal.remove();
       resolve(false);
     });
-    
+
     modal.showModal();
   });
 };
@@ -109,15 +111,18 @@ const showSanitizationWarning = (changes) => {
  * @param {string[]} rawUrls - Array of raw URL strings
  * @returns {Object} Analysis results
  * @property {string[]} urls - Unique, sanitized URLs ready for processing
- * @property {Array<{original: string, reason: string}>} rejected - URLs that failed validation
- * @property {Array<{original: string, sanitized: string, changes: string[]}>} modified - URLs that were sanitized
- * @property {string[]} deduplicated - URLs that appeared multiple times (after sanitization)
+ * @property {Array<{original: string, reason: string}>} rejected
+ *   URLs that failed validation
+ * @property {Array<{original: string, sanitized: string, changes: string[]}>} modified
+ *   URLs that were sanitized
+ * @property {string[]} deduplicated
+ *   URLs that appeared multiple times (after sanitization)
  */
 const analyzeUrls = (rawUrls) => {
   const rejected = [];
   const modified = [];
   const validUrls = [];
-  
+
   const sanitizeUrl = (urlObj) => {
     urlObj.hash = '';
     urlObj.search = '';
@@ -134,22 +139,22 @@ const analyzeUrls = (rawUrls) => {
       .join('/');
     return urlObj.toString();
   };
-  
+
   rawUrls.forEach((rawUrl) => {
     if (!rawUrl) return;
-    
+
     try {
       const urlObj = new URL(rawUrl.trim());
       if (urlObj.protocol !== 'https:') {
-        rejected.push({ 
-          original: rawUrl, 
-          reason: `Protocol '${urlObj.protocol}' not allowed (only https)` 
+        rejected.push({
+          original: rawUrl,
+          reason: `Protocol '${urlObj.protocol}' not allowed (only https)`,
         });
         return;
       }
-      
+
       const sanitized = sanitizeUrl(urlObj);
-      
+
       if (sanitized !== rawUrl) {
         const changes = [];
         try {
@@ -187,48 +192,52 @@ const analyzeUrls = (rawUrls) => {
       rejected.push({ original: rawUrl, reason: 'Invalid URL format' });
     }
   });
-  
+
   const urlCounts = new Map();
   validUrls.forEach((url) => {
     urlCounts.set(url, (urlCounts.get(url) || 0) + 1);
   });
-  
+
   const urls = [...urlCounts.keys()];
   const deduplicated = Array.from(urlCounts.entries())
     .filter(([, count]) => count > 1)
     .map(([url]) => url);
-  
-  return { urls, rejected, modified, deduplicated };
+
+  return {
+    urls, rejected, modified, deduplicated,
+  };
 };
 
 document.getElementById('urls-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   let counter = 0;
-  
+
   const rawUrls = document.getElementById('urls').value
     .split('\n')
     .map((u) => u.trim())
     .filter((u) => u.length > 0);
-  
+
   if (rawUrls.length === 0) {
     append('No URLs provided');
     return false;
   }
-  
+
   // Analyze URLs for sanitization issues
-  const { urls, rejected, modified, deduplicated } = analyzeUrls(rawUrls);
+  const {
+    urls, rejected, modified, deduplicated,
+  } = analyzeUrls(rawUrls);
   const total = urls.length;
-  
+
   // Check if there are any sanitization issues
   const hasIssues = rejected.length > 0 || modified.length > 0 || deduplicated.length > 0;
-  
+
   if (hasIssues) {
     const confirmed = await showSanitizationWarning({ rejected, modified, deduplicated });
     if (!confirmed) {
       append('Operation cancelled by user');
       return false;
     }
-    
+
     document.getElementById('urls').value = urls.join('\n');
     append(`URL(s) updated with ${urls.length} sanitized URL(s)`);
   }

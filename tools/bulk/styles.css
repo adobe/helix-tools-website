@@ -49,11 +49,11 @@ dialog.sanitization-warning {
   padding: var(--spacing-l);
   border: 1px solid var(--gray-300);
   border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 20px rgb(0 0 0 / 15%);
 }
 
 dialog.sanitization-warning::backdrop {
-  background: rgba(0, 0, 0, 0.5);
+  background: rgb(0 0 0 / 50%);
 }
 
 dialog.sanitization-warning h2 {
