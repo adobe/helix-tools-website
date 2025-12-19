@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSON2HTML Playground</title>
+  <meta name="description" content="Interactive playground to experiment with JSON data and Mustache templates for AEM Edge Delivery Services JSON2HTML feature.">
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/json2html-playground/json2html-playground.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/json2html-playground/json2html-playground.css" />
+</head>
+
+<body class="json2html-playground">
+  <header></header>
+  <main>
+    <!-- HEADER SECTION -->
+    <div class="playground-header">
+      <div class="header-content">
+        <h1>JSON2HTML Playground</h1>
+        <p>Experiment with JSON data and Mustache templates to see how they render as HTML.</p>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="button outline" id="examples-btn">
+          <span class="icon icon-code"></span> Examples
+        </button>
+        <button type="button" class="button outline" id="help-btn">
+          <span class="icon icon-question"></span> Syntax Help
+        </button>
+        <button type="button" class="button" id="share-btn">
+          <span class="icon icon-external"></span> Share
+        </button>
+      </div>
+    </div>
+
+    <!-- CONTROL BAR -->
+    <div class="control-bar">
+      <div class="editor-tabs" role="tablist">
+        <button type="button" class="tab active" role="tab" aria-selected="true" data-editor="json" id="tab-json">
+          JSON Data
+        </button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-editor="template" id="tab-template">
+          Template
+        </button>
+      </div>
+      <div class="control-options">
+        <label class="toggle-option">
+          <input type="checkbox" id="auto-render" checked>
+          <span class="checkbox"></span>
+          <span>Auto-render</span>
+        </label>
+        <button type="button" class="button small" id="render-btn">
+          ▶ Render
+        </button>
+      </div>
+    </div>
+
+    <!-- MAIN WORKSPACE -->
+    <div class="workspace">
+      <!-- EDITOR PANEL -->
+      <div class="editor-panel">
+        <!-- JSON Editor -->
+        <div class="editor-pane active" data-editor="json" role="tabpanel" aria-labelledby="tab-json">
+          <div class="editor-header">
+            <span class="editor-label">JSON Data</span>
+            <div class="editor-actions">
+              <button type="button" class="button small outline" id="format-json">Format</button>
+              <button type="button" class="button small outline" id="validate-json">Validate</button>
+            </div>
+          </div>
+          <div class="editor-wrapper">
+            <textarea 
+              id="json-input" 
+              class="code-editor" 
+              spellcheck="false" 
+              placeholder="Enter your JSON data here..."
+            >{
+  "title": "Welcome to JSON2HTML",
+  "description": "This playground helps you experiment with Mustache templates.",
+  "features": [
+    { "name": "Live Preview", "enabled": true },
+    { "name": "Syntax Highlighting", "enabled": true },
+    { "name": "Error Detection", "enabled": true }
+  ],
+  "author": {
+    "name": "AEM Developer",
+    "role": "Content Engineer"
+  }
+}</textarea>
+          </div>
+          <div class="editor-status" id="json-status">
+            <span class="status-icon status-ok">✓</span>
+            <span class="status-text">Valid JSON</span>
+          </div>
+        </div>
+
+        <!-- Template Editor -->
+        <div class="editor-pane" data-editor="template" role="tabpanel" aria-labelledby="tab-template" hidden>
+          <div class="editor-header">
+            <span class="editor-label">Mustache Template</span>
+            <div class="editor-actions">
+              <button type="button" class="button small outline" id="format-template">Format</button>
+            </div>
+          </div>
+          <div class="editor-wrapper">
+            <textarea 
+              id="template-input" 
+              class="code-editor" 
+              spellcheck="false" 
+              placeholder="Enter your Mustache template here..."
+            ><article class="content-card">
+  <h1>{{title}}</h1>
+  <p class="description">{{description}}</p>
+  
+  <section class="features">
+    <h2>Features</h2>
+    <ul>
+      {{#features}}
+      <li class="feature {{#enabled}}enabled{{/enabled}}">
+        <span class="feature-name">{{name}}</span>
+        {{#enabled}}<span class="badge">Active</span>{{/enabled}}
+      </li>
+      {{/features}}
+    </ul>
+  </section>
+  
+  <footer class="author-info">
+    <p>Created by <strong>{{author.name}}</strong></p>
+    <p class="role">{{author.role}}</p>
+  </footer>
+</article></textarea>
+          </div>
+          <div class="editor-status" id="template-status">
+            <span class="status-icon status-ok">✓</span>
+            <span class="status-text">Template ready</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- RESIZER -->
+      <div class="resizer" id="resizer" title="Drag to resize">
+        <div class="resizer-handle"></div>
+      </div>
+
+      <!-- PREVIEW PANEL -->
+      <div class="preview-panel">
+        <div class="preview-header">
+          <span class="preview-label">Preview</span>
+          <div class="preview-tabs" role="tablist">
+            <button type="button" class="preview-tab active" role="tab" data-view="rendered" aria-selected="true">
+              Rendered
+            </button>
+            <button type="button" class="preview-tab" role="tab" data-view="source" aria-selected="false">
+              Source
+            </button>
+          </div>
+          <div class="preview-actions">
+            <button type="button" class="button small outline" id="copy-html" title="Copy HTML">
+              <span class="icon icon-copy"></span>
+            </button>
+            <button type="button" class="button small outline" id="fullscreen-btn" title="Fullscreen">
+              ⛶
+            </button>
+          </div>
+        </div>
+        <div class="preview-content">
+          <!-- Rendered View -->
+          <div class="preview-view active" data-view="rendered">
+            <iframe 
+              id="preview-frame" 
+              sandbox="allow-scripts" 
+              title="HTML Preview"
+            ></iframe>
+          </div>
+          <!-- Source View -->
+          <div class="preview-view" data-view="source" hidden>
+            <pre id="source-output" class="source-code"><code class="language-html"></code></pre>
+          </div>
+        </div>
+        <div class="preview-status" id="preview-status">
+          <span class="status-text">Last rendered: just now</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- EXAMPLES MODAL -->
+  <dialog id="examples-modal" class="modal examples-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Example Templates</h2>
+        <button type="button" class="modal-close" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="examples-grid">
+          <button type="button" class="example-card" data-example="basic">
+            <h3>Basic Object</h3>
+            <p>Simple key-value pair rendering</p>
+          </button>
+          <button type="button" class="example-card" data-example="array">
+            <h3>Array Loop</h3>
+            <p>Iterate over arrays with {{#items}}</p>
+          </button>
+          <button type="button" class="example-card" data-example="conditional">
+            <h3>Conditionals</h3>
+            <p>Show/hide based on boolean values</p>
+          </button>
+          <button type="button" class="example-card" data-example="nested">
+            <h3>Nested Data</h3>
+            <p>Access nested object properties</p>
+          </button>
+          <button type="button" class="example-card" data-example="product">
+            <h3>Product Card</h3>
+            <p>E-commerce product example</p>
+          </button>
+          <button type="button" class="example-card" data-example="event">
+            <h3>Event Page</h3>
+            <p>Content fragment example</p>
+          </button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- SYNTAX HELP MODAL -->
+  <dialog id="help-modal" class="modal help-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Mustache Syntax Reference</h2>
+        <button type="button" class="modal-close" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="syntax-reference">
+          <div class="syntax-item">
+            <h3>Variables</h3>
+            <code>{{variable}}</code>
+            <p>Renders the value of <em>variable</em> (HTML escaped)</p>
+          </div>
+          <div class="syntax-item">
+            <h3>Unescaped HTML</h3>
+            <code>{{{rawHtml}}}</code>
+            <p>Renders raw HTML without escaping</p>
+          </div>
+          <div class="syntax-item">
+            <h3>Sections (Loops & Conditionals)</h3>
+            <code>{{#items}}...{{/items}}</code>
+            <p>Loops over arrays or shows content if truthy</p>
+          </div>
+          <div class="syntax-item">
+            <h3>Inverted Sections</h3>
+            <code>{{^items}}...{{/items}}</code>
+            <p>Shows content only if value is falsy or empty</p>
+          </div>
+          <div class="syntax-item">
+            <h3>Nested Properties</h3>
+            <code>{{author.name}}</code>
+            <p>Access nested object properties with dot notation</p>
+          </div>
+          <div class="syntax-item">
+            <h3>Comments</h3>
+            <code>{{! This is a comment }}</code>
+            <p>Comments are not rendered in output</p>
+          </div>
+        </div>
+        <div class="help-links">
+          <p>
+            <a href="https://mustache.github.io/mustache.5.html" target="_blank" rel="noopener noreferrer">
+              Full Mustache Documentation ↗
+            </a>
+          </p>
+          <p>
+            <a href="https://www.aem.live/developer/json2html" target="_blank" rel="noopener noreferrer">
+              AEM JSON2HTML Documentation ↗
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <footer></footer>
+</body>
+
+</html>
+
