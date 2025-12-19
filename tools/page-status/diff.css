@@ -207,6 +207,8 @@
   justify-content: space-between;
   align-items: center;
   padding: var(--spacing-s) var(--spacing-m);
+  gap: var(--spacing-m);
+  flex-wrap: wrap;
   
   /* background: var(--gray-100); */
   border-bottom: var(--border-s) solid var(--gray-300);
@@ -217,6 +219,8 @@
   font-size: var(--body-size-m);
   font-weight: var(--weight-bold);
   word-break: break-all;
+  flex: 1;
+  min-width: 200px;
 }
 
 .page-diff .diff-panel-links {
@@ -368,5 +372,21 @@
   padding: var(--spacing-xl);
   color: var(--red-800);
   gap: var(--spacing-s);
+}
+
+/* JSON file notice */
+.page-diff .diff-json-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  text-align: center;
+  gap: var(--spacing-m);
+}
+
+.page-diff .diff-json-notice p {
+  margin: 0;
+  color: var(--gray-600);
 }
 

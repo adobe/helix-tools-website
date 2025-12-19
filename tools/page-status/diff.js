@@ -115,18 +115,13 @@ function filterPendingPages(resources) {
   });
 }
 
-// CORS proxy for fetching cross-origin content
-const CORS_PROXY = 'https://www.fcors.org/';
-const CORS_PROXY_KEY = 'gJwzLRfMLz8arkEZ';
-
 /**
- * Fetches HTML content from a URL via CORS proxy.
+ * Fetches content from a URL.
  * @param {string} url - URL to fetch
- * @returns {Promise<string>} HTML content
+ * @returns {Promise<string>} Content
  */
-async function fetchHtml(url) {
-  const proxyUrl = `${CORS_PROXY}?url=${encodeURIComponent(url)}&key=${CORS_PROXY_KEY}`;
-  const res = await fetch(proxyUrl);
+async function fetchContent(url) {
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
   return res.text();
 }
@@ -229,7 +224,7 @@ function markPageAsNoDiff(pagePath) {
  */
 function createDiffPanelHtml(path, previewPageUrl, livePageUrl, bodyContent) {
   return `
-    <div class="diff-panel">
+    <div class="diff-panel" data-path="${escapeHtml(path)}">
       <div class="diff-panel-header">
         <h3>${escapeHtml(path)}</h3>
         <div class="diff-panel-links">
@@ -245,6 +240,29 @@ function createDiffPanelHtml(path, previewPageUrl, livePageUrl, bodyContent) {
 }
 
 /**
+ * Computes a diff between two content strings.
+ * @param {string} liveContent - Live content
+ * @param {string} previewContent - Preview content
+ * @returns {Object} Object with bodyHtml and noDiff flag
+ */
+function computeDiff(liveContent, previewContent) {
+  // Compute diff
+  const diff = diffLines(liveContent, previewContent);
+
+  // Check if there are actual differences
+  const hasDifferences = diff.some((part) => part.added || part.removed);
+
+  let bodyHtml;
+  if (!hasDifferences) {
+    bodyHtml = '<div class="diff-identical">No differences found in content.</div>';
+  } else {
+    bodyHtml = renderDiff(diff);
+  }
+
+  return { bodyHtml, noDiff: !hasDifferences };
+}
+
+/**
  * Loads and displays the diff for a specific page.
  * Uses cache to avoid re-fetching previously viewed pages.
  * @param {Object} page - Page resource object
@@ -256,37 +274,53 @@ async function loadPageDiff(page) {
   const previewPageUrl = `https://${previewHost}${path}`;
   const livePageUrl = `https://${liveHost}${path}`;
 
-  // Check cache first
+  // Check cache first - if we have raw content cached, just re-render
   if (diffCache.has(path)) {
     const cached = diffCache.get(path);
-    DIFF_CONTENT.innerHTML = createDiffPanelHtml(
-      path,
-      previewPageUrl,
-      livePageUrl,
-      cached.bodyHtml,
-    );
-    // Re-apply "no diff" marking if applicable
-    if (cached.noDiff) {
-      markPageAsNoDiff(path);
+
+    // For JSON or error entries, use cached HTML directly
+    if (cached.isJson || cached.error) {
+      DIFF_CONTENT.innerHTML = createDiffPanelHtml(
+        path,
+        previewPageUrl,
+        livePageUrl,
+        cached.bodyHtml,
+      );
+      return;
     }
-    return;
+
+    // For markdown content, compute and render the diff
+    if (cached.previewContent && cached.liveContent) {
+      const { bodyHtml } = computeDiff(cached.liveContent, cached.previewContent);
+      DIFF_CONTENT.innerHTML = createDiffPanelHtml(path, previewPageUrl, livePageUrl, bodyHtml);
+      return;
+    }
   }
 
   // Check if this is a JSON resource
   const isJson = path.endsWith('.json');
 
-  // Build URLs
-  // For JSON: fetch the JSON directly
-  // For HTML: use .plain.html to get content with relative URLs
-  // (this avoids false positives from .aem.page vs .aem.live URL differences)
-  let fetchPath;
+  // For JSON files, show a link to view on preview instead of diffing
   if (isJson) {
-    fetchPath = path;
-  } else {
-    fetchPath = path.endsWith('/') ? `${path}index.plain.html` : `${path}.plain.html`;
+    const jsonBodyHtml = `
+      <div class="diff-json-notice">
+        <p>JSON files can be compared with the live version by viewing them on preview with your sidekick turned on.</p>
+        <p>
+          <a href="${previewPageUrl}?diff=only" target="_blank" class="button outline">
+            View JSON on Preview
+          </a>
+        </p>
+      </div>
+    `;
+    DIFF_CONTENT.innerHTML = createDiffPanelHtml(path, previewPageUrl, livePageUrl, jsonBodyHtml);
+    diffCache.set(path, { bodyHtml: jsonBodyHtml, noDiff: false, isJson: true });
+    return;
   }
-  const previewUrl = `https://${previewHost}${fetchPath}`;
-  const liveUrl = `https://${liveHost}${fetchPath}`;
+
+  // Build admin API URLs to fetch markdown content
+  const fetchPath = path.endsWith('/') ? `${path}index.md` : `${path}.md`;
+  const previewUrl = `https://admin.hlx.page/preview/${currentOrg}/${currentSite}/main${fetchPath}`;
+  const liveUrl = `https://admin.hlx.page/live/${currentOrg}/${currentSite}/main${fetchPath}`;
 
   // Show loading state
   DIFF_CONTENT.innerHTML = createDiffPanelHtml(
@@ -300,46 +334,30 @@ async function loadPageDiff(page) {
   );
 
   try {
-    // Fetch both versions
-    let [previewContent, liveContent] = await Promise.all([
-      fetchHtml(previewUrl),
-      fetchHtml(liveUrl),
+    // Fetch both versions from admin API
+    const [previewContent, liveContent] = await Promise.all([
+      fetchContent(previewUrl),
+      fetchContent(liveUrl),
     ]);
 
-    // For JSON, parse and re-stringify with formatting for better diff readability
-    if (isJson) {
-      try {
-        const previewJson = JSON.parse(previewContent);
-        const liveJson = JSON.parse(liveContent);
-        previewContent = JSON.stringify(previewJson, null, 2);
-        liveContent = JSON.stringify(liveJson, null, 2);
-      } catch (jsonError) {
-        // If JSON parsing fails, just compare as plain text
-        // eslint-disable-next-line no-console
-        console.warn('JSON parsing failed, comparing as plain text:', jsonError);
-      }
-    }
-
     // Compute diff
-    const diff = diffLines(liveContent, previewContent);
+    const { bodyHtml, noDiff } = computeDiff(liveContent, previewContent);
 
-    // Check if there are actual differences
-    const hasDifferences = diff.some((part) => part.added || part.removed);
+    // Cache the content and result
+    diffCache.set(path, {
+      previewContent,
+      liveContent,
+      bodyHtml,
+      noDiff,
+    });
 
-    let bodyHtml;
-    if (!hasDifferences) {
-      bodyHtml = '<div class="diff-identical">No differences found in content.</div>';
+    // Render the diff
+    DIFF_CONTENT.innerHTML = createDiffPanelHtml(path, previewPageUrl, livePageUrl, bodyHtml);
+
+    // Mark as no-diff if applicable
+    if (noDiff) {
       markPageAsNoDiff(path);
-    } else {
-      bodyHtml = renderDiff(diff);
     }
-
-    // Cache the result
-    diffCache.set(path, { bodyHtml, noDiff: !hasDifferences });
-
-    // Update the panel body
-    const panelBody = DIFF_CONTENT.querySelector('.diff-panel-body');
-    panelBody.innerHTML = bodyHtml;
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Error loading diff:', error);
