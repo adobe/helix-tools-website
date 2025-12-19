@@ -43,7 +43,7 @@
 }
 
 /* Sanitization Warning Dialog */
-dialog.sanitization-warning {
+.bulk-ops dialog.sanitization-warning {
   max-width: 800px;
   max-height: 80vh;
   padding: var(--spacing-l);
@@ -52,22 +52,22 @@ dialog.sanitization-warning {
   box-shadow: 0 4px 20px rgb(0 0 0 / 15%);
 }
 
-dialog.sanitization-warning::backdrop {
+.bulk-ops dialog.sanitization-warning::backdrop {
   background: rgb(0 0 0 / 50%);
 }
 
-dialog.sanitization-warning h2 {
+.bulk-ops dialog.sanitization-warning h2 {
   margin-top: 0;
   color: var(--red-900);
 }
 
-dialog.sanitization-warning h3 {
+.bulk-ops dialog.sanitization-warning h3 {
   margin-top: var(--spacing-m);
   margin-bottom: var(--spacing-s);
   font-size: var(--body-size-m);
 }
 
-dialog.sanitization-warning .url-list {
+.bulk-ops dialog.sanitization-warning .url-list {
   max-height: 300px;
   overflow-y: auto;
   margin: var(--spacing-s) 0;
@@ -75,12 +75,12 @@ dialog.sanitization-warning .url-list {
   list-style: none;
 }
 
-dialog.sanitization-warning .url-list li {
+.bulk-ops dialog.sanitization-warning .url-list li {
   margin: var(--spacing-xs) 0;
   font-size: var(--body-size-s);
 }
 
-dialog.sanitization-warning .url-list code {
+.bulk-ops dialog.sanitization-warning .url-list code {
   background: var(--gray-100);
   padding: 2px 6px;
   border-radius: 3px;
@@ -89,42 +89,42 @@ dialog.sanitization-warning .url-list code {
   word-break: break-all;
 }
 
-dialog.sanitization-warning .url-list .reason {
+.bulk-ops dialog.sanitization-warning .url-list .reason {
   color: var(--gray-700);
   font-size: var(--body-size-xs);
   font-style: italic;
 }
 
-dialog.sanitization-warning .url-list.rejected li {
+.bulk-ops dialog.sanitization-warning .url-list.rejected li {
   color: var(--red-800);
 }
 
-dialog.sanitization-warning .url-list.modified li {
+.bulk-ops dialog.sanitization-warning .url-list.modified li {
   color: var(--yellow-900);
 }
 
-dialog.sanitization-warning .url-list.deduplicated li {
+.bulk-ops dialog.sanitization-warning .url-list.deduplicated li {
   color: var(--blue-800);
 }
 
-dialog.sanitization-warning .url-change {
+.bulk-ops dialog.sanitization-warning .url-change {
   background: var(--gray-50);
   padding: var(--spacing-xs);
   border-radius: 4px;
   margin: var(--spacing-xs) 0;
 }
 
-dialog.sanitization-warning .url-change > div {
+.bulk-ops dialog.sanitization-warning .url-change > div {
   margin: 4px 0;
 }
 
-dialog.sanitization-warning .change-reason {
+.bulk-ops dialog.sanitization-warning .change-reason {
   font-size: var(--body-size-xs);
   color: var(--gray-700);
   font-style: italic;
 }
 
-dialog.sanitization-warning .dialog-actions {
+.bulk-ops dialog.sanitization-warning .dialog-actions {
   display: flex;
   gap: var(--spacing-s);
   justify-content: flex-end;
@@ -133,7 +133,7 @@ dialog.sanitization-warning .dialog-actions {
   border-top: 1px solid var(--gray-200);
 }
 
-dialog.sanitization-warning .button.secondary {
+.bulk-ops dialog.sanitization-warning .button.secondary {
   background: var(--gray-200);
   color: var(--gray-900);
 }

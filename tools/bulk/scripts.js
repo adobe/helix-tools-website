@@ -44,46 +44,110 @@ const showSanitizationWarning = (changes) => {
     const modal = document.createElement('dialog');
     modal.className = 'sanitization-warning';
 
-    let html = '<h2>URL Sanitization Warning</h2>';
+    const title = document.createElement('h2');
+    title.textContent = 'URL Sanitization Warning';
+    modal.appendChild(title);
 
     if (rejected.length > 0) {
-      html += `<h3>⚠️ ${rejected.length} URL(s) will be rejected:</h3>`;
-      html += '<ul class="url-list rejected">';
+      const h3 = document.createElement('h3');
+      h3.textContent = `⚠️ ${rejected.length} URL(s) will be rejected:`;
+      modal.appendChild(h3);
+
+      const ul = document.createElement('ul');
+      ul.className = 'url-list rejected';
       rejected.forEach(({ original, reason }) => {
-        html += `<li><code>${original}</code> <span class="reason">(${reason})</span></li>`;
+        const li = document.createElement('li');
+        const code = document.createElement('code');
+        code.textContent = original;
+        li.appendChild(code);
+
+        const span = document.createElement('span');
+        span.className = 'reason';
+        span.textContent = ` (${reason})`;
+        li.appendChild(span);
+
+        ul.appendChild(li);
       });
-      html += '</ul>';
+      modal.appendChild(ul);
     }
 
     if (modified.length > 0) {
-      html += `<h3>🔧 ${modified.length} URL(s) will be modified:</h3>`;
-      html += '<ul class="url-list modified">';
+      const h3 = document.createElement('h3');
+      h3.textContent = `🔧 ${modified.length} URL(s) will be modified:`;
+      modal.appendChild(h3);
+
+      const ul = document.createElement('ul');
+      ul.className = 'url-list modified';
       modified.forEach(({ original, sanitized, changes: urlChanges }) => {
-        html += '<li><div class="url-change">';
-        html += `<div><strong>Original:</strong> <code>${original}</code></div>`;
-        html += `<div><strong>Sanitized:</strong> <code>${sanitized}</code></div>`;
-        html += `<div class="change-reason">${urlChanges.join(', ')}</div>`;
-        html += '</div></li>';
+        const li = document.createElement('li');
+        const changeDiv = document.createElement('div');
+        changeDiv.className = 'url-change';
+
+        const originalDiv = document.createElement('div');
+        const originalStrong = document.createElement('strong');
+        originalStrong.textContent = 'Original:';
+        originalDiv.appendChild(originalStrong);
+        originalDiv.appendChild(document.createTextNode(' '));
+        const originalCode = document.createElement('code');
+        originalCode.textContent = original;
+        originalDiv.appendChild(originalCode);
+        changeDiv.appendChild(originalDiv);
+
+        const sanitizedDiv = document.createElement('div');
+        const sanitizedStrong = document.createElement('strong');
+        sanitizedStrong.textContent = 'Sanitized:';
+        sanitizedDiv.appendChild(sanitizedStrong);
+        sanitizedDiv.appendChild(document.createTextNode(' '));
+        const sanitizedCode = document.createElement('code');
+        sanitizedCode.textContent = sanitized;
+        sanitizedDiv.appendChild(sanitizedCode);
+        changeDiv.appendChild(sanitizedDiv);
+
+        const reasonDiv = document.createElement('div');
+        reasonDiv.className = 'change-reason';
+        reasonDiv.textContent = urlChanges.join(', ');
+        changeDiv.appendChild(reasonDiv);
+
+        li.appendChild(changeDiv);
+        ul.appendChild(li);
       });
-      html += '</ul>';
+      modal.appendChild(ul);
     }
 
     if (deduplicated.length > 0) {
-      html += `<h3>🔗 ${deduplicated.length} duplicate URL(s) were detected:</h3>`;
-      html += '<ul class="url-list deduplicated">';
+      const h3 = document.createElement('h3');
+      h3.textContent = `🔗 ${deduplicated.length} duplicate URL(s) were detected:`;
+      modal.appendChild(h3);
+
+      const ul = document.createElement('ul');
+      ul.className = 'url-list deduplicated';
       deduplicated.forEach((url) => {
-        html += `<li><code>${url}</code></li>`;
+        const li = document.createElement('li');
+        const code = document.createElement('code');
+        code.textContent = url;
+        li.appendChild(code);
+        ul.appendChild(li);
       });
-      html += '</ul>';
+      modal.appendChild(ul);
     }
 
-    html += '<div class="dialog-actions">';
-    html += '<button class="button primary" id="confirm-sanitize">Proceed with sanitized URLs</button>';
-    html += '<button class="button secondary" id="cancel-sanitize">Cancel</button>';
-    html += '</div>';
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'dialog-actions';
 
-    modal.innerHTML = html;
-    document.body.appendChild(modal);
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'button primary';
+    confirmBtn.id = 'confirm-sanitize';
+    confirmBtn.textContent = 'Proceed with sanitized URLs';
+    actionsDiv.appendChild(confirmBtn);
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'button secondary';
+    cancelBtn.id = 'cancel-sanitize';
+    cancelBtn.textContent = 'Cancel';
+    actionsDiv.appendChild(cancelBtn);
+
+    modal.appendChild(actionsDiv);
+    document.querySelector('.bulk-ops').appendChild(modal);
 
     modal.querySelector('#confirm-sanitize').addEventListener('click', () => {
       modal.close();
