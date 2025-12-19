@@ -23,11 +23,11 @@
   <main>
     <!-- HEADER SECTION -->
     <div class="playground-header">
-      <div class="header-content">
+      <span class="header-content">
         <h1>JSON2HTML Playground</h1>
         <p>Experiment with JSON data and Mustache templates to see how they render as HTML.</p>
-      </div>
-      <div class="header-actions">
+      </span>
+      <span class="header-actions">
         <button type="button" class="button outline" id="examples-btn">
           <span class="icon icon-code"></span> Examples
         </button>
@@ -37,12 +37,12 @@
         <button type="button" class="button" id="share-btn">
           <span class="icon icon-external"></span> Share
         </button>
-      </div>
+      </span>
     </div>
 
     <!-- CONTROL BAR -->
     <div class="control-bar">
-      <div class="control-options">
+      <span class="control-options">
         <label class="toggle-option">
           <input type="checkbox" id="auto-render" checked>
           <span class="checkbox"></span>
@@ -54,13 +54,13 @@
         <button type="button" class="button small outline" id="fullscreen-btn" title="Toggle Fullscreen">
           ⛶
         </button>
-      </div>
+      </span>
     </div>
 
     <!-- MAIN WORKSPACE - Three Panel Layout -->
     <div class="workspace">
       <!-- TOP ROW: Editors Side by Side -->
-      <div class="editors-row">
+      <section class="editors-row">
         <!-- JSON Editor -->
         <div class="editor-panel json-panel">
           <div class="editor-header">
@@ -97,9 +97,9 @@
         </div>
 
         <!-- Vertical Resizer -->
-        <div class="resizer resizer-vertical" id="resizer-vertical" title="Drag to resize">
-          <div class="resizer-handle"></div>
-        </div>
+        <span class="resizer resizer-vertical" id="resizer-vertical" title="Drag to resize">
+          <span class="resizer-handle"></span>
+        </span>
 
         <!-- Template Editor -->
         <div class="editor-panel template-panel">
@@ -142,15 +142,15 @@
             <span class="status-text">Template ready</span>
           </div>
         </div>
-      </div>
+      </section>
 
       <!-- Horizontal Resizer -->
-      <div class="resizer resizer-horizontal" id="resizer-horizontal" title="Drag to resize">
-        <div class="resizer-handle"></div>
-      </div>
+      <span class="resizer resizer-horizontal" id="resizer-horizontal" title="Drag to resize">
+        <span class="resizer-handle"></span>
+      </span>
 
       <!-- BOTTOM ROW: Preview Panel -->
-      <div class="preview-panel">
+      <section class="preview-panel">
         <div class="preview-header">
           <span class="preview-label">HTML Preview</span>
           <div class="preview-tabs" role="tablist">
@@ -184,7 +184,7 @@
         <div class="preview-status" id="preview-status">
           <span class="status-text">Last rendered: just now</span>
         </div>
-      </div>
+      </section>
     </div>
   </main>
 

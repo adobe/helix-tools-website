@@ -25,11 +25,16 @@
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  gap: var(--spacing-100);
+  gap: var(--spacing-200);
   padding: var(--spacing-100) 0;
   border-bottom: var(--border-s) solid var(--gray-200);
   flex-shrink: 0;
   margin: 0 !important;
+}
+
+.playground-header .header-content {
+  display: flex;
+  flex-direction: column;
 }
 
 .playground-header .header-content h1 {
@@ -51,6 +56,17 @@
   display: flex;
   gap: var(--spacing-100);
   flex-wrap: wrap;
+  align-items: center;
+}
+
+/* AEM wraps content in default-content-wrapper - make it flex row */
+.playground-header > .default-content-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-200);
+  width: 100%;
 }
 
 /* Reset margins on AEM wrapper divs inside header */
@@ -72,6 +88,16 @@
   padding: var(--spacing-50) 0;
   background: transparent;
   flex-shrink: 0;
+  margin: 0 !important;
+}
+
+/* AEM wraps content in default-content-wrapper */
+.control-bar > .default-content-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--spacing-200);
+  width: 100%;
   margin: 0 !important;
 }
 
@@ -128,6 +154,31 @@
   margin: 0;
 }
 
+/* AEM wraps non-div elements in default-content-wrapper - make it flex */
+.workspace > .default-content-wrapper {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  width: 100%;
+  min-height: 0;
+  margin: 0 !important;
+}
+
+/* Ensure section elements in workspace expand properly */
+.workspace section {
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace section.editors-row {
+  flex-direction: row;
+}
+
+.workspace section.preview-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 /* Resizer wrappers should not flex-grow and no margins */
 .resizer-wrapper,
 .resizer-vertical-wrapper,
@@ -139,7 +190,7 @@
 /* Top row: JSON and Template side by side */
 .editors-row {
   display: flex;
-  flex: 1 1 70%; /* Editors take 70% of vertical space initially */
+  flex: 1 1 70%;
   width: 100%;
   min-height: 200px;
   overflow: hidden;
@@ -280,6 +331,7 @@
   width: 4px;
   min-width: 4px;
   max-width: 4px;
+  height: 100%;
   cursor: col-resize;
   background: var(--gray-200);
 }
@@ -287,6 +339,7 @@
 /* Horizontal resizer (between editors and preview) */
 .resizer-horizontal {
   flex: 0 0 4px !important;
+  width: 100%;
   height: 4px;
   min-height: 4px;
   max-height: 4px;
@@ -299,6 +352,7 @@
 }
 
 .resizer-handle {
+  display: block;
   background: var(--gray-400);
   border-radius: var(--rounding-s);
 }
@@ -322,7 +376,7 @@
    ======================================== */
 
 .preview-panel {
-  flex: 1 1 30%; /* Preview takes 30% of vertical space initially */
+  flex: 1 1 30%;
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -334,7 +388,7 @@
 /* AEM wraps preview-panel in a wrapper div */
 .preview-panel-wrapper {
   display: flex;
-  flex: 1 1 40%;
+  flex: 1 1 30%;
   width: 100%;
   min-height: 150px;
   margin: 0 !important;
@@ -351,6 +405,7 @@
 }
 
 .preview-header {
+  flex: 0 0 auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -405,16 +460,18 @@
 
 .preview-content {
   flex: 1 1 auto;
-  position: relative;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   background: var(--color-white);
-  min-height: 200px;
+  min-height: 0;
 }
 
 .preview-view {
-  position: absolute;
-  inset: 0;
   display: none;
+  flex: 1 1 auto;
+  overflow: auto;
+  min-height: 0;
 }
 
 .preview-view.active {
@@ -436,7 +493,8 @@
 
 #preview-frame {
   width: 100%;
-  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
   border: none;
   background: var(--color-white);
 }
@@ -455,16 +513,8 @@
   overflow-wrap: break-word;
 }
 
-/* Reset global code styles for source view */
-.source-code code {
-  background: transparent;
-  padding: 0;
-  border-radius: 0;
-  color: inherit;
-  font-size: inherit;
-}
-
 .preview-status {
+  flex: 0 0 auto;
   padding: var(--spacing-100) var(--spacing-300);
   background: var(--gray-50);
   border-top: var(--border-s) solid var(--gray-200);
@@ -652,24 +702,6 @@
 .json2html-playground .button.small {
   padding: var(--spacing-75) var(--spacing-200);
   font-size: var(--detail-size-l);
-}
-
-/* ========================================
-   FULLSCREEN STYLES
-   ======================================== */
-
-.json2html-playground main:fullscreen {
-  max-width: 100%;
-  width: 100%;
-  height: 100vh;
-  margin: 0;
-  padding: var(--spacing-200);
-  border-radius: 0;
-  background: var(--color-background);
-}
-
-.json2html-playground main:fullscreen .workspace {
-  flex: 1;
 }
 
 /* ========================================
