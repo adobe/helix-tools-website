@@ -27,36 +27,34 @@
       </p>
     </div>
 
-    <div>
-      <div class="diff-info" aria-hidden="true">
-        <p class="diff-site"></p>
-        <p class="diff-count"></p>
-      </div>
-    </div>
+    <section class="diff-info" aria-hidden="true">
+      <p class="diff-site"></p>
+      <p class="diff-count"></p>
+    </section>
 
-    <div class="diff-container">
-      <div class="diff-loading" aria-hidden="true">
+    <section class="diff-container">
+      <article class="diff-loading" aria-hidden="true">
         <i class="symbol symbol-loading"></i>
         <p>Loading page status...</p>
-      </div>
+      </article>
 
-      <div class="diff-no-results" aria-hidden="false">
+      <article class="diff-no-results" aria-hidden="false">
         <span class="icon icon-search"></span>
         <div>
           <p><strong>No pending changes</strong></p>
           <p>All pages are in sync between preview and live.</p>
         </div>
-      </div>
+      </article>
 
-      <div class="diff-error" aria-hidden="true">
+      <article class="diff-error" aria-hidden="true">
         <span class="icon icon-notice"></span>
         <div>
           <p><strong>Error</strong></p>
           <p>Unable to load page diff data.</p>
         </div>
-      </div>
+      </article>
 
-      <div class="diff-results" aria-hidden="true">
+      <article class="diff-results" aria-hidden="true">
         <nav class="diff-nav">
           <div class="diff-filters">
             <label class="diff-filter-checkbox">
@@ -67,8 +65,8 @@
           <ul class="diff-page-list"></ul>
         </nav>
         <div class="diff-content"></div>
-      </div>
-    </div>
+      </article>
+    </section>
   </main>
   <footer></footer>
 </body>

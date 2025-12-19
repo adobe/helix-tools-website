@@ -1,5 +1,18 @@
 /* Diff Mode Styles */
 
+/* Make section elements behave like .section divs */
+.page-diff main > section {
+  margin: var(--body-size-s);
+}
+
+.page-diff main > section:first-of-type {
+  margin-top: 0;
+}
+
+.page-diff main > section:last-of-type {
+  margin-bottom: 0;
+}
+
 /* Info section */
 .page-diff .diff-info {
   /* background-color: var(--gray-100); */
