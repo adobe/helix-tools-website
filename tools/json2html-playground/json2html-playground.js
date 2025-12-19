@@ -670,14 +670,14 @@ function setupButtons() {
     showToast('Share feature coming soon!');
   });
 
-  // Fullscreen button
+  // Fullscreen button - fullscreen the entire tool
   const fullscreenBtn = document.getElementById('fullscreen-btn');
   fullscreenBtn?.addEventListener('click', () => {
-    const previewPanel = document.querySelector('.preview-panel');
+    const mainElement = document.querySelector('main');
     if (document.fullscreenElement) {
       document.exitFullscreen();
     } else {
-      previewPanel?.requestFullscreen();
+      mainElement?.requestFullscreen();
     }
   });
 

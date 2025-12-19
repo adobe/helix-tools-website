@@ -139,7 +139,7 @@
 /* Top row: JSON and Template side by side */
 .editors-row {
   display: flex;
-  flex: 1 1 60%;
+  flex: 1 1 70%; /* Editors take 70% of vertical space initially */
   width: 100%;
   min-height: 200px;
   overflow: hidden;
@@ -322,7 +322,7 @@
    ======================================== */
 
 .preview-panel {
-  flex: 1 1 40%;
+  flex: 1 1 30%; /* Preview takes 30% of vertical space initially */
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -453,6 +453,15 @@
   color: var(--gray-100);
   white-space: pre-wrap;
   overflow-wrap: break-word;
+}
+
+/* Reset global code styles for source view */
+.source-code code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  color: inherit;
+  font-size: inherit;
 }
 
 .preview-status {
@@ -643,6 +652,24 @@
 .json2html-playground .button.small {
   padding: var(--spacing-75) var(--spacing-200);
   font-size: var(--detail-size-l);
+}
+
+/* ========================================
+   FULLSCREEN STYLES
+   ======================================== */
+
+.json2html-playground main:fullscreen {
+  max-width: 100%;
+  width: 100%;
+  height: 100vh;
+  margin: 0;
+  padding: var(--spacing-200);
+  border-radius: 0;
+  background: var(--color-background);
+}
+
+.json2html-playground main:fullscreen .workspace {
+  flex: 1;
 }
 
 /* ========================================
