@@ -1,6 +1,17 @@
-import { diffLines } from '../version-admin/diff.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
+
+// Lazy-load Dark Alley converter module
+const CONVERTERS_URL = 'https://main--da-nx--adobe.aem.live/nx/utils/converters.js';
+let mdToDocDom;
+
+async function loadConverter() {
+  if (!mdToDocDom) {
+    // eslint-disable-next-line import/no-unresolved
+    const converters = await import(CONVERTERS_URL);
+    mdToDocDom = converters.mdToDocDom;
+  }
+}
 
 // DOM elements
 const DIFF_INFO = document.querySelector('.diff-info');
@@ -140,62 +151,6 @@ function escapeHtml(str) {
 }
 
 /**
- * Renders a GitHub-style diff view.
- * @param {Array} diff - Diff result from diffLines
- * @returns {string} HTML string for the diff view
- */
-function renderDiff(diff) {
-  let oldLineNum = 1;
-  let newLineNum = 1;
-  let html = '<div class="diff-view">';
-
-  // Count additions and removals
-  let additions = 0;
-  let removals = 0;
-
-  diff.forEach((part) => {
-    const lines = part.value.split('\n');
-    // Remove last empty element if present (from trailing newline)
-    if (lines[lines.length - 1] === '') lines.pop();
-
-    lines.forEach((line) => {
-      if (part.added) {
-        additions += 1;
-        html += `<div class="diff-line diff-add">
-          <span class="diff-line-number">+${newLineNum}</span>
-          <span class="diff-line-content">+${escapeHtml(line)}</span>
-        </div>`;
-        newLineNum += 1;
-      } else if (part.removed) {
-        removals += 1;
-        html += `<div class="diff-line diff-remove">
-          <span class="diff-line-number">-${oldLineNum}</span>
-          <span class="diff-line-content">-${escapeHtml(line)}</span>
-        </div>`;
-        oldLineNum += 1;
-      } else {
-        html += `<div class="diff-line diff-context">
-          <span class="diff-line-number">${oldLineNum}</span>
-          <span class="diff-line-content"> ${escapeHtml(line)}</span>
-        </div>`;
-        oldLineNum += 1;
-        newLineNum += 1;
-      }
-    });
-  });
-
-  html += '</div>';
-
-  // Prepend stats
-  const stats = `<div class="diff-stats">
-    <span class="diff-stats-added">+${additions} additions</span>
-    <span class="diff-stats-removed">-${removals} deletions</span>
-  </div>`;
-
-  return stats + html;
-}
-
-/**
  * Marks a page as having no differences in the nav list.
  * @param {string} pagePath - The page path to mark
  */
@@ -240,26 +195,150 @@ function createDiffPanelHtml(path, previewPageUrl, livePageUrl, bodyContent) {
 }
 
 /**
- * Computes a diff between two content strings.
- * @param {string} liveContent - Live content
- * @param {string} previewContent - Preview content
- * @returns {Object} Object with bodyHtml and noDiff flag
+ * Creates a signature for an element to use for comparison.
+ * Uses a normalized version of the content for fuzzy matching.
+ * @param {Element} el - DOM element
+ * @returns {string} Normalized signature
  */
-function computeDiff(liveContent, previewContent) {
-  // Compute diff
-  const diff = diffLines(liveContent, previewContent);
+function getElementSignature(el) {
+  // Normalize whitespace and get text content for comparison
+  return el.outerHTML.replace(/\s+/g, ' ').trim();
+}
 
-  // Check if there are actual differences
-  const hasDifferences = diff.some((part) => part.added || part.removed);
+/**
+ * Annotates DOM elements with diff classes (added/removed).
+ * Compares elements at the section level and marks differences.
+ * @param {Document} previewDom - Preview DOM
+ * @param {Document} liveDom - Live DOM
+ */
+function annotateChanges(previewDom, liveDom) {
+  const previewBody = previewDom.querySelector('body');
+  const liveBody = liveDom.querySelector('body');
 
-  let bodyHtml;
-  if (!hasDifferences) {
-    bodyHtml = '<div class="diff-identical">No differences found in content.</div>';
-  } else {
-    bodyHtml = renderDiff(diff);
+  const previewElements = [...previewBody.children];
+  const liveElements = [...liveBody.children];
+
+  // Create signature maps for comparison
+  const liveSignatures = new Map();
+  liveElements.forEach((el) => {
+    const sig = getElementSignature(el);
+    liveSignatures.set(sig, el);
+  });
+
+  const previewSignatures = new Map();
+  previewElements.forEach((el) => {
+    const sig = getElementSignature(el);
+    previewSignatures.set(sig, el);
+  });
+
+  // Mark preview elements: added if not in live
+  previewElements.forEach((el) => {
+    const sig = getElementSignature(el);
+    if (!liveSignatures.has(sig)) {
+      el.classList.add('diff-added');
+    }
+  });
+
+  // Mark live elements: removed if not in preview
+  liveElements.forEach((el) => {
+    const sig = getElementSignature(el);
+    if (!previewSignatures.has(sig)) {
+      el.classList.add('diff-removed');
+    }
+  });
+}
+
+/**
+ * Computes a side-by-side DOM comparison between two markdown content strings.
+ * Shows both rendered versions side by side with additions/deletions highlighted.
+ * @param {string} liveContent - Live markdown content
+ * @param {string} previewContent - Preview markdown content
+ * @returns {Promise<Object>} Object with bodyHtml and noDiff flag
+ */
+async function computeDomDiff(liveContent, previewContent) {
+  await loadConverter();
+
+  // Convert markdown to DOM
+  const liveDom = mdToDocDom(liveContent);
+  const previewDom = mdToDocDom(previewContent);
+
+  // Check if the bodies are identical
+  const liveBodyHtml = liveDom.querySelector('body').innerHTML;
+  const previewBodyHtml = previewDom.querySelector('body').innerHTML;
+
+  if (liveBodyHtml === previewBodyHtml) {
+    return {
+      bodyHtml: '<div class="diff-identical">No differences found in content.</div>',
+      noDiff: true,
+    };
   }
 
-  return { bodyHtml, noDiff: !hasDifferences };
+  // Annotate changes in both DOMs
+  annotateChanges(previewDom, liveDom);
+
+  // Get the annotated HTML
+  const annotatedPreviewHtml = previewDom.querySelector('body').innerHTML;
+  const annotatedLiveHtml = liveDom.querySelector('body').innerHTML;
+
+  // Create a side-by-side comparison view (preview on left, live on right)
+  const bodyHtml = `
+    <div class="doc-diff-compare">
+      <div class="doc-diff-side doc-diff-preview">
+        <div class="doc-diff-side-header">
+          <span class="doc-diff-side-label">Preview Version</span>
+        </div>
+        <div class="doc-preview-content">
+          ${annotatedPreviewHtml}
+        </div>
+      </div>
+      <div class="doc-diff-side doc-diff-live">
+        <div class="doc-diff-side-header">
+          <span class="doc-diff-side-label">Live Version</span>
+        </div>
+        <div class="doc-preview-content">
+          ${annotatedLiveHtml}
+        </div>
+      </div>
+    </div>
+  `;
+
+  return { bodyHtml, noDiff: false };
+}
+
+/**
+ * Renders the diff view for a page.
+ * @param {Object} page - Page resource object
+ * @param {Object} cached - Cached content data
+ */
+async function renderDiffView(page, cached) {
+  const { path } = page;
+  const previewPageUrl = `https://${previewHost}${path}`;
+  const livePageUrl = `https://${liveHost}${path}`;
+
+  // Handle JSON files - always show the notice
+  if (cached?.isJson) {
+    const html = createDiffPanelHtml(path, previewPageUrl, livePageUrl, cached.bodyHtml);
+    DIFF_CONTENT.innerHTML = html;
+    return;
+  }
+
+  // Handle errors
+  if (cached?.error) {
+    const html = createDiffPanelHtml(path, previewPageUrl, livePageUrl, cached.bodyHtml);
+    DIFF_CONTENT.innerHTML = html;
+    return;
+  }
+
+  // Render the diff
+  let bodyHtml;
+  if (cached?.previewContent && cached?.liveContent) {
+    const result = await computeDomDiff(cached.liveContent, cached.previewContent);
+    bodyHtml = result.bodyHtml;
+  } else {
+    bodyHtml = '<div class="diff-identical">Content not loaded.</div>';
+  }
+
+  DIFF_CONTENT.innerHTML = createDiffPanelHtml(path, previewPageUrl, livePageUrl, bodyHtml);
 }
 
 /**
@@ -277,24 +356,8 @@ async function loadPageDiff(page) {
   // Check cache first - if we have raw content cached, just re-render
   if (diffCache.has(path)) {
     const cached = diffCache.get(path);
-
-    // For JSON or error entries, use cached HTML directly
-    if (cached.isJson || cached.error) {
-      DIFF_CONTENT.innerHTML = createDiffPanelHtml(
-        path,
-        previewPageUrl,
-        livePageUrl,
-        cached.bodyHtml,
-      );
-      return;
-    }
-
-    // For markdown content, compute and render the diff
-    if (cached.previewContent && cached.liveContent) {
-      const { bodyHtml } = computeDiff(cached.liveContent, cached.previewContent);
-      DIFF_CONTENT.innerHTML = createDiffPanelHtml(path, previewPageUrl, livePageUrl, bodyHtml);
-      return;
-    }
+    await renderDiffView(page, cached);
+    return;
   }
 
   // Check if this is a JSON resource
@@ -329,7 +392,7 @@ async function loadPageDiff(page) {
     livePageUrl,
     `<div class="diff-panel-loading">
       <i class="symbol symbol-loading"></i>
-      <span>Loading diff...</span>
+      <span>Loading content...</span>
     </div>`,
   );
 
@@ -340,19 +403,19 @@ async function loadPageDiff(page) {
       fetchContent(liveUrl),
     ]);
 
-    // Compute diff
-    const { bodyHtml, noDiff } = computeDiff(liveContent, previewContent);
+    // Compute DOM diff to check if there are differences
+    const { noDiff } = await computeDomDiff(liveContent, previewContent);
 
-    // Cache the content and result
-    diffCache.set(path, {
+    // Cache the content
+    const cached = {
       previewContent,
       liveContent,
-      bodyHtml,
       noDiff,
-    });
+    };
+    diffCache.set(path, cached);
 
-    // Render the diff
-    DIFF_CONTENT.innerHTML = createDiffPanelHtml(path, previewPageUrl, livePageUrl, bodyHtml);
+    // Render based on current view
+    await renderDiffView(page, cached);
 
     // Mark as no-diff if applicable
     if (noDiff) {
