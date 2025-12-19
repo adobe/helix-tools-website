@@ -150,8 +150,8 @@ Build a "Playground" similar to CodePen.io for the JSON2HTML feature in Edge Del
 - [ ] Keyboard shortcuts
 - [ ] Save to browser localStorage
 - [ ] CodeMirror 6 upgrade
-- [ ] relativeURLPrefix testing
-- [ ] Schema-based template testing
+- [x] ~~relativeURLPrefix testing~~ → Moved to /simulator enhancements
+- [ ] Schema-based template testing (requires site auth - out of scope for playground)
 
 ---
 
@@ -170,18 +170,233 @@ The playground relies on the `/simulator` endpoint in the `helix-json2html` back
   ```
 - **Response:** Rendered HTML string
 
-### Backend Enhancement Needed
+### Backend Enhancements Needed (helix-json2html)
 
-Enhance `/simulator` endpoint to return structured errors:
+The current `/simulator` endpoint is minimal - it only does `Mustache.render(template, data)`. 
+To make the playground truly useful for testing production-like behavior, enhance the endpoint
+with features that **don't require authentication** to a specific org/site.
+
+#### Current State (`simulator.js`)
+```javascript
+// Current: Just basic Mustache rendering
+const htmlResponse = Mustache.render(decodedTemplate, decodedJson);
+```
+
+#### Enhanced Request Body
+```json
+{
+  "json": "<URL-encoded JSON string>",
+  "template": "<URL-encoded Mustache template>",
+  "options": {
+    "relativeURLPrefix": "https://example.com",
+    "genericFallback": false
+  }
+}
+```
+
+#### Enhancements to Implement
+
+| Feature | Description | Implementation |
+|---------|-------------|----------------|
+| **Structured Error Responses** | Return detailed errors instead of generic 500 | See error format below |
+| **relativeURLPrefix** | Rewrite relative media URLs with a prefix | Reuse `rewriteRelativeUrls()` from utils.js |
+| **Generic HTML Fallback** | Generate semantic HTML when template is empty | Reuse `jsonToHtmlDivs()` from utils.js |
+| **HTML Entity Encoding** | Proper encoding of special characters | Already uses `html-entities` package |
+
+#### 1. Structured Error Responses
+
+Return JSON errors with helpful debugging info:
 
 ```json
 {
   "error": true,
-  "type": "json_parse_error",
+  "type": "json_parse_error | template_render_error | validation_error",
   "message": "Unexpected token at position 42",
-  "line": 3,
-  "column": 15
+  "details": {
+    "line": 3,
+    "column": 15,
+    "snippet": "{ \"name\": John }"
+  }
 }
+```
+
+**Error Types:**
+- `json_parse_error` - Invalid JSON input (with position info)
+- `template_render_error` - Mustache rendering failed (missing variable, etc.)
+- `validation_error` - Missing required fields
+
+#### 2. relativeURLPrefix Support
+
+Test how relative media URLs get rewritten in production:
+
+```javascript
+// In simulator.js - reuse existing utility
+import { rewriteRelativeUrls } from './utils/utils.js';
+
+if (options.relativeURLPrefix) {
+  htmlResponse = await rewriteRelativeUrls(
+    htmlResponse,
+    options.relativeURLPrefix,
+    false,  // useAEMMapping = false (requires site auth)
+    null, null, null, null  // org, site, branch, apiKey not needed
+  );
+}
+```
+
+**What it does:**
+- Rewrites `src="/media/image.jpg"` → `src="https://example.com/media/image.jpg"`
+- Only affects media extensions: `.mp4`, `.pdf`, `.svg`, `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, `.avif`
+- Decodes HTML entities (`&#x2F;` → `/`, `&quot;` → `"`, `&amp;` → `&`)
+
+#### 3. Generic HTML Fallback Mode
+
+When `template` is empty and `genericFallback: true`, generate semantic HTML:
+
+```javascript
+import { jsonToHtmlDivs } from './utils/utils.js';
+
+if (!template && options.genericFallback) {
+  htmlResponse = `
+    <!DOCTYPE html>
+    <html>
+      <head>${data.title ? `<title>${data.title}</title>` : ''}</head>
+      <body>
+        <main>
+          <div class="data">${jsonToHtmlDivs(data)}</div>
+        </main>
+      </body>
+    </html>
+  `;
+}
+```
+
+**Use case:** Preview what the generic fallback looks like without writing a template.
+
+#### 4. Enhanced Response Headers
+
+Add helpful headers for debugging:
+
+```
+X-Render-Mode: mustache | generic-fallback
+X-Render-Time-Ms: 12
+Content-Type: text/html;charset=UTF-8
+```
+
+---
+
+### Features NOT Included (Require Site Authentication)
+
+These production features require access to a specific org/site and are **out of scope** for the playground:
+
+| Feature | Why Excluded |
+|---------|--------------|
+| **AEM Path Mappings** | Requires fetching `config.json` from authenticated site |
+| **Schema-Based Templates** | Requires fetching templates from authenticated site |
+| **Head.html Injection** | Requires fetching `head.html` from authenticated site |
+| **Endpoint Data Fetching** | Requires site config from KV store |
+| **Header Forwarding** | Site-specific configuration |
+
+These features should be tested using the actual json2html production endpoint with proper authentication.
+
+---
+
+### Example Enhanced Simulator Implementation
+
+```javascript
+// simulator.js - Enhanced version
+import Mustache from 'mustache';
+import { rewriteRelativeUrls, jsonToHtmlDivs } from './utils/utils.js';
+
+export async function simulateConversion(request) {
+  try {
+    const data = await request.json();
+    const options = data.options || {};
+    
+    // Validate required fields
+    if (!data.json) {
+      return errorResponse('validation_error', 'Missing required field: json');
+    }
+
+    // Parse JSON with detailed error handling
+    let jsonData;
+    try {
+      jsonData = JSON.parse(decodeURIComponent(data.json));
+    } catch (e) {
+      return errorResponse('json_parse_error', e.message, parseErrorDetails(e, data.json));
+    }
+
+    let htmlResponse;
+    const decodedTemplate = data.template ? decodeURIComponent(data.template) : '';
+
+    // Render with template or use generic fallback
+    if (decodedTemplate) {
+      try {
+        htmlResponse = Mustache.render(decodedTemplate, jsonData);
+      } catch (e) {
+        return errorResponse('template_render_error', e.message);
+      }
+    } else if (options.genericFallback) {
+      htmlResponse = createGenericHtml(jsonData);
+    } else {
+      return errorResponse('validation_error', 'Missing template. Set genericFallback:true for auto-generated HTML.');
+    }
+
+    // Apply relativeURLPrefix if provided
+    if (options.relativeURLPrefix) {
+      htmlResponse = await rewriteRelativeUrls(
+        htmlResponse, 
+        options.relativeURLPrefix, 
+        false, null, null, null, null
+      );
+    }
+
+    return new Response(htmlResponse, {
+      headers: {
+        'Content-Type': 'text/html;charset=UTF-8',
+        'X-Render-Mode': decodedTemplate ? 'mustache' : 'generic-fallback',
+      },
+    });
+  } catch (error) {
+    return errorResponse('internal_error', error.message);
+  }
+}
+
+function errorResponse(type, message, details = null) {
+  return new Response(JSON.stringify({
+    error: true,
+    type,
+    message,
+    ...(details && { details }),
+  }), {
+    status: 400,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+function createGenericHtml(data) {
+  return `<!DOCTYPE html>
+<html>
+  <head>${data.title ? `<title>${data.title}</title>` : ''}</head>
+  <body>
+    <main><div class="data">${jsonToHtmlDivs(data)}</div></main>
+  </body>
+</html>`;
+}
+```
+
+---
+
+### Playground UI for Enhanced Features
+
+Add UI controls to test these features:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Options Panel (collapsible)                             │
+├─────────────────────────────────────────────────────────┤
+│ ☐ Generic Fallback (no template needed)                 │
+│ Relative URL Prefix: [https://cdn.example.com_________] │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -235,7 +450,9 @@ npx -y @adobe/aem-cli up --no-open --forward-browser-logs
 - [ ] (Phase 2) Test View Source toggle
 - [ ] (Phase 2) Test debounced auto-render
 
-### curl Test for /simulate endpoint
+### curl Tests for /simulator endpoint
+
+**Basic Request (current):**
 ```bash
 curl -X POST https://json2html.aem-cf-workers.workers.dev/simulator \
   -H "Content-Type: application/json" \
@@ -245,9 +462,48 @@ curl -X POST https://json2html.aem-cf-workers.workers.dev/simulator \
   }'
 ```
 
+**Enhanced Request (with options):**
+```bash
+curl -X POST https://json2html.aem-cf-workers.workers.dev/simulator \
+  -H "Content-Type: application/json" \
+  -d '{
+    "json": "%7B%22title%22%3A%22Product%22%2C%22image%22%3A%22%2Fmedia%2Fproduct.jpg%22%7D",
+    "template": "%3Cimg%20src%3D%22%7B%7Bimage%7D%7D%22%3E%3Ch1%3E%7B%7Btitle%7D%7D%3C%2Fh1%3E",
+    "options": {
+      "relativeURLPrefix": "https://cdn.example.com"
+    }
+  }'
+# Expected: <img src="https://cdn.example.com/media/product.jpg"><h1>Product</h1>
+```
+
+**Generic Fallback (no template):**
+```bash
+curl -X POST https://json2html.aem-cf-workers.workers.dev/simulator \
+  -H "Content-Type: application/json" \
+  -d '{
+    "json": "%7B%22title%22%3A%22Hello%22%2C%22items%22%3A%5B%22a%22%2C%22b%22%5D%7D",
+    "template": "",
+    "options": {
+      "genericFallback": true
+    }
+  }'
+# Expected: Auto-generated semantic HTML with div structure
+```
+
+**Error Response Test:**
+```bash
+curl -X POST https://json2html.aem-cf-workers.workers.dev/simulator \
+  -H "Content-Type: application/json" \
+  -d '{
+    "json": "%7Binvalid%20json",
+    "template": "%3Ch1%3ETest%3C%2Fh1%3E"
+  }'
+# Expected: { "error": true, "type": "json_parse_error", "message": "..." }
+```
+
 ---
 
-*Last Updated: December 19, 2024 (Phase 1 UI Complete)*
+*Last Updated: December 19, 2024 (Phase 1 UI Complete, /simulator enhancement plan added)*
 
 ---
 
