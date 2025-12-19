@@ -27,41 +27,49 @@ Build a "Playground" similar to CodePen.io for the JSON2HTML feature in Edge Del
 - Auto-render checkbox functional
 - Responsive layout tested
 
-**UI Fixed Issues:**
-- Header overlap with main content
-- AEM wrapper divs breaking flexbox layout
-- Panels not filling full width
-- `<p>` tag injection inside custom divs
+**UI Fixed Issues (Latest Session):**
+- Fixed 404 errors from AEM block decoration by using `<span>` elements instead of nested `<div>`s
+- Fixed header alignment: Title on LEFT, action buttons (Examples, Syntax Help, Share) on RIGHT
+- Fixed control-bar alignment: Auto-render, Render, Fullscreen buttons aligned RIGHT
+- Added CSS rules for `.default-content-wrapper` that AEM injects
+- 70/30 split between editors (top) and preview (bottom)
+- Fullscreen button moved next to Render button
 
 **Current State:**
-- Mock UI is ready for demo/review
-- Preview shows static HTML (Mustache tags visible as text)
-- No actual Mustache.js rendering yet
-- Examples load sample JSON but don't render
+- Mock UI is ready for demo/review ✅
+- Layout matches reference design at https://json2html-playground--helix-tools-website--adobe.aem.live/
+- Preview shows static HTML (Mustache tags visible as text - expected, Phase 2 fix)
+- No rendering via /simulator endpoint yet (Phase 2)
+- Examples load sample JSON but don't render (Phase 2)
 
 ### 🔜 Next Steps (Phase 2)
 
-1. **Integrate Mustache.js library**
-   - Add Mustache.js to the project (CDN or local)
-   - Import in `json2html-playground.js`
+1. **Integrate /simulator endpoint**
+   - Call `POST https://json2html.aem-cf-workers.workers.dev/simulator`
+   - Send URL-encoded JSON and template
+   - Receive rendered HTML response
 
-2. **Implement client-side rendering**
-   - Parse JSON input
-   - Render template with Mustache.js
-   - Update iframe `srcdoc` with rendered HTML
+2. **Implement server-side rendering flow**
+   - Encode JSON input (URL encoding)
+   - Encode template input (URL encoding)
+   - POST to /simulator endpoint
+   - Update iframe `srcdoc` with response HTML
 
 3. **Add error handling**
+   - Handle network errors (timeout, offline)
+   - Parse error responses from /simulator
    - JSON parse errors with line numbers
    - Template syntax errors
    - Display errors in status bar
 
 4. **Implement View Source toggle**
    - Show rendered HTML vs raw source
-   - Syntax highlight the source view
+   - Syntax highlight the source view (Prism.js)
 
 5. **Add debounced auto-render**
-   - 300ms debounce on input changes
-   - Visual indicator while rendering
+   - 300-500ms debounce on input changes
+   - Visual indicator while rendering (loading spinner)
+   - Cancel pending requests on new input
 
 ---
 
@@ -78,8 +86,9 @@ Build a "Playground" similar to CodePen.io for the JSON2HTML feature in Edge Del
 - **V1.1:** Consider CodeMirror 6 upgrade
 
 ### Rendering
-- **Client-side only** using Mustache.js (no server calls for preview)
-- Faster, snappier experience
+- **Server-side** using `/simulator` endpoint (ensures consistency with production behavior)
+- Endpoint: `POST https://json2html.aem-cf-workers.workers.dev/simulator`
+- Debounced requests to avoid hammering the server
 
 ### Features for MVP
 - [x] JSON input with Prism.js highlighting
@@ -113,10 +122,11 @@ Build a "Playground" similar to CodePen.io for the JSON2HTML feature in Edge Del
 - [x] No actual rendering yet (expected)
 
 ### Phase 2: Core Functionality (NEXT)
-- Integrate Mustache.js (client-side)
-- Implement live preview
-- Add error handling with line numbers
-- JSON validation
+- Integrate /simulator endpoint for rendering
+- Implement live preview via server-side rendering
+- Add error handling (network + parse errors)
+- JSON validation before sending
+- Debounced auto-render with loading indicator
 
 ### Phase 3: Polish
 - Add 5-7 examples
@@ -129,6 +139,7 @@ Build a "Playground" similar to CodePen.io for the JSON2HTML feature in Edge Del
 
 ## Future Enhancements (V2+)
 
+- [ ] **Client-side Mustache.js rendering** (offline mode, faster feedback)
 - [ ] CSS injection pane (3rd editor)
 - [ ] JSON Schema validation
 - [ ] Diff view for template changes
@@ -144,7 +155,22 @@ Build a "Playground" similar to CodePen.io for the JSON2HTML feature in Edge Del
 
 ---
 
-## Backend Enhancement Needed
+## /simulator Endpoint (Core Dependency)
+
+The playground relies on the `/simulator` endpoint in the `helix-json2html` backend.
+
+### Endpoint Details
+- **URL:** `POST https://json2html.aem-cf-workers.workers.dev/simulator`
+- **Request Body:**
+  ```json
+  {
+    "json": "<URL-encoded JSON string>",
+    "template": "<URL-encoded Mustache template>"
+  }
+  ```
+- **Response:** Rendered HTML string
+
+### Backend Enhancement Needed
 
 Enhance `/simulator` endpoint to return structured errors:
 
@@ -202,9 +228,12 @@ npx -y @adobe/aem-cli up --no-open --forward-browser-logs
 - [ ] Test Syntax Help button opens modal
 - [ ] Test responsive breakpoints (600px, 900px)
 - [ ] Select example and verify JSON loads
-- [ ] (Phase 2) Verify preview renders correctly
+- [ ] (Phase 2) Verify /simulator endpoint is called on render
+- [ ] (Phase 2) Verify preview displays rendered HTML
 - [ ] (Phase 2) Test error handling with invalid JSON
+- [ ] (Phase 2) Test error handling with network failure
 - [ ] (Phase 2) Test View Source toggle
+- [ ] (Phase 2) Test debounced auto-render
 
 ### curl Test for /simulate endpoint
 ```bash
@@ -218,5 +247,21 @@ curl -X POST https://json2html.aem-cf-workers.workers.dev/simulator \
 
 ---
 
-*Last Updated: December 19, 2024*
-*Phase 1 Complete - Ready for Phase 2*
+*Last Updated: December 19, 2024 (Phase 1 UI Complete)*
+
+---
+
+## Quick Start for Next Session
+
+```bash
+cd helix-tools-website
+npx -y @adobe/aem-cli up --no-open --forward-browser-logs &
+# Open http://localhost:3000/tools/json2html-playground/
+```
+
+**Phase 2 Focus: Integrate /simulator endpoint**
+1. Call `POST https://json2html.aem-cf-workers.workers.dev/simulator`
+2. URL-encode JSON and template, send in request body
+3. Display rendered HTML in iframe srcdoc
+4. Add error handling for network/parse errors
+5. Debounce auto-render (300-500ms) with loading indicator
