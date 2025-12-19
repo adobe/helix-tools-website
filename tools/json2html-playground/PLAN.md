@@ -16,9 +16,11 @@ Build a "Playground" similar to CodePen.io for the JSON2HTML feature in Edge Del
 - Created `json2html-playground.css` with responsive styling
 - Created `json2html-playground.js` with basic interactions
 - Fixed multiple AEM decoration conflicts (wrapper divs, `<p>` tag injection)
-- Panels now fill full width of workspace
-- Tab switching works (JSON Data / Template)
-- Resizer between panels is functional
+- **Three-panel layout**: JSON (left) + Template (right) + Preview (bottom)
+- Both editors visible simultaneously for easy editing
+- Vertical resizer between JSON and Template panels
+- Horizontal resizer between editors row and preview panel
+- Panels fill full width of workspace
 - Examples modal structure in place
 - Syntax Help modal structure in place
 - Share button placeholder ready
@@ -66,10 +68,10 @@ Build a "Playground" similar to CodePen.io for the JSON2HTML feature in Edge Del
 ## Agreed Decisions ✅
 
 ### Layout
-- **Option D: Hybrid Split-Adjustable**
-- Desktop: Tabbed editors (JSON/Template) + Preview side-by-side
-- Tablet: Stacked layout
-- Mobile: Full-width tabs
+- **Three-Panel Layout** (CodePen-style)
+- Desktop: JSON (left) + Template (right) on top, HTML Preview below
+- Resizable panels: vertical divider between editors, horizontal divider for preview
+- Tablet/Mobile: Stacked layout
 
 ### Code Editor
 - **MVP:** Plain textarea + Prism.js overlay (already in project)

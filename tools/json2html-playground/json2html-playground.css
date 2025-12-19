@@ -19,77 +19,65 @@
    HEADER SECTION
    ======================================== */
 
-.playground-header {
+.playground-header,
+.playground-header.section {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--spacing-200);
-  padding-bottom: var(--spacing-200);
+  align-items: center;
+  gap: var(--spacing-100);
+  padding: var(--spacing-100) 0;
   border-bottom: var(--border-s) solid var(--gray-200);
   flex-shrink: 0;
+  margin: 0 !important;
 }
 
 .playground-header .header-content h1 {
-  font-size: var(--heading-size-l);
+  font-size: var(--heading-size-m);
   font-weight: var(--weight-bold);
-  margin: 0 0 var(--spacing-100) 0;
+  margin: 0;
   color: var(--color-text);
+  line-height: 1.2;
 }
 
 .playground-header .header-content p {
-  font-size: var(--body-size-s);
+  font-size: var(--body-size-xs);
   color: var(--gray-600);
   margin: 0;
+  display: none; /* Hide subtitle to save space */
 }
 
 .playground-header .header-actions {
   display: flex;
-  gap: var(--spacing-200);
+  gap: var(--spacing-100);
   flex-wrap: wrap;
+}
+
+/* Reset margins on AEM wrapper divs inside header */
+.playground-header .header-content-wrapper,
+.playground-header .header-actions-wrapper {
+  margin: 0 !important;
 }
 
 /* ========================================
    CONTROL BAR
    ======================================== */
 
-.control-bar {
+.control-bar,
+.control-bar.section {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--spacing-200);
-  padding: var(--spacing-100) var(--spacing-300);
-  background: var(--gray-75);
-  border-radius: var(--rounding-m);
-  flex-shrink: 0;
-}
-
-.editor-tabs {
-  display: flex;
-  gap: var(--spacing-100);
-}
-
-.editor-tabs .tab {
-  padding: var(--spacing-100) var(--spacing-300);
-  font-size: var(--body-size-s);
-  font-weight: var(--weight-medium);
+  padding: var(--spacing-50) 0;
   background: transparent;
-  border: none;
-  border-radius: var(--rounding-s);
-  color: var(--gray-600);
-  cursor: pointer;
-  transition: all 0.2s ease;
+  flex-shrink: 0;
+  margin: 0 !important;
 }
 
-.editor-tabs .tab:hover {
-  background: var(--gray-200);
-  color: var(--color-text);
-}
-
-.editor-tabs .tab.active {
-  background: var(--color-white);
-  color: var(--color-text);
-  box-shadow: var(--shadow-default);
+/* Reset AEM wrapper inside control bar */
+.control-bar .control-options-wrapper {
+  margin: 0 !important;
 }
 
 .control-options {
@@ -114,18 +102,65 @@
 }
 
 /* ========================================
-   WORKSPACE (Main Editor + Preview Area)
+   WORKSPACE (Three Panel Layout)
    ======================================== */
 
 .workspace {
   display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
   gap: 0;
-  min-height: 350px;
+  min-height: 400px;
   background: var(--color-white);
   border-radius: var(--rounding-m);
   box-shadow: var(--shadow-default);
   overflow: hidden;
+}
+
+/* AEM treats workspace as a section - override its styling */
+.workspace.section,
+.workspace.block {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Resizer wrappers should not flex-grow and no margins */
+.resizer-wrapper,
+.resizer-vertical-wrapper,
+.resizer-horizontal-wrapper {
+  flex: 0 0 auto;
+  margin: 0 !important;
+}
+
+/* Top row: JSON and Template side by side */
+.editors-row {
+  display: flex;
+  flex: 1 1 60%;
+  width: 100%;
+  min-height: 200px;
+  overflow: hidden;
+}
+
+/* AEM wraps editors-row in a wrapper div */
+.editors-row-wrapper {
+  display: flex;
+  flex: 1 1 60%;
+  width: 100%;
+  min-height: 200px;
+  margin: 0 !important;
+}
+
+/* AEM treats editors-row as a block - override its styling */
+.editors-row.block {
+  display: flex;
+  width: 100%;
+  max-width: none;
+  padding: 0;
+  margin: 0;
 }
 
 /* ========================================
@@ -133,28 +168,19 @@
    ======================================== */
 
 .editor-panel {
-  flex: 1 1 100%;
+  flex: 1 1 50%;
   display: flex;
   flex-direction: column;
-  width: 100%;
-  border-right: var(--border-s) solid var(--gray-200);
+  min-width: 200px;
   overflow: hidden;
 }
 
-.editor-pane {
-  display: none;
-  flex-direction: column;
-  flex: 1;
-  height: 100%;
-  overflow: hidden;
+.editor-panel.json-panel {
+  border-right: none;
 }
 
-.editor-pane.active {
-  display: flex;
-}
-
-.editor-pane[hidden] {
-  display: none;
+.editor-panel.template-panel {
+  border-left: none;
 }
 
 .editor-header {
@@ -240,13 +266,32 @@
    ======================================== */
 
 .resizer {
-  width: 8px;
-  cursor: col-resize;
   background: var(--gray-100);
   display: flex;
   align-items: center;
   justify-content: center;
   transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+/* Vertical resizer (between JSON and Template) */
+.resizer-vertical {
+  flex: 0 0 4px !important;
+  width: 4px;
+  min-width: 4px;
+  max-width: 4px;
+  cursor: col-resize;
+  background: var(--gray-200);
+}
+
+/* Horizontal resizer (between editors and preview) */
+.resizer-horizontal {
+  flex: 0 0 4px !important;
+  height: 4px;
+  min-height: 4px;
+  max-height: 4px;
+  cursor: row-resize;
+  background: var(--gray-200);
 }
 
 .resizer:hover {
@@ -254,10 +299,18 @@
 }
 
 .resizer-handle {
-  width: 4px;
-  height: 40px;
   background: var(--gray-400);
   border-radius: var(--rounding-s);
+}
+
+.resizer-vertical .resizer-handle {
+  width: 4px;
+  height: 40px;
+}
+
+.resizer-horizontal .resizer-handle {
+  width: 40px;
+  height: 4px;
 }
 
 .resizer:hover .resizer-handle {
@@ -269,11 +322,32 @@
    ======================================== */
 
 .preview-panel {
-  flex: 1 1 100%;
+  flex: 1 1 40%;
   display: flex;
   flex-direction: column;
   width: 100%;
+  min-height: 150px;
   overflow: hidden;
+  border-top: var(--border-s) solid var(--gray-200);
+}
+
+/* AEM wraps preview-panel in a wrapper div */
+.preview-panel-wrapper {
+  display: flex;
+  flex: 1 1 40%;
+  width: 100%;
+  min-height: 150px;
+  margin: 0 !important;
+}
+
+/* AEM treats preview-panel as a block - override its styling */
+.preview-panel.block {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: none;
+  padding: 0;
+  margin: 0;
 }
 
 .preview-header {
@@ -662,31 +736,54 @@
    AEM DECORATION FIXES
    ======================================== */
 
-/* AEM wraps panels in wrapper divs - make them flex properly */
-.json2html-playground .workspace > div {
+/* AEM wraps elements in wrapper divs - handle the editors-row wrapper */
+.json2html-playground .editors-row-wrapper {
+  display: flex;
+  flex: 1 1 60%;
+  min-height: 200px;
+}
+
+.json2html-playground .editors-row-wrapper > .editors-row {
+  display: flex;
+  flex: 1;
+  width: 100%;
+}
+
+/* Handle editor panel wrappers inside editors-row */
+.json2html-playground .editors-row > div {
   display: flex;
   flex: 1 1 auto;
 }
 
-/* Specifically target the panel wrappers */
-.json2html-playground .editor-panel-wrapper,
-.json2html-playground .preview-panel-wrapper {
+.json2html-playground .json-panel-wrapper,
+.json2html-playground .template-panel-wrapper {
   display: flex;
-  flex: 1 1 45%;
+  flex: 1 1 50%;
   min-width: 0;
-  padding: 0;
-  margin: 0;
 }
 
-/* Make the panels inside wrappers fill completely */
-.json2html-playground .editor-panel-wrapper > .editor-panel,
+.json2html-playground .json-panel-wrapper > .json-panel,
+.json2html-playground .template-panel-wrapper > .template-panel {
+  flex: 1;
+  width: 100%;
+}
+
+/* Handle preview panel wrapper */
+.json2html-playground .preview-panel-wrapper {
+  display: flex;
+  flex: 1 1 40%;
+  min-height: 150px;
+}
+
 .json2html-playground .preview-panel-wrapper > .preview-panel {
   flex: 1;
   width: 100%;
 }
 
-/* Make the resizer wrapper not flex-grow */
-.json2html-playground .resizer-wrapper,
+/* Make the resizer wrappers not flex-grow */
+.json2html-playground .resizer-vertical-wrapper,
+.json2html-playground .resizer-horizontal-wrapper,
+.json2html-playground .editors-row > div:has(.resizer),
 .json2html-playground .workspace > div:has(.resizer) {
   flex: 0 0 auto;
 }

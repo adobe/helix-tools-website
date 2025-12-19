@@ -42,14 +42,6 @@
 
     <!-- CONTROL BAR -->
     <div class="control-bar">
-      <div class="editor-tabs" role="tablist">
-        <button type="button" class="tab active" role="tab" aria-selected="true" data-editor="json" id="tab-json">
-          JSON Data
-        </button>
-        <button type="button" class="tab" role="tab" aria-selected="false" data-editor="template" id="tab-template">
-          Template
-        </button>
-      </div>
       <div class="control-options">
         <label class="toggle-option">
           <input type="checkbox" id="auto-render" checked>
@@ -62,12 +54,12 @@
       </div>
     </div>
 
-    <!-- MAIN WORKSPACE -->
+    <!-- MAIN WORKSPACE - Three Panel Layout -->
     <div class="workspace">
-      <!-- EDITOR PANEL -->
-      <div class="editor-panel">
+      <!-- TOP ROW: Editors Side by Side -->
+      <div class="editors-row">
         <!-- JSON Editor -->
-        <div class="editor-pane active" data-editor="json" role="tabpanel" aria-labelledby="tab-json">
+        <div class="editor-panel json-panel">
           <div class="editor-header">
             <span class="editor-label">JSON Data</span>
             <div class="editor-actions">
@@ -101,8 +93,13 @@
           </div>
         </div>
 
+        <!-- Vertical Resizer -->
+        <div class="resizer resizer-vertical" id="resizer-vertical" title="Drag to resize">
+          <div class="resizer-handle"></div>
+        </div>
+
         <!-- Template Editor -->
-        <div class="editor-pane" data-editor="template" role="tabpanel" aria-labelledby="tab-template" hidden>
+        <div class="editor-panel template-panel">
           <div class="editor-header">
             <span class="editor-label">Mustache Template</span>
             <div class="editor-actions">
@@ -144,15 +141,15 @@
         </div>
       </div>
 
-      <!-- RESIZER -->
-      <div class="resizer" id="resizer" title="Drag to resize">
+      <!-- Horizontal Resizer -->
+      <div class="resizer resizer-horizontal" id="resizer-horizontal" title="Drag to resize">
         <div class="resizer-handle"></div>
       </div>
 
-      <!-- PREVIEW PANEL -->
+      <!-- BOTTOM ROW: Preview Panel -->
       <div class="preview-panel">
         <div class="preview-header">
-          <span class="preview-label">Preview</span>
+          <span class="preview-label">HTML Preview</span>
           <div class="preview-tabs" role="tablist">
             <button type="button" class="preview-tab active" role="tab" data-view="rendered" aria-selected="true">
               Rendered

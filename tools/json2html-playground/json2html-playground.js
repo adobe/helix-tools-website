@@ -14,11 +14,7 @@ const jsonStatus = document.getElementById('json-status');
 const templateStatus = document.getElementById('template-status');
 const previewStatus = document.getElementById('preview-status');
 
-// Editor tabs
-const editorTabs = document.querySelectorAll('.editor-tabs .tab');
-const editorPanes = document.querySelectorAll('.editor-pane');
-
-// Preview tabs
+// Preview tabs (Rendered vs Source toggle)
 const previewTabs = document.querySelectorAll('.preview-tab');
 const previewViews = document.querySelectorAll('.preview-view');
 
@@ -472,45 +468,12 @@ function loadExample(exampleType) {
     }
     validateJson();
     render();
-
-    // Switch to JSON tab to show loaded data
-    editorTabs[0]?.click();
   }
 }
 
 // ============================================================================
 // SETUP FUNCTIONS
 // ============================================================================
-
-/**
- * Setup editor tab switching
- */
-function setupEditorTabs() {
-  editorTabs.forEach((tab) => {
-    tab.addEventListener('click', () => {
-      const editorType = tab.dataset.editor;
-
-      // Update tab states
-      editorTabs.forEach((t) => {
-        t.classList.remove('active');
-        t.setAttribute('aria-selected', 'false');
-      });
-      tab.classList.add('active');
-      tab.setAttribute('aria-selected', 'true');
-
-      // Update pane visibility
-      editorPanes.forEach((pane) => {
-        if (pane.dataset.editor === editorType) {
-          pane.classList.add('active');
-          pane.removeAttribute('hidden');
-        } else {
-          pane.classList.remove('active');
-          pane.setAttribute('hidden', '');
-        }
-      });
-    });
-  });
-}
 
 /**
  * Setup preview tab switching (Rendered vs Source)
@@ -606,47 +569,81 @@ function setupEditorListeners() {
 }
 
 /**
- * Setup resizable panels
+ * Setup resizable panels - both vertical (JSON/Template) and horizontal (editors/preview)
  */
 function setupResizer() {
-  const resizer = document.getElementById('resizer');
-  const editorPanel = document.querySelector('.editor-panel');
+  // Vertical resizer (between JSON and Template panels)
+  const verticalResizer = document.getElementById('resizer-vertical');
+  const jsonPanel = document.querySelector('.json-panel');
+  const editorsRow = document.querySelector('.editors-row');
+
+  // Horizontal resizer (between editors row and preview panel)
+  const horizontalResizer = document.getElementById('resizer-horizontal');
   const workspace = document.querySelector('.workspace');
 
-  if (!resizer || !editorPanel || !workspace) return;
+  let activeResizer = null;
+  let startPos = 0;
+  let startSize = 0;
 
-  let isResizing = false;
-  let startX = 0;
-  let startWidth = 0;
+  // Vertical resizer (col-resize)
+  if (verticalResizer && jsonPanel && editorsRow) {
+    verticalResizer.addEventListener('mousedown', (e) => {
+      activeResizer = 'vertical';
+      startPos = e.clientX;
+      startSize = jsonPanel.offsetWidth;
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    });
+  }
 
-  resizer.addEventListener('mousedown', (e) => {
-    isResizing = true;
-    startX = e.clientX;
-    startWidth = editorPanel.offsetWidth;
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-  });
+  // Horizontal resizer (row-resize)
+  if (horizontalResizer && editorsRow && workspace) {
+    horizontalResizer.addEventListener('mousedown', (e) => {
+      activeResizer = 'horizontal';
+      startPos = e.clientY;
+      startSize = editorsRow.offsetHeight;
+      document.body.style.cursor = 'row-resize';
+      document.body.style.userSelect = 'none';
+    });
+  }
 
   document.addEventListener('mousemove', (e) => {
-    if (!isResizing) return;
+    if (!activeResizer) return;
 
-    const diff = e.clientX - startX;
-    const newWidth = startWidth + diff;
-    const workspaceWidth = workspace.offsetWidth;
+    if (activeResizer === 'vertical' && jsonPanel && editorsRow) {
+      const diff = e.clientX - startPos;
+      const newWidth = startSize + diff;
+      const containerWidth = editorsRow.offsetWidth;
 
-    // Limit to 20% - 80% of workspace
-    const minWidth = workspaceWidth * 0.2;
-    const maxWidth = workspaceWidth * 0.8;
+      // Limit to 20% - 80% of container
+      const minWidth = containerWidth * 0.2;
+      const maxWidth = containerWidth * 0.8;
 
-    if (newWidth >= minWidth && newWidth <= maxWidth) {
-      editorPanel.style.flex = 'none';
-      editorPanel.style.width = `${newWidth}px`;
+      if (newWidth >= minWidth && newWidth <= maxWidth) {
+        jsonPanel.style.flex = 'none';
+        jsonPanel.style.width = `${newWidth}px`;
+      }
+    }
+
+    if (activeResizer === 'horizontal' && editorsRow && workspace) {
+      const diff = e.clientY - startPos;
+      const newHeight = startSize + diff;
+      const containerHeight = workspace.offsetHeight;
+
+      // Limit to 20% - 80% of container
+      const minHeight = containerHeight * 0.2;
+      const maxHeight = containerHeight * 0.8;
+
+      if (newHeight >= minHeight && newHeight <= maxHeight) {
+        editorsRow.style.flex = 'none';
+        editorsRow.style.height = `${newHeight}px`;
+      }
     }
   });
 
   document.addEventListener('mouseup', () => {
-    if (isResizing) {
-      isResizing = false;
+    if (activeResizer) {
+      activeResizer = null;
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     }
@@ -701,7 +698,6 @@ function setupButtons() {
  * Initialize the playground
  */
 function init() {
-  setupEditorTabs();
   setupPreviewTabs();
   setupModals();
   setupEditorListeners();
