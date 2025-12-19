@@ -50,10 +50,12 @@ function validatePath(path) {
   }
   // ensure path starts with "/"
   str = str.startsWith('/') ? str : `/${str}`;
-  // add "*" if path ends with "/"
-  if (str.endsWith('/')) {
-    str += '*';
+  // ensure path ends with "/" (for subpath queries)
+  if (!str.endsWith('/')) {
+    str += '/';
   }
+  // add "*" for wildcard matching
+  str += '*';
   return str;
 }
 

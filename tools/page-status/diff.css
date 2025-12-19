@@ -173,12 +173,19 @@
 .page-diff .diff-page-list .page-status-indicator {
   display: block;
   font-size: var(--body-size-xs);
-  color: var(--orange-800);
+  color: var(--gray-500);
   margin-top: 2px;
+  font-style: italic;
+}
+
+.page-diff .diff-page-list .page-status-indicator.has-changes {
+  color: var(--orange-800);
+  font-style: normal;
 }
 
 .page-diff .diff-page-list .page-status-indicator.no-diff {
   color: var(--green-700);
+  font-style: normal;
 }
 
 .page-diff .diff-page-list button.no-diff {

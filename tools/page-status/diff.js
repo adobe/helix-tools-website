@@ -162,8 +162,27 @@ function markPageAsNoDiff(pagePath) {
       button.classList.add('no-diff');
       const indicator = button.querySelector('.page-status-indicator');
       if (indicator) {
-        indicator.textContent = '✓ No diff';
+        indicator.textContent = '✓ No changes';
         indicator.classList.add('no-diff');
+      }
+    }
+  });
+}
+
+/**
+ * Marks a page as having pending changes in the nav list.
+ * @param {string} pagePath - The page path to mark
+ */
+function markPageAsPending(pagePath) {
+  const buttons = DIFF_PAGE_LIST.querySelectorAll('button');
+  buttons.forEach((button) => {
+    // Check if this button's text content starts with the path
+    if (button.textContent.startsWith(pagePath)) {
+      button.classList.add('has-changes');
+      const indicator = button.querySelector('.page-status-indicator');
+      if (indicator) {
+        indicator.textContent = 'Pending changes';
+        indicator.classList.add('has-changes');
       }
     }
   });
@@ -417,9 +436,11 @@ async function loadPageDiff(page) {
     // Render based on current view
     await renderDiffView(page, cached);
 
-    // Mark as no-diff if applicable
+    // Update the page status indicator
     if (noDiff) {
       markPageAsNoDiff(path);
+    } else {
+      markPageAsPending(path);
     }
   } catch (error) {
     // eslint-disable-next-line no-console
@@ -505,10 +526,16 @@ function renderPageList(autoSelectFirst = true) {
     const indicator = document.createElement('span');
     indicator.className = 'page-status-indicator';
     if (cached?.noDiff) {
-      indicator.textContent = '✓ No diff';
+      indicator.textContent = '✓ No changes';
       indicator.classList.add('no-diff');
-    } else {
+    } else if (cached && !cached.noDiff) {
+      // Already computed and has changes
       indicator.textContent = 'Pending changes';
+      indicator.classList.add('has-changes');
+      button.classList.add('has-changes');
+    } else {
+      // Not yet computed
+      indicator.textContent = 'Click to see changes';
     }
     button.appendChild(indicator);
 
