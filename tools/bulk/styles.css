@@ -41,3 +41,99 @@
 .bulk-ops .status-light.http3::before {
   color: var(--yellow-900);
 }
+
+/* Sanitization Warning Dialog */
+.bulk-ops dialog.sanitization-warning {
+  max-width: 800px;
+  max-height: 80vh;
+  padding: var(--spacing-l);
+  border: 1px solid var(--gray-300);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgb(0 0 0 / 15%);
+}
+
+.bulk-ops dialog.sanitization-warning::backdrop {
+  background: rgb(0 0 0 / 50%);
+}
+
+.bulk-ops dialog.sanitization-warning h2 {
+  margin-top: 0;
+  color: var(--red-900);
+}
+
+.bulk-ops dialog.sanitization-warning h3 {
+  margin-top: var(--spacing-m);
+  margin-bottom: var(--spacing-s);
+  font-size: var(--body-size-m);
+}
+
+.bulk-ops dialog.sanitization-warning .url-list {
+  max-height: 300px;
+  overflow-y: auto;
+  margin: var(--spacing-s) 0;
+  padding-left: var(--spacing-m);
+  list-style: none;
+}
+
+.bulk-ops dialog.sanitization-warning .url-list li {
+  margin: var(--spacing-xs) 0;
+  font-size: var(--body-size-s);
+}
+
+.bulk-ops dialog.sanitization-warning .url-list code {
+  background: var(--gray-100);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-xs);
+  word-break: break-all;
+}
+
+.bulk-ops dialog.sanitization-warning .url-list .reason {
+  color: var(--gray-700);
+  font-size: var(--body-size-xs);
+  font-style: italic;
+}
+
+.bulk-ops dialog.sanitization-warning .url-list.rejected li {
+  color: var(--red-800);
+}
+
+.bulk-ops dialog.sanitization-warning .url-list.modified li {
+  color: var(--yellow-900);
+}
+
+.bulk-ops dialog.sanitization-warning .url-list.deduplicated li {
+  color: var(--blue-800);
+}
+
+.bulk-ops dialog.sanitization-warning .url-change {
+  background: var(--gray-50);
+  padding: var(--spacing-xs);
+  border-radius: 4px;
+  margin: var(--spacing-xs) 0;
+}
+
+.bulk-ops dialog.sanitization-warning .url-change > div {
+  margin: 4px 0;
+}
+
+.bulk-ops dialog.sanitization-warning .change-reason {
+  font-size: var(--body-size-xs);
+  color: var(--gray-700);
+  font-style: italic;
+}
+
+.bulk-ops dialog.sanitization-warning .dialog-actions {
+  display: flex;
+  gap: var(--spacing-s);
+  justify-content: flex-end;
+  margin-top: var(--spacing-l);
+  padding-top: var(--spacing-m);
+  border-top: 1px solid var(--gray-200);
+}
+
+.bulk-ops dialog.sanitization-warning .button.secondary {
+  background: var(--gray-200);
+  color: var(--gray-900);
+}
