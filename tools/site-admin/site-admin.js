@@ -105,7 +105,7 @@ function displaySiteDetails(path, name, elem, site = {
         </fieldset>
     </form>`;
   const fs = elem.querySelector('fieldset');
-  const save = elem.querySelector(`#${name}-save`);
+  const save = elem.querySelector(`[id="${name}-save"]`);
   save.addEventListener('click', (e) => {
     fs.disabled = 'disabled';
     save.innerHTML += ' <i class="symbol symbol-loading"></i>';
@@ -114,7 +114,7 @@ function displaySiteDetails(path, name, elem, site = {
     const codeSrc = elem.querySelector('input[name="code"]').value;
     saveSiteConfig(path, site, codeSrc, contentSrc);
   });
-  const clone = elem.querySelector(`#${name}-clone`);
+  const clone = elem.querySelector(`[id="${name}-clone"]`);
   clone.addEventListener('click', (e) => {
     e.preventDefault();
     const sitename = prompt('Enter name of new site (eg. site1)');
@@ -127,7 +127,7 @@ function displaySiteDetails(path, name, elem, site = {
       saveSiteConfig(newpath, site, codeSrc, contentSrc);
     }
   });
-  const remove = elem.querySelector(`#${name}-delete`);
+  const remove = elem.querySelector(`[id="${name}-delete"]`);
   remove.addEventListener('click', (e) => {
     e.preventDefault();
     const [owner, sitecheck] = prompt('For safety enter org/sitename of the site you are about to delete').split('/');

@@ -88,7 +88,7 @@
 #current-version-info {
   background-color: var(--gray-100);
   border: var(--border-s) solid var(--gray-300);
-  border-radius: var(--border-radius);
+  border-radius: var(--rounding-m);
   padding: var(--spacing-m);
   margin-bottom: var(--spacing-m);
 }
@@ -113,7 +113,7 @@
 .version-data {
   background-color: var(--gray-50);
   border: var(--border-s) solid var(--gray-300);
-  border-radius: var(--border-radius);
+  border-radius: var(--rounding-m);
   padding: var(--spacing-m);
   margin-top: var(--spacing-m);
   max-height: 400px;
