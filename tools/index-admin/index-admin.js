@@ -222,7 +222,7 @@ function showJobStatus(jobDetails) {
 }
 
 async function reIndex(indexNames, paths) {
-  const indexUrl = `https://admin.hlx.page/index/${org.value}/${site.value}/main`;
+  const indexUrl = `https://admin.hlx.page/index/${org.value}/${site.value}/main/*`;
   const payload = {
     paths,
     indexNames,
