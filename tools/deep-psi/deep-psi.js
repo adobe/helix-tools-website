@@ -218,7 +218,7 @@ async function loadJStat() {
 
     // Create script element to load jStat from CDN
     const script = document.createElement('script');
-    script.src = '//cdn.jsdelivr.net/npm/jstat@latest/dist/jstat.min.js';
+    script.src = 'https://cdn.jsdelivr.net/npm/jstat@latest/dist/jstat.min.js';
     script.onload = () => resolve();
     script.onerror = () => reject(new Error('Failed to load jStat'));
     document.head.appendChild(script);
@@ -595,14 +595,32 @@ async function executePSI(num) {
   const p = document.createElement('p');
 
   // Link using representative values (clustering algorithm results)
-  const scoreUrl = `https://googlechrome.github.io/lighthouse/scorecalc/#FCP=${avgs.FCP}&TTI=${avgs.TTI}&SI=${avgs.SI}&TBT=${avgs.TBT}&LCP=${avgs.LCP}&CLS=${avgs.CLS}&device=mobile&version=10`;
-  p.innerHTML = `<a target="_blank" href="${scoreUrl}">Overall Best Stable Score</a>`;
+  // Use URL constructor to safely build the URL and prevent XSS
+  const scoreUrl = new URL('https://googlechrome.github.io/lighthouse/scorecalc/');
+  scoreUrl.hash = `FCP=${encodeURIComponent(avgs.FCP)}&TTI=${encodeURIComponent(avgs.TTI)}&SI=${encodeURIComponent(avgs.SI)}&TBT=${encodeURIComponent(avgs.TBT)}&LCP=${encodeURIComponent(avgs.LCP)}&CLS=${encodeURIComponent(avgs.CLS)}&device=mobile&version=10`;
+
+  const scoreLink = document.createElement('a');
+  scoreLink.href = scoreUrl.href;
+  scoreLink.target = '_blank';
+  scoreLink.rel = 'noopener noreferrer';
+  scoreLink.textContent = 'Overall Best Stable Score';
+  p.appendChild(scoreLink);
 
   const avgScore = (r, k) => mean(keyToArray(r, k));
 
   // Link using simple arithmetic averages for comparison
-  const avgScoreUrl = `https://googlechrome.github.io/lighthouse/scorecalc/#FCP=${avgScore(results, 'FCP')}&TTI=${avgScore(results, 'TTI')}&SI=${avgScore(results, 'SI')}&TBT=${avgScore(results, 'TBT')}&LCP=${avgScore(results, 'LCP')}&CLS=${avgScore(results, 'CLS')}&device=mobile&version=10`;
-  p.innerHTML += `<br><a target="_blank" href="${avgScoreUrl}">Overall Average Score</a>`;
+  const avgScoreUrl = new URL('https://googlechrome.github.io/lighthouse/scorecalc/');
+  avgScoreUrl.hash = `FCP=${encodeURIComponent(avgScore(results, 'FCP'))}&TTI=${encodeURIComponent(avgScore(results, 'TTI'))}&SI=${encodeURIComponent(avgScore(results, 'SI'))}&TBT=${encodeURIComponent(avgScore(results, 'TBT'))}&LCP=${encodeURIComponent(avgScore(results, 'LCP'))}&CLS=${encodeURIComponent(avgScore(results, 'CLS'))}&device=mobile&version=10`;
+
+  p.appendChild(document.createElement('br'));
+
+  const avgScoreLink = document.createElement('a');
+  avgScoreLink.href = avgScoreUrl.href;
+  avgScoreLink.target = '_blank';
+  avgScoreLink.rel = 'noopener noreferrer';
+  avgScoreLink.textContent = 'Overall Average Score';
+  p.appendChild(avgScoreLink);
+
   output.append(p);
 
   // Remove loading message
