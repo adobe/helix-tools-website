@@ -103,6 +103,19 @@
   min-width: 100px;
 }
 
+.project-admin .form-field.api-upgrade-field label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  cursor: pointer;
+}
+
+.project-admin .form-field.api-upgrade-field input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
 .project-admin .form-field.picker-field  {
   width: 200px;
   display: flex;

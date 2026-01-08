@@ -10,7 +10,9 @@ function externalLink(url, text, iconOnly = false) {
 }
 
 function displayProjectForm(elem, config) {
-  const { org, site, project } = config;
+  const {
+    org, site, project, apiUpgrade,
+  } = config;
   const name = `${org}--${site}`;
   elem.innerHTML = `<form id=${name}>
       <fieldset>
@@ -22,6 +24,12 @@ function displayProjectForm(elem, config) {
               The optional name for this project.
             </p>
           </div>
+        </div>
+        <div class="form-field api-upgrade-field">
+          <label>
+            <input type="checkbox" id="${name}-apiUpgrade" ${apiUpgrade ? 'checked' : ''}/>
+            Helix 6 API
+          </label>
         </div>
         <p class="button-wrapper">
           <button id="${name}-save" class="button">Save</button>
@@ -43,6 +51,7 @@ function displayProjectForm(elem, config) {
         org,
         site,
         project: elem.querySelector(`input[id="${name}-project"]`).value,
+        apiUpgrade: elem.querySelector(`input[id="${name}-apiUpgrade"]`).checked,
       },
     });
     if (success) {
