@@ -120,28 +120,6 @@
     }
   }
 
-  .path-prefix-container {
-    margin-top: var(--spacing-s);
-    margin-inline: var(--spacing-m);
-
-    label {
-      display: block;
-      font-size: var(--body-size-s);
-      font-weight: var(--weight-medium);
-      margin-bottom: var(--spacing-xs);
-    }
-
-    #path-prefix {
-      width: 100%;
-      font-family: var(--code-font-family);
-
-      &:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
-    }
-  }
-
   .error-list-container {
     margin-top: var(--spacing-xl);
     margin-inline: var(--spacing-m);
@@ -299,6 +277,81 @@
 
         @media (width >= 900px) {
           display: block;
+        }
+      }
+
+      .error-count {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: var(--spacing-s);
+      }
+
+      .path-filter-wrapper {
+        position: relative;
+
+        .path-filter-trigger {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          padding: 0;
+          border: var(--border-s) solid var(--gray-300);
+          border-radius: var(--rounding-m);
+          background-color: var(--color-background);
+          cursor: pointer;
+          transition: all 0.15s ease;
+
+          .icon {
+            width: 14px;
+            height: 14px;
+          }
+
+          &:hover {
+            background-color: var(--gray-200);
+            border-color: var(--gray-400);
+          }
+        }
+
+        .path-filter-dropdown {
+          position: absolute;
+          top: calc(100% + var(--spacing-xs));
+          right: 0;
+          z-index: 200;
+          display: none;
+          flex-direction: column;
+          gap: var(--spacing-s);
+          min-width: 280px;
+          padding: var(--spacing-m);
+          background-color: var(--color-background);
+          border: var(--border-s) solid var(--gray-300);
+          border-radius: var(--rounding-m);
+          box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+
+          &.open {
+            display: flex;
+          }
+
+          label {
+            font-size: var(--body-size-s);
+            font-weight: var(--weight-medium);
+            text-transform: none;
+            letter-spacing: normal;
+            color: var(--color-text);
+          }
+
+          input {
+            font-family: var(--code-font-family);
+            font-size: var(--body-size-s);
+            text-transform: none;
+          }
+
+          .path-filter-apply {
+            align-self: flex-end;
+            padding: var(--spacing-xs) var(--spacing-m);
+            font-size: var(--body-size-s);
+          }
         }
       }
     }

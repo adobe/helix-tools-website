@@ -102,10 +102,15 @@ function updateState() {
   }
 
   const filterIndicator = document.querySelector('.filter-indicator');
-  const hasFilters = state.urlFilter || state.sourceFilter || state.targetFilter;
+  const hasFilters = state.pathPrefixFilter || state.urlFilter
+    || state.sourceFilter || state.targetFilter;
 
   if (hasFilters) {
     const filters = [];
+
+    if (state.pathPrefixFilter) {
+      filters.push(`<div class="filter-item"><strong>Path:</strong> <code class="filter-text">${state.pathPrefixFilter}</code></div>`);
+    }
 
     if (state.urlFilter) {
       filters.push(`<div class="filter-item"><strong>URL:</strong> <a href="${state.urlFilter}" target="_blank" rel="noopener noreferrer">${state.urlFilter}</a></div>`);
@@ -127,6 +132,7 @@ function updateState() {
     `;
 
     filterIndicator.querySelector('.clear-filter').addEventListener('click', () => {
+      state.pathPrefixFilter = null;
       state.urlFilter = null;
       state.sourceFilter = null;
       state.targetFilter = null;
@@ -210,7 +216,6 @@ function setLoading(isLoading) {
   const errorListContainer = document.querySelector('.error-list-container');
   const errorGraphContainer = document.querySelector('.error-graph-container');
   const dateRange = document.getElementById('date-range');
-  const pathPrefix = document.getElementById('path-prefix');
 
   if (errorListContainer) {
     if (isLoading) {
@@ -228,10 +233,6 @@ function setLoading(isLoading) {
 
   if (dateRange) {
     dateRange.disabled = isLoading;
-  }
-
-  if (pathPrefix) {
-    pathPrefix.disabled = isLoading;
   }
 }
 
@@ -611,9 +612,66 @@ async function init() {
     <div class="error-target">Target</div>
     <div class="error-urls">URLs</div>
     <div class="error-last-seen">Last Seen</div>
-    <div class="error-count">Estimated Occurrences</div>
+    <div class="error-count">
+      <span>Estimated Occurrences</span>
+      <div class="path-filter-wrapper">
+        <button class="path-filter-trigger" title="Filter by path">
+          <span class="icon icon-filter"></span>
+        </button>
+        <div class="path-filter-dropdown">
+          <label for="path-prefix">Filter by Path</label>
+          <input type="text" id="path-prefix" placeholder="/blog/">
+          <button type="button" class="path-filter-apply button">Apply</button>
+        </div>
+      </div>
+    </div>
   `;
   document.getElementById('error-list').before(errorsHeader);
+  decorateIcons(errorsHeader);
+
+  // Path filter dropdown logic
+  const pathFilterWrapper = errorsHeader.querySelector('.path-filter-wrapper');
+  const pathFilterTrigger = errorsHeader.querySelector('.path-filter-trigger');
+  const pathFilterDropdown = errorsHeader.querySelector('.path-filter-dropdown');
+  const pathPrefixInput = errorsHeader.querySelector('#path-prefix');
+  const pathFilterApply = errorsHeader.querySelector('.path-filter-apply');
+
+  pathFilterTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    pathFilterDropdown.classList.toggle('open');
+    if (pathFilterDropdown.classList.contains('open')) {
+      pathPrefixInput.focus();
+    }
+  });
+
+  function applyPathFilter() {
+    const value = pathPrefixInput.value.trim();
+    if (state.pathPrefixFilter !== (value || null)) {
+      state.pathPrefixFilter = value || null;
+      updateState();
+      refreshResults(false);
+    }
+    pathFilterDropdown.classList.remove('open');
+  }
+
+  pathFilterApply.addEventListener('click', applyPathFilter);
+
+  pathPrefixInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      applyPathFilter();
+    }
+    if (e.key === 'Escape') {
+      pathFilterDropdown.classList.remove('open');
+    }
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!pathFilterWrapper.contains(e.target)) {
+      pathFilterDropdown.classList.remove('open');
+    }
+  });
 
   const filterIndicator = document.createElement('div');
   filterIndicator.classList.add('filter-indicator');
@@ -666,26 +724,6 @@ async function init() {
     state.dateRange = document.getElementById('date-range').value;
     updateState();
     refreshResults();
-  });
-
-  // Path prefix filter on blur or Enter
-  const pathPrefixInput = document.getElementById('path-prefix');
-
-  function applyPathPrefixFilter() {
-    const value = pathPrefixInput.value.trim();
-    if (state.pathPrefixFilter !== (value || null)) {
-      state.pathPrefixFilter = value || null;
-      updateState();
-      refreshResults(false);
-    }
-  }
-
-  pathPrefixInput.addEventListener('blur', applyPathPrefixFilter);
-  pathPrefixInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      applyPathPrefixFilter();
-    }
   });
 
   const {
