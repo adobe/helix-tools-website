@@ -13,7 +13,6 @@ import {
   getMetadata,
   loadBlock,
   decorateBlock,
-  loadScript,
 } from './aem.js';
 
 /**
@@ -182,42 +181,6 @@ export function setUpSideNav(main, aside) {
   return loadBlock(sideNav);
 }
 
-async function loadHighlightLibrary() {
-  const highlightCSS = createTag('link', {
-    rel: 'stylesheet',
-    href: '/libs/highlight/atom-one-dark.min.css',
-  });
-  document.head.append(highlightCSS);
-
-  await loadScript('/libs/highlight/highlight.min.js');
-  const initScript = createTag('script', {}, 'hljs.highlightAll();');
-  document.body.append(initScript);
-}
-
-export async function decorateGuideTemplateCodeBlock() {
-  const firstCodeBlock = document.querySelector('pre code');
-  if (!firstCodeBlock) return;
-
-  const intersectionObserver = new IntersectionObserver(
-    (entries, observer) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          observer.unobserve(entry.target);
-          loadHighlightLibrary();
-        }
-      });
-    },
-    {
-      root: null,
-      rootMargin: '200px', // Adjust rootMargin as needed to trigger intersection at the desired position before the codeblock becomes visible
-      threshold: 0,
-    },
-  );
-
-  // when first codeblock is coming into view, load highlight.js for page
-  intersectionObserver.observe(firstCodeBlock);
-}
-
 function decorateLinks(main) {
   main.querySelectorAll('a').forEach((a) => {
     if (!a.href) return; // Skip anchors without href
@@ -326,7 +289,6 @@ async function loadLazy(doc) {
     // sidebar + related style setup
     const aside = main.querySelector('main > aside');
     if (aside) setUpSideNav(main, aside);
-    decorateGuideTemplateCodeBlock();
   }
 }
 
