@@ -172,83 +172,6 @@
       }
     }
 
-  .filter-indicator {
-    background-color: var(--blue-200);
-    border: var(--border-s) solid var(--blue-500);
-    border-radius: var(--rounding-m);
-    padding: var(--spacing-s);
-    margin: 0 var(--spacing-s) var(--spacing-m);
-    display: none;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--spacing-m);
-    font-size: var(--body-size-s);
-
-    &.active {
-      display: flex;
-    }
-
-    .filter-content {
-      display: flex;
-      flex-direction: column;
-      gap: var(--spacing-xs);
-      flex: 1;
-
-      @media (width >= 900px) {
-        flex-direction: row;
-        gap: var(--spacing-m);
-      }
-    }
-
-    .filter-item {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-xs);
-      flex-wrap: wrap;
-
-      strong {
-        color: var(--gray-900);
-        white-space: nowrap;
-      }
-
-      a {
-        color: var(--blue-1000);
-        text-decoration: underline;
-        word-break: break-all;
-        
-        &:hover {
-          text-decoration: none;
-        }
-      }
-    }
-
-    .filter-text {
-      font-family: var(--code-font-family);
-      font-size: var(--body-size-s);
-      background-color: var(--layer-depth);
-      padding: var(--spacing-xs) var(--spacing-s);
-      border-radius: var(--rounding-s);
-      color: var(--blue-1000);
-      word-break: break-all;
-      font-weight: var(--weight-bold);
-    }
-
-    .clear-filter {
-      background-color: var(--blue-900);
-      color: white;
-      border: none;
-      border-radius: var(--rounding-s);
-      padding: var(--spacing-xs) var(--spacing-s);
-      cursor: pointer;
-      font-size: var(--body-size-s);
-      white-space: nowrap;
-
-      &:hover {
-        background-color: var(--blue-800);
-      }
-    }
-  }
-
   .errors-header {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -287,71 +210,106 @@
         gap: var(--spacing-s);
       }
 
-      .path-filter-wrapper {
-        position: relative;
+      .filter-panel-trigger {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: var(--border-s) solid var(--gray-300);
+        border-radius: var(--rounding-m);
+        background-color: var(--color-background);
+        cursor: pointer;
+        transition: all 0.15s ease;
 
-        .path-filter-trigger {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 28px;
-          height: 28px;
-          padding: 0;
-          border: var(--border-s) solid var(--gray-300);
-          border-radius: var(--rounding-m);
-          background-color: var(--color-background);
-          cursor: pointer;
-          transition: all 0.15s ease;
+        .icon {
+          width: 14px;
+          height: 14px;
+        }
+
+        &:hover {
+          background-color: var(--gray-200);
+          border-color: var(--gray-400);
+        }
+
+        &.has-filters {
+          background-color: var(--blue-900);
+          border-color: var(--blue-900);
+          color: white;
 
           .icon {
-            width: 14px;
-            height: 14px;
+            filter: brightness(0) invert(1);
           }
 
           &:hover {
-            background-color: var(--gray-200);
-            border-color: var(--gray-400);
+            background-color: var(--blue-800);
+            border-color: var(--blue-800);
           }
         }
+      }
+    }
 
-        .path-filter-dropdown {
-          position: absolute;
-          top: calc(100% + var(--spacing-xs));
-          right: 0;
-          z-index: 200;
-          display: none;
+    .filter-panel {
+      max-height: 0;
+      overflow: hidden;
+      background-color: var(--gray-100);
+      border-bottom: none;
+      transition: max-height 0.3s ease, padding 0.3s ease, border-bottom 0.3s ease;
+
+      &.open {
+        max-height: 400px;
+        padding: var(--spacing-m);
+        border-bottom: var(--border-s) solid var(--gray-300);
+      }
+
+      .filter-panel-content {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--spacing-m);
+
+        @media (width >= 900px) {
+          grid-template-columns: repeat(3, 1fr) auto;
+          align-items: center;
+        }
+      }
+
+      .filter-field {
+        position: relative;
+
+        label {
+          display: block;
+          font-size: var(--body-size-xs);
+          font-weight: var(--weight-medium);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: var(--gray-700);
+          margin-bottom: var(--spacing-xs);
+        }
+
+        input {
+          width: 100%;
+          font-size: var(--body-size-s);
+        }
+
+        #filter-path {
+          font-family: var(--code-font-family);
+        }
+      }
+
+      .filter-actions {
+        display: flex;
+        gap: var(--spacing-s);
+        justify-content: flex-end;
+
+        @media (width >= 900px) {
           flex-direction: column;
-          gap: var(--spacing-s);
-          min-width: 280px;
-          padding: var(--spacing-m);
-          background-color: var(--color-background);
-          border: var(--border-s) solid var(--gray-300);
-          border-radius: var(--rounding-m);
-          box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+        }
 
-          &.open {
-            display: flex;
-          }
-
-          label {
-            font-size: var(--body-size-s);
-            font-weight: var(--weight-medium);
-            text-transform: none;
-            letter-spacing: normal;
-            color: var(--color-text);
-          }
-
-          input {
-            font-family: var(--code-font-family);
-            font-size: var(--body-size-s);
-            text-transform: none;
-          }
-
-          .path-filter-apply {
-            align-self: flex-end;
-            padding: var(--spacing-xs) var(--spacing-m);
-            font-size: var(--body-size-s);
-          }
+        .button {
+          padding: var(--spacing-xs) var(--spacing-m);
+          font-size: var(--body-size-s);
+          white-space: nowrap;
         }
       }
     }
