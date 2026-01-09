@@ -524,26 +524,45 @@ async function refreshResults(refreshCached = true) {
       data.cached.sort((a, b) => b.weight - a.weight);
     }
 
-    // Helper to check if a URL matches the path prefix
-    const urlMatchesPathPrefix = (url) => {
-      if (!pathPrefixFilter) return true;
-      try {
-        const urlPath = new URL(url).pathname;
-        return urlPath.startsWith(pathPrefixFilter);
-      } catch {
+    // Helper to check if a URL matches the active URL filters
+    const urlMatchesFilters = (url) => {
+      // Check path prefix filter
+      if (pathPrefixFilter) {
+        try {
+          const urlPath = new URL(url).pathname;
+          if (!urlPath.startsWith(pathPrefixFilter)) return false;
+        } catch {
+          return false;
+        }
+      }
+
+      // Check exact URL filter
+      if (urlFilter && url !== urlFilter) {
         return false;
       }
+
+      return true;
     };
+
+    const hasUrlFilters = pathPrefixFilter || urlFilter;
 
     data.filtered = data.cached
       .map((item) => {
-        // If path prefix filter is active, create a filtered copy of the item
-        if (pathPrefixFilter) {
+        // First check source/target filters (these filter entire groups)
+        if (sourceFilter && item.source.toLowerCase() !== sourceFilter.toLowerCase()) {
+          return null;
+        }
+        if (targetFilter && item.target.toLowerCase() !== targetFilter.toLowerCase()) {
+          return null;
+        }
+
+        // If URL filters are active, recalculate weights based on matching URLs
+        if (hasUrlFilters) {
           const filteredUrls = {};
           let filteredWeight = 0;
 
           Object.entries(item.urls).forEach(([url, count]) => {
-            if (urlMatchesPathPrefix(url)) {
+            if (urlMatchesFilters(url)) {
               filteredUrls[url] = count;
               filteredWeight += count;
             }
@@ -552,7 +571,7 @@ async function refreshResults(refreshCached = true) {
           // Skip items with no matching URLs
           if (filteredWeight === 0) return null;
 
-          const filteredTimeSlots = item.timeSlots.filter((slot) => urlMatchesPathPrefix(slot.url));
+          const filteredTimeSlots = item.timeSlots.filter((slot) => urlMatchesFilters(slot.url));
 
           return {
             ...item,
@@ -564,27 +583,10 @@ async function refreshResults(refreshCached = true) {
               : item.timestamp,
           };
         }
+
         return item;
       })
-      .filter((item) => {
-        if (!item) return false;
-
-        let matches = true;
-
-        if (urlFilter) {
-          matches = matches && (urlFilter in item.urls);
-        }
-
-        if (sourceFilter) {
-          matches = matches && (item.source.toLowerCase() === sourceFilter.toLowerCase());
-        }
-
-        if (targetFilter) {
-          matches = matches && (item.target.toLowerCase() === targetFilter.toLowerCase());
-        }
-
-        return matches;
-      });
+      .filter((item) => item !== null);
 
     // Re-sort by weight after filtering
     data.filtered.sort((a, b) => b.weight - a.weight);
