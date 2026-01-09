@@ -573,14 +573,18 @@ async function refreshResults(refreshCached = true) {
 
           const filteredTimeSlots = item.timeSlots.filter((slot) => urlMatchesFilters(slot.url));
 
+          // Find max timestamp without spreading (avoids stack overflow with large arrays)
+          const maxTime = filteredTimeSlots.reduce(
+            (max, s) => Math.max(max, s.time.getTime()),
+            0,
+          );
+
           return {
             ...item,
             urls: filteredUrls,
             weight: filteredWeight,
             timeSlots: filteredTimeSlots,
-            timestamp: filteredTimeSlots.length > 0
-              ? new Date(Math.max(...filteredTimeSlots.map((s) => s.time.getTime())))
-              : item.timestamp,
+            timestamp: maxTime > 0 ? new Date(maxTime) : item.timestamp,
           };
         }
 
