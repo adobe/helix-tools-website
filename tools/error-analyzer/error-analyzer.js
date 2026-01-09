@@ -21,6 +21,20 @@ const data = {
   filtered: [],
 };
 
+/**
+ * Escapes HTML to prevent XSS attacks
+ * @param {string} text - Text to escape
+ * @returns {string} - Escaped HTML
+ */
+function escapeHtml(text) {
+  if (typeof text !== 'string') {
+    return String(text);
+  }
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 // Toast notification
 function showToast(message, type = 'success') {
   const existingToast = document.querySelector('.toast-notification');
@@ -138,9 +152,10 @@ function formatUrls(urlsObject) {
 
   let result = '<ul class="url-list">';
   urlsToShow.forEach(([url, count]) => {
+    const escapedUrl = escapeHtml(url);
     result += `<li>
       <div class="url-row">
-        <a href="${url}" class="url-text" target="_blank" rel="noopener noreferrer">${url}</a>
+        <a href="${escapedUrl}" class="url-text" target="_blank" rel="noopener noreferrer">${escapedUrl}</a>
         <span class="url-count">(${formatNumber(count)})</span>
       </div>
     </li>`;
@@ -220,22 +235,26 @@ function renderFilteredData() {
     const sourceUrlMatch = item.source.match(/\(?(https?:\/\/[^\s)]+?)(?::\d+:\d+)?\)?$/);
     const sourceUrl = sourceUrlMatch ? sourceUrlMatch[1] : null;
 
+    const escapedSource = escapeHtml(item.source);
+    const escapedTarget = escapeHtml(item.target);
+    const escapedSourceUrl = sourceUrl ? escapeHtml(sourceUrl) : null;
+
     li.innerHTML = `
       <div class="error-source">
-        <code tabindex="0" data-value="${item.source.replace(/"/g, '&quot;')}">${item.source}</code>
+        <code tabindex="0" data-value="${escapedSource}">${escapedSource}</code>
         <div class="action-buttons">
-          <button class="copy-btn" data-value="${item.source.replace(/"/g, '&quot;')}" title="Copy to clipboard">
+          <button class="copy-btn" data-value="${escapedSource}" title="Copy to clipboard">
             <span class="icon icon-copy"></span>
           </button>
-          ${sourceUrl ? `<a href="${sourceUrl}" class="view-source-btn" target="_blank" rel="noopener noreferrer" title="Open source URL">
+          ${escapedSourceUrl ? `<a href="${escapedSourceUrl}" class="view-source-btn" target="_blank" rel="noopener noreferrer" title="Open source URL">
             <span class="icon icon-code"></span>
           </a>` : ''}
         </div>
       </div>
       <div class="error-target">
-        <code tabindex="0" data-value="${item.target.replace(/"/g, '&quot;')}">${item.target}</code>
+        <code tabindex="0" data-value="${escapedTarget}">${escapedTarget}</code>
         <div class="action-buttons">
-          <button class="copy-btn" data-value="${item.target.replace(/"/g, '&quot;')}" title="Copy to clipboard">
+          <button class="copy-btn" data-value="${escapedTarget}" title="Copy to clipboard">
             <span class="icon icon-copy"></span>
           </button>
         </div>
@@ -585,9 +604,9 @@ async function init() {
     const sortedSources = Array.from(sources).slice(0, 50);
     const sortedTargets = Array.from(targets).slice(0, 50);
 
-    pathDatalist.innerHTML = sortedPaths.map((p) => `<option value="${p}">`).join('');
-    sourceDatalist.innerHTML = sortedSources.map((s) => `<option value="${s.replace(/"/g, '&quot;')}">`).join('');
-    targetDatalist.innerHTML = sortedTargets.map((t) => `<option value="${t.replace(/"/g, '&quot;')}">`).join('');
+    pathDatalist.innerHTML = sortedPaths.map((p) => `<option value="${escapeHtml(p)}">`).join('');
+    sourceDatalist.innerHTML = sortedSources.map((s) => `<option value="${escapeHtml(s)}">`).join('');
+    targetDatalist.innerHTML = sortedTargets.map((t) => `<option value="${escapeHtml(t)}">`).join('');
   }
 
   function setFilterPanelOpen(isOpen) {
