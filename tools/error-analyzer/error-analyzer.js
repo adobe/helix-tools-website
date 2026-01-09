@@ -10,6 +10,7 @@ const state = {
   domain: null,
   domainKey: null,
   dateRange: null,
+  pathPrefixFilter: null,
   urlFilter: null,
   sourceFilter: null,
   targetFilter: null,
@@ -94,6 +95,12 @@ function updateState() {
     document.getElementById('date-range').value = state.dateRange;
   }
 
+  // Sync path prefix input with state
+  const pathPrefixInput = document.getElementById('path-prefix');
+  if (pathPrefixInput && state.pathPrefixFilter !== pathPrefixInput.value) {
+    pathPrefixInput.value = state.pathPrefixFilter || '';
+  }
+
   const filterIndicator = document.querySelector('.filter-indicator');
   const hasFilters = state.urlFilter || state.sourceFilter || state.targetFilter;
 
@@ -140,11 +147,12 @@ function getStateFromURL() {
   const domainKey = params.get('domainKey');
   const domain = params.get('domain');
   const dateRange = params.get('dateRange');
+  const pathPrefixFilter = params.get('pathPrefixFilter');
   const urlFilter = params.get('urlFilter');
   const sourceFilter = params.get('sourceFilter');
   const targetFilter = params.get('targetFilter');
   return {
-    domain, domainKey, dateRange, urlFilter, sourceFilter, targetFilter,
+    domain, domainKey, dateRange, pathPrefixFilter, urlFilter, sourceFilter, targetFilter,
   };
 }
 
@@ -202,6 +210,7 @@ function setLoading(isLoading) {
   const errorListContainer = document.querySelector('.error-list-container');
   const errorGraphContainer = document.querySelector('.error-graph-container');
   const dateRange = document.getElementById('date-range');
+  const pathPrefix = document.getElementById('path-prefix');
 
   if (errorListContainer) {
     if (isLoading) {
@@ -219,6 +228,10 @@ function setLoading(isLoading) {
 
   if (dateRange) {
     dateRange.disabled = isLoading;
+  }
+
+  if (pathPrefix) {
+    pathPrefix.disabled = isLoading;
   }
 }
 
@@ -418,7 +431,7 @@ function renderFilteredData() {
 
 async function refreshResults(refreshCached = true) {
   const {
-    domain, domainKey, dateRange, urlFilter, sourceFilter, targetFilter,
+    domain, domainKey, dateRange, pathPrefixFilter, urlFilter, sourceFilter, targetFilter,
   } = state;
   if (!domain || !domainKey) {
     return;
@@ -510,23 +523,70 @@ async function refreshResults(refreshCached = true) {
       data.cached.sort((a, b) => b.weight - a.weight);
     }
 
-    data.filtered = data.cached.filter((item) => {
-      let matches = true;
-
-      if (urlFilter) {
-        matches = matches && (urlFilter in item.urls);
+    // Helper to check if a URL matches the path prefix
+    const urlMatchesPathPrefix = (url) => {
+      if (!pathPrefixFilter) return true;
+      try {
+        const urlPath = new URL(url).pathname;
+        return urlPath.startsWith(pathPrefixFilter);
+      } catch {
+        return false;
       }
+    };
 
-      if (sourceFilter) {
-        matches = matches && (item.source.toLowerCase() === sourceFilter.toLowerCase());
-      }
+    data.filtered = data.cached
+      .map((item) => {
+        // If path prefix filter is active, create a filtered copy of the item
+        if (pathPrefixFilter) {
+          const filteredUrls = {};
+          let filteredWeight = 0;
 
-      if (targetFilter) {
-        matches = matches && (item.target.toLowerCase() === targetFilter.toLowerCase());
-      }
+          Object.entries(item.urls).forEach(([url, count]) => {
+            if (urlMatchesPathPrefix(url)) {
+              filteredUrls[url] = count;
+              filteredWeight += count;
+            }
+          });
 
-      return matches;
-    });
+          // Skip items with no matching URLs
+          if (filteredWeight === 0) return null;
+
+          const filteredTimeSlots = item.timeSlots.filter((slot) => urlMatchesPathPrefix(slot.url));
+
+          return {
+            ...item,
+            urls: filteredUrls,
+            weight: filteredWeight,
+            timeSlots: filteredTimeSlots,
+            timestamp: filteredTimeSlots.length > 0
+              ? new Date(Math.max(...filteredTimeSlots.map((s) => s.time.getTime())))
+              : item.timestamp,
+          };
+        }
+        return item;
+      })
+      .filter((item) => {
+        if (!item) return false;
+
+        let matches = true;
+
+        if (urlFilter) {
+          matches = matches && (urlFilter in item.urls);
+        }
+
+        if (sourceFilter) {
+          matches = matches && (item.source.toLowerCase() === sourceFilter.toLowerCase());
+        }
+
+        if (targetFilter) {
+          matches = matches && (item.target.toLowerCase() === targetFilter.toLowerCase());
+        }
+
+        return matches;
+      });
+
+    // Re-sort by weight after filtering
+    data.filtered.sort((a, b) => b.weight - a.weight);
 
     renderFilteredData();
   } finally {
@@ -582,6 +642,7 @@ async function init() {
 
     state.domain = domain;
     state.domainKey = domainKey;
+    state.pathPrefixFilter = null;
     state.urlFilter = null;
     state.sourceFilter = null;
     state.targetFilter = null;
@@ -607,13 +668,34 @@ async function init() {
     refreshResults();
   });
 
+  // Path prefix filter on blur or Enter
+  const pathPrefixInput = document.getElementById('path-prefix');
+
+  function applyPathPrefixFilter() {
+    const value = pathPrefixInput.value.trim();
+    if (state.pathPrefixFilter !== (value || null)) {
+      state.pathPrefixFilter = value || null;
+      updateState();
+      refreshResults(false);
+    }
+  }
+
+  pathPrefixInput.addEventListener('blur', applyPathPrefixFilter);
+  pathPrefixInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      applyPathPrefixFilter();
+    }
+  });
+
   const {
-    domain, domainKey, dateRange, urlFilter, sourceFilter, targetFilter,
+    domain, domainKey, dateRange, pathPrefixFilter, urlFilter, sourceFilter, targetFilter,
   } = getStateFromURL();
 
   state.domain = domain;
   state.domainKey = domainKey;
   state.dateRange = dateRange;
+  state.pathPrefixFilter = pathPrefixFilter;
   state.urlFilter = urlFilter;
   state.sourceFilter = sourceFilter;
   state.targetFilter = targetFilter;

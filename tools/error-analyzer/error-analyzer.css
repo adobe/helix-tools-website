@@ -43,7 +43,8 @@
       grid-template-columns: 1fr 1fr;
     }
 
-    select:disabled {
+    select:disabled,
+    input:disabled {
       opacity: 0.6;
       cursor: not-allowed;
     }
@@ -115,6 +116,28 @@
 
       @media (width >= 900px) {
         height: 400px;
+      }
+    }
+  }
+
+  .path-prefix-container {
+    margin-top: var(--spacing-s);
+    margin-inline: var(--spacing-m);
+
+    label {
+      display: block;
+      font-size: var(--body-size-s);
+      font-weight: var(--weight-medium);
+      margin-bottom: var(--spacing-xs);
+    }
+
+    #path-prefix {
+      width: 100%;
+      font-family: var(--code-font-family);
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
       }
     }
   }
