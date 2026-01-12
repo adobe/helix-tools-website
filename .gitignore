@@ -13,5 +13,7 @@ MIGRATION_PLAN.md
 !CLAUDE.md
 !AGENTS.md
 
-.playwright-mcp/
+# Claude Code - ignore local settings but commit skills
 .claude/settings.local.json
+.claude/skills/**/node_modules/# Playwright MCP
+.playwright-mcp/

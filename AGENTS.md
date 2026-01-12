@@ -1,4 +1,10 @@
-# Agents Instructions
+# CLAUDE.md
+
+This project is a website built with Edge Delivery Services in Adobe Experience Manager Sites as a Cloud Service. As an agent, follow the instructions in this file to deliver code based on Adobe's standards for fast, easy-to-author, and maintainable web experiences.
+
+## Skills
+
+**For ALL development work involving blocks, core scripts, or functionality, you MUST start with the content-driven-development skill.** It will orchestrate other skills as needed throughout the development workflow.
 
 ## Project Overview
 
@@ -56,10 +62,14 @@ The repository provides the basic structure, blocks, and configuration needed to
 - Always include `.js` file extensions in imports
 - Use Unix line endings (LF)
 
+**For detailed JavaScript guidelines:** Use the **building-blocks** skill which includes comprehensive decoration patterns and best practices.
+
 ### CSS
 - Mobile-first responsive design (breakpoints: 600px/900px/1200px)
 - All selectors scoped to blocks: `.{blockName} .selector`
 - Follow Stylelint standard configuration
+
+**For detailed CSS guidelines:** Use the **building-blocks** skill which includes comprehensive styling patterns and best practices.
 
 ### HTML
 - Use semantic HTML5 elements
@@ -68,13 +78,34 @@ The repository provides the basic structure, blocks, and configuration needed to
 
 ## Key Concepts
 
+### Content
+
+CMS authored content is a key part of every AEM Website. The content of a page is broken into sections. Sections can have default content (text, headings, links, etc.) as well as content in blocks.
+
+**For development workflow:** Use the **content-driven-development** skill for all development tasks. This skill ensures you identify or create test content before writing code, following AEM best practices.
+
+**Quick tips:**
+- Inspect page structure: `curl http://localhost:3000/path/to/page`
+- View source markdown: `curl http://localhost:3000/path/to/page.md`
+- Local test content: Use `--html-folder drafts` flag when starting dev server
+
 ### Blocks
 
 Blocks are the re-usable building blocks of AEM. Blocks add styling and functionality to content. Each block has an initial content structure it expects, and transforms the HTML using DOM APIs to render a final structure.
 
 **Key principle:** The initial content structure is the contract between authors and developers. Design this structure before writing any code, and be careful when making changes that could break existing pages.
 
+**For creating or modifying blocks:** Use the **building-blocks** skill which guides you through:
+- Content model design (via content-driven-development)
+- JavaScript decoration patterns
+- CSS styling conventions
+- Testing and validation
+
 **Tip:** Use `curl http://localhost:3000/path/to/page` to inspect the HTML delivered by the backend before making assumptions.
+
+### Auto-Blocking
+
+Auto-blocking is the process of creating blocks that aren't explicitly authored into the page based on patterns in the content. See the `buildAutoBlocks` function in `scripts.js`.
 
 ### Three-Phase Page Loading
 
@@ -85,6 +116,11 @@ Pages are progressively loaded in three phases to maximize performance. This pro
 * Delayed - load things that can be safely loaded later here and incur a performance penalty when loaded earlier
 
 ## Development Workflow
+
+**For all development tasks:** Use the **content-driven-development** skill which orchestrates the complete workflow:
+1. Content discovery and modeling
+2. Implementation (invokes building-blocks skill for blocks)
+3. Validation and testing (invokes testing-blocks skill)
 
 ### Local Development
 1. Run `npx -y @adobe/aem-cli up --no-open` to start the AEM Proxy server
@@ -99,6 +135,13 @@ Pages are progressively loaded in three phases to maximize performance. This pro
 - Each block should be self-contained, responsive, and accessible
 
 ## Testing & Quality Assurance
+
+**For comprehensive testing guidance:** Use the **testing-blocks** skill which covers:
+- Unit testing for logic-heavy utilities
+- Browser testing with Playwright/Puppeteer
+- Linting and code quality
+- Performance validation
+- PR preparation
 
 ### Quick Reference
 - **Linting:** `npm run lint` (must pass before commits), `npm run lint:fix` to auto-fix
@@ -130,6 +173,8 @@ With this information, you can construct URLs for the preview environment (same 
 5. A human reviewer will review the code, inspect the preview URL, and merge the PR
 6. AEM Code Sync updates the main branch for production
 
+**For PR preparation and testing:** See the **testing-blocks** skill for comprehensive guidance on testing before opening a PR.
+
 ## Common Tasks
 
 ### Adding A New Tool
@@ -145,13 +190,38 @@ With this information, you can construct URLs for the preview environment (same 
 3. Test functionality thoroughly
 4. Ensure changes don't break existing tool features
 
+### Adding New Blocks
+Use the **content-driven-development** skill which will guide you through:
+1. Content modeling and test content creation
+2. Block implementation (via building-blocks skill)
+3. Testing and validation (via testing-blocks skill)
+
+### Modifying Existing Blocks
+Use the **content-driven-development** skill to ensure you have test content, then follow the building-blocks skill for implementation.
+
+### Global Style Changes
+1. Modify files in the `styles/` directory
+2. Test across different blocks and pages
+3. Ensure changes don't break existing layouts
+4. Consider impact on performance, especially CLS
+
+**For testing global changes:** Use the **testing-blocks** skill to validate style changes across the site before opening a PR.
+
+### Core Script Changes
+Changes to `scripts.js`, `delayed.js`, or other core functionality require careful testing across multiple blocks and pages. Use the **testing-blocks** skill for comprehensive validation.
+
 ## Troubleshooting
 
 ### Getting Help
 
+**For AEM documentation:** Use the **docs-search** skill to search aem.live documentation and blogs for feature information, implementation guidance, and best practices.
+
+**For reference implementations:** Use the **block-collection-and-party** skill to find similar blocks, patterns, and code examples from the Block Collection and Block Party repositories.
+
 **Key documentation resources:**
 - [Developer Tutorial](https://www.aem.live/developer/tutorial)
 - [The Anatomy of a Project](https://www.aem.live/developer/anatomy-of-a-project)
+- [David's Model](https://www.aem.live/docs/davidsmodel)
 
 **Manual search:** `site:www.aem.live` when searching the web
 
@@ -166,6 +236,8 @@ With this information, you can construct URLs for the preview environment (same 
 ## Contributing
 
 - Follow the existing code style and patterns (see Code Style Guidelines above)
+- Use the **content-driven-development** skill for all development tasks
+- Use the **testing-blocks** skill before opening any PR
 - Ensure all linting passes: `npm run lint`
 - Update documentation for significant changes
 
