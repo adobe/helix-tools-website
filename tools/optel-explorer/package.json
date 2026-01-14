@@ -1,0 +1,12 @@
+{
+  "name": "@adobe/aem-optel-explorer",
+  "version": "0.1.0",
+  "description": "Operational Telemetry (Optel) data exploration and analysis for AEM Edge Delivery Services",
+  "scripts": {
+    "test": "node --test --experimental-test-coverage --test-reporter=lcov --test-reporter-destination=../../lcov.info --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=../../junit.xml"
+  },
+  "type": "module",
+  "dependencies": {
+    "@adobe/rum-distiller": "1.20.8"
+  }
+}
