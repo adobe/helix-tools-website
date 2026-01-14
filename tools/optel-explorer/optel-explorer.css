@@ -59,19 +59,19 @@ body main > .section {
 /* general performance */
 
 main li.score-good,
-optel-vitals-facet div[data-value^="good"] label {
+vitals-facet div[data-value^="good"] label {
   color: var(--dark-green);
   background-color: var(--light-green);
 }
 
 main li.score-ni,
-optel-vitals-facet div[data-value^="ni"] label {
+vitals-facet div[data-value^="ni"] label {
   color: var(--dark-orange);
   background-color: var(--light-orange);
 }
 
 main li.score-poor,
-optel-vitals-facet div[data-value^="poor"] label {
+vitals-facet div[data-value^="poor"] label {
   color: var(--dark-red);
   background-color: var(--light-red);
 }
@@ -99,22 +99,22 @@ main .title > * {
   flex: 2 0px;
 }
 
-main .title optel-daterange-picker {
+main .title daterange-picker {
   flex: 1 100%;
   order: 3;
 }
 
-main .title optel-incognito-checkbox {
+main .title incognito-checkbox {
   display: none;
   margin-bottom: 10px;
 }
 
-main .title optel-incognito-checkbox[mode="open"],
-main .title optel-incognito-checkbox[mode="incognito"] {
+main .title incognito-checkbox[mode="open"],
+main .title incognito-checkbox[mode="incognito"] {
   display: inline-block;
 }
 
-main .title optel-url-selector {
+main .title url-selector {
   margin-top: 8px;
   margin-bottom: 8px;
   margin-right: 8px;
@@ -125,12 +125,12 @@ main .title optel-url-selector {
   flex-grow: 50;
 }
 
-main .title optel-url-selector img {
+main .title url-selector img {
   height: 16px;
   margin-right: 8px;
 }
 
-main .title optel-url-selector input {
+main .title url-selector input {
   color: var(--spectrum-gray-700);
 }
 
@@ -368,13 +368,13 @@ fieldset a:any-link {
   color: currentcolor;
 }
 
-optel-list-facet[facet="userAgent"] fieldset {
+list-facet[facet="userAgent"] fieldset {
   color: var(--dark-fuchsia);
 
   --background-color: var(--light-fuchsia);
 }
 
-optel-list-facet[facet="url"] fieldset {
+list-facet[facet="url"] fieldset {
   color: var(--dark-purple);
 
   --background-color: var(--light-purple);
@@ -403,7 +403,7 @@ fieldset > div:hover {
 }
 
 fieldset li,
-optel-vitals-facet label {
+vitals-facet label {
   border: 1px solid currentcolor;
   border-radius: 8px;
   background-color: #eee;
@@ -423,7 +423,7 @@ fieldset li.significant {
 }
 
 fieldset li::after,
-optel-vitals-facet label::before {
+vitals-facet label::before {
   content: " ";
   background-color: currentcolor;
   width: 10px;
@@ -485,7 +485,7 @@ optel-vitals-facet label::before {
   content: " (";
 }
 
-#facets optel-literal-facet label span.value::before {
+#facets literal-facet label span.value::before {
   content: "";
 }
 
@@ -498,11 +498,11 @@ optel-vitals-facet label::before {
   content: "% conversion rate";
 }
 
-#facets optel-literal-facet label span.value::after {
+#facets literal-facet label span.value::after {
   content: "";
 }
 
-#facets optel-literal-facet label span.value {
+#facets literal-facet label span.value {
   font-family: monospace;
   font-size: 80%;
   background-color: var(--spectrum-blue-200);
@@ -510,29 +510,29 @@ optel-vitals-facet label::before {
   padding: 2px 4px;
 }
 
-optel-thumbnail-facet label {
+thumbnail-facet label {
   display: flex;
   align-items: center;
   gap: 1em;
 }
 
-optel-thumbnail-facet fieldset div:not(.more-container) {
+thumbnail-facet fieldset div:not(.more-container) {
   border-bottom: 1px solid currentcolor;
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-optel-thumbnail-facet label > span {
+thumbnail-facet label > span {
   display: flex;
   flex-direction: row;
   align-items: center;
 }
 
-optel-thumbnail-facet img {
+thumbnail-facet img {
   max-width: 100px;
 }
 
-optel-thumbnail-facet label span.filename {
+thumbnail-facet label span.filename {
   font-family: monospace;
   font-size: 80%;
   background-color: var(--spectrum-blue-200);
@@ -542,29 +542,29 @@ optel-thumbnail-facet label span.filename {
   margin-left: 4px;
 }
 
-optel-thumbnail-facet label span.count {
+thumbnail-facet label span.count {
   min-width: 54px;
 }
 
-optel-file-facet label {
+file-facet label {
   display: flex;
   align-items: center;
   gap: 1em;
 }
 
-optel-file-facet fieldset div:not(.more-container) {
+file-facet fieldset div:not(.more-container) {
   border-bottom: 1px solid currentcolor;
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-optel-file-facet label > span {
+file-facet label > span {
   display: flex;
   flex-direction: row;
   align-items: center;
 }
 
-optel-file-facet label span.filename {
+file-facet label span.filename {
   font-family: monospace;
   font-size: 80%;
   background-color: var(--spectrum-blue-200);
@@ -574,11 +574,11 @@ optel-file-facet label span.filename {
   margin-left: 4px;
 }
 
-optel-file-facet label span.count {
+file-facet label span.count {
   min-width: 54px;
 }
 
-optel-vitals-facet fieldset {
+vitals-facet fieldset {
   display: grid;
   grid-template-areas:
     ". lcp-good cls-good inp-good"
@@ -590,75 +590,75 @@ optel-vitals-facet fieldset {
   align-items: end;
 }
 
-optel-vitals-facet fieldset label {
+vitals-facet fieldset label {
   word-break: normal;
 }
 
-#facets optel-vitals-facet fieldset input[type="checkbox"] {
+#facets vitals-facet fieldset input[type="checkbox"] {
   width: 0;
   height: 0;
 }
 
-#facets optel-vitals-facet label::before {
+#facets vitals-facet label::before {
   margin-right: 8px;
 }
 
-#facets optel-vitals-facet fieldset div {
+#facets vitals-facet fieldset div {
   display: grid;
   grid-template-areas: "check lab";
   grid-template-columns: 0 1fr;
   gap: 0;
 }
 
-#facets optel-vitals-facet fieldset label {
+#facets vitals-facet fieldset label {
   text-align: start;
 }
 
-#facets optel-vitals-facet fieldset input[type="checkbox"] + label::before {
+#facets vitals-facet fieldset input[type="checkbox"] + label::before {
   border: 2px solid currentcolor;
   background-color: transparent;
   width: 8px;
   height: 8px;
 }
 
-#facets optel-vitals-facet fieldset input[type="checkbox"]:checked + label::before {
+#facets vitals-facet fieldset input[type="checkbox"]:checked + label::before {
   border: 2px solid currentcolor;
   background-color: currentcolor;
 }
 
-#facets optel-vitals-facet fieldset div[data-value="goodLCP"] {
+#facets vitals-facet fieldset div[data-value="goodLCP"] {
   grid-area: lcp-good;
 }
 
-#facets optel-vitals-facet fieldset div[data-value="niLCP"] {
+#facets vitals-facet fieldset div[data-value="niLCP"] {
   grid-area: lcp-ni;
 }
 
-#facets optel-vitals-facet fieldset div[data-value="poorLCP"] {
+#facets vitals-facet fieldset div[data-value="poorLCP"] {
   grid-area: lcp-poor;
 }
 
-#facets optel-vitals-facet fieldset div[data-value="goodCLS"] {
+#facets vitals-facet fieldset div[data-value="goodCLS"] {
   grid-area: cls-good;
 }
 
-#facets optel-vitals-facet fieldset div[data-value="niCLS"] {
+#facets vitals-facet fieldset div[data-value="niCLS"] {
   grid-area: cls-ni;
 }
 
-#facets optel-vitals-facet fieldset div[data-value="poorCLS"] {
+#facets vitals-facet fieldset div[data-value="poorCLS"] {
   grid-area: cls-poor;
 }
 
-#facets optel-vitals-facet fieldset div[data-value="goodINP"] {
+#facets vitals-facet fieldset div[data-value="goodINP"] {
   grid-area: inp-good;
 }
 
-#facets optel-vitals-facet fieldset div[data-value="niINP"] {
+#facets vitals-facet fieldset div[data-value="niINP"] {
   grid-area: inp-ni;
 }
 
-#facets optel-vitals-facet fieldset div[data-value="poorINP"] {
+#facets vitals-facet fieldset div[data-value="poorINP"] {
   grid-area: inp-poor;
 }
 
@@ -678,34 +678,34 @@ optel-vitals-facet fieldset label {
   height: 60px;
 }
 
-#facets optel-link-facet a .protocol::after {
+#facets link-facet a .protocol::after {
   content: "//";
 }
 
 /* don't worry, we will show this when there is enough space */
-#facets optel-link-facet a .protocol {
+#facets link-facet a .protocol {
   display: none;
 }
 
-#facets optel-link-facet a .hostname {
+#facets link-facet a .hostname {
   display: none;
 }
 
-#facets optel-facet-sidebar {
+#facets facet-sidebar {
   container-type: inline-size;
   container-name: facets;
 }
 
 /* external referrer only care about the hostname anyway */
-#facets optel-link-facet[facet="enter.source"] a .hostname {
+#facets link-facet[facet="enter.source"] a .hostname {
   display: inline;
 }
 
-#facets optel-link-facet[facet="enter.source"] a .pathname {
+#facets link-facet[facet="enter.source"] a .pathname {
   display: none;
 }
 
-#facets optel-link-facet img {
+#facets link-facet img {
   height: 40px;
   width: 60px;
   object-fit: cover;
@@ -714,11 +714,11 @@ optel-vitals-facet fieldset label {
   margin-right: 8px;
 }
 
-#facets optel-link-facet img.broken {
+#facets link-facet img.broken {
   opacity: 0;
 }
 
-#facets optel-link-facet img.favicon {
+#facets link-facet img.favicon {
   object-fit: contain;
 }
 
@@ -816,24 +816,24 @@ optel-vitals-facet fieldset label {
   margin-top: -20px;
 }
 
-optel-facet-sidebar[aria-disabled="true"] fieldset input[type="checkbox"] {
+facet-sidebar[aria-disabled="true"] fieldset input[type="checkbox"] {
   display: none;
 }
 
-optel-facet-sidebar[aria-disabled="true"] fieldset legend span {
+facet-sidebar[aria-disabled="true"] fieldset legend span {
   display: none;
 }
 
-optel-facet-sidebar[aria-disabled="true"] fieldset > div:hover {
+facet-sidebar[aria-disabled="true"] fieldset > div:hover {
   background-color: transparent;
 }
 
-optel-facet-sidebar[aria-disabled="true"] div.quick-filter {
+facet-sidebar[aria-disabled="true"] div.quick-filter {
   display: none;
 }
 
 @media (width >= 600px) {
-  main .title optel-url-selector input {
+  main .title url-selector input {
     font-size: var(--type-heading-l-size);
   }
 }
@@ -847,16 +847,16 @@ optel-facet-sidebar[aria-disabled="true"] div.quick-filter {
     flex: 3 0;
   }
 
-  main .title optel-daterange-picker {
+  main .title daterange-picker {
     flex: unset;
     order: unset;
   }
 
-  main .title optel-url-selector input {
+  main .title url-selector input {
     font-size: var(--type-heading-xl-size);
   }
 
-  main .title optel-url-selector img {
+  main .title url-selector img {
     height: 32px;
   }
 
@@ -897,7 +897,7 @@ optel-facet-sidebar[aria-disabled="true"] div.quick-filter {
   }
 
   fieldset li,
-  optel-vitals-facet label {
+  vitals-facet label {
     border-radius: 16px;
     padding: 4px 16px;
     font-size: 18px;
@@ -917,7 +917,7 @@ optel-facet-sidebar[aria-disabled="true"] div.quick-filter {
   }
 
   #deepmain > div,
-  #deepmain > optel-facet-sidebar {
+  #deepmain > facet-sidebar {
     width: 50%;
   }
 
@@ -926,7 +926,7 @@ optel-facet-sidebar[aria-disabled="true"] div.quick-filter {
     width: 50vw;
   }
 
-  optel-facet-sidebar {
+  facet-sidebar {
     margin-left: calc(50vw + 16px);
   }
 
@@ -967,12 +967,12 @@ img.facet-thumbnail {
   }
 
   /* url-selector input */
-  main .title optel-url-selector input {
+  main .title url-selector input {
     color: var(--spectrum-gray-100);
   }
 
   /* daterange-picker */
-  optel-daterange-picker {
+  daterange-picker {
     color: var(--spectrum-gray-100);
   }
 }

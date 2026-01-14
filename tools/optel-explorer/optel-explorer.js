@@ -19,17 +19,17 @@ window.slicer = {
   Chart: SkylineChart,
 };
 
-// Register all custom elements with optel- prefix
-customElements.define('optel-incognito-checkbox', IncognitoCheckbox);
-customElements.define('optel-facet-sidebar', FacetSidebar);
-customElements.define('optel-list-facet', ListFacet);
-customElements.define('optel-thumbnail-facet', ThumbnailFacet);
-customElements.define('optel-link-facet', LinkFacet);
-customElements.define('optel-literal-facet', LiteralFacet);
-customElements.define('optel-vitals-facet', VitalsFacet);
-customElements.define('optel-file-facet', FileFacet);
-customElements.define('optel-url-selector', URLSelector);
-customElements.define('optel-daterange-picker', DateRangePicker);
+// Register all custom elements
+customElements.define('incognito-checkbox', IncognitoCheckbox);
+customElements.define('facet-sidebar', FacetSidebar);
+customElements.define('list-facet', ListFacet);
+customElements.define('thumbnail-facet', ThumbnailFacet);
+customElements.define('link-facet', LinkFacet);
+customElements.define('literal-facet', LiteralFacet);
+customElements.define('vitals-facet', VitalsFacet);
+customElements.define('file-facet', FileFacet);
+customElements.define('url-selector', URLSelector);
+customElements.define('daterange-picker', DateRangePicker);
 
 // Import and execute the slicer module to initialize the application
 import('./slicer.js');

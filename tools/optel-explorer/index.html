@@ -28,16 +28,16 @@
       <div id="deepmain">
         <div class="output">
           <div class="title">
-            <optel-url-selector>www.aem.live</optel-url-selector>
-            <optel-daterange-picker id="view">
+            <url-selector>www.aem.live</url-selector>
+            <daterange-picker id="view">
               <ul hidden>
                 <li data-value="week">Last week</li>
                 <li data-value="month" aria-selected="true">Last month</li>
                 <li data-value="year">Last year</li>
                 <li data-value="custom">Custom</li>
               </ul>
-            </optel-daterange-picker>
-            <optel-incognito-checkbox></optel-incognito-checkbox>
+            </daterange-picker>
+            <incognito-checkbox></incognito-checkbox>
           </div>
           <div class="key-metrics">
             <ul>
@@ -88,11 +88,11 @@
             </figcaption>
           </figure>
         </div>
-        <optel-facet-sidebar>
-          <optel-list-facet facet="type">
+        <facet-sidebar>
+          <list-facet facet="type">
             <legend>Host Type</legend>
-          </optel-list-facet>
-          <optel-list-facet facet="userAgent">
+          </list-facet>
+          <list-facet facet="userAgent">
             <legend>Device Type and Operating System</legend>
             <dl>
               <dt>desktop</dt>
@@ -124,11 +124,11 @@
               <dt>bot:social</dt>
               <dd>Social Media Bot</dd>
             </dl>
-          </optel-list-facet>
-          <optel-link-facet facet="url" thumbnail="true" highlight="filter">
+          </list-facet>
+          <link-facet facet="url" thumbnail="true" highlight="filter">
             <legend>URL</legend>
-          </optel-link-facet>
-          <optel-list-facet facet="checkpoint" highlight="filter">
+          </link-facet>
+          <list-facet facet="checkpoint" highlight="filter">
             <legend>Checkpoints</legend>
             <dl>
               <dt>enter</dt>
@@ -152,41 +152,41 @@
               <dt>navigate</dt>
               <dd>Internal Navigation</dd>
             </dl>
-          </optel-list-facet>
-          <optel-literal-facet facet="click.source">
+          </list-facet>
+          <literal-facet facet="click.source">
             <legend>Click Source (CSS Selector)</legend>
-          </optel-literal-facet>
-          <optel-link-facet facet="click.target">
+          </literal-facet>
+          <link-facet facet="click.target">
             <legend>Click Target (URL)</legend>
-          </optel-link-facet>
-          <optel-literal-facet facet="viewmedia.source">
+          </link-facet>
+          <literal-facet facet="viewmedia.source">
             <legend>Media Source (CSS Selector)</legend>
-          </optel-literal-facet>
-          <optel-file-facet facet="viewmedia.target">
+          </literal-facet>
+          <file-facet facet="viewmedia.target">
             <legend>Media Target</legend>
-          </optel-file-facet>
-          <optel-literal-facet facet="viewblock.source">
+          </file-facet>
+          <literal-facet facet="viewblock.source">
             <legend>Block (CSS Selector)</legend>
-          </optel-literal-facet>
-          <optel-link-facet facet="enter.source" thumbnail="true" favicon="true">
+          </literal-facet>
+          <link-facet facet="enter.source" thumbnail="true" favicon="true">
             <legend>External Referrer</legend>
             <dl>
               <dt>(direct)</dt>
               <dd>Direct Entry (or via App)</dd>
             </dl>
-          </optel-link-facet>
-          <optel-link-facet facet="navigate.source" thumbnail="true">
+          </link-facet>
+          <link-facet facet="navigate.source" thumbnail="true">
             <legend>Internal Referrer</legend>
-          </optel-link-facet>
+          </link-facet>
 
-          <optel-list-facet facet="consent.source">
+          <list-facet facet="consent.source">
             <legend>Consent Provider</legend>
             <dl>
               <dt>onetrust</dt>
               <dd>OneTrust</dd>
             </dl>
-          </optel-list-facet>
-          <optel-list-facet facet="consent.target">
+          </list-facet>
+          <list-facet facet="consent.target">
             <legend>Consent Dialog</legend>
             <dl>
               <dt>show</dt>
@@ -194,9 +194,9 @@
               <dt>hidden</dt>
               <dd>Dialog Hidden</dd>
             </dl>
-          </optel-list-facet>
+          </list-facet>
 
-          <optel-list-facet facet="paid.source">
+          <list-facet facet="paid.source">
             <legend>Ad Network</legend>
             <dl>
               <dt>google</dt>
@@ -216,37 +216,37 @@
               <dt>tiktok</dt>
               <dd>TikTok Ads</dd>
             </dl>
-          </optel-list-facet>
-          <optel-literal-facet facet="paid.target">
+          </list-facet>
+          <literal-facet facet="paid.target">
             <legend>Click Tracking Parameter</legend>
-          </optel-literal-facet>
+          </literal-facet>
 
-          <optel-link-facet facet="error.source">
+          <link-facet facet="error.source">
             <legend>Error Source</legend>
-          </optel-link-facet>
-          <optel-literal-facet facet="error.target">
+          </link-facet>
+          <literal-facet facet="error.target">
             <legend>Error Line</legend>
-          </optel-literal-facet>
+          </literal-facet>
 
-          <optel-list-facet facet="loadresource.histogram" sort="asc">
+          <list-facet facet="loadresource.histogram" sort="asc">
             <legend>Resource Load Time (ms)</legend>
-          </optel-list-facet>
+          </list-facet>
 
-          <optel-list-facet facet="loadresource.source">
+          <list-facet facet="loadresource.source">
             <legend>Resource Loaded</legend>
-          </optel-list-facet>
+          </list-facet>
 
-          <optel-list-facet facet="missingresource.source">
+          <list-facet facet="missingresource.source">
             <legend>Missing Resource</legend>
-          </optel-list-facet>
+          </list-facet>
 
-          <optel-literal-facet facet="cwv-lcp.source">
+          <literal-facet facet="cwv-lcp.source">
             <legend>LCP Element (DOM)</legend>
-          </optel-literal-facet>
-          <optel-thumbnail-facet facet="cwv-lcp.target">
+          </literal-facet>
+          <thumbnail-facet facet="cwv-lcp.target">
             <legend>LCP Element (Preview)</legend>
-          </optel-thumbnail-facet>
-        </optel-facet-sidebar>
+          </thumbnail-facet>
+        </facet-sidebar>
       </div>
     </div>
   </main>
