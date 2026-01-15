@@ -1,6 +1,67 @@
 import { getMetadata, loadBlock } from '../../scripts/aem.js';
-import { swapIcons } from '../../scripts/scripts.js';
+import {
+  swapIcons,
+  applyTheme,
+  getStoredTheme,
+  storeTheme,
+} from '../../scripts/scripts.js';
 import { loadFragment } from '../fragment/fragment.js';
+
+// Theme toggle constants
+const THEMES = ['system', 'light', 'dark'];
+const themeIconsCache = {};
+
+const THEME_LABELS = {
+  system: 'Theme: System (click for Light)',
+  light: 'Theme: Light (click for Dark)',
+  dark: 'Theme: Dark (click for System)',
+};
+
+const THEME_TITLES = {
+  system: 'Switch to light theme',
+  light: 'Switch to dark theme',
+  dark: 'Switch to system theme',
+};
+
+async function fetchThemeIcon(theme) {
+  if (themeIconsCache[theme]) return themeIconsCache[theme];
+  try {
+    const response = await fetch(`/icons/theme-${theme}.svg`);
+    if (response.ok) {
+      const svg = await response.text();
+      themeIconsCache[theme] = svg;
+      return svg;
+    }
+  } catch (e) {
+    // Fetch failed
+  }
+  return '';
+}
+
+async function updateThemeButton(button, theme) {
+  const svg = await fetchThemeIcon(theme);
+  button.innerHTML = svg;
+  button.setAttribute('aria-label', THEME_LABELS[theme]);
+  button.setAttribute('title', THEME_TITLES[theme]);
+}
+
+function getNextTheme(current) {
+  const index = THEMES.indexOf(current);
+  return THEMES[(index + 1) % THEMES.length];
+}
+
+async function initThemeToggle(button) {
+  let currentTheme = getStoredTheme();
+  applyTheme(currentTheme);
+  await Promise.all(THEMES.map((theme) => fetchThemeIcon(theme)));
+  await updateThemeButton(button, currentTheme);
+  button.addEventListener('click', async () => {
+    currentTheme = getNextTheme(currentTheme);
+    applyTheme(currentTheme);
+    storeTheme(currentTheme);
+    await updateThemeButton(button, currentTheme);
+  });
+}
 
 function clickToggleListener(e) {
   const inNav = e.target.closest('.header-nav');
@@ -154,6 +215,15 @@ export default async function decorate(block) {
         a.replaceChildren(label, icon);
       }
     });
+
+    // add theme toggle
+    const themeToggleLi = document.createElement('li');
+    const themeToggle = document.createElement('button');
+    themeToggle.classList.add('theme-toggle');
+    themeToggle.setAttribute('type', 'button');
+    themeToggleLi.append(themeToggle);
+    toolsList.append(themeToggleLi);
+    initThemeToggle(themeToggle);
 
     const loginBlock = document.createElement('div');
     loginBlock.classList.add('profile');

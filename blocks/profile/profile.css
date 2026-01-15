@@ -17,19 +17,19 @@
 
 .profile button.login.ops:not(.quiet),
 .profile #profile-add-save.ops {
-  color: white;
-  background-color: var(--gray-800);
-  border-color: var(--gray-800);
+  color: var(--color-button-emphasis-text);
+  background-color: var(--color-button-emphasis-bg);
+  border-color: var(--color-button-emphasis-bg);
 }
 
 .profile button.login.ops[disabled],
 .profile #profile-add-save.ops[disabled] {
-  background-color: var(--gray-400);
-  border-color: var(--gray-400);
+  background-color: var(--color-button-disabled-bg);
+  border-color: var(--color-button-disabled-bg);
 }
 
 .profile button.login.quiet.ops {
-  color: var(--gray-800);
+  color: var(--color-text);
 }
 
 
@@ -99,11 +99,14 @@
   left: 50%;
   transform: translate(-50%, -50%);
   width: 100%;
-  background-color: var(--gray-25);
+  background-color: var(--layer-elevated);
+  color: var(--color-text);
+  border: 1px solid light-dark(var(--gray-200), var(--gray-600));
   border-radius: 1rem;
   max-width: 400px;
   padding: 2rem;
-  box-shadow: var(--shadow-default);
+  box-shadow: 0 12px 48px var(--transparent-black-700);
+  z-index: 1;
 }
 
 .profile .profile-modal .profile-add-form p {

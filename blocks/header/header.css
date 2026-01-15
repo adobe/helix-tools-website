@@ -140,7 +140,7 @@ header.header-wrapper {
           font-size: var(--body-size-m);
           color: var(--color-text);
           border-color: var(--color-text);
-          
+
           .icon {
             line-height: 0;
           }
@@ -152,6 +152,32 @@ header.header-wrapper {
             .label {
               display: none;
             }
+          }
+        }
+
+        .theme-toggle {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0.4em;
+          border-radius: 100%;
+          cursor: pointer;
+          color: var(--color-text);
+          transition: background-color 0.2s;
+
+          &:hover {
+            background-color: var(--layer-depth);
+          }
+
+          svg {
+            width: 20px;
+            height: 20px;
+            stroke: currentcolor;
+          }
+
+          &:focus-visible {
+            outline: 2px solid var(--color-link);
+            outline-offset: 2px;
           }
         }
       }
@@ -167,7 +193,7 @@ header.header-wrapper {
       border-bottom-right-radius: var(--rounding-l);
       padding: var(--spacing-xs) var(--spacing-m);
       background-color: var(--purple-900);
-      color: white;
+      color: var(--gray-25);
       font-size: var(--detail-size-xs);
       font-weight: var(--weight-bold);
       text-align: center;
