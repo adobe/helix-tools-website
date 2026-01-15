@@ -327,21 +327,27 @@ const section = document.querySelector('main > div');
 const io = new IntersectionObserver((entries) => {
   // wait for decoration to have happened
   if (entries[0].isIntersecting) {
-    const sidebar = document.querySelector('facet-sidebar');
-    sidebar.data = dataChunks;
-    elems.sidebar = sidebar;
+    // Wait for custom elements to be defined before querying them
+    Promise.all([
+      customElements.whenDefined('facet-sidebar'),
+      customElements.whenDefined('incognito-checkbox'),
+      customElements.whenDefined('daterange-picker'),
+    ]).then(() => {
+      const sidebar = document.querySelector('facet-sidebar');
+      sidebar.data = dataChunks;
+      elems.sidebar = sidebar;
 
-    sidebar.addEventListener('facetchange', () => {
-      updateState();
-      draw();
-    });
+      sidebar.addEventListener('facetchange', () => {
+        updateState();
+        draw();
+      });
 
-    elems.viewSelect = document.getElementById('view');
-    elems.canvas = document.getElementById('time-series');
-    elems.timezoneElement = document.getElementById('timezone');
-    elems.lowDataWarning = document.getElementById('low-data-warning');
-    elems.incognito = document.querySelector('incognito-checkbox');
-    elems.filterInput = sidebar.elems.filterInput;
+      elems.viewSelect = document.getElementById('view');
+      elems.canvas = document.getElementById('time-series');
+      elems.timezoneElement = document.getElementById('timezone');
+      elems.lowDataWarning = document.getElementById('low-data-warning');
+      elems.incognito = document.querySelector('incognito-checkbox');
+      elems.filterInput = sidebar.elems.filterInput;
 
     const params = new URL(window.location).searchParams;
     let view = params.get('view');
@@ -413,6 +419,7 @@ const io = new IntersectionObserver((entries) => {
         updateLabLink(ev.detail);
       });
     }
+    });
   }
 });
 
