@@ -327,7 +327,7 @@ const section = document.querySelector('main > div');
 const io = new IntersectionObserver((entries) => {
   // wait for decoration to have happened
   if (entries[0].isIntersecting) {
-    const sidebar = document.querySelector('optel-facet-sidebar');
+    const sidebar = document.querySelector('facet-sidebar');
     sidebar.data = dataChunks;
     elems.sidebar = sidebar;
 
@@ -340,7 +340,7 @@ const io = new IntersectionObserver((entries) => {
     elems.canvas = document.getElementById('time-series');
     elems.timezoneElement = document.getElementById('timezone');
     elems.lowDataWarning = document.getElementById('low-data-warning');
-    elems.incognito = document.querySelector('optel-incognito-checkbox');
+    elems.incognito = document.querySelector('incognito-checkbox');
     elems.filterInput = sidebar.elems.filterInput;
 
     const params = new URL(window.location).searchParams;

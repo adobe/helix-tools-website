@@ -28,12 +28,12 @@ export default class URLSelector extends HTMLElement {
     super();
     this.template = `
       <style>
-        optel-url-selector label {
+        url-selector label {
           display: block;
           margin-right: 8px;
         }
 
-        optel-url-selector input {
+        url-selector input {
           width: 100%;
           display: block;
           font: inherit;
@@ -43,14 +43,14 @@ export default class URLSelector extends HTMLElement {
           border: 0;
         }
 
-        optel-url-selector input:disabled {
+        url-selector input:disabled {
           background-color: transparent;
           color: black;
         }
       </style>
       <label for="url"><img src="https://www.aem.live/favicon.ico"></label>
-      <input id="url" type="url" list="optel-domain-suggestions">
-      <datalist id="optel-domain-suggestions"></datalist>
+      <input id="url" type="url" list="domain-suggestions">
+      <datalist id="domain-suggestions"></datalist>
     `;
   }
 

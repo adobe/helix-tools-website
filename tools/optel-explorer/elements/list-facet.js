@@ -109,7 +109,7 @@ export default class ListFacet extends HTMLElement {
   update() {
     const facetName = this.getAttribute('facet');
     const facetEntries = this.dataChunks.facets[facetName];
-    const enabled = !this.closest('optel-facet-sidebar[aria-disabled="true"]');
+    const enabled = !this.closest('facet-sidebar[aria-disabled="true"]');
 
     const sort = this.getAttribute('sort') || 'count';
 
