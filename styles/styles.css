@@ -15,20 +15,35 @@
 @import url('typography.css');
 
 :root {
+  /* enable dark mode support */
+  color-scheme: light dark;
+
   /* layers */
-  --layer-elevated: var(--gray-25);
+  --layer-elevated: light-dark(var(--gray-25), var(--gray-900));
   --layer-base: var(--layer-elevated);
-  --layer-depth: var(--gray-50);
-  --layer-pasteboard: var(--gray-100);
+  --layer-depth: light-dark(var(--gray-50), var(--gray-1000));
+  --layer-pasteboard: light-dark(var(--gray-100), var(--gray-800));
 
   /* colors */
   --color-background: var(--layer-base);
-  --color-text: var(--gray-800);
+  --color-text: light-dark(var(--gray-800), var(--gray-100));
   --color-link: var(--blue-900);
   --color-link-hover: var(--blue-1000);
-  --color-white: var(--gray-25);
-  --spectrum-blue: var(--blue-900);
-  --color-font-grey: var(--gray-700);
+  --color-white: light-dark(var(--gray-25), var(--gray-900));
+  --spectrum-blue: light-dark(var(--blue-900), var(--blue-400));
+  --color-font-grey: light-dark(var(--gray-700), var(--gray-300));
+
+  /* button colors - ensure contrast in both modes */
+  --color-button-text: var(--gray-25);
+  --color-button-emphasis-bg: light-dark(var(--gray-800), var(--gray-200));
+  --color-button-emphasis-bg-hover: light-dark(var(--gray-900), var(--gray-50));
+  --color-button-emphasis-bg-active: light-dark(var(--gray-1000), var(--gray-300));
+  --color-button-emphasis-text: light-dark(var(--gray-25), var(--gray-900));
+  --color-button-accent-bg: light-dark(var(--gray-100), var(--gray-700));
+  --color-button-accent-bg-hover: light-dark(var(--gray-200), var(--gray-600));
+  --color-button-accent-bg-active: light-dark(var(--gray-300), var(--gray-500));
+  --color-button-disabled-bg: light-dark(var(--gray-100), var(--gray-700));
+  --color-button-disabled-text: light-dark(var(--gray-400), var(--gray-500));
 
   /* fonts */
   --body-font-family: robotoflex, robotoflex-fallback, sans-serif;
@@ -59,6 +74,15 @@
     --header-height: 74px;
     --horizontal-spacing: var(--spacing-xl);
   }
+}
+
+/* theme override selectors for manual toggle */
+html[data-theme="light"] {
+  color-scheme: light;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 /* fallback fonts */
@@ -98,7 +122,7 @@ header {
   width: 100%;
   min-height: var(--header-height);
   height: var(--header-height);
-  background-color: #fff;
+  background-color: var(--color-background);
   z-index: 9999;
   transition: height 0.2s, min-height 0.2s;
 }
@@ -169,6 +193,8 @@ dialog {
   border: 0;
   border-radius: var(--rounding-xl);
   padding: calc(44px + (2 * var(--border-l))) 0 0;
+  background-color: var(--color-background);
+  color: var(--color-text);
   overscroll-behavior: none;
 }
 
@@ -427,7 +453,7 @@ a.button {
   border-radius: 1.15em;
   padding: 0.4em 1.15em;
   background-color: var(--color-link);
-  color: var(--color-background);
+  color: var(--color-button-text);
   font-size: inherit;
   font-weight: var(--weight-medium);
   text-align: center;
@@ -440,28 +466,39 @@ a.button {
 .button:focus {
   border-color: var(--color-link-hover);
   background-color: var(--color-link-hover);
-  color: var(--color-background);
+  color: var(--color-button-text);
   text-decoration: none;
+}
+
+.button:active {
+  border-color: var(--blue-1100);
+  background-color: var(--blue-1100);
 }
 
 .button:disabled,
 .button:disabled:hover,
 .button:disabled:focus {
-  border-color: var(--gray-100);
-  background-color: var(--gray-100);
-  color: var(--gray-400);
+  border-color: var(--color-button-disabled-bg);
+  background-color: var(--color-button-disabled-bg);
+  color: var(--color-button-disabled-text);
   cursor: not-allowed;
 }
 
 .button.emphasis {
-  border-color: var(--gray-800);
-  background-color: var(--gray-800);
+  border-color: var(--color-button-emphasis-bg);
+  background-color: var(--color-button-emphasis-bg);
+  color: var(--color-button-emphasis-text);
 }
 
 .button.emphasis:hover,
 .button.emphasis:focus {
-  border-color: var(--gray-900);
-  background-color: var(--gray-900);
+  border-color: var(--color-button-emphasis-bg-hover);
+  background-color: var(--color-button-emphasis-bg-hover);
+}
+
+.button.emphasis:active {
+  border-color: var(--color-button-emphasis-bg-active);
+  background-color: var(--color-button-emphasis-bg-active);
 }
 
 .button.outline {
@@ -473,28 +510,38 @@ a.button {
 .button.outline:hover,
 .button.outline:focus {
   border-color: var(--color-link-hover);
-  background-color: var(--blue-100);
+  background-color: light-dark(var(--blue-100), var(--blue-1200));
   color: var(--color-link-hover);
+}
+
+.button.outline:active {
+  border-color: var(--blue-1100);
+  background-color: light-dark(var(--blue-200), var(--blue-1100));
 }
 
 .button.outline:disabled,
 .button.outline:disabled:hover,
 .button.outline:disabled:focus {
-  border-color: var(--gray-100);
+  border-color: var(--color-button-disabled-bg);
   background-color: var(--color-background);
-  color: var(--gray-400);
+  color: var(--color-button-disabled-text);
 }
 
 .button.accent {
-  border-color: var(--gray-100);
+  border-color: var(--color-button-accent-bg);
   color: var(--color-text);
-  background-color: var(--gray-100);
+  background-color: var(--color-button-accent-bg);
 }
 
 .button.accent:hover,
 .button.accent:focus {
-  border-color: var(--gray-200);
-  background-color: var(--gray-200);
+  border-color: var(--color-button-accent-bg-hover);
+  background-color: var(--color-button-accent-bg-hover);
+}
+
+.button.accent:active {
+  border-color: var(--color-button-accent-bg-active);
+  background-color: var(--color-button-accent-bg-active);
 }
 
 .button.quiet,
@@ -547,7 +594,7 @@ label,
 legend,
 .field-help-text,
 .form-error {
-  color: var(--gray-700);
+  color: var(--color-font-grey);
   font-size: var(--body-size-m);
 }
 
@@ -564,7 +611,7 @@ button:focus {
   outline: var(--border-m) solid var(--color-link);
   outline-offset: var(--border-m);
   border-color: var(--color-text);
-  color: var(--gray-900);
+  color: var(--color-text);
 }
 
 input:disabled,
@@ -731,7 +778,7 @@ input[type='color'] {
   width: 48px;
   height: 48px;
   margin-bottom: var(--spacing-300);
-  border: var(--border-m) solid white;
+  border: var(--border-m) solid var(--color-background);
   padding: 0;
   box-shadow: var(--shadow-default);
   transform: rotate(-45deg);
@@ -753,7 +800,7 @@ input[type='color']::-webkit-color-swatch {
 
 input[type='color']:hover,
 input[type='color']:focus {
-  border-color: white;
+  border-color: var(--color-background);
   box-shadow: var(--shadow-hover);
 }
 
@@ -784,15 +831,15 @@ table+.form-field,
 }
 
 .form-field.picker-field input {
-  border-color: var(--gray-100);
-  background-color: var(--gray-100);
+  border-color: light-dark(var(--gray-100), var(--gray-700));
+  background-color: light-dark(var(--gray-100), var(--gray-700));
   cursor: pointer;
   transition: border-color 0.2s, background-color 0.2s;
 }
 
 .form-field.picker-field input:not(.button):hover {
-  border-color: var(--gray-200);
-  background-color: var(--gray-200);
+  border-color: light-dark(var(--gray-200), var(--gray-600));
+  background-color: light-dark(var(--gray-200), var(--gray-600));
 }
 
 .form-field.picker-field input ~ ul {
