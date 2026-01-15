@@ -363,7 +363,11 @@ const io = new IntersectionObserver((entries) => {
       draw();
     });
 
-    herochart.render();
+    try {
+      herochart.render();
+    } catch (error) {
+      console.error('[SLICER] Error rendering hero chart:', error);
+    }
 
     // Sanitize filter parameter to prevent XSS
     const filterValue = params.get('filter') || '';
