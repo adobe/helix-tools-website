@@ -225,7 +225,6 @@ label, legend, .field-help-text, .form-error {
     position: absolute;
     inset: 0;
     left: 340px;
-    right: 0;
     max-width: unset;
     margin-top: 0;
     border-top: 0;
