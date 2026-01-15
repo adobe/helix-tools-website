@@ -17,3 +17,7 @@ MIGRATION_PLAN.md
 .claude/settings.local.json
 .claude/skills/**/node_modules/# Playwright MCP
 .playwright-mcp/
+
+# Test Artifacts
+junit.xml
+lcov.info
