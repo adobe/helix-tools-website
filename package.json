@@ -22,7 +22,7 @@
   },
   "homepage": "https://github.com/adobe/aem-boilerplate#readme",
   "devDependencies": {
-    "@adobe/rum-distiller": "1.16.2",
+    "@adobe/rum-distiller": "1.22.2",
     "@babel/eslint-parser": "7.28.6",
     "eslint": "8.57.1",
     "eslint-config-airbnb-base": "15.0.0",
