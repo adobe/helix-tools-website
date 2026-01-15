@@ -10,6 +10,71 @@
 /* stylelint-disable selector-class-pattern */
 
 :root {
+  /* Spectrum Design System colors used by charts */
+  /* Gray scale */
+  --spectrum-gray-400-rgb: 177, 177, 177;
+  --spectrum-gray-400: rgba(var(--spectrum-gray-400-rgb));
+  --spectrum-gray-500-rgb: 144, 144, 144;
+  --spectrum-gray-500: rgba(var(--spectrum-gray-500-rgb));
+  --spectrum-gray-600-rgb: 109, 109, 109;
+  --spectrum-gray-600: rgba(var(--spectrum-gray-600-rgb));
+  --spectrum-gray-700-rgb: 70, 70, 70;
+  --spectrum-gray-700: rgba(var(--spectrum-gray-700-rgb));
+  --spectrum-gray-800-rgb: 34, 34, 34;
+  --spectrum-gray-800: rgba(var(--spectrum-gray-800-rgb));
+  --spectrum-gray-900-rgb: 0, 0, 0;
+  --spectrum-gray-900: rgba(var(--spectrum-gray-900-rgb));
+
+  /* Green scale - success/good performance */
+  --spectrum-green-400-rgb: 103, 222, 168;
+  --spectrum-green-400: rgba(var(--spectrum-green-400-rgb));
+  --spectrum-green-500-rgb: 73, 204, 147;
+  --spectrum-green-500: rgba(var(--spectrum-green-500-rgb));
+  --spectrum-green-600-rgb: 47, 184, 128;
+  --spectrum-green-600: rgba(var(--spectrum-green-600-rgb));
+  --spectrum-green-700-rgb: 21, 164, 110;
+  --spectrum-green-700: rgba(var(--spectrum-green-700-rgb));
+  --spectrum-green-800-rgb: 0, 143, 93;
+  --spectrum-green-800: rgba(var(--spectrum-green-800-rgb));
+  --spectrum-green-900-rgb: 0, 122, 77;
+  --spectrum-green-900: rgba(var(--spectrum-green-900-rgb));
+
+  /* Orange scale - needs improvement */
+  --spectrum-orange-400-rgb: 255, 187, 99;
+  --spectrum-orange-400: rgba(var(--spectrum-orange-400-rgb));
+  --spectrum-orange-500-rgb: 255, 160, 55;
+  --spectrum-orange-500: rgba(var(--spectrum-orange-500-rgb));
+  --spectrum-orange-600-rgb: 246, 133, 17;
+  --spectrum-orange-600: rgba(var(--spectrum-orange-600-rgb));
+  --spectrum-orange-700-rgb: 228, 111, 0;
+  --spectrum-orange-700: rgba(var(--spectrum-orange-700-rgb));
+  --spectrum-orange-800-rgb: 203, 93, 0;
+  --spectrum-orange-800: rgba(var(--spectrum-orange-800-rgb));
+  --spectrum-orange-900-rgb: 177, 76, 0;
+  --spectrum-orange-900: rgba(var(--spectrum-orange-900-rgb));
+
+  /* Red scale - poor performance */
+  --spectrum-red-400-rgb: 255, 183, 169;
+  --spectrum-red-400: rgba(var(--spectrum-red-400-rgb));
+  --spectrum-red-500-rgb: 255, 155, 136;
+  --spectrum-red-500: rgba(var(--spectrum-red-500-rgb));
+  --spectrum-red-600-rgb: 255, 124, 101;
+  --spectrum-red-600: rgba(var(--spectrum-red-600-rgb));
+  --spectrum-red-700-rgb: 247, 92, 70;
+  --spectrum-red-700: rgba(var(--spectrum-red-700-rgb));
+  --spectrum-red-800-rgb: 234, 56, 41;
+  --spectrum-red-800: rgba(var(--spectrum-red-800-rgb));
+  --spectrum-red-900-rgb: 211, 21, 16;
+  --spectrum-red-900: rgba(var(--spectrum-red-900-rgb));
+
+  /* Purple scale - used for traffic visualization */
+  --spectrum-purple-700-rgb: 174, 114, 249;
+  --spectrum-purple-700: rgba(var(--spectrum-purple-700-rgb));
+  --spectrum-purple-1100-rgb: 93, 19, 183;
+  --spectrum-purple-1100: rgba(var(--spectrum-purple-1100-rgb));
+  --spectrum-purple-1200-rgb: 71, 12, 148;
+  --spectrum-purple-1200: rgba(var(--spectrum-purple-1200-rgb));
+
   /* colors - data visualization colors for Core Web Vitals scores */
   --light-green: #adf4ce;
   --medium-green: #49cc93;
