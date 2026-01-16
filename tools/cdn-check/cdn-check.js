@@ -94,6 +94,26 @@ function addResultLine(checkId, text, type = 'info') {
   document.getElementById(checkId).querySelector('.check-details').setAttribute('aria-hidden', 'false');
 }
 
+function handleAuthError(status, checkId) {
+  if (status === 401) {
+    updateCheckState(checkId, 'fail', 'Sign In Required');
+    addResultLine(checkId, 'You need to sign in to access this project.', 'error');
+    addResultLine(checkId, 'Use the profile button (top right) to sign in.', 'info');
+    // eslint-disable-next-line no-alert
+    alert('Sign in required: Please use the profile button in the top right corner to sign in to this project, then try again.');
+    return true;
+  }
+  if (status === 403) {
+    updateCheckState(checkId, 'fail', 'Not Authorized');
+    addResultLine(checkId, 'You are not authorized to access this project.', 'error');
+    addResultLine(checkId, 'Contact the project admin to request access.', 'info');
+    // eslint-disable-next-line no-alert
+    alert('Not authorized: You do not have permission to access this project. Contact the project administrator to request access.');
+    return true;
+  }
+  return false;
+}
+
 function updateScore(score) {
   const circumference = 2 * Math.PI * 54; // radius = 54
   const offset = circumference - (score / 100) * circumference;
@@ -127,10 +147,8 @@ async function checkCdnConfig(org, site) {
     const resp = await fetch(configUrl);
 
     if (!resp.ok) {
-      if (resp.status === 401 || resp.status === 403) {
-        updateCheckState(checkId, 'fail', 'Auth Required');
-        addResultLine(checkId, 'Authentication required to access config', 'error');
-        return { score: 0, cdnConfig: null };
+      if (handleAuthError(resp.status, checkId)) {
+        return { score: 0, cdnConfig: null, authError: true };
       }
       updateCheckState(checkId, 'fail', 'Failed');
       addResultLine(checkId, `Failed to fetch config: ${resp.status}`, 'error');
@@ -678,6 +696,17 @@ async function runChecks(pageUrl) {
   const configResult = await checkCdnConfig(org, site);
   scores['check-cdn-config'] = configResult.score;
   const { cdnConfig } = configResult;
+
+  // Stop if there was an auth error - no point continuing
+  if (configResult.authError) {
+    // Mark remaining checks as skipped
+    ['check-purge', 'check-caching', 'check-images', 'check-redirects'].forEach((id) => {
+      updateCheckState(id, 'skip', 'Skipped');
+      addResultLine(id, 'Skipped due to authentication error', 'warning');
+    });
+    updateScore(0);
+    return;
+  }
 
   // Check 2: Push Invalidation
   const purgeResult = await checkPurge(cdnConfig);
