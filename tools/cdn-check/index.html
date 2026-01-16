@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>CDN Check | AEM Tools</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/cdn-check/cdn-check.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/cdn-check/cdn-check.css" />
+</head>
+<body class="cdn-check">
+  <header></header>
+  <main>
+    <div>
+      <h1>CDN Check</h1>
+      <p>
+        Validate your CDN configuration and production setup. Enter an <code>.aem.live</code> page URL 
+        to run a comprehensive check on your CDN configuration, caching behavior, image delivery, and redirects.
+      </p>
+    </div>
+
+    <div>
+      <form id="cdn-check-form">
+        <div class="form-field">
+          <label for="page-url">Page URL</label>
+          <input 
+            type="url" 
+            id="page-url" 
+            name="pageUrl" 
+            placeholder="https://main--mysite--myorg.aem.live/path/to/page"
+            required 
+          />
+          <div class="field-help-text">
+            <p>Enter an <code>.aem.live</code> URL from your site</p>
+          </div>
+        </div>
+        <p class="button-wrapper">
+          <button type="submit" id="run-check" class="button">Run CDN Check</button>
+          <button type="reset" class="button outline">Clear</button>
+        </p>
+      </form>
+    </div>
+
+    <!-- Score Display -->
+    <div id="score-section" aria-hidden="true">
+      <div class="score-container">
+        <div class="score-gauge">
+          <svg viewBox="0 0 120 120" class="score-svg">
+            <circle class="score-bg" cx="60" cy="60" r="54" />
+            <circle class="score-ring" cx="60" cy="60" r="54" />
+          </svg>
+          <div class="score-value">
+            <span class="score-number">0</span>
+          </div>
+        </div>
+        <div class="score-label">CDN Health Score</div>
+        <div class="score-legend">
+          <span class="legend-item poor">0–49 Poor</span>
+          <span class="legend-item average">50–89 Needs Work</span>
+          <span class="legend-item good">90–100 Good</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Check Results -->
+    <div id="results-section" aria-hidden="true">
+      <h2>Check Results</h2>
+      <ul class="check-list">
+        <li id="check-cdn-config" class="check-item pending">
+          <div class="check-header">
+            <span class="check-icon"></span>
+            <span class="check-title">CDN Production Config</span>
+            <span class="check-status">Pending</span>
+          </div>
+          <div class="check-details" aria-hidden="true">
+            <p class="check-description">Checks if <code>cdn.prod.*</code> configuration is set for your site.</p>
+            <div class="check-result"></div>
+          </div>
+        </li>
+        <li id="check-purge" class="check-item pending">
+          <div class="check-header">
+            <span class="check-icon"></span>
+            <span class="check-title">Push Invalidation</span>
+            <span class="check-status">Pending</span>
+          </div>
+          <div class="check-details" aria-hidden="true">
+            <p class="check-description">Validates that CDN purge/invalidation credentials are working.</p>
+            <div class="check-result"></div>
+          </div>
+        </li>
+        <li id="check-caching" class="check-item pending">
+          <div class="check-header">
+            <span class="check-icon"></span>
+            <span class="check-title">Caching Behavior</span>
+            <span class="check-status">Pending</span>
+          </div>
+          <div class="check-details" aria-hidden="true">
+            <p class="check-description">Verifies cache headers and CDN caching via repeated requests.</p>
+            <div class="check-result"></div>
+          </div>
+        </li>
+        <li id="check-images" class="check-item pending">
+          <div class="check-header">
+            <span class="check-icon"></span>
+            <span class="check-title">Image Delivery</span>
+            <span class="check-status">Pending</span>
+          </div>
+          <div class="check-details" aria-hidden="true">
+            <p class="check-description">Compares images served from <code>.aem.live</code> and production domain.</p>
+            <div class="check-result"></div>
+          </div>
+        </li>
+        <li id="check-redirects" class="check-item pending">
+          <div class="check-header">
+            <span class="check-icon"></span>
+            <span class="check-title">Redirect Query Params</span>
+            <span class="check-status">Pending</span>
+          </div>
+          <div class="check-details" aria-hidden="true">
+            <p class="check-description">Tests that redirects preserve query parameters correctly.</p>
+            <div class="check-result"></div>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Error Display -->
+    <div id="error-section" aria-hidden="true">
+      <div class="error-message">
+        <strong>Error</strong>
+        <p></p>
+      </div>
+    </div>
+  </main>
+  <footer></footer>
+</body>
+</html>
