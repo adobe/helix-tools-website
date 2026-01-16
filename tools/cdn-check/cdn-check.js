@@ -717,31 +717,8 @@ async function runChecks(pageUrl) {
   updateScore(finalScore);
 }
 
-// Event listeners
+// Event listeners and initialization
 function setupEventListeners() {
-  FORM.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const pageUrl = document.getElementById('page-url').value;
-    const submitButton = FORM.querySelector('button[type="submit"]');
-
-    submitButton.disabled = true;
-    submitButton.textContent = 'Checking...';
-
-    try {
-      await runChecks(pageUrl);
-    } finally {
-      submitButton.disabled = false;
-      submitButton.textContent = 'Run CDN Check';
-    }
-  });
-
-  FORM.addEventListener('reset', () => {
-    hideError();
-    SCORE_SECTION.setAttribute('aria-hidden', 'true');
-    RESULTS_SECTION.setAttribute('aria-hidden', 'true');
-    resetChecks();
-  });
-
   // Toggle check details on click
   document.querySelectorAll('.check-header').forEach((header) => {
     header.addEventListener('click', () => {
@@ -753,13 +730,38 @@ function setupEventListeners() {
     });
   });
 
-  // Populate URL from query params if present
+  // Handle reset button
+  FORM.addEventListener('reset', (e) => {
+    e.preventDefault();
+    // Clear URL and redirect to base page
+    window.location.href = window.location.pathname;
+  });
+}
+
+// Auto-run check if URL param is present
+async function init() {
+  setupEventListeners();
+
   const params = new URLSearchParams(window.location.search);
   const urlParam = params.get('url');
+
   if (urlParam) {
-    document.getElementById('page-url').value = urlParam;
+    // Populate the input field
+    document.getElementById('url').value = urlParam;
+
+    // Auto-run the check
+    const submitButton = FORM.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.textContent = 'Checking...';
+
+    try {
+      await runChecks(urlParam);
+    } finally {
+      submitButton.disabled = false;
+      submitButton.textContent = 'Run CDN Check';
+    }
   }
 }
 
 // Initialize
-setupEventListeners();
+init();
