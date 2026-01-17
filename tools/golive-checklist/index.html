@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Go-Live Checklist</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/golive-checklist/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/golive-checklist/styles.css" />
+</head>
+
+<body class="golive-checklist">
+  <header></header>
+  <main>
+    <!-- TITLE -->
+    <div>
+      <h1>Go-Live Checklist</h1>
+      <p>
+        The <strong>Go-Live Checklist</strong> tool helps you validate that your AEM project is ready
+        for launch. This checklist is based on the 
+        <a href="https://www.aem.live/docs/go-live-checklist" target="_blank">official go-live checklist</a>.
+      </p>
+      <p>
+        Enter your project details below to validate the checklist items that can be automatically checked.
+      </p>
+      <p class="info-notice">
+        <strong>Note:</strong> If running locally, some automated checks may be restricted by CORS policies. 
+        Deploy this tool to your AEM domain or use the manual check links provided in error messages.
+      </p>
+    </div>
+
+    <!-- FORM -->
+    <div>
+      <form id="checklist-form">
+        <section class="form-field config-field">
+          <div class="form-field org-field">
+            <label for="org">Organization</label>
+            <input name="org" id="org" list="org-list" autocomplete="off" required />
+            <datalist id="org-list"></datalist>
+          </div>
+          <div class="form-field site-field">
+            <label for="site">Site</label>
+            <input name="site" id="site" list="site-list" autocomplete="off" disabled required />
+            <datalist id="site-list"></datalist>
+          </div>
+          <div class="form-field domain-field">
+            <label for="domain">Production Domain (optional)</label>
+            <input name="domain" id="domain" type="text" placeholder="www.example.com" />
+            <div class="field-help-text">
+              <p>Enter your production domain to check additional items (e.g. <code>www.yourdomain.com</code>)</p>
+            </div>
+          </div>
+          <div class="form-field api-key-field">
+            <label for="apiKey">Google API Key (optional)</label>
+            <input name="apiKey" id="apiKey" type="text" placeholder="AIza..." />
+            <div class="field-help-text">
+              <p>Optional: Provide a <a href="https://developers.google.com/speed/docs/insights/v5/get-started" target="_blank">Google API key</a> for unlimited Lighthouse checks. Without a key, you may hit rate limits.</p>
+            </div>
+          </div>
+        </section>
+
+        <p class="button-wrapper">
+          <button type="submit" class="button">Validate Checklist</button>
+          <button type="reset" class="button outline">Reset</button>
+        </p>
+      </form>
+    </div>
+
+    <!-- CHECKLIST RESULTS -->
+    <div id="checklist-results" aria-hidden="true">
+      <h2>Checklist Results</h2>
+      
+      <!-- Before Go-Live -->
+      <section class="section">
+        <h3>Steps Before Go-Live</h3>
+
+        <div class="checklist-category">
+          <h4>Content and Design QA</h4>
+          <div class="checklist-item manual">
+            <div class="item-header">
+              <span class="status-icon">ℹ️</span>
+              <span class="item-title">Content and Design Review</span>
+              <span class="status-badge manual">Manual Check</span>
+            </div>
+            <div class="item-details">
+              <p>Verify that content and design conform to specifications on your <code>.aem.live</code> domain.</p>
+              <ul>
+                <li>Check for accessibility requirements</li>
+                <li>Validate SEO requirements</li>
+                <li>Review design specifications</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="checklist-category">
+          <h4>Performance Validation</h4>
+          <div class="checklist-item" id="check-lighthouse">
+            <div class="item-header">
+              <span class="status-icon">⏳</span>
+              <span class="item-title">Lighthouse Score</span>
+              <span class="status-badge pending">Pending</span>
+            </div>
+            <div class="item-details">
+              <p>Every AEM project should achieve a Lighthouse score of 100 for mobile and desktop.</p>
+              <div class="check-result"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="checklist-category">
+          <h4>Analytics Validation</h4>
+          <div class="checklist-item" id="check-analytics">
+            <div class="item-header">
+              <span class="status-icon">⏳</span>
+              <span class="item-title">Analytics Setup</span>
+              <span class="status-badge pending">Pending</span>
+            </div>
+            <div class="item-details">
+              <p>Verify that analytics and martech stack are firing correctly.</p>
+              <div class="check-result"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="checklist-category">
+          <h4>RUM Instrumentation</h4>
+          <div class="checklist-item" id="check-rum">
+            <div class="item-header">
+              <span class="status-icon">⏳</span>
+              <span class="item-title">Real User Monitoring (RUM)</span>
+              <span class="status-badge pending">Pending</span>
+            </div>
+            <div class="item-details">
+              <p>RUM should be instrumented to track performance metrics before and after launch.</p>
+              <div class="check-result"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="checklist-category">
+          <h4>Legacy Redirects</h4>
+          <div class="checklist-item" id="check-redirects">
+            <div class="item-header">
+              <span class="status-icon">⏳</span>
+              <span class="item-title">Redirects Configuration</span>
+              <span class="status-badge pending">Pending</span>
+            </div>
+            <div class="item-details">
+              <p>Check for <code>redirects.xlsx</code> in SharePoint or <code>redirects</code> in Google Drive.</p>
+              <div class="check-result"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="checklist-category">
+          <h4>Sitemap & Robots</h4>
+          <div class="checklist-item" id="check-sitemap">
+            <div class="item-header">
+              <span class="status-icon">⏳</span>
+              <span class="item-title">Sitemap</span>
+              <span class="status-badge pending">Pending</span>
+            </div>
+            <div class="item-details">
+              <p>Verify that sitemap is generated and accessible.</p>
+              <div class="check-result"></div>
+            </div>
+          </div>
+
+          <div class="checklist-item" id="check-robots">
+            <div class="item-header">
+              <span class="status-icon">⏳</span>
+              <span class="item-title">Robots.txt</span>
+              <span class="status-badge pending">Pending</span>
+            </div>
+            <div class="item-details">
+              <p>Check that <code>robots.txt</code> allows crawlers and references sitemap.</p>
+              <div class="check-result"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="checklist-category">
+          <h4>Canonical URLs</h4>
+          <div class="checklist-item" id="check-canonical">
+            <div class="item-header">
+              <span class="status-icon">⏳</span>
+              <span class="item-title">Canonical Tags</span>
+              <span class="status-badge pending">Pending</span>
+            </div>
+            <div class="item-details">
+              <p>Verify canonical URLs return 2xx status and are correctly implemented.</p>
+              <div class="check-result"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="checklist-category">
+          <h4>Favicon</h4>
+          <div class="checklist-item" id="check-favicon">
+            <div class="item-header">
+              <span class="status-icon">⏳</span>
+              <span class="item-title">Favicon</span>
+              <span class="status-badge pending">Pending</span>
+            </div>
+            <div class="item-details">
+              <p>Verify that favicon is configured for the site.</p>
+              <div class="check-result"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="checklist-category">
+          <h4>CORS Headers</h4>
+          <div class="checklist-item" id="check-cors">
+            <div class="item-header">
+              <span class="status-icon">⏳</span>
+              <span class="item-title">CORS Configuration</span>
+              <span class="status-badge pending">Pending</span>
+            </div>
+            <div class="item-details">
+              <p>Check if proper CORS headers are configured for cross-origin requests.</p>
+              <div class="check-result"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="checklist-category">
+          <h4>Authentication for Authors</h4>
+          <div class="checklist-item manual">
+            <div class="item-header">
+              <span class="status-icon">ℹ️</span>
+              <span class="item-title">Author Authentication</span>
+              <span class="status-badge manual">Manual Check</span>
+            </div>
+            <div class="item-details">
+              <p>Decide if you want to control who can preview and publish documents.</p>
+              <p>See <a href="https://www.aem.live/docs/authentication-author" target="_blank">Authentication for Authors</a> documentation.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="checklist-category">
+          <h4>SharePoint Access</h4>
+          <div class="checklist-item manual">
+            <div class="item-header">
+              <span class="status-icon">ℹ️</span>
+              <span class="item-title">SharePoint Access Configuration</span>
+              <span class="status-badge manual">Manual Check</span>
+            </div>
+            <div class="item-details">
+              <p>If using SharePoint, configure dedicated access that you control.</p>
+              <p>See <a href="https://www.aem.live/docs/setup-customer-sharepoint" target="_blank">SharePoint Setup</a> documentation.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="checklist-category">
+          <h4>CDN Configuration</h4>
+          <div class="checklist-item" id="check-cdn">
+            <div class="item-header">
+              <span class="status-icon">⏳</span>
+              <span class="item-title">CDN Setup</span>
+              <span class="status-badge pending">Pending</span>
+            </div>
+            <div class="item-details">
+              <p>Configure CDN to point to <code>.aem.live</code> endpoint.</p>
+              <p>Use the <a href="/tools/push-invalidation">Push Invalidation tool</a> to validate your CDN configuration.</p>
+              <div class="check-result"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="checklist-category">
+          <h4>Push Invalidation Setup</h4>
+          <div class="checklist-item" id="check-push-invalidation">
+            <div class="item-header">
+              <span class="status-icon">⏳</span>
+              <span class="item-title">Push Invalidation</span>
+              <span class="status-badge pending">Pending</span>
+            </div>
+            <div class="item-details">
+              <p>Ensure push invalidation is properly set up for production CDN.</p>
+              <div class="check-result"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="checklist-category">
+          <h4>Notify Engineering On-Call</h4>
+          <div class="checklist-item manual">
+            <div class="item-header">
+              <span class="status-icon">ℹ️</span>
+              <span class="item-title">Engineering Notification</span>
+              <span class="status-badge manual">Manual Check</span>
+            </div>
+            <div class="item-details">
+              <p>Send an email to <strong>aemgolives@adobe.com</strong> with:</p>
+              <ul>
+                <li><code>.aem.live</code> URL(s) going live</li>
+                <li>Production domain</li>
+                <li>Planned go-live date and time</li>
+                <li>Primary contact person</li>
+                <li>Teams or Slack channel for collaboration</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Post Go-Live -->
+      <section class="section">
+        <h3>Post Go-Live Validation</h3>
+
+        <div class="checklist-category">
+          <h4>Performance Validation</h4>
+          <div class="checklist-item manual">
+            <div class="item-header">
+              <span class="status-icon">ℹ️</span>
+              <span class="item-title">Production Performance</span>
+              <span class="status-badge manual">Manual Check</span>
+            </div>
+            <div class="item-details">
+              <p>Validate Lighthouse score of 100 on production domain after go-live.</p>
+              <p>Check for performance impacts from CDN layer (HTTP/1.1 vs HTTP/2, caching, bot detection).</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="checklist-category">
+          <h4>Google Search Console</h4>
+          <div class="checklist-item manual">
+            <div class="item-header">
+              <span class="status-icon">ℹ️</span>
+              <span class="item-title">Search Console Monitoring</span>
+              <span class="status-badge manual">Manual Check</span>
+            </div>
+            <div class="item-details">
+              <p>Monitor Google Search Console for weeks after go-live:</p>
+              <ul>
+                <li>Coverage report and indexing status</li>
+                <li>Total clicks and impressions</li>
+                <li>Backlinks changes</li>
+                <li>Crawl errors</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="checklist-category">
+          <h4>Martech and Analytics Validation</h4>
+          <div class="checklist-item manual">
+            <div class="item-header">
+              <span class="status-icon">ℹ️</span>
+              <span class="item-title">Production Analytics</span>
+              <span class="status-badge manual">Manual Check</span>
+            </div>
+            <div class="item-details">
+              <p>Verify all martech tags fire correctly on production domain.</p>
+              <p>Ensure analytics data is being collected continuously.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="checklist-category">
+          <h4>404 Report</h4>
+          <div class="checklist-item manual">
+            <div class="item-header">
+              <span class="status-icon">ℹ️</span>
+              <span class="item-title">404 Monitoring</span>
+              <span class="status-badge manual">Manual Check</span>
+            </div>
+            <div class="item-details">
+              <p>Monitor 404 errors after migration and create redirects as needed.</p>
+              <p>Check site analytics and Slack bot reports for 404s.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="section-metadata">
+        <div>
+          <div>id</div>
+          <div>results</div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <footer></footer>
+</body>
+
+</html>

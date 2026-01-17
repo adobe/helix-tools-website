@@ -1,0 +1,240 @@
+.golive-checklist [aria-hidden="true"] {
+  display: none;
+}
+
+.golive-checklist .info-notice {
+  background-color: #e0f2fe;
+  border-left: 4px solid #0284c7;
+  padding: var(--spacing-m);
+  border-radius: var(--rounding-s);
+  margin: var(--spacing-m) 0;
+  font-size: var(--body-size-m);
+}
+
+.golive-checklist #checklist-results {
+  margin-top: var(--spacing-xl);
+}
+
+.golive-checklist .section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.golive-checklist .section h3 {
+  font-size: var(--heading-size-l);
+  margin-bottom: var(--spacing-l);
+  padding-bottom: var(--spacing-s);
+  border-bottom: 2px solid var(--gray-300);
+}
+
+.golive-checklist .checklist-category {
+  margin-bottom: var(--spacing-l);
+}
+
+.golive-checklist .checklist-category h4 {
+  font-size: var(--heading-size-m);
+  margin-bottom: var(--spacing-m);
+  color: var(--color-text);
+}
+
+.golive-checklist .checklist-item {
+  background-color: var(--gray-75);
+  border: var(--border-m) solid var(--gray-300);
+  border-radius: var(--rounding-m);
+  margin-bottom: var(--spacing-m);
+  padding: var(--spacing-m);
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.golive-checklist .checklist-item:hover {
+  background-color: var(--gray-50);
+}
+
+.golive-checklist .checklist-item.pass {
+  background-color: #f0fdf4;
+  border-color: #86efac;
+}
+
+.golive-checklist .checklist-item.fail {
+  background-color: #fef2f2;
+  border-color: #fca5a5;
+}
+
+.golive-checklist .checklist-item.warning {
+  background-color: #fffbeb;
+  border-color: #fcd34d;
+}
+
+.golive-checklist .item-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+  margin-bottom: var(--spacing-s);
+}
+
+.golive-checklist .status-icon {
+  font-size: var(--heading-size-m);
+  line-height: 1;
+}
+
+.golive-checklist .item-title {
+  flex: 1;
+  font-weight: var(--weight-bold);
+  font-size: var(--body-size-l);
+}
+
+.golive-checklist .status-badge {
+  padding: 0.25em 0.75em;
+  border-radius: var(--rounding-s);
+  font-size: var(--detail-size-s);
+  font-weight: var(--weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.golive-checklist .status-badge.pass {
+  background-color: #22c55e;
+  color: white;
+}
+
+.golive-checklist .status-badge.fail {
+  background-color: #ef4444;
+  color: white;
+}
+
+.golive-checklist .status-badge.warning {
+  background-color: #f59e0b;
+  color: white;
+}
+
+.golive-checklist .status-badge.pending {
+  background-color: var(--gray-300);
+  color: var(--color-text);
+}
+
+.golive-checklist .status-badge.manual {
+  background-color: var(--blue-900);
+  color: white;
+}
+
+.golive-checklist .item-details {
+  color: var(--color-text);
+  font-size: var(--body-size-m);
+}
+
+.golive-checklist .item-details p {
+  margin-bottom: var(--spacing-s);
+}
+
+.golive-checklist .item-details ul {
+  margin: var(--spacing-s) 0;
+  padding-left: var(--spacing-l);
+}
+
+.golive-checklist .item-details li {
+  margin-bottom: var(--spacing-xs);
+}
+
+.golive-checklist .item-details code {
+  background-color: var(--gray-200);
+  padding: 0.125em 0.375em;
+  border-radius: var(--rounding-xs);
+  font-family: var(--code-font-family);
+  font-size: 0.9em;
+}
+
+.golive-checklist .item-details a {
+  color: var(--link-color);
+  text-decoration: underline;
+}
+
+.golive-checklist .item-details a:hover {
+  color: var(--link-hover-color);
+}
+
+.golive-checklist .check-result {
+  margin-top: var(--spacing-s);
+  padding: var(--spacing-s);
+  background-color: white;
+  border-radius: var(--rounding-s);
+  font-size: var(--body-size-m);
+}
+
+.golive-checklist .check-result p {
+  margin-bottom: var(--spacing-xs);
+}
+
+.golive-checklist .check-result ul {
+  margin: var(--spacing-xs) 0;
+  padding-left: var(--spacing-l);
+}
+
+.golive-checklist .field-help-text {
+  font-size: var(--detail-size-s);
+  color: var(--gray-600);
+  margin-top: var(--spacing-xs);
+}
+
+.golive-checklist .field-help-text p {
+  margin: 0;
+}
+
+.golive-checklist .item-details p:last-child {
+  margin-bottom: 0;
+}
+
+.golive-checklist .check-result p:last-child {
+  margin-bottom: 0;
+}
+
+.golive-checklist .config-field {
+  display: grid;
+  gap: var(--spacing-m);
+  margin-bottom: var(--spacing-l);
+}
+
+@media (width >= 700px) {
+  .golive-checklist .config-field {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .golive-checklist .domain-field,
+  .golive-checklist .api-key-field {
+    grid-column: 1 / -1;
+  }
+}
+
+.golive-checklist .button-wrapper {
+  display: flex;
+  gap: var(--spacing-m);
+  flex-wrap: wrap;
+}
+
+/* Loading spinner */
+.golive-checklist .symbol-loading {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentcolor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive adjustments */
+@media (width < 700px) {
+  .golive-checklist .item-header {
+    flex-wrap: wrap;
+  }
+
+  .golive-checklist .status-badge {
+    order: 3;
+    width: 100%;
+    text-align: center;
+  }
+}
