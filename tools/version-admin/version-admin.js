@@ -113,7 +113,7 @@ async function updateVersionName(versionId, newName) {
 async function restoreVersion(versionId) {
   let url;
   if (currentConfig.type === 'org') {
-    url = `https://admin.hlx.page/config/${org.value}.json?version=${versionId}`;
+    url = `https://admin.hlx.page/config/${org.value}.json?restoreVersion=${versionId}`;
   } else if (currentConfig.type === 'profile') {
     url = `https://admin.hlx.page/config/${org.value}/profiles/${profile.value}.json?restoreVersion=${versionId}`;
   } else if (currentConfig.type === 'site') {
@@ -121,9 +121,9 @@ async function restoreVersion(versionId) {
   }
 
   const resp = await fetch(url, {
-    method: 'PUT',
+    method: 'POST',
   });
-  logResponse(consoleBlock, resp.status, ['PUT', url, resp.headers.get('x-error') || '']);
+  logResponse(consoleBlock, resp.status, ['POST', url, resp.headers.get('x-error') || '']);
 
   if (resp.status === 401) {
     await ensureLogin(org.value, site.value);
