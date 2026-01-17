@@ -424,11 +424,13 @@ async function showModal(block, focusedOrg) {
 export default async function decorate(block) {
   const avatar = document.createElement('button');
   avatar.innerHTML = `
-    <span class="icon" title="Manage projects and sign in">
+    <span class="icon">
       <img src="/blocks/profile/profile.svg" alt="User">
     </span>
   `;
   avatar.id = 'profile';
+  avatar.setAttribute('type', 'button');
+  avatar.setAttribute('title', 'Manage projects and sign in');
   avatar.href = window.location.href;
   avatar.addEventListener('click', (e) => {
     e.preventDefault();
