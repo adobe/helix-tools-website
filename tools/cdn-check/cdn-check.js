@@ -318,10 +318,17 @@ async function checkCaching(cdnConfig, aemUrl) {
   try {
     const prodUrl = `https://${cdnConfig.host}${aemUrl.pathname}`;
 
+    // Build request headers - include Akamai debug Pragma if using Akamai
+    const requestHeaders = {};
+    if (cdnConfig.type === 'akamai') {
+      requestHeaders.Pragma = 'akamai-x-cache-on, akamai-x-cache-remote-on, akamai-x-check-cacheable, akamai-x-get-cache-key, akamai-x-get-true-cache-key, akamai-x-get-cache-tags';
+    }
+
     // Make first request (via CORS proxy)
     const resp1 = await fetch(corsProxy(prodUrl), {
       method: 'GET', // Use GET since proxy may not support HEAD
       cache: 'no-store',
+      headers: requestHeaders,
     });
 
     if (!resp1.ok) {
@@ -341,7 +348,14 @@ async function checkCaching(cdnConfig, aemUrl) {
       'x-served-by',
       'age',
       'via',
+      // Akamai headers
       'x-akamai-transformed',
+      'x-akamai-session-info',
+      'x-check-cacheable',
+      'x-cache-key',
+      'x-true-cache-key',
+      'x-cache-tags',
+      // CloudFront headers
       'x-amz-cf-id',
       'x-amz-cf-pop',
     ];
@@ -370,6 +384,7 @@ async function checkCaching(cdnConfig, aemUrl) {
     const resp2 = await fetch(corsProxy(prodUrl), {
       method: 'GET',
       cache: 'no-store',
+      headers: requestHeaders,
     });
 
     // Compare age headers or cache status
@@ -384,7 +399,10 @@ async function checkCaching(cdnConfig, aemUrl) {
     let detectedCdn = 'Unknown';
     if (resp1.headers.get('cf-cache-status')) detectedCdn = 'Cloudflare';
     else if (resp1.headers.get('x-fastly-request-id')) detectedCdn = 'Fastly';
-    else if (resp1.headers.get('x-akamai-transformed') || resp1.headers.get('x-akamai-session-info')) detectedCdn = 'Akamai';
+    else if (resp1.headers.get('x-akamai-transformed')
+      || resp1.headers.get('x-akamai-session-info')
+      || resp1.headers.get('x-check-cacheable')
+      || resp1.headers.get('x-cache-key')) detectedCdn = 'Akamai';
     else if (resp1.headers.get('x-amz-cf-id')) detectedCdn = 'CloudFront';
 
     addResultLine(checkId, `Detected CDN: ${detectedCdn}`, 'info');
