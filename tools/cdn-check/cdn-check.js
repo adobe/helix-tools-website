@@ -408,8 +408,16 @@ async function checkCaching(cdnConfig, aemUrl) {
     addResultLine(checkId, `Detected CDN: ${detectedCdn}`, 'info');
 
     // Check if content is being cached
-    const isCached = cacheStatus2.includes('HIT')
-      || cacheStatus2.includes('hit')
+    // Different CDNs use different values:
+    // - Cloudflare: HIT, MISS, DYNAMIC, etc.
+    // - Fastly: HIT, MISS
+    // - Akamai: TCP_HIT, TCP_MISS, TCP_REFRESH_HIT, TCP_REFRESH_MISS, etc.
+    // - CloudFront: Hit from cloudfront, Miss from cloudfront
+    const isCached = cacheStatus2.toLowerCase().includes('hit')
+      || cacheStatus2.includes('TCP_HIT')
+      || cacheStatus2.includes('TCP_REFRESH_HIT')
+      || cacheStatus2.includes('TCP_MEM_HIT')
+      || cacheStatus2.includes('TCP_IMS_HIT')
       || age2 > age1
       || (age2 > 0);
 
