@@ -10,7 +10,7 @@ const state = {
   domain: null,
   domainKey: null,
   dateRange: null,
-  urlFilter: null,
+  pathPrefixFilter: null,
   sourceFilter: null,
   targetFilter: null,
   showAllErrors: false,
@@ -20,6 +20,20 @@ const data = {
   cached: [],
   filtered: [],
 };
+
+/**
+ * Escapes HTML to prevent XSS attacks
+ * @param {string} text - Text to escape
+ * @returns {string} - Escaped HTML
+ */
+function escapeHtml(text) {
+  if (typeof text !== 'string') {
+    return String(text);
+  }
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
 
 // Toast notification
 function showToast(message, type = 'success') {
@@ -74,8 +88,8 @@ function updateState() {
     explorerUrl.searchParams.set('domain', state.domain);
     explorerUrl.searchParams.set('domainkey', state.domainKey);
     explorerUrl.searchParams.set('view', state.dateRange || 'month');
-    if (state.urlFilter) {
-      explorerUrl.searchParams.set('url', state.urlFilter);
+    if (state.pathPrefixFilter) {
+      explorerUrl.searchParams.set('filter', state.pathPrefixFilter);
     }
     if (state.sourceFilter) {
       explorerUrl.searchParams.set('source', state.sourceFilter);
@@ -94,44 +108,20 @@ function updateState() {
     document.getElementById('date-range').value = state.dateRange;
   }
 
-  const filterIndicator = document.querySelector('.filter-indicator');
-  const hasFilters = state.urlFilter || state.sourceFilter || state.targetFilter;
+  // Sync filter panel inputs if they exist
+  const filterPath = document.getElementById('filter-path');
+  const filterSource = document.getElementById('filter-source');
+  const filterTarget = document.getElementById('filter-target');
+  const filterTriggerBtn = document.querySelector('.filter-panel-trigger');
 
-  if (hasFilters) {
-    const filters = [];
+  if (filterPath) filterPath.value = state.pathPrefixFilter || '';
+  if (filterSource) filterSource.value = state.sourceFilter || '';
+  if (filterTarget) filterTarget.value = state.targetFilter || '';
 
-    if (state.urlFilter) {
-      filters.push(`<div class="filter-item"><strong>URL:</strong> <a href="${state.urlFilter}" target="_blank" rel="noopener noreferrer">${state.urlFilter}</a></div>`);
-    }
-
-    if (state.sourceFilter) {
-      filters.push(`<div class="filter-item"><strong>Source:</strong> <code class="filter-text">${state.sourceFilter}</code></div>`);
-    }
-
-    if (state.targetFilter) {
-      filters.push(`<div class="filter-item"><strong>Target:</strong> <code class="filter-text">${state.targetFilter}</code></div>`);
-    }
-
-    filterIndicator.innerHTML = `
-      <div class="filter-content">
-        ${filters.join('')}
-      </div>
-      <button class="clear-filter">Clear Filters</button>
-    `;
-
-    filterIndicator.querySelector('.clear-filter').addEventListener('click', () => {
-      state.urlFilter = null;
-      state.sourceFilter = null;
-      state.targetFilter = null;
-      updateState();
-      // eslint-disable-next-line no-use-before-define
-      refreshResults(false);
-    });
-
-    filterIndicator.classList.add('active');
-  } else {
-    filterIndicator.innerHTML = '';
-    filterIndicator.classList.remove('active');
+  if (filterTriggerBtn) {
+    const hasActiveFilters = state.pathPrefixFilter
+      || state.sourceFilter || state.targetFilter;
+    filterTriggerBtn.classList.toggle('has-filters', hasActiveFilters);
   }
 }
 
@@ -140,15 +130,15 @@ function getStateFromURL() {
   const domainKey = params.get('domainKey');
   const domain = params.get('domain');
   const dateRange = params.get('dateRange');
-  const urlFilter = params.get('urlFilter');
+  const pathPrefixFilter = params.get('pathPrefixFilter');
   const sourceFilter = params.get('sourceFilter');
   const targetFilter = params.get('targetFilter');
   return {
-    domain, domainKey, dateRange, urlFilter, sourceFilter, targetFilter,
+    domain, domainKey, dateRange, pathPrefixFilter, sourceFilter, targetFilter,
   };
 }
 
-function formatUrls(urlsObject, activeFilter = null) {
+function formatUrls(urlsObject) {
   // Convert object to array and sort by occurrence count (descending)
   const urlEntries = Object.entries(urlsObject).sort((a, b) => b[1] - a[1]);
 
@@ -156,36 +146,17 @@ function formatUrls(urlsObject, activeFilter = null) {
     return '-';
   }
 
-  // If there's an active filter, prioritize showing that URL first
-  let displayEntries;
-  if (activeFilter && activeFilter in urlsObject) {
-    // Put filtered URL first, then others
-    const filtered = [activeFilter, urlsObject[activeFilter]];
-    const others = urlEntries.filter(([url]) => url !== activeFilter);
-    displayEntries = [filtered, ...others];
-  } else {
-    displayEntries = urlEntries;
-  }
-
   // Show up to 3 URLs
-  const urlsToShow = displayEntries.slice(0, 3);
-  const remainingCount = displayEntries.length - urlsToShow.length;
+  const urlsToShow = urlEntries.slice(0, 3);
+  const remainingCount = urlEntries.length - urlsToShow.length;
 
   let result = '<ul class="url-list">';
   urlsToShow.forEach(([url, count]) => {
-    const isUrlFiltered = activeFilter === url;
+    const escapedUrl = escapeHtml(url);
     result += `<li>
       <div class="url-row">
-        <span class="url-text" tabindex="0">${url}</span>
+        <a href="${escapedUrl}" class="url-text" target="_blank" rel="noopener noreferrer">${escapedUrl}</a>
         <span class="url-count">(${formatNumber(count)})</span>
-      </div>
-      <div class="action-buttons">
-        <button class="filter-url-btn" data-url="${url.replace(/"/g, '&quot;')}" title="Filter by this URL" ${isUrlFiltered ? 'disabled' : ''}>
-          <span class="icon icon-filter"></span>
-        </button>
-        <a href="${url}" class="open-url-btn" target="_blank" rel="noopener noreferrer" title="Open in new tab">
-          <span class="icon icon-external"></span>
-        </a>
       </div>
     </li>`;
   });
@@ -257,11 +228,6 @@ function renderFilteredData() {
 
     li.setAttribute('data-severity', severity);
 
-    const isSourceFiltered = state.sourceFilter
-      && item.source.toLowerCase() === state.sourceFilter.toLowerCase();
-    const isTargetFiltered = state.targetFilter
-      && item.target.toLowerCase() === state.targetFilter.toLowerCase();
-
     // Extract URL from source if it exists
     // Handles two formats:
     // 1. @https://url:line:column
@@ -269,33 +235,31 @@ function renderFilteredData() {
     const sourceUrlMatch = item.source.match(/\(?(https?:\/\/[^\s)]+?)(?::\d+:\d+)?\)?$/);
     const sourceUrl = sourceUrlMatch ? sourceUrlMatch[1] : null;
 
+    const escapedSource = escapeHtml(item.source);
+    const escapedTarget = escapeHtml(item.target);
+    const escapedSourceUrl = sourceUrl ? escapeHtml(sourceUrl) : null;
+
     li.innerHTML = `
       <div class="error-source">
-        <code tabindex="0" data-value="${item.source.replace(/"/g, '&quot;')}">${item.source}</code>
+        <code tabindex="0" data-value="${escapedSource}">${escapedSource}</code>
         <div class="action-buttons">
-          <button class="filter-btn" data-value="${item.source.replace(/"/g, '&quot;')}" data-type="source" title="Filter by this source" ${isSourceFiltered ? 'disabled' : ''}>
-            <span class="icon icon-filter"></span>
-          </button>
-          <button class="copy-btn" data-value="${item.source.replace(/"/g, '&quot;')}" title="Copy to clipboard">
+          <button class="copy-btn" data-value="${escapedSource}" title="Copy to clipboard">
             <span class="icon icon-copy"></span>
           </button>
-          ${sourceUrl ? `<a href="${sourceUrl}" class="view-source-btn" target="_blank" rel="noopener noreferrer" title="Open source URL">
+          ${escapedSourceUrl ? `<a href="${escapedSourceUrl}" class="view-source-btn" target="_blank" rel="noopener noreferrer" title="Open source URL">
             <span class="icon icon-code"></span>
           </a>` : ''}
         </div>
       </div>
       <div class="error-target">
-        <code tabindex="0" data-value="${item.target.replace(/"/g, '&quot;')}">${item.target}</code>
+        <code tabindex="0" data-value="${escapedTarget}">${escapedTarget}</code>
         <div class="action-buttons">
-          <button class="filter-btn" data-value="${item.target.replace(/"/g, '&quot;')}" data-type="target" title="Filter by this target" ${isTargetFiltered ? 'disabled' : ''}>
-            <span class="icon icon-filter"></span>
-          </button>
-          <button class="copy-btn" data-value="${item.target.replace(/"/g, '&quot;')}" title="Copy to clipboard">
+          <button class="copy-btn" data-value="${escapedTarget}" title="Copy to clipboard">
             <span class="icon icon-copy"></span>
           </button>
         </div>
       </div>
-      <div class="error-urls">${formatUrls(item.urls, state.urlFilter)}</div>
+      <div class="error-urls">${formatUrls(item.urls)}</div>
       <div class="error-last-seen">${item.timestamp ? formatRelativeDate(item.timestamp) : '-'}</div>
       <div class="error-count">
         <div class="count-bar">
@@ -354,23 +318,6 @@ function renderFilteredData() {
 
   updateChart(data.filtered, state.dateRange);
 
-  // Handle filter URL buttons
-  errorList.querySelectorAll('.filter-url-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const url = btn.getAttribute('data-url');
-      state.urlFilter = url;
-      updateState();
-      // eslint-disable-next-line no-use-before-define
-      refreshResults(false);
-
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth',
-      });
-    });
-  });
-
   // Handle copy buttons
   errorList.querySelectorAll('.copy-btn').forEach((btn) => {
     btn.addEventListener('click', async (e) => {
@@ -390,35 +337,11 @@ function renderFilteredData() {
       }
     });
   });
-
-  // Handle filter buttons
-  errorList.querySelectorAll('.filter-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const value = btn.getAttribute('data-value');
-      const type = btn.getAttribute('data-type');
-
-      if (type === 'source') {
-        state.sourceFilter = value;
-      } else if (type === 'target') {
-        state.targetFilter = value;
-      }
-
-      updateState();
-      // eslint-disable-next-line no-use-before-define
-      refreshResults(false);
-
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth',
-      });
-    });
-  });
 }
 
 async function refreshResults(refreshCached = true) {
   const {
-    domain, domainKey, dateRange, urlFilter, sourceFilter, targetFilter,
+    domain, domainKey, dateRange, pathPrefixFilter, sourceFilter, targetFilter,
   } = state;
   if (!domain || !domainKey) {
     return;
@@ -510,23 +433,71 @@ async function refreshResults(refreshCached = true) {
       data.cached.sort((a, b) => b.weight - a.weight);
     }
 
-    data.filtered = data.cached.filter((item) => {
-      let matches = true;
-
-      if (urlFilter) {
-        matches = matches && (urlFilter in item.urls);
+    // Helper to check if a URL matches the active URL filters
+    const urlMatchesFilters = (url) => {
+      // Check path prefix filter
+      if (pathPrefixFilter) {
+        try {
+          const urlPath = new URL(url).pathname;
+          if (!urlPath.startsWith(pathPrefixFilter)) return false;
+        } catch {
+          return false;
+        }
       }
 
-      if (sourceFilter) {
-        matches = matches && (item.source.toLowerCase() === sourceFilter.toLowerCase());
-      }
+      return true;
+    };
 
-      if (targetFilter) {
-        matches = matches && (item.target.toLowerCase() === targetFilter.toLowerCase());
-      }
+    const hasPathFilter = !!pathPrefixFilter;
 
-      return matches;
-    });
+    data.filtered = data.cached
+      .map((item) => {
+        // First check source/target filters (these filter entire groups)
+        if (sourceFilter && item.source.toLowerCase() !== sourceFilter.toLowerCase()) {
+          return null;
+        }
+        if (targetFilter && item.target.toLowerCase() !== targetFilter.toLowerCase()) {
+          return null;
+        }
+
+        // If path filter is active, recalculate weights based on matching URLs
+        if (hasPathFilter) {
+          const filteredUrls = {};
+          let filteredWeight = 0;
+
+          Object.entries(item.urls).forEach(([url, count]) => {
+            if (urlMatchesFilters(url)) {
+              filteredUrls[url] = count;
+              filteredWeight += count;
+            }
+          });
+
+          // Skip items with no matching URLs
+          if (filteredWeight === 0) return null;
+
+          const filteredTimeSlots = item.timeSlots.filter((slot) => urlMatchesFilters(slot.url));
+
+          // Find max timestamp without spreading (avoids stack overflow with large arrays)
+          const maxTime = filteredTimeSlots.reduce(
+            (max, s) => Math.max(max, s.time.getTime()),
+            0,
+          );
+
+          return {
+            ...item,
+            urls: filteredUrls,
+            weight: filteredWeight,
+            timeSlots: filteredTimeSlots,
+            timestamp: maxTime > 0 ? new Date(maxTime) : item.timestamp,
+          };
+        }
+
+        return item;
+      })
+      .filter((item) => item !== null);
+
+    // Re-sort by weight after filtering
+    data.filtered.sort((a, b) => b.weight - a.weight);
 
     renderFilteredData();
   } finally {
@@ -551,13 +522,151 @@ async function init() {
     <div class="error-target">Target</div>
     <div class="error-urls">URLs</div>
     <div class="error-last-seen">Last Seen</div>
-    <div class="error-count">Estimated Occurrences</div>
+    <div class="error-count">
+      <span>Estimated Occurrences</span>
+      <button class="filter-panel-trigger" title="Filters" aria-expanded="false" aria-controls="filter-panel">
+        <span class="icon icon-filter"></span>
+      </button>
+    </div>
   `;
   document.getElementById('error-list').before(errorsHeader);
+  decorateIcons(errorsHeader);
 
-  const filterIndicator = document.createElement('div');
-  filterIndicator.classList.add('filter-indicator');
-  document.getElementById('error-list').before(filterIndicator);
+  // Create filter panel
+  const filterPanel = document.createElement('div');
+  filterPanel.id = 'filter-panel';
+  filterPanel.classList.add('filter-panel');
+  filterPanel.innerHTML = `
+    <div class="filter-panel-content">
+      <div class="filter-field">
+        <label for="filter-path">Path Prefix</label>
+        <input type="text" id="filter-path" placeholder="/blog/" list="path-suggestions">
+        <datalist id="path-suggestions"></datalist>
+      </div>
+      <div class="filter-field">
+        <label for="filter-source">Source</label>
+        <input type="text" id="filter-source" placeholder="Error source..." list="source-suggestions">
+        <datalist id="source-suggestions"></datalist>
+      </div>
+      <div class="filter-field">
+        <label for="filter-target">Target</label>
+        <input type="text" id="filter-target" placeholder="Error message..." list="target-suggestions">
+        <datalist id="target-suggestions"></datalist>
+      </div>
+      <div class="filter-actions">
+        <button type="button" class="filter-apply button">Apply Filters</button>
+        <button type="button" class="filter-clear button outline">Clear All</button>
+      </div>
+    </div>
+  `;
+  errorsHeader.after(filterPanel);
+
+  // Filter panel logic
+  const filterTrigger = errorsHeader.querySelector('.filter-panel-trigger');
+  const filterPathInput = filterPanel.querySelector('#filter-path');
+  const filterSourceInput = filterPanel.querySelector('#filter-source');
+  const filterTargetInput = filterPanel.querySelector('#filter-target');
+  const filterApplyBtn = filterPanel.querySelector('.filter-apply');
+  const filterClearBtn = filterPanel.querySelector('.filter-clear');
+
+  // Datalist elements for autocomplete
+  const pathDatalist = filterPanel.querySelector('#path-suggestions');
+  const sourceDatalist = filterPanel.querySelector('#source-suggestions');
+  const targetDatalist = filterPanel.querySelector('#target-suggestions');
+
+  function updateDatalistOptions() {
+    const paths = new Set();
+    const sources = new Set();
+    const targets = new Set();
+
+    data.cached.forEach((item) => {
+      sources.add(item.source);
+      targets.add(item.target);
+      Object.keys(item.urls).forEach((url) => {
+        try {
+          const { pathname } = new URL(url);
+          paths.add(pathname);
+          // Also add parent paths
+          const parts = pathname.split('/').filter(Boolean);
+          let prefix = '';
+          parts.forEach((part) => {
+            prefix += `/${part}`;
+            paths.add(prefix);
+          });
+        } catch {
+          // Ignore invalid URLs
+        }
+      });
+    });
+
+    // Sort and limit suggestions
+    const sortedPaths = Array.from(paths).sort().slice(0, 100);
+    const sortedSources = Array.from(sources).slice(0, 50);
+    const sortedTargets = Array.from(targets).slice(0, 50);
+
+    pathDatalist.innerHTML = sortedPaths.map((p) => `<option value="${escapeHtml(p)}">`).join('');
+    sourceDatalist.innerHTML = sortedSources.map((s) => `<option value="${escapeHtml(s)}">`).join('');
+    targetDatalist.innerHTML = sortedTargets.map((t) => `<option value="${escapeHtml(t)}">`).join('');
+  }
+
+  function setFilterPanelOpen(isOpen) {
+    filterPanel.classList.toggle('open', isOpen);
+    filterTrigger.setAttribute('aria-expanded', isOpen);
+  }
+
+  filterTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = !filterPanel.classList.contains('open');
+    setFilterPanelOpen(isOpen);
+    if (isOpen) {
+      filterPathInput.focus();
+      updateDatalistOptions();
+    }
+  });
+
+  function applyFilters() {
+    state.pathPrefixFilter = filterPathInput.value.trim() || null;
+    state.sourceFilter = filterSourceInput.value.trim() || null;
+    state.targetFilter = filterTargetInput.value.trim() || null;
+    updateState();
+    refreshResults(false);
+    setFilterPanelOpen(false);
+  }
+
+  function clearFilters() {
+    filterPathInput.value = '';
+    filterSourceInput.value = '';
+    filterTargetInput.value = '';
+    state.pathPrefixFilter = null;
+    state.sourceFilter = null;
+    state.targetFilter = null;
+    updateState();
+    refreshResults(false);
+    setFilterPanelOpen(false);
+  }
+
+  filterApplyBtn.addEventListener('click', applyFilters);
+  filterClearBtn.addEventListener('click', clearFilters);
+
+  // Handle Enter key in filter inputs
+  [filterPathInput, filterSourceInput, filterTargetInput].forEach((input) => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        applyFilters();
+      }
+      if (e.key === 'Escape') {
+        setFilterPanelOpen(false);
+      }
+    });
+  });
+
+  // Close panel when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!filterPanel.contains(e.target) && !filterTrigger.contains(e.target)) {
+      setFilterPanelOpen(false);
+    }
+  });
 
   const modal = document.getElementById('domain-modal');
   document.getElementById('domain-trigger').addEventListener('click', () => {
@@ -582,7 +691,7 @@ async function init() {
 
     state.domain = domain;
     state.domainKey = domainKey;
-    state.urlFilter = null;
+    state.pathPrefixFilter = null;
     state.sourceFilter = null;
     state.targetFilter = null;
     updateState();
@@ -608,13 +717,13 @@ async function init() {
   });
 
   const {
-    domain, domainKey, dateRange, urlFilter, sourceFilter, targetFilter,
+    domain, domainKey, dateRange, pathPrefixFilter, sourceFilter, targetFilter,
   } = getStateFromURL();
 
   state.domain = domain;
   state.domainKey = domainKey;
   state.dateRange = dateRange;
-  state.urlFilter = urlFilter;
+  state.pathPrefixFilter = pathPrefixFilter;
   state.sourceFilter = sourceFilter;
   state.targetFilter = targetFilter;
   updateState();
