@@ -394,6 +394,14 @@ class RewrittenData {
     if (type === 'job' || type.includes('-job')) {
       return writeAdminDetails(`${ADMIN}/job/${this.data.org}/${this.data.site}/${this.data.ref}${value}/details`, value);
     }
+    if (type === 'snapshot') {
+      // snapshot logs have job ID in the 'job' field, not 'path'
+      const jobId = this.data.job;
+      if (jobId) {
+        return writeAdminDetails(`${ADMIN}/job/${this.data.org}/${this.data.site}/${this.data.ref}/${jobId}/details`, jobId);
+      }
+      return value || '-';
+    }
     if (type === 'preview') {
       return writeA(`${this.preview}${value}`, value);
     }
