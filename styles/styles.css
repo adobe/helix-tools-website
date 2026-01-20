@@ -512,7 +512,7 @@ a.button {
 .button.outline:focus {
   border-color: var(--color-link-hover);
   background-color: light-dark(var(--blue-100), var(--blue-1200));
-  color: var(--color-link-hover);
+  color: light-dark(var(--blue-1000), var(--blue-400));
 }
 
 .button.outline:active {

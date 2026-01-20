@@ -172,6 +172,7 @@ header.header-wrapper {
           svg {
             width: 20px;
             height: 20px;
+            fill: currentcolor;
             stroke: currentcolor;
           }
 

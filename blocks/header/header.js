@@ -11,17 +11,31 @@ import { loadFragment } from '../fragment/fragment.js';
 const THEMES = ['system', 'light', 'dark'];
 const themeIconsCache = {};
 
-const THEME_LABELS = {
-  system: 'Theme: System (click for Light)',
-  light: 'Theme: Light (click for Dark)',
-  dark: 'Theme: Dark (click for System)',
+const THEME_NAMES = {
+  system: 'System',
+  light: 'Light',
+  dark: 'Dark',
 };
 
-const THEME_TITLES = {
-  system: 'Switch to light theme',
-  light: 'Switch to dark theme',
-  dark: 'Switch to system theme',
-};
+function getNextTheme(current) {
+  const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+  const systemResolved = prefersDark ? 'dark' : 'light';
+  const opposite = prefersDark ? 'light' : 'dark';
+
+  if (current === 'system') return opposite;
+  if (current === opposite) return systemResolved;
+  return 'system';
+}
+
+function getThemeLabel(current) {
+  const next = getNextTheme(current);
+  return `Theme: ${THEME_NAMES[current]} (click for ${THEME_NAMES[next]})`;
+}
+
+function getThemeTitle(current) {
+  const next = getNextTheme(current);
+  return `Switch to ${next} theme`;
+}
 
 async function fetchThemeIcon(theme) {
   if (themeIconsCache[theme]) return themeIconsCache[theme];
@@ -41,13 +55,8 @@ async function fetchThemeIcon(theme) {
 async function updateThemeButton(button, theme) {
   const svg = await fetchThemeIcon(theme);
   button.innerHTML = svg;
-  button.setAttribute('aria-label', THEME_LABELS[theme]);
-  button.setAttribute('title', THEME_TITLES[theme]);
-}
-
-function getNextTheme(current) {
-  const index = THEMES.indexOf(current);
-  return THEMES[(index + 1) % THEMES.length];
+  button.setAttribute('aria-label', getThemeLabel(theme));
+  button.setAttribute('title', getThemeTitle(theme));
 }
 
 async function initThemeToggle(button) {
