@@ -774,20 +774,25 @@ async function runChecks(pageUrl) {
 
 // Origin discovery from CDN headers
 function extractOriginFromHeaders(headers) {
-  // Look for surrogate-key (Fastly) or x-cache-key (Akamai) or similar
+  // Look for cache key headers from various CDNs:
+  // - Fastly: surrogate-key
+  // - Akamai: x-cache-key, x-true-cache-key
+  // - Cloudflare: x-cache-tag (custom header from AEM origin)
   const surrogateKey = headers.get('surrogate-key') || '';
   const cacheKey = headers.get('x-cache-key') || headers.get('x-true-cache-key') || '';
-  const allKeys = `${surrogateKey} ${cacheKey}`;
+  const cacheTag = headers.get('x-cache-tag') || headers.get('cache-tag') || '';
+  const allKeys = `${surrogateKey} ${cacheKey} ${cacheTag}`;
 
   // Debug: log all headers received
   /* eslint-disable no-console */
-  console.group('Origin Discovery Debug');
+  console.group('Origin Discovery Debug - Headers');
   console.log('Headers received:');
   headers.forEach((value, name) => {
     console.log(`  ${name}: ${value}`);
   });
   console.log('surrogate-key:', surrogateKey || '(not found)');
   console.log('x-cache-key:', cacheKey || '(not found)');
+  console.log('x-cache-tag:', cacheTag || '(not found)');
   console.log('All keys to search:', allKeys || '(empty)');
   /* eslint-enable no-console */
 
@@ -806,9 +811,35 @@ function extractOriginFromHeaders(headers) {
   }
 
   // eslint-disable-next-line no-console
-  console.log('Origins found:', Array.from(origins));
+  console.log('Origins found from headers:', Array.from(origins));
   // eslint-disable-next-line no-console
   console.groupEnd();
+
+  return Array.from(origins);
+}
+
+// Fallback: Extract origin from HTML content
+function extractOriginFromHtml(html) {
+  /* eslint-disable no-console */
+  console.group('Origin Discovery Debug - HTML Fallback');
+
+  // Look for URLs matching AEM Edge Delivery patterns
+  // Patterns: branch--site--org.aem.live, branch--site--org.aem.page,
+  //           branch--site--org.hlx.live, branch--site--org.hlx.page
+  const urlPattern = /https?:\/\/([a-z0-9-]+--[a-z0-9-]+--[a-z0-9-]+)\.(aem|hlx)\.(live|page)/gi;
+  const matches = html.matchAll(urlPattern);
+
+  const origins = new Set();
+  // eslint-disable-next-line no-restricted-syntax
+  for (const match of matches) {
+    const [fullUrl, origin] = match;
+    console.log('Found AEM URL in HTML:', fullUrl, '→', origin);
+    origins.add(origin);
+  }
+
+  console.log('Origins found from HTML:', Array.from(origins));
+  console.groupEnd();
+  /* eslint-enable no-console */
 
   return Array.from(origins);
 }
@@ -833,10 +864,19 @@ async function discoverOrigin(prodUrl) {
     throw new Error(`Failed to fetch: ${resp.status}`);
   }
 
-  const origins = extractOriginFromHeaders(resp.headers);
+  // Try to extract origin from CDN headers first
+  let origins = extractOriginFromHeaders(resp.headers);
+
+  // Fallback: parse HTML content for AEM URLs
+  if (origins.length === 0) {
+    // eslint-disable-next-line no-console
+    console.log('No origins found in headers, trying HTML fallback...');
+    const html = await resp.text();
+    origins = extractOriginFromHtml(html);
+  }
 
   if (origins.length === 0) {
-    throw new Error('No AEM origin found in CDN headers. The site may not be using AEM Edge Delivery Services, or the CDN is not exposing surrogate keys.');
+    throw new Error('No AEM origin found. The site may not be using AEM Edge Delivery Services, or no .aem.live/.hlx.live references were found in the page.');
   }
 
   return origins;
