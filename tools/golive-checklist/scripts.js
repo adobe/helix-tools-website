@@ -2,11 +2,11 @@
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 
-// Form elements
-const FORM = document.getElementById('checklist-form');
-const ORG_FIELD = document.getElementById('org');
-const SITE_FIELD = document.getElementById('site');
-const RESULTS = document.getElementById('checklist-results');
+// Form elements (initialized in init())
+let FORM;
+let ORG_FIELD;
+let SITE_FIELD;
+let RESULTS;
 
 // Utility functions
 /**
@@ -921,9 +921,15 @@ async function isLoggedIn() {
 }
 
 /**
- * Registers event listeners
+ * Initializes the tool
  */
-async function registerListeners() {
+async function init() {
+  // Initialize DOM element references
+  FORM = document.getElementById('checklist-form');
+  ORG_FIELD = document.getElementById('org');
+  SITE_FIELD = document.getElementById('site');
+  RESULTS = document.getElementById('checklist-results');
+
   // Handle form submission
   FORM.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -962,5 +968,9 @@ async function registerListeners() {
   await initConfigField();
 }
 
-// Initialize
-registerListeners();
+const initPromise = init();
+
+// eslint-disable-next-line import/prefer-default-export
+export function ready() {
+  return initPromise;
+}

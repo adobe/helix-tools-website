@@ -4,7 +4,7 @@
 
 .golive-checklist .info-notice {
   background-color: #e0f2fe;
-  border-left: 4px solid #0284c7;
+  border-left: 4px solid var(--cyan-800);
   padding: var(--spacing-m);
   border-radius: var(--rounding-s);
   margin: var(--spacing-m) 0;
@@ -50,12 +50,12 @@
 }
 
 .golive-checklist .checklist-item.pass {
-  background-color: #f0fdf4;
+  background-color: var(--green-100);
   border-color: #86efac;
 }
 
 .golive-checklist .checklist-item.fail {
-  background-color: #fef2f2;
+  background-color: var(--red-100);
   border-color: #fca5a5;
 }
 
@@ -93,17 +93,17 @@
 
 .golive-checklist .status-badge.pass {
   background-color: #22c55e;
-  color: white;
+  color: var(--gray-25);
 }
 
 .golive-checklist .status-badge.fail {
   background-color: #ef4444;
-  color: white;
+  color: var(--gray-25);
 }
 
 .golive-checklist .status-badge.warning {
-  background-color: #f59e0b;
-  color: white;
+  background-color: var(--orange-500);
+  color: var(--gray-25);
 }
 
 .golive-checklist .status-badge.pending {
@@ -113,7 +113,7 @@
 
 .golive-checklist .status-badge.manual {
   background-color: var(--blue-900);
-  color: white;
+  color: var(--gray-25);
 }
 
 .golive-checklist .item-details {
@@ -154,7 +154,7 @@
 .golive-checklist .check-result {
   margin-top: var(--spacing-s);
   padding: var(--spacing-s);
-  background-color: white;
+  background-color: var(--gray-25);
   border-radius: var(--rounding-s);
   font-size: var(--body-size-m);
 }
@@ -207,23 +207,6 @@
   display: flex;
   gap: var(--spacing-m);
   flex-wrap: wrap;
-}
-
-/* Loading spinner */
-.golive-checklist .symbol-loading {
-  display: inline-block;
-  width: 1em;
-  height: 1em;
-  border: 2px solid currentcolor;
-  border-right-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.75s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 /* Responsive adjustments */
