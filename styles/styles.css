@@ -394,6 +394,7 @@ pre {
 }
 
 pre::-webkit-scrollbar {
+  width: 24px;
   height: 24px;
 }
 

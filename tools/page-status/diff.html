@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>Page Diff Viewer</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="./diff.js" type="module" defer></script>
+  <link rel="stylesheet" href="./diff.css" />
+</head>
+<body class="page-diff">
+  <header></header>
+  <main>
+    <div>
+      <a href="./index.html" class="button outline">← Back to Page Status</a>
+      <h1>Page Diff Viewer</h1>
+      <p>
+        Compare preview and live versions of pages that have pending changes.
+      </p>
+    </div>
+
+    <section class="diff-info" aria-hidden="true">
+      <p class="diff-site"></p>
+      <p class="diff-count"></p>
+    </section>
+
+    <section class="diff-container">
+      <article class="diff-loading" aria-hidden="true">
+        <i class="symbol symbol-loading"></i>
+        <p>Loading page status...</p>
+      </article>
+
+      <article class="diff-no-results" aria-hidden="false">
+        <span class="icon icon-search"></span>
+        <div>
+          <p><strong>No pending changes</strong></p>
+          <p>All pages are in sync between preview and live.</p>
+        </div>
+      </article>
+
+      <article class="diff-error" aria-hidden="true">
+        <span class="icon icon-notice"></span>
+        <div>
+          <p><strong>Error</strong></p>
+          <p>Unable to load page diff data.</p>
+        </div>
+      </article>
+
+      <article class="diff-results" aria-hidden="true">
+        <nav class="diff-nav">
+          <div class="diff-filters">
+            <label class="diff-filter-checkbox">
+              <input type="checkbox" id="hide-drafts" checked>
+              <span>Hide /drafts/</span>
+            </label>
+          </div>
+          <ul class="diff-page-list"></ul>
+        </nav>
+        <div class="diff-content"></div>
+      </article>
+    </section>
+  </main>
+  <footer></footer>
+</body>
+</html>
+
