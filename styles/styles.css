@@ -850,6 +850,7 @@ table+.form-field,
   right: 0;
   top: calc(100% + var(--spacing-xs));
   margin: 0;
+  border: var(--border-m) solid light-dark(transparent, var(--gray-600));
   border-radius: var(--rounding-m);
   padding: calc(0.4em + var(--border-m));
   background-color: var(--color-background);
@@ -874,7 +875,7 @@ table+.form-field,
 
 .form-field.picker-field input ~ ul li:hover {
   border-radius: var(--rounding-m);
-  background-color: var(--gray-100);
+  background-color: light-dark(var(--gray-100), var(--gray-700));
 }
 
 .form-error {
