@@ -379,6 +379,60 @@
   font-family: var(--code-font-family);
 }
 
+/* Origin Discovery Modal */
+#discover-origin-modal {
+  max-width: 500px;
+}
+
+#discover-origin-modal h2 {
+  margin-top: 0;
+}
+
+#discover-origin-modal .form-field {
+  margin-bottom: var(--spacing-m);
+}
+
+#discover-origin-modal input[type="url"] {
+  font-family: var(--code-font-family);
+}
+
+#discover-result {
+  margin-top: var(--spacing-m);
+  padding: var(--spacing-m);
+  background-color: var(--green-100);
+  border: var(--border-m) solid var(--green-700);
+  border-radius: var(--rounding-m);
+}
+
+#discover-result[aria-hidden="true"] {
+  display: none;
+}
+
+#discover-result h3 {
+  margin-top: 0;
+  color: var(--green-900);
+}
+
+.discover-origin-value {
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-l);
+  font-weight: var(--weight-bold);
+  color: var(--green-900);
+  word-break: break-all;
+}
+
+#discover-error {
+  margin-top: var(--spacing-m);
+}
+
+#discover-error[aria-hidden="true"] {
+  display: none;
+}
+
+#discover-origin-link {
+  font-size: var(--body-size-s);
+}
+
 /* Responsive adjustments */
 @media (width < 600px) {
   .score-gauge {

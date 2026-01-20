@@ -39,7 +39,7 @@
             required 
           />
           <div class="field-help-text">
-            <p>Enter an <code>.aem.live</code> URL from your site</p>
+            <p>Enter an <code>.aem.live</code> URL from your site. <a href="#" id="discover-origin-link">Don't know your origin?</a></p>
           </div>
         </div>
         <p class="button-wrapper">
@@ -139,6 +139,40 @@
         <p></p>
       </div>
     </div>
+
+    <!-- Origin Discovery Modal -->
+    <dialog id="discover-origin-modal">
+      <div>
+        <h2>Discover Your AEM Origin</h2>
+        <p>Enter your production URL and we'll try to detect the AEM origin from CDN headers.</p>
+        <form id="discover-origin-form">
+          <div class="form-field">
+            <label for="prod-url">Production URL</label>
+            <input 
+              type="url" 
+              id="prod-url" 
+              placeholder="https://www.example.com/"
+              required 
+            />
+          </div>
+          <p class="button-wrapper">
+            <button type="submit" class="button" id="discover-btn">Discover Origin</button>
+            <button type="button" class="button outline" id="cancel-discover">Cancel</button>
+          </p>
+        </form>
+        <div id="discover-result" aria-hidden="true">
+          <h3>Detected Origin</h3>
+          <p class="discover-origin-value"></p>
+          <p class="button-wrapper">
+            <button type="button" class="button" id="use-origin-btn">Use This Origin</button>
+          </p>
+        </div>
+        <div id="discover-error" aria-hidden="true">
+          <p class="error-message"></p>
+        </div>
+      </div>
+      <button class="cross close-modal" id="close-discover-modal" title="Close">Close</button>
+    </dialog>
   </main>
   <footer></footer>
 </body>

@@ -772,8 +772,159 @@ async function runChecks(pageUrl) {
   updateScore(finalScore);
 }
 
+// Origin discovery from CDN headers
+function extractOriginFromHeaders(headers) {
+  // Look for surrogate-key (Fastly) or x-cache-key (Akamai) or similar
+  const surrogateKey = headers.get('surrogate-key') || '';
+  const cacheKey = headers.get('x-cache-key') || headers.get('x-true-cache-key') || '';
+  const allKeys = `${surrogateKey} ${cacheKey}`;
+
+  // Debug: log all headers received
+  /* eslint-disable no-console */
+  console.group('Origin Discovery Debug');
+  console.log('Headers received:');
+  headers.forEach((value, name) => {
+    console.log(`  ${name}: ${value}`);
+  });
+  console.log('surrogate-key:', surrogateKey || '(not found)');
+  console.log('x-cache-key:', cacheKey || '(not found)');
+  console.log('All keys to search:', allKeys || '(empty)');
+  /* eslint-enable no-console */
+
+  // Pattern: branch--site--org (with optional suffix like _head, _metadata)
+  // Examples: main--helix-website--adobe, main--helix-website--adobe_head
+  const pattern = /([a-z0-9-]+)--([a-z0-9-]+)--([a-z0-9-]+)(?:_[a-z]+)?/gi;
+  const matches = allKeys.matchAll(pattern);
+
+  const origins = new Set();
+  // eslint-disable-next-line no-restricted-syntax
+  for (const match of matches) {
+    const [fullMatch, branch, site, org] = match;
+    // eslint-disable-next-line no-console
+    console.log('Found match:', fullMatch, '→', `${branch}--${site}--${org}`);
+    origins.add(`${branch}--${site}--${org}`);
+  }
+
+  // eslint-disable-next-line no-console
+  console.log('Origins found:', Array.from(origins));
+  // eslint-disable-next-line no-console
+  console.groupEnd();
+
+  return Array.from(origins);
+}
+
+async function discoverOrigin(prodUrl) {
+  // Send debug headers to get CDN to include cache keys in response
+  const debugHeaders = {
+    'Fastly-Debug': '1',
+    Pragma: 'akamai-x-cache-on, akamai-x-cache-remote-on, akamai-x-check-cacheable, akamai-x-get-cache-key, akamai-x-get-true-cache-key, akamai-x-get-cache-tags',
+  };
+
+  // eslint-disable-next-line no-console
+  console.log('Sending request with debug headers:', debugHeaders);
+
+  const resp = await fetch(corsProxy(prodUrl), {
+    method: 'GET',
+    cache: 'no-store',
+    headers: debugHeaders,
+  });
+
+  if (!resp.ok) {
+    throw new Error(`Failed to fetch: ${resp.status}`);
+  }
+
+  const origins = extractOriginFromHeaders(resp.headers);
+
+  if (origins.length === 0) {
+    throw new Error('No AEM origin found in CDN headers. The site may not be using AEM Edge Delivery Services, or the CDN is not exposing surrogate keys.');
+  }
+
+  return origins;
+}
+
+function setupOriginDiscovery() {
+  const discoverLink = document.getElementById('discover-origin-link');
+  const modal = document.getElementById('discover-origin-modal');
+  const discoverForm = document.getElementById('discover-origin-form');
+  const discoverResult = document.getElementById('discover-result');
+  const discoverError = document.getElementById('discover-error');
+  const closeBtn = document.getElementById('close-discover-modal');
+  const cancelBtn = document.getElementById('cancel-discover');
+  const useOriginBtn = document.getElementById('use-origin-btn');
+  const urlInput = document.getElementById('url');
+
+  let discoveredOrigin = null;
+
+  function resetModal() {
+    discoverForm.reset();
+    discoverResult.setAttribute('aria-hidden', 'true');
+    discoverError.setAttribute('aria-hidden', 'true');
+    discoveredOrigin = null;
+  }
+
+  discoverLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    resetModal();
+    modal.showModal();
+  });
+
+  closeBtn.addEventListener('click', () => modal.close());
+  cancelBtn.addEventListener('click', () => modal.close());
+
+  modal.addEventListener('close', resetModal);
+
+  discoverForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const prodUrlInput = document.getElementById('prod-url');
+    const prodUrl = prodUrlInput.value;
+    const discoverBtn = document.getElementById('discover-btn');
+
+    discoverBtn.disabled = true;
+    discoverBtn.textContent = 'Discovering...';
+    discoverResult.setAttribute('aria-hidden', 'true');
+    discoverError.setAttribute('aria-hidden', 'true');
+
+    try {
+      const origins = await discoverOrigin(prodUrl);
+      [discoveredOrigin] = origins; // Use first found origin
+
+      // Build the .aem.live URL using the path from the production URL
+      const prodUrlObj = new URL(prodUrl);
+      const aemLiveUrl = `https://${discoveredOrigin}.aem.live${prodUrlObj.pathname}`;
+
+      discoverResult.querySelector('.discover-origin-value').textContent = aemLiveUrl;
+      discoverResult.setAttribute('aria-hidden', 'false');
+
+      if (origins.length > 1) {
+        // eslint-disable-next-line no-console
+        console.log('Multiple origins found:', origins);
+      }
+    } catch (err) {
+      discoverError.querySelector('.error-message').textContent = err.message;
+      discoverError.setAttribute('aria-hidden', 'false');
+    } finally {
+      discoverBtn.disabled = false;
+      discoverBtn.textContent = 'Discover Origin';
+    }
+  });
+
+  useOriginBtn.addEventListener('click', () => {
+    if (discoveredOrigin) {
+      const prodUrlInput = document.getElementById('prod-url');
+      const prodUrlObj = new URL(prodUrlInput.value);
+      const aemLiveUrl = `https://${discoveredOrigin}.aem.live${prodUrlObj.pathname}`;
+
+      urlInput.value = aemLiveUrl;
+      modal.close();
+    }
+  });
+}
+
 // Event listeners and initialization
 function setupEventListeners() {
+  // Setup origin discovery modal
+  setupOriginDiscovery();
+
   // Toggle check details on click
   document.querySelectorAll('.check-header').forEach((header) => {
     header.addEventListener('click', () => {
