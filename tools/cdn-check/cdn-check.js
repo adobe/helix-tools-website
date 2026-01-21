@@ -119,7 +119,7 @@ function handleAuthError(status, checkId) {
   return false;
 }
 
-function updateScore(score) {
+function updateScore(score, inProgress = false) {
   const circumference = 2 * Math.PI * 54; // radius = 54
   const offset = circumference - (score / 100) * circumference;
 
@@ -127,7 +127,9 @@ function updateScore(score) {
 
   // Determine score category
   let category;
-  if (score < 50) {
+  if (inProgress) {
+    category = 'in-progress';
+  } else if (score < 50) {
     category = 'poor';
   } else if (score < 90) {
     category = 'average';
@@ -137,8 +139,30 @@ function updateScore(score) {
 
   // Use setAttribute for SVG elements (className is read-only on SVG)
   SCORE_RING.setAttribute('class', `score-ring ${category}`);
-  SCORE_NUMBER.className = `score-number ${category}`;
+  SCORE_NUMBER.className = `score-number ${inProgress ? '' : category}`;
   SCORE_NUMBER.textContent = Math.round(score);
+
+  // Update label to show in-progress state
+  const scoreLabel = document.querySelector('.score-label');
+  if (scoreLabel) {
+    scoreLabel.classList.toggle('in-progress', inProgress);
+  }
+}
+
+// Calculate current score from completed checks
+function calculateCurrentScore(scores) {
+  let totalScore = 0;
+  let totalWeight = 0;
+
+  CHECKS.forEach(({ id, weight }) => {
+    const checkScore = scores[id];
+    if (checkScore !== undefined) {
+      totalScore += checkScore * weight;
+      totalWeight += weight;
+    }
+  });
+
+  return totalWeight > 0 ? Math.round(totalScore / totalWeight) : 0;
 }
 
 // Check implementations
@@ -840,8 +864,8 @@ async function runChecks(pageUrl) {
   SCORE_SECTION.setAttribute('aria-hidden', 'false');
   RESULTS_SECTION.setAttribute('aria-hidden', 'false');
 
-  // Initialize score display
-  updateScore(0);
+  // Initialize score display with in-progress state
+  updateScore(0, true);
 
   // Run checks sequentially and collect scores
   const scores = {};
@@ -849,6 +873,7 @@ async function runChecks(pageUrl) {
   // Check 1: CDN Config
   const configResult = await checkCdnConfig(org, site);
   scores['check-cdn-config'] = configResult.score;
+  updateScore(calculateCurrentScore(scores), true);
   const { cdnConfig } = configResult;
 
   // Stop if there was an auth error - no point continuing
@@ -858,50 +883,37 @@ async function runChecks(pageUrl) {
       updateCheckState(id, 'skip', 'Skipped');
       addResultLine(id, 'Skipped due to authentication error', 'warning');
     });
-    updateScore(0);
+    updateScore(0, false);
     return;
   }
 
   // Check 2: Push Invalidation
   const purgeResult = await checkPurge(cdnConfig);
   scores['check-purge'] = purgeResult.score;
+  updateScore(calculateCurrentScore(scores), true);
 
   // Check 3: Caching Behavior
   const cachingResult = await checkCaching(cdnConfig, aemUrl);
   scores['check-caching'] = cachingResult.score;
+  updateScore(calculateCurrentScore(scores), true);
 
   // Check 4: 404 Caching
   const caching404Result = await check404Caching(cdnConfig, aemUrl);
   scores['check-404-caching'] = caching404Result.score;
+  updateScore(calculateCurrentScore(scores), true);
 
   // Check 5: Image Delivery
   const imagesResult = await checkImages(cdnConfig, aemUrl, org, site, branch);
   scores['check-images'] = imagesResult.score;
+  updateScore(calculateCurrentScore(scores), true);
 
   // Check 6: Redirects
   const redirectsResult = await checkRedirects(org, site, branch, cdnConfig);
   scores['check-redirects'] = redirectsResult.score;
 
-  // Calculate weighted total score
-  let totalScore = 0;
-  let totalWeight = 0;
-
-  CHECKS.forEach(({ id, weight }) => {
-    const checkScore = scores[id];
-    if (checkScore !== undefined && checkScore > 0) {
-      totalScore += checkScore * weight;
-      totalWeight += weight;
-    } else if (checkScore === 0) {
-      // Include failed checks in the weight
-      totalWeight += weight;
-    }
-    // Skip checks that returned undefined (skipped)
-  });
-
-  const finalScore = totalWeight > 0 ? Math.round(totalScore / totalWeight) : 0;
-
-  // Animate score update
-  updateScore(finalScore);
+  // Final score update - remove in-progress state
+  const finalScore = calculateCurrentScore(scores);
+  updateScore(finalScore, false);
 }
 
 // Origin discovery from CDN headers

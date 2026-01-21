@@ -55,6 +55,23 @@
   stroke: var(--green-700);
 }
 
+.score-ring.in-progress {
+  stroke: var(--gray-400);
+  animation: score-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes score-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.score-label.in-progress::after {
+  content: " (in progress...)";
+  font-size: var(--body-size-s);
+  font-weight: var(--weight-normal);
+  color: var(--gray-500);
+}
+
 .score-value {
   position: absolute;
   inset: 0;
