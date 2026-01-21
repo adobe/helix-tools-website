@@ -728,51 +728,81 @@ async function checkRedirects(org, site, branch, cdnConfig) {
 
     addResultLine(checkId, `Request: ${testUrl}`, 'info');
 
-    // Make request without following redirects to check Location header
-    // We use the AEM admin API to check the redirect behavior
+    // First, check with AEM admin API if redirect is configured
     const statusUrl = `https://admin.hlx.page/status/${org}/${site}/${branch}${source}`;
     const statusResp = await fetch(statusUrl);
+    let configuredDestination = null;
 
     if (statusResp.ok) {
       const statusData = await statusResp.json();
-
-      // Check if there's a redirect configured
       if (statusData.preview?.redirectLocation || statusData.live?.redirectLocation) {
-        const redirectLocation = statusData.live?.redirectLocation
+        configuredDestination = statusData.live?.redirectLocation
           || statusData.preview?.redirectLocation;
-        addResultLine(checkId, `Redirect destination: ${redirectLocation}`, 'info');
-
-        // AEM preserves query parameters by default in redirects
-        updateCheckState(checkId, 'pass', 'Configured');
-        addResultLine(checkId, 'Redirect is configured. AEM preserves query parameters by default.', 'success');
-        return { score: 100 };
+        addResultLine(checkId, `Configured destination: ${configuredDestination}`, 'info');
       }
     }
 
-    // Fallback: Try direct fetch via proxy to see what happens
+    // Now make actual request to verify query param is preserved
+    // Request the .aem.live URL directly (not via production CDN) to check AEM behavior
+    const aemTestUrl = `https://${branch}--${site}--${org}.aem.live${source}${source.includes('?') ? '&' : '?'}${randomParam}`;
+
     try {
-      const testResp = await fetch(corsProxy(testUrl), {
+      const testResp = await fetch(corsProxy(aemTestUrl), {
         method: 'GET',
+        redirect: 'follow',
       });
 
-      if (testResp.ok) {
-        // Check if the response URL (from proxy) or content indicates success
-        const responseText = await testResp.text();
+      // Check response headers for any redirect info the proxy might expose
+      const finalLocation = testResp.headers.get('x-final-url')
+        || testResp.headers.get('location')
+        || '';
 
-        // If we got HTML content, the redirect likely worked
-        if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
-          updateCheckState(checkId, 'pass', 'Working');
-          addResultLine(checkId, 'Redirect resolved successfully', 'success');
-          return { score: 100 };
-        }
+      // Check if the query param appears in the final URL or response
+      if (finalLocation && finalLocation.includes(randomParam)) {
+        updateCheckState(checkId, 'pass', 'Params Preserved');
+        addResultLine(checkId, `Location header: ${finalLocation}`, 'success');
+        addResultLine(checkId, 'Query parameters are preserved in redirect', 'success');
+        return { score: 100 };
+      }
+
+      // If we can see the final URL contains our param
+      if (testResp.url && testResp.url.includes(randomParam)) {
+        updateCheckState(checkId, 'pass', 'Params Preserved');
+        addResultLine(checkId, 'Query parameters are preserved in redirect', 'success');
+        return { score: 100 };
+      }
+
+      // Check if redirect happened and destination matches config
+      if (configuredDestination) {
+        // We know redirect is configured, AEM preserves query params by default
+        // But we couldn't directly verify due to CORS proxy limitations
+        updateCheckState(checkId, 'pass', 'Configured');
+        addResultLine(checkId, 'Redirect is configured in AEM.', 'success');
+        addResultLine(checkId, 'Note: Query param preservation could not be directly verified through CORS proxy.', 'info');
+        addResultLine(checkId, 'AEM Edge Delivery preserves query parameters by default.', 'info');
+        return { score: 90 };
+      }
+
+      // If we got HTML content, the redirect likely worked
+      const responseText = await testResp.text();
+      if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
+        updateCheckState(checkId, 'warning', 'Redirect Works');
+        addResultLine(checkId, 'Redirect resolved but could not verify query param preservation', 'warning');
+        return { score: 75 };
       }
     } catch (proxyError) {
-      addResultLine(checkId, `Proxy test: ${proxyError.message}`, 'warning');
+      addResultLine(checkId, `Test error: ${proxyError.message}`, 'warning');
+    }
+
+    if (configuredDestination) {
+      updateCheckState(checkId, 'warning', 'Configured');
+      addResultLine(checkId, 'Redirect is configured but could not be fully tested', 'warning');
+      return { score: 75 };
     }
 
     updateCheckState(checkId, 'warning', 'Uncertain');
-    addResultLine(checkId, 'Could not fully verify redirect behavior', 'warning');
-    return { score: 75 };
+    addResultLine(checkId, 'Could not verify redirect behavior', 'warning');
+    return { score: 50 };
   } catch (e) {
     updateCheckState(checkId, 'fail', 'Error');
     addResultLine(checkId, `Error: ${e.message}`, 'error');
