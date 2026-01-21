@@ -19,9 +19,10 @@ const SCORE_NUMBER = document.querySelector('.score-number');
 
 // Check configuration with weights for scoring
 const CHECKS = [
-  { id: 'check-cdn-config', weight: 25, name: 'CDN Config' },
-  { id: 'check-purge', weight: 25, name: 'Push Invalidation' },
-  { id: 'check-caching', weight: 20, name: 'Caching' },
+  { id: 'check-cdn-config', weight: 20, name: 'CDN Config' },
+  { id: 'check-purge', weight: 20, name: 'Push Invalidation' },
+  { id: 'check-caching', weight: 15, name: 'Caching' },
+  { id: 'check-404-caching', weight: 15, name: '404 Caching' },
   { id: 'check-images', weight: 15, name: 'Image Delivery' },
   { id: 'check-redirects', weight: 15, name: 'Redirects' },
 ];
@@ -446,6 +447,106 @@ async function checkCaching(cdnConfig, aemUrl) {
   }
 }
 
+async function check404Caching(cdnConfig, aemUrl) {
+  const checkId = 'check-404-caching';
+
+  if (!cdnConfig || !cdnConfig.host) {
+    updateCheckState(checkId, 'skip', 'Skipped');
+    addResultLine(checkId, 'Skipped: Production host not configured', 'warning');
+    return { score: 0 };
+  }
+
+  updateCheckState(checkId, 'running', 'Testing...');
+
+  try {
+    // Create a URL that is very unlikely to exist, appended to the original pathname
+    const basePath = aemUrl.pathname.endsWith('/') ? aemUrl.pathname : `${aemUrl.pathname}/`;
+    const notFoundPath = `${basePath}404-check-doesnt-exist-${Math.random().toString(36).substring(7)}`;
+    const prodUrl = `https://${cdnConfig.host}${notFoundPath}`;
+
+    addResultLine(checkId, `Testing 404 caching at: ${notFoundPath}`, 'info');
+
+    // Build request headers for CDN debug info
+    const requestHeaders = {};
+    if (cdnConfig.type === 'akamai') {
+      requestHeaders.Pragma = 'akamai-x-cache-on, akamai-x-cache-remote-on, akamai-x-check-cacheable, akamai-x-get-cache-key, akamai-x-get-true-cache-key, akamai-x-get-cache-tags';
+    }
+    if (cdnConfig.type === 'fastly') {
+      requestHeaders['Fastly-Debug'] = '1';
+    }
+
+    // First request - should be a cache MISS
+    const resp1 = await fetch(corsProxy(prodUrl), {
+      method: 'GET',
+      cache: 'no-store',
+      headers: requestHeaders,
+    });
+
+    // Check it's actually a 404
+    if (resp1.status !== 404) {
+      addResultLine(checkId, `Unexpected status: ${resp1.status} (expected 404)`, 'warning');
+      // Continue anyway to check caching behavior
+    } else {
+      addResultLine(checkId, 'First request: 404 response received', 'info');
+    }
+
+    const age1 = parseInt(resp1.headers.get('age') || '0', 10);
+    const cacheStatus1 = resp1.headers.get('x-cache')
+      || resp1.headers.get('cf-cache-status')
+      || '';
+
+    addResultLine(checkId, `First request - Age: ${age1}, Cache: ${cacheStatus1 || 'unknown'}`, 'info');
+
+    // Wait a moment
+    await new Promise((resolve) => { setTimeout(resolve, 1000); });
+
+    // Second request - should be a cache HIT if 404s are cached
+    const resp2 = await fetch(corsProxy(prodUrl), {
+      method: 'GET',
+      cache: 'no-store',
+      headers: requestHeaders,
+    });
+
+    const age2 = parseInt(resp2.headers.get('age') || '0', 10);
+    const cacheStatus2 = resp2.headers.get('x-cache')
+      || resp2.headers.get('cf-cache-status')
+      || '';
+
+    addResultLine(checkId, `Second request - Age: ${age2}, Cache: ${cacheStatus2 || 'unknown'}`, 'info');
+
+    // Check if 404 is being cached
+    const isCached = cacheStatus2.toLowerCase().includes('hit')
+      || cacheStatus2.includes('TCP_HIT')
+      || cacheStatus2.includes('TCP_REFRESH_HIT')
+      || cacheStatus2.includes('TCP_MEM_HIT')
+      || age2 > age1
+      || (age2 > 0);
+
+    if (isCached) {
+      updateCheckState(checkId, 'pass', '404s Cached');
+      addResultLine(checkId, '404 responses are being cached by CDN', 'success');
+      return { score: 100 };
+    }
+
+    // Check if cache-control prevents caching
+    const cacheControl = resp1.headers.get('cache-control') || '';
+    if (cacheControl.includes('no-cache') || cacheControl.includes('no-store') || cacheControl.includes('private')) {
+      updateCheckState(checkId, 'warning', 'Not Cacheable');
+      addResultLine(checkId, `Cache-Control: ${cacheControl}`, 'warning');
+      addResultLine(checkId, '404 responses may not be cacheable due to headers', 'warning');
+      return { score: 50 };
+    }
+
+    updateCheckState(checkId, 'warning', 'Uncertain');
+    addResultLine(checkId, 'Could not confirm 404 caching is active', 'warning');
+    return { score: 50 };
+  } catch (e) {
+    updateCheckState(checkId, 'fail', 'Error');
+    addResultLine(checkId, `Error: ${e.message}`, 'error');
+    return { score: 0 };
+  }
+}
+
 async function checkImages(cdnConfig, aemUrl, org, site, branch) {
   const checkId = 'check-images';
 
@@ -726,7 +827,7 @@ async function runChecks(pageUrl) {
   // Stop if there was an auth error - no point continuing
   if (configResult.authError) {
     // Mark remaining checks as skipped
-    ['check-purge', 'check-caching', 'check-images', 'check-redirects'].forEach((id) => {
+    ['check-purge', 'check-caching', 'check-404-caching', 'check-images', 'check-redirects'].forEach((id) => {
       updateCheckState(id, 'skip', 'Skipped');
       addResultLine(id, 'Skipped due to authentication error', 'warning');
     });
@@ -742,11 +843,15 @@ async function runChecks(pageUrl) {
   const cachingResult = await checkCaching(cdnConfig, aemUrl);
   scores['check-caching'] = cachingResult.score;
 
-  // Check 4: Image Delivery
+  // Check 4: 404 Caching
+  const caching404Result = await check404Caching(cdnConfig, aemUrl);
+  scores['check-404-caching'] = caching404Result.score;
+
+  // Check 5: Image Delivery
   const imagesResult = await checkImages(cdnConfig, aemUrl, org, site, branch);
   scores['check-images'] = imagesResult.score;
 
-  // Check 5: Redirects
+  // Check 6: Redirects
   const redirectsResult = await checkRedirects(org, site, branch, cdnConfig);
   scores['check-redirects'] = redirectsResult.score;
 
