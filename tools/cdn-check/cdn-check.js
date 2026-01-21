@@ -5,8 +5,12 @@ import { ensureLogin } from '../../blocks/profile/profile.js';
 const CORS_PROXY_URL = 'https://www.fcors.org';
 const CORS_PROXY_KEY = 'iyIjewSFgBzbPVG3';
 
-function corsProxy(url) {
-  return `${CORS_PROXY_URL}?url=${encodeURIComponent(url)}&key=${CORS_PROXY_KEY}`;
+function corsProxy(url, options = {}) {
+  let proxyUrl = `${CORS_PROXY_URL}?url=${encodeURIComponent(url)}&key=${CORS_PROXY_KEY}`;
+  if (options.revealHeaders) {
+    proxyUrl += '&reveal=headers';
+  }
+  return proxyUrl;
 }
 
 // DOM Elements
@@ -728,81 +732,74 @@ async function checkRedirects(org, site, branch, cdnConfig) {
 
     addResultLine(checkId, `Request: ${testUrl}`, 'info');
 
-    // First, check with AEM admin API if redirect is configured
-    const statusUrl = `https://admin.hlx.page/status/${org}/${site}/${branch}${source}`;
-    const statusResp = await fetch(statusUrl);
-    let configuredDestination = null;
-
-    if (statusResp.ok) {
-      const statusData = await statusResp.json();
-      if (statusData.preview?.redirectLocation || statusData.live?.redirectLocation) {
-        configuredDestination = statusData.live?.redirectLocation
-          || statusData.preview?.redirectLocation;
-        addResultLine(checkId, `Configured destination: ${configuredDestination}`, 'info');
-      }
-    }
-
-    // Now make actual request to verify query param is preserved
-    // Request the .aem.live URL directly (not via production CDN) to check AEM behavior
+    // Use reveal=headers to get the raw redirect response without following it
     const aemTestUrl = `https://${branch}--${site}--${org}.aem.live${source}${source.includes('?') ? '&' : '?'}${randomParam}`;
 
     try {
-      const testResp = await fetch(corsProxy(aemTestUrl), {
+      const testResp = await fetch(corsProxy(aemTestUrl, { revealHeaders: true }), {
         method: 'GET',
-        redirect: 'follow',
       });
 
-      // Check response headers for any redirect info the proxy might expose
-      const finalLocation = testResp.headers.get('x-final-url')
-        || testResp.headers.get('location')
-        || '';
-
-      // Check if the query param appears in the final URL or response
-      if (finalLocation && finalLocation.includes(randomParam)) {
-        updateCheckState(checkId, 'pass', 'Params Preserved');
-        addResultLine(checkId, `Location header: ${finalLocation}`, 'success');
-        addResultLine(checkId, 'Query parameters are preserved in redirect', 'success');
-        return { score: 100 };
+      if (!testResp.ok) {
+        throw new Error(`Proxy request failed: ${testResp.status}`);
       }
 
-      // If we can see the final URL contains our param
-      if (testResp.url && testResp.url.includes(randomParam)) {
-        updateCheckState(checkId, 'pass', 'Params Preserved');
-        addResultLine(checkId, 'Query parameters are preserved in redirect', 'success');
-        return { score: 100 };
+      const proxyData = await testResp.json();
+      const status = parseInt(proxyData.status, 10);
+
+      addResultLine(checkId, `Response status: ${status}`, 'info');
+
+      // Check if it's a redirect (3xx)
+      if (status >= 300 && status < 400) {
+        // Find the location header
+        const locationHeader = proxyData.headers?.find(
+          (h) => h.name.toLowerCase() === 'location',
+        );
+
+        if (locationHeader) {
+          const locationValue = locationHeader.value;
+          addResultLine(checkId, `Location: ${locationValue}`, 'info');
+
+          // Check if query param is preserved
+          if (locationValue.includes(randomParam)) {
+            updateCheckState(checkId, 'pass', 'Params Preserved');
+            addResultLine(checkId, 'Query parameters are correctly preserved in redirect', 'success');
+            return { score: 100 };
+          }
+
+          updateCheckState(checkId, 'fail', 'Params Lost');
+          addResultLine(checkId, 'Query parameters are NOT preserved in redirect', 'error');
+          addResultLine(checkId, `Expected ${randomParam} in Location header`, 'error');
+          return { score: 0 };
+        }
+
+        updateCheckState(checkId, 'warning', 'No Location');
+        addResultLine(checkId, 'Redirect response missing Location header', 'warning');
+        return { score: 50 };
       }
 
-      // Check if redirect happened and destination matches config
-      if (configuredDestination) {
-        // We know redirect is configured, AEM preserves query params by default
-        // But we couldn't directly verify due to CORS proxy limitations
-        updateCheckState(checkId, 'pass', 'Configured');
-        addResultLine(checkId, 'Redirect is configured in AEM.', 'success');
-        addResultLine(checkId, 'Note: Query param preservation could not be directly verified through CORS proxy.', 'info');
-        addResultLine(checkId, 'AEM Edge Delivery preserves query parameters by default.', 'info');
-        return { score: 90 };
+      // Not a redirect
+      if (status === 200) {
+        updateCheckState(checkId, 'warning', 'No Redirect');
+        addResultLine(checkId, 'URL did not redirect (200 response)', 'warning');
+        addResultLine(checkId, 'The configured redirect may not be active', 'warning');
+        return { score: 50 };
       }
 
-      // If we got HTML content, the redirect likely worked
-      const responseText = await testResp.text();
-      if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
-        updateCheckState(checkId, 'warning', 'Redirect Works');
-        addResultLine(checkId, 'Redirect resolved but could not verify query param preservation', 'warning');
-        return { score: 75 };
+      if (status === 404) {
+        updateCheckState(checkId, 'warning', 'Not Found');
+        addResultLine(checkId, 'Redirect source returned 404', 'warning');
+        return { score: 50 };
       }
+
+      updateCheckState(checkId, 'warning', 'Unexpected');
+      addResultLine(checkId, `Unexpected status code: ${status}`, 'warning');
+      return { score: 50 };
     } catch (proxyError) {
-      addResultLine(checkId, `Test error: ${proxyError.message}`, 'warning');
+      addResultLine(checkId, `Test error: ${proxyError.message}`, 'error');
+      updateCheckState(checkId, 'fail', 'Error');
+      return { score: 0 };
     }
-
-    if (configuredDestination) {
-      updateCheckState(checkId, 'warning', 'Configured');
-      addResultLine(checkId, 'Redirect is configured but could not be fully tested', 'warning');
-      return { score: 75 };
-    }
-
-    updateCheckState(checkId, 'warning', 'Uncertain');
-    addResultLine(checkId, 'Could not verify redirect behavior', 'warning');
-    return { score: 50 };
   } catch (e) {
     updateCheckState(checkId, 'fail', 'Error');
     addResultLine(checkId, `Error: ${e.message}`, 'error');
