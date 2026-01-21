@@ -14,6 +14,47 @@
   display: inline-block;
 }
 
+.detected-cdn {
+  margin-bottom: var(--spacing-m);
+  padding: var(--spacing-s) var(--spacing-m);
+  background-color: var(--gray-100);
+  border-radius: var(--rounding-l);
+  display: inline-block;
+}
+
+.cdn-label {
+  font-size: var(--body-size-m);
+  color: var(--gray-600);
+  margin-right: var(--spacing-xs);
+}
+
+.cdn-value {
+  font-size: var(--heading-size-m);
+  font-weight: var(--weight-bold);
+  color: var(--gray-800);
+  text-transform: capitalize;
+}
+
+.cdn-value.cloudflare {
+  color: var(--orange-700);
+}
+
+.cdn-value.fastly {
+  color: var(--red-700);
+}
+
+.cdn-value.akamai {
+  color: var(--blue-900);
+}
+
+.cdn-value.cloudfront {
+  color: var(--orange-900);
+}
+
+.cdn-value.managed {
+  color: var(--green-700);
+}
+
 .score-gauge {
   position: relative;
   width: 160px;

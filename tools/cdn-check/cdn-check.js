@@ -20,6 +20,7 @@ const RESULTS_SECTION = document.getElementById('results-section');
 const ERROR_SECTION = document.getElementById('error-section');
 const SCORE_RING = document.querySelector('.score-ring');
 const SCORE_NUMBER = document.querySelector('.score-number');
+const DETECTED_CDN_VALUE = document.getElementById('detected-cdn-value');
 
 // Check configuration with weights for scoring
 const CHECKS = [
@@ -76,6 +77,25 @@ function resetChecks() {
     item.querySelector('.check-details').setAttribute('aria-hidden', 'true');
     item.querySelector('.check-result').innerHTML = '';
   });
+  // Reset CDN display
+  if (DETECTED_CDN_VALUE) {
+    DETECTED_CDN_VALUE.textContent = 'Detecting...';
+    DETECTED_CDN_VALUE.className = 'cdn-value';
+  }
+}
+
+function updateDetectedCdn(cdnType) {
+  if (DETECTED_CDN_VALUE && cdnType) {
+    const displayName = {
+      cloudflare: 'Cloudflare',
+      fastly: 'Fastly',
+      akamai: 'Akamai',
+      cloudfront: 'CloudFront',
+      managed: 'Managed (Fastly)',
+    };
+    DETECTED_CDN_VALUE.textContent = displayName[cdnType] || cdnType;
+    DETECTED_CDN_VALUE.className = `cdn-value ${cdnType}`;
+  }
 }
 
 function updateCheckState(checkId, state, statusText, resultHtml = '') {
@@ -188,10 +208,13 @@ async function checkCdnConfig(org, site) {
     const cdnConfig = config.cdn?.prod;
 
     if (!cdnConfig) {
-      updateCheckState(checkId, 'fail', 'Not Configured');
-      addResultLine(checkId, 'No cdn.prod configuration found', 'error');
-      addResultLine(checkId, 'Configure CDN settings in your site config or via Config Service', 'info');
-      return { score: 0, cdnConfig: null };
+      // No custom CDN - site uses AEM's managed CDN (Fastly)
+      updateCheckState(checkId, 'pass', 'Managed');
+      addResultLine(checkId, 'Using AEM managed CDN (Fastly)', 'success');
+      addResultLine(checkId, 'No custom cdn.prod configuration - site served directly from .aem.live', 'info');
+      updateDetectedCdn('managed');
+      // Return a synthetic config for the managed CDN (host will be set by caller)
+      return { score: 100, cdnConfig: { type: 'managed', host: null } };
     }
 
     // Check for required fields
@@ -216,6 +239,9 @@ async function checkCdnConfig(org, site) {
     addResultLine(checkId, `CDN type: ${cdnConfig.type}`, 'success');
     addResultLine(checkId, `Production host: ${cdnConfig.host}`, 'success');
 
+    // Update the prominent CDN display
+    updateDetectedCdn(cdnConfig.type);
+
     // Check for additional CDN-specific settings
     if (cdnConfig.route) {
       addResultLine(checkId, `Routes: ${Array.isArray(cdnConfig.route) ? cdnConfig.route.join(', ') : cdnConfig.route}`, 'info');
@@ -232,9 +258,16 @@ async function checkCdnConfig(org, site) {
 async function checkPurge(cdnConfig) {
   const checkId = 'check-purge';
 
-  if (!cdnConfig || !cdnConfig.type || !cdnConfig.host) {
+  // Skip for managed CDN - purge handled automatically
+  if (cdnConfig?.type === 'managed' || !cdnConfig?.host) {
+    updateCheckState(checkId, 'skip', 'N/A');
+    addResultLine(checkId, 'Managed CDN: Push invalidation handled automatically', 'info');
+    return { score: 100, skipped: true };
+  }
+
+  if (!cdnConfig.type) {
     updateCheckState(checkId, 'skip', 'Skipped');
-    addResultLine(checkId, 'Skipped: CDN config not available', 'warning');
+    addResultLine(checkId, 'Skipped: CDN type not configured', 'warning');
     return { score: 0 };
   }
 
@@ -333,10 +366,66 @@ async function checkPurge(cdnConfig) {
   }
 }
 
+// Helper to get cache status info from headers
+function getCacheStatus(headers) {
+  const getHeader = (name) => {
+    if (Array.isArray(headers)) {
+      const h = headers.find((hdr) => hdr.name.toLowerCase() === name.toLowerCase());
+      return h?.value || '';
+    }
+    return headers.get?.(name) || '';
+  };
+
+  const xCache = getHeader('x-cache');
+  const cfCacheStatus = getHeader('cf-cache-status');
+  const age = parseInt(getHeader('age') || '0', 10);
+  const xCacheHits = getHeader('x-cache-hits');
+
+  // Determine if it's a hit
+  // For Cloudflare: cf-cache-status should be "HIT"
+  // For Fastly/Varnish: x-cache should contain "HIT" (not MISS)
+  // For Akamai: x-cache contains TCP_HIT variants
+  let isHit = false;
+  let reason = '';
+
+  if (cfCacheStatus) {
+    isHit = cfCacheStatus.toUpperCase() === 'HIT';
+    reason = `cf-cache-status: ${cfCacheStatus}`;
+  } else if (xCache) {
+    // Check if ALL layers show HIT (not just one)
+    // x-cache: "HIT, HIT" or "HIT" means cached
+    // x-cache: "MISS, MISS" or "HIT, MISS" means not fully cached
+    const cacheValues = xCache.split(',').map((v) => v.trim().toUpperCase());
+    const allHits = cacheValues.every((v) => v.includes('HIT') || v.includes('TCP_HIT') || v.includes('TCP_MEM_HIT') || v.includes('TCP_REFRESH_HIT'));
+    const anyHit = cacheValues.some((v) => v.includes('HIT'));
+    isHit = allHits || (anyHit && age > 0);
+    reason = `x-cache: ${xCache}`;
+  } else if (age > 0) {
+    isHit = true;
+    reason = `age: ${age}`;
+  }
+
+  // Also check x-cache-hits for Fastly (should be > 0 for a hit)
+  if (xCacheHits && !isHit) {
+    const hits = xCacheHits.split(',').map((v) => parseInt(v.trim(), 10));
+    if (hits.some((h) => h > 0)) {
+      isHit = true;
+      reason = `x-cache-hits: ${xCacheHits}`;
+    }
+  }
+
+  return {
+    isHit, age, xCache, cfCacheStatus, xCacheHits, reason,
+  };
+}
+
 async function checkCaching(cdnConfig, aemUrl) {
   const checkId = 'check-caching';
 
-  if (!cdnConfig || !cdnConfig.host) {
+  // Use production host, or aem.live host for managed CDN
+  const prodHost = cdnConfig?.host || aemUrl.host;
+
+  if (!prodHost) {
     updateCheckState(checkId, 'skip', 'Skipped');
     addResultLine(checkId, 'Skipped: Production host not configured', 'warning');
     return { score: 0 };
@@ -345,129 +434,101 @@ async function checkCaching(cdnConfig, aemUrl) {
   updateCheckState(checkId, 'running', 'Testing...');
 
   try {
-    const prodUrl = `https://${cdnConfig.host}${aemUrl.pathname}`;
+    const prodUrl = `https://${prodHost}${aemUrl.pathname}`;
+    addResultLine(checkId, `Testing: ${prodUrl}`, 'info');
 
-    // Build request headers - include Akamai debug Pragma if using Akamai
-    const requestHeaders = {};
-    if (cdnConfig.type === 'akamai') {
-      requestHeaders.Pragma = 'akamai-x-cache-on, akamai-x-cache-remote-on, akamai-x-check-cacheable, akamai-x-get-cache-key, akamai-x-get-true-cache-key, akamai-x-get-cache-tags';
-    }
-
-    // Make first request (via CORS proxy)
-    const resp1 = await fetch(corsProxy(prodUrl), {
-      method: 'GET', // Use GET since proxy may not support HEAD
-      cache: 'no-store',
-      headers: requestHeaders,
+    // First request using reveal=headers to get actual CDN headers
+    const resp1 = await fetch(corsProxy(prodUrl, { revealHeaders: true }), {
+      method: 'GET',
     });
 
     if (!resp1.ok) {
+      throw new Error(`Proxy request failed: ${resp1.status}`);
+    }
+
+    const data1 = await resp1.json();
+    const status1 = parseInt(data1.status, 10);
+    const headers1 = data1.headers || [];
+
+    if (status1 >= 400) {
       updateCheckState(checkId, 'fail', 'Unreachable');
-      addResultLine(checkId, `Production URL returned ${resp1.status}`, 'error');
+      addResultLine(checkId, `Production URL returned ${status1}`, 'error');
       return { score: 0 };
     }
 
-    // Collect cache headers
-    const cacheHeaders = {};
-    const headerNames = [
-      'cache-control',
-      'x-cache',
-      'x-cache-hits',
-      'cf-cache-status',
-      'x-fastly-request-id',
-      'x-served-by',
-      'age',
-      'via',
-      // Akamai headers
-      'x-akamai-transformed',
-      'x-akamai-session-info',
-      'x-check-cacheable',
-      'x-cache-key',
-      'x-true-cache-key',
-      'x-cache-tags',
-      // CloudFront headers
-      'x-amz-cf-id',
-      'x-amz-cf-pop',
+    // Helper to get header value
+    const getHeader1 = (name) => headers1.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value || '';
+
+    // Use configured CDN type (CORS proxy masks actual CDN headers)
+    // For managed sites without cdn.prod, AEM uses Fastly
+    const detectedCdn = cdnConfig?.type || 'managed';
+
+    // Display relevant cache headers
+    const cacheHeaderNames = [
+      'cache-control', 'x-cache', 'x-cache-hits', 'cf-cache-status',
+      'age', 'x-served-by', 'x-check-cacheable',
     ];
 
-    headerNames.forEach((name) => {
-      const value = resp1.headers.get(name);
+    addResultLine(checkId, 'Cache headers:', 'info');
+    let foundAny = false;
+    cacheHeaderNames.forEach((name) => {
+      const value = getHeader1(name);
       if (value) {
-        cacheHeaders[name] = value;
+        addResultLine(checkId, `  ${name}: ${value}`, 'info');
+        foundAny = true;
       }
     });
 
-    // Display found headers
-    const foundHeaders = Object.keys(cacheHeaders);
-    if (foundHeaders.length > 0) {
-      addResultLine(checkId, 'Cache headers found:', 'info');
-      foundHeaders.forEach((name) => {
-        addResultLine(checkId, `  ${name}: ${cacheHeaders[name]}`, 'info');
-      });
-    } else {
-      addResultLine(checkId, 'No CDN cache headers detected', 'warning');
+    if (!foundAny) {
+      addResultLine(checkId, '  (no cache headers found)', 'warning');
     }
 
-    // Make second request to check if caching is working
-    await new Promise((resolve) => { setTimeout(resolve, 500); });
+    // Wait before second request
+    await new Promise((resolve) => { setTimeout(resolve, 1000); });
 
-    const resp2 = await fetch(corsProxy(prodUrl), {
+    // Second request
+    const resp2 = await fetch(corsProxy(prodUrl, { revealHeaders: true }), {
       method: 'GET',
-      cache: 'no-store',
-      headers: requestHeaders,
     });
 
-    // Compare age headers or cache status
-    const age1 = parseInt(resp1.headers.get('age') || '0', 10);
-    const age2 = parseInt(resp2.headers.get('age') || '0', 10);
+    if (!resp2.ok) {
+      throw new Error(`Second proxy request failed: ${resp2.status}`);
+    }
 
-    const cacheStatus2 = resp2.headers.get('x-cache')
-      || resp2.headers.get('cf-cache-status')
-      || '';
+    const data2 = await resp2.json();
+    const headers2 = data2.headers || [];
 
-    // Determine CDN type from headers
-    let detectedCdn = 'Unknown';
-    if (resp1.headers.get('cf-cache-status')) detectedCdn = 'Cloudflare';
-    else if (resp1.headers.get('x-fastly-request-id')) detectedCdn = 'Fastly';
-    else if (resp1.headers.get('x-akamai-transformed')
-      || resp1.headers.get('x-akamai-session-info')
-      || resp1.headers.get('x-check-cacheable')
-      || resp1.headers.get('x-cache-key')) detectedCdn = 'Akamai';
-    else if (resp1.headers.get('x-amz-cf-id')) detectedCdn = 'CloudFront';
+    // Get cache status from both requests
+    const cache1 = getCacheStatus(headers1);
+    const cache2 = getCacheStatus(headers2);
 
-    addResultLine(checkId, `Detected CDN: ${detectedCdn}`, 'info');
+    // Show relevant cache header based on CDN type
+    if (detectedCdn === 'cloudflare') {
+      addResultLine(checkId, `Second request - cf-cache-status: ${cache2.cfCacheStatus || 'none'}, Age: ${cache2.age}`, 'info');
+    } else {
+      addResultLine(checkId, `Second request - x-cache: ${cache2.xCache || 'none'}, Age: ${cache2.age}`, 'info');
+    }
 
-    // Check if content is being cached
-    // Different CDNs use different values:
-    // - Cloudflare: HIT, MISS, DYNAMIC, etc.
-    // - Fastly: HIT, MISS
-    // - Akamai: TCP_HIT, TCP_MISS, TCP_REFRESH_HIT, TCP_REFRESH_MISS, etc.
-    // - CloudFront: Hit from cloudfront, Miss from cloudfront
-    const isCached = cacheStatus2.toLowerCase().includes('hit')
-      || cacheStatus2.includes('TCP_HIT')
-      || cacheStatus2.includes('TCP_REFRESH_HIT')
-      || cacheStatus2.includes('TCP_MEM_HIT')
-      || cacheStatus2.includes('TCP_IMS_HIT')
-      || age2 > age1
-      || (age2 > 0);
+    // Check if content is being cached (second request should show a hit or increased age)
+    const cached = cache2.isHit || (cache2.age > cache1.age);
 
-    if (isCached) {
+    if (cached) {
       updateCheckState(checkId, 'pass', 'Caching Active');
       addResultLine(checkId, 'Content is being cached by CDN', 'success');
       return { score: 100 };
     }
 
     // Check cache-control header
-    const cacheControl = resp1.headers.get('cache-control') || '';
+    const cacheControl = getHeader1('cache-control');
     if (cacheControl.includes('no-cache') || cacheControl.includes('no-store') || cacheControl.includes('private')) {
       updateCheckState(checkId, 'warning', 'Not Cacheable');
-      addResultLine(checkId, `Cache-Control: ${cacheControl}`, 'warning');
-      addResultLine(checkId, 'Content may not be cacheable due to headers', 'warning');
+      addResultLine(checkId, 'Content may not be cacheable due to Cache-Control header', 'warning');
       return { score: 50 };
     }
 
-    updateCheckState(checkId, 'warning', 'Uncertain');
-    addResultLine(checkId, 'Could not confirm caching is active', 'warning');
-    return { score: 50 };
+    updateCheckState(checkId, 'warning', 'Not Cached');
+    addResultLine(checkId, 'Content does not appear to be cached', 'warning');
+    return { score: 25 };
   } catch (e) {
     updateCheckState(checkId, 'fail', 'Error');
     addResultLine(checkId, `Error: ${e.message}`, 'error');
@@ -478,7 +539,10 @@ async function checkCaching(cdnConfig, aemUrl) {
 async function check404Caching(cdnConfig, aemUrl) {
   const checkId = 'check-404-caching';
 
-  if (!cdnConfig || !cdnConfig.host) {
+  // Use production host, or aem.live host for managed CDN
+  const prodHost = cdnConfig?.host || aemUrl.host;
+
+  if (!prodHost) {
     updateCheckState(checkId, 'skip', 'Skipped');
     addResultLine(checkId, 'Skipped: Production host not configured', 'warning');
     return { score: 0 };
@@ -490,74 +554,78 @@ async function check404Caching(cdnConfig, aemUrl) {
     // Create a URL that is very unlikely to exist, appended to the original pathname
     const basePath = aemUrl.pathname.endsWith('/') ? aemUrl.pathname : `${aemUrl.pathname}/`;
     const notFoundPath = `${basePath}404-check-doesnt-exist-${Math.random().toString(36).substring(7)}`;
-    const prodUrl = `https://${cdnConfig.host}${notFoundPath}`;
+    const prodUrl = `https://${prodHost}${notFoundPath}`;
 
-    addResultLine(checkId, `Testing 404 caching at: ${notFoundPath}`, 'info');
+    addResultLine(checkId, `Testing: ${prodUrl}`, 'info');
 
-    // Build request headers for CDN debug info
-    const requestHeaders = {};
-    if (cdnConfig.type === 'akamai') {
-      requestHeaders.Pragma = 'akamai-x-cache-on, akamai-x-cache-remote-on, akamai-x-check-cacheable, akamai-x-get-cache-key, akamai-x-get-true-cache-key, akamai-x-get-cache-tags';
-    }
-    if (cdnConfig.type === 'fastly') {
-      requestHeaders['Fastly-Debug'] = '1';
-    }
-
-    // First request - should be a cache MISS
-    const resp1 = await fetch(corsProxy(prodUrl), {
+    // First request using reveal=headers to get actual CDN headers
+    const resp1 = await fetch(corsProxy(prodUrl, { revealHeaders: true }), {
       method: 'GET',
-      cache: 'no-store',
-      headers: requestHeaders,
     });
 
-    // Check it's actually a 404
-    if (resp1.status !== 404) {
-      addResultLine(checkId, `Unexpected status: ${resp1.status} (expected 404)`, 'warning');
-      // Continue anyway to check caching behavior
+    if (!resp1.ok) {
+      throw new Error(`Proxy request failed: ${resp1.status}`);
+    }
+
+    const data1 = await resp1.json();
+    const status1 = parseInt(data1.status, 10);
+    const headers1 = data1.headers || [];
+
+    // Use configured CDN type (CORS proxy masks actual CDN headers)
+    const detectedCdn = cdnConfig?.type || 'managed';
+
+    // Check status
+    if (status1 !== 404) {
+      addResultLine(checkId, `Unexpected status: ${status1} (expected 404)`, 'warning');
     } else {
       addResultLine(checkId, 'First request: 404 response received', 'info');
     }
 
-    const age1 = parseInt(resp1.headers.get('age') || '0', 10);
-    const cacheStatus1 = resp1.headers.get('x-cache')
-      || resp1.headers.get('cf-cache-status')
-      || '';
+    // Get cache info from first request
+    const cache1 = getCacheStatus(headers1);
 
-    addResultLine(checkId, `First request - Age: ${age1}, Cache: ${cacheStatus1 || 'unknown'}`, 'info');
+    // Show relevant cache header based on CDN type
+    const cacheDisplay = (cache, label) => {
+      if (detectedCdn === 'cloudflare') {
+        addResultLine(checkId, `${label} - cf-cache-status: ${cache.cfCacheStatus || 'none'}, Age: ${cache.age}`, 'info');
+      } else {
+        addResultLine(checkId, `${label} - x-cache: ${cache.xCache || 'none'}, Age: ${cache.age}`, 'info');
+      }
+    };
+
+    cacheDisplay(cache1, 'First request');
 
     // Wait a moment
-    await new Promise((resolve) => { setTimeout(resolve, 1000); });
+    await new Promise((resolve) => { setTimeout(resolve, 1500); });
 
-    // Second request - should be a cache HIT if 404s are cached
-    const resp2 = await fetch(corsProxy(prodUrl), {
+    // Second request
+    const resp2 = await fetch(corsProxy(prodUrl, { revealHeaders: true }), {
       method: 'GET',
-      cache: 'no-store',
-      headers: requestHeaders,
     });
 
-    const age2 = parseInt(resp2.headers.get('age') || '0', 10);
-    const cacheStatus2 = resp2.headers.get('x-cache')
-      || resp2.headers.get('cf-cache-status')
-      || '';
+    if (!resp2.ok) {
+      throw new Error(`Second proxy request failed: ${resp2.status}`);
+    }
 
-    addResultLine(checkId, `Second request - Age: ${age2}, Cache: ${cacheStatus2 || 'unknown'}`, 'info');
+    const data2 = await resp2.json();
+    const headers2 = data2.headers || [];
 
-    // Check if 404 is being cached
-    const isCached = cacheStatus2.toLowerCase().includes('hit')
-      || cacheStatus2.includes('TCP_HIT')
-      || cacheStatus2.includes('TCP_REFRESH_HIT')
-      || cacheStatus2.includes('TCP_MEM_HIT')
-      || age2 > age1
-      || (age2 > 0);
+    // Get cache info from second request
+    const cache2 = getCacheStatus(headers2);
+    cacheDisplay(cache2, 'Second request');
+
+    // Check if 404 is being cached (second request should show a hit or increased age)
+    const isCached = cache2.isHit || (cache2.age > cache1.age);
 
     if (isCached) {
       updateCheckState(checkId, 'pass', '404s Cached');
-      addResultLine(checkId, '404 responses are being cached by CDN', 'success');
+      addResultLine(checkId, `404 responses are cached (${cache2.reason})`, 'success');
       return { score: 100 };
     }
 
     // Check if cache-control prevents caching
-    const cacheControl = resp1.headers.get('cache-control') || '';
+    const getHeader1 = (name) => headers1.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value || '';
+    const cacheControl = getHeader1('cache-control');
     if (cacheControl.includes('no-cache') || cacheControl.includes('no-store') || cacheControl.includes('private')) {
       updateCheckState(checkId, 'warning', 'Not Cacheable');
       addResultLine(checkId, `Cache-Control: ${cacheControl}`, 'warning');
@@ -565,9 +633,9 @@ async function check404Caching(cdnConfig, aemUrl) {
       return { score: 50 };
     }
 
-    updateCheckState(checkId, 'warning', 'Uncertain');
-    addResultLine(checkId, 'Could not confirm 404 caching is active', 'warning');
-    return { score: 50 };
+    updateCheckState(checkId, 'warning', 'Not Cached');
+    addResultLine(checkId, '404 responses do not appear to be cached', 'warning');
+    return { score: 25 };
   } catch (e) {
     updateCheckState(checkId, 'fail', 'Error');
     addResultLine(checkId, `Error: ${e.message}`, 'error');
@@ -578,10 +646,11 @@ async function check404Caching(cdnConfig, aemUrl) {
 async function checkImages(cdnConfig, aemUrl, org, site, branch) {
   const checkId = 'check-images';
 
-  if (!cdnConfig || !cdnConfig.host) {
-    updateCheckState(checkId, 'skip', 'Skipped');
-    addResultLine(checkId, 'Skipped: Production host not configured', 'warning');
-    return { score: 0 };
+  // Skip for managed CDN - images served from same origin
+  if (!cdnConfig?.host) {
+    updateCheckState(checkId, 'skip', 'N/A');
+    addResultLine(checkId, 'Managed CDN: Images served from same origin', 'info');
+    return { score: 100, skipped: true };
   }
 
   updateCheckState(checkId, 'running', 'Analyzing...');
