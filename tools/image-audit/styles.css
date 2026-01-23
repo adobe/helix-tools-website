@@ -186,10 +186,13 @@ label, legend, .field-help-text, .form-error {
   position: relative;
 }
 
-.image-audit .canvas .action-bar-wrapper {
+.image-audit .canvas .action-bar {
   position: sticky;
-  top: var(--horizontal-spacing);
+  top: 0;
   z-index: 1;
+  background-color: var(--layer-pasteboard);
+  padding: var(--horizontal-spacing);
+  margin-bottom: var(--horizontal-spacing);
 }
 
 .image-audit .canvas .action-bar button[aria-selected='true'] {
@@ -215,18 +218,30 @@ label, legend, .field-help-text, .form-error {
 
 @media (width >= 1200px) {
   .image-audit main[data-canvas] {
+    position: relative;
     max-width: calc(100vw - (2 * var(--horizontal-spacing)));
     min-height: calc(100dvh - (2.2 * var(--header-height)));
-    padding-right: calc(100vw - 340px - (2 * var(--horizontal-spacing)));
     padding-bottom: var(--horizontal-spacing);
+  }
+
+  .image-audit main[data-canvas] > div:not(.canvas):not(.error-wrapper) {
+    max-width: 340px;
   }
 
   .image-audit main[data-canvas] > .canvas {
     position: absolute;
-    inset: 0;
+    top: var(--header-height);
+    right: 0;
+    bottom: 0;
     left: 340px;
     max-width: unset;
     margin-top: 0;
     border-top: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .image-audit main[data-canvas] > .canvas .gallery {
+    padding: var(--horizontal-spacing);
   }
 }
