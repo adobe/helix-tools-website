@@ -83,6 +83,11 @@ html[data-theme="light"] {
 
 html[data-theme="dark"] {
   color-scheme: dark;
+
+  /* shadows need more opacity on dark backgrounds */
+  --shadow-default: 0 1px 6px 0 var(--transparent-black-600);
+  --shadow-hover: 0 2px 8px 0 var(--transparent-black-600);
+  --shadow-dragged: 0 3px 12px 0 var(--transparent-black-600);
 }
 
 /* fallback fonts */
