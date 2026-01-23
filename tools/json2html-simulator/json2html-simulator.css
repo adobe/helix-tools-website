@@ -1,4 +1,4 @@
-/* JSON2HTML Playground Styles */
+/* JSON2HTML Simulator Styles */
 
 /* Follows project design system - see styles/styles.css */
 
@@ -7,11 +7,11 @@
    ======================================== */
 
 /* Subtle background to signal "full workspace mode" */
-body.json2html-playground {
+body.json2html-simulator {
   background: var(--gray-50);
 }
 
-body.json2html-playground main {
+body.json2html-simulator main {
   display: flex;
   flex-direction: column;
   height: calc(100vh - 60px);
@@ -24,8 +24,8 @@ body.json2html-playground main {
    HEADER SECTION
    ======================================== */
 
-body.json2html-playground main > .playground-header,
-body.json2html-playground main > .playground-header.section {
+body.json2html-simulator main > .simulator-header,
+body.json2html-simulator main > .simulator-header.section {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
@@ -36,33 +36,33 @@ body.json2html-playground main > .playground-header.section {
   margin: 0;
 }
 
-.playground-header .header-content {
+.simulator-header .header-content {
   display: flex;
   flex-direction: column;
 }
 
-.playground-header .header-content h1 {
+.simulator-header .header-content h1 {
   color: var(--color-text);
   font-family: var(--heading-font-family);
   font-weight: var(--weight-extrabold);
   line-height: var(--line-height-m);
 }
 
-.playground-header .header-content p {
+.simulator-header .header-content p {
   margin: var(--spacing-50) 0 0 0;
 }
 
-.playground-header .header-content p a {
+.simulator-header .header-content p a {
   color: var(--color-link);
   text-decoration: none;
   white-space: nowrap;
 }
 
-.playground-header .header-content p a:hover {
+.simulator-header .header-content p a:hover {
   text-decoration: underline;
 }
 
-.playground-header .header-actions {
+.simulator-header .header-actions {
   display: flex;
   gap: var(--spacing-100);
   flex-wrap: wrap;
@@ -70,7 +70,7 @@ body.json2html-playground main > .playground-header.section {
 }
 
 /* AEM wraps content in default-content-wrapper - make it flex row */
-.playground-header > .default-content-wrapper {
+.simulator-header > .default-content-wrapper {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
@@ -80,8 +80,8 @@ body.json2html-playground main > .playground-header.section {
 }
 
 /* Reset margins on AEM wrapper divs inside header */
-body.json2html-playground main .playground-header .header-content-wrapper,
-body.json2html-playground main .playground-header .header-actions-wrapper {
+body.json2html-simulator main .simulator-header .header-content-wrapper,
+body.json2html-simulator main .simulator-header .header-actions-wrapper {
   margin: 0;
 }
 
@@ -89,8 +89,8 @@ body.json2html-playground main .playground-header .header-actions-wrapper {
    CONTROL BAR
    ======================================== */
 
-body.json2html-playground main > .control-bar,
-body.json2html-playground main > .control-bar.section {
+body.json2html-simulator main > .control-bar,
+body.json2html-simulator main > .control-bar.section {
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -102,7 +102,7 @@ body.json2html-playground main > .control-bar.section {
 }
 
 /* AEM wraps content in default-content-wrapper */
-body.json2html-playground main .control-bar > .default-content-wrapper {
+body.json2html-simulator main .control-bar > .default-content-wrapper {
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -112,7 +112,7 @@ body.json2html-playground main .control-bar > .default-content-wrapper {
 }
 
 /* Reset AEM wrapper inside control bar */
-body.json2html-playground main .control-bar .control-options-wrapper {
+body.json2html-simulator main .control-bar .control-options-wrapper {
   margin: 0;
 }
 
@@ -458,7 +458,7 @@ span.options-grid {
 }
 
 /* AEM wraps non-div elements in default-content-wrapper - make it flex */
-body.json2html-playground main .workspace > .default-content-wrapper {
+body.json2html-simulator main .workspace > .default-content-wrapper {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
@@ -704,7 +704,7 @@ body.json2html-playground main .workspace > .default-content-wrapper {
 }
 
 /* Vertical resizer (between JSON and Template) */
-body.json2html-playground main .resizer-vertical {
+body.json2html-simulator main .resizer-vertical {
   flex: 0 0 4px;
   width: 4px;
   min-width: 4px;
@@ -715,7 +715,7 @@ body.json2html-playground main .resizer-vertical {
 }
 
 /* Horizontal resizer (between editors and preview) */
-body.json2html-playground main .resizer-horizontal {
+body.json2html-simulator main .resizer-horizontal {
   flex: 0 0 4px;
   width: 100%;
   height: 4px;
@@ -1132,7 +1132,7 @@ body.json2html-playground main .resizer-horizontal {
    BUTTON OVERRIDES
    ======================================== */
 
-.json2html-playground .button.small {
+.json2html-simulator .button.small {
   padding: var(--spacing-75) var(--spacing-200);
   font-size: var(--detail-size-l);
 }
@@ -1150,7 +1150,7 @@ body.json2html-playground main .resizer-horizontal {
 
 /* Large Screens - maximize workspace */
 @media (width >= 1200px) {
-  body.json2html-playground main {
+  body.json2html-simulator main {
     padding: calc(var(--header-height) + var(--spacing-300)) var(--spacing-100) var(--spacing-300) var(--spacing-100);
   }
 }
@@ -1158,33 +1158,33 @@ body.json2html-playground main .resizer-horizontal {
 /* Extra Large Screens - wider layout for coding workspace */
 @media (width >= 1264px) {
   /* Main content area */
-  body.json2html-playground main {
+  body.json2html-simulator main {
     max-width: 1600px; /* +400px more than design system default (1200px) */
   }
   
   /* Header nav alignment - needs higher specificity to override nested header CSS */
-  body.json2html-playground header.header-wrapper .header .header-nav {
+  body.json2html-simulator header.header-wrapper .header .header-nav {
     max-width: 1600px;
   }
   
   /* Footer content alignment */
-  body.json2html-playground footer section {
+  body.json2html-simulator footer section {
     max-width: 1600px;
   }
 }
 
 /* Ultra-Wide Screens - maximize coding space while preventing panels from being too wide */
 @media (width >= 1920px) {
-  body.json2html-playground main {
+  body.json2html-simulator main {
     max-width: 1800px;
     padding: calc(var(--header-height) + var(--spacing-300)) var(--spacing-50) var(--spacing-300) var(--spacing-50);
   }
   
-  body.json2html-playground header.header-wrapper .header .header-nav {
+  body.json2html-simulator header.header-wrapper .header .header-nav {
     max-width: 1800px;
   }
   
-  body.json2html-playground footer section {
+  body.json2html-simulator footer section {
     max-width: 1800px;
   }
 }
@@ -1222,7 +1222,7 @@ body.json2html-playground main .resizer-horizontal {
     min-height: 300px;
   }
 
-  .playground-header {
+  .simulator-header {
     flex-direction: column;
     align-items: flex-start;
   }
@@ -1250,15 +1250,15 @@ body.json2html-playground main .resizer-horizontal {
     font-size: 24px;
   }
 
-  .json2html-playground main {
+  .json2html-simulator main {
     padding: var(--spacing-200);
   }
 
-  .playground-header .header-actions {
+  .simulator-header .header-actions {
     width: 100%;
   }
 
-  .playground-header .header-actions .button {
+  .simulator-header .header-actions .button {
     flex: 1;
     justify-content: center;
   }
@@ -1307,93 +1307,93 @@ body.json2html-playground main .resizer-horizontal {
    ======================================== */
 
 /* AEM wraps elements in wrapper divs - handle the editors-row wrapper */
-.json2html-playground .editors-row-wrapper {
+.json2html-simulator .editors-row-wrapper {
   display: flex;
   flex: 1 1 60%;
   min-height: 200px;
   min-width: 0; /* Prevent content from affecting flex size */
 }
 
-.json2html-playground .editors-row-wrapper > .editors-row {
+.json2html-simulator .editors-row-wrapper > .editors-row {
   display: flex;
   flex: 1;
   width: 100%;
 }
 
 /* Handle editor panel wrappers inside editors-row - use 50% for equal sizing */
-.json2html-playground .editors-row > div {
+.json2html-simulator .editors-row > div {
   display: flex;
   flex: 1 1 50%;
   min-width: 0; /* Prevent content from affecting flex size */
 }
 
-.json2html-playground .json-panel-wrapper,
-.json2html-playground .template-panel-wrapper {
+.json2html-simulator .json-panel-wrapper,
+.json2html-simulator .template-panel-wrapper {
   display: flex;
   flex: 1 1 50%;
   min-width: 0;
 }
 
-.json2html-playground .json-panel-wrapper > .json-panel,
-.json2html-playground .template-panel-wrapper > .template-panel {
+.json2html-simulator .json-panel-wrapper > .json-panel,
+.json2html-simulator .template-panel-wrapper > .template-panel {
   flex: 1;
   width: 100%;
 }
 
 /* Handle preview panel wrapper */
-.json2html-playground .preview-panel-wrapper {
+.json2html-simulator .preview-panel-wrapper {
   display: flex;
   flex: 1 1 40%;
   min-height: 150px;
 }
 
-.json2html-playground .preview-panel-wrapper > .preview-panel {
+.json2html-simulator .preview-panel-wrapper > .preview-panel {
   flex: 1;
   width: 100%;
 }
 
 /* Resizer wrappers should not flex-grow */
-.json2html-playground .resizer-wrapper,
-.json2html-playground .resizer-vertical-wrapper,
-.json2html-playground .resizer-horizontal-wrapper {
+.json2html-simulator .resizer-wrapper,
+.json2html-simulator .resizer-vertical-wrapper,
+.json2html-simulator .resizer-horizontal-wrapper {
   flex: 0 0 auto;
   margin: 0;
 }
 
 /* AEM injects <p> tags inside divs - reset their styles */
-.json2html-playground .editor-header > p,
-.json2html-playground .editor-wrapper > p,
-.json2html-playground .editor-status > p,
-.json2html-playground .preview-header > p,
-.json2html-playground .preview-content > p,
-.json2html-playground .preview-status > p,
-.json2html-playground .preview-tabs > p,
-.json2html-playground .preview-actions > p {
+.json2html-simulator .editor-header > p,
+.json2html-simulator .editor-wrapper > p,
+.json2html-simulator .editor-status > p,
+.json2html-simulator .preview-header > p,
+.json2html-simulator .preview-content > p,
+.json2html-simulator .preview-status > p,
+.json2html-simulator .preview-tabs > p,
+.json2html-simulator .preview-actions > p {
   display: contents;
   margin: 0;
   padding: 0;
 }
 
 /* Ensure editor-header layout still works */
-.json2html-playground .editor-header {
+.json2html-simulator .editor-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 /* Ensure editor-wrapper fills space */
-.json2html-playground .editor-wrapper {
+.json2html-simulator .editor-wrapper {
   display: flex;
   flex: 1;
 }
 
-.json2html-playground .editor-wrapper > p {
+.json2html-simulator .editor-wrapper > p {
   display: flex;
   flex: 1;
 }
 
 /* Ensure preview-content fills space */
-.json2html-playground .preview-content > p {
+.json2html-simulator .preview-content > p {
   display: block;
   position: absolute;
   inset: 0;
@@ -1444,7 +1444,7 @@ body.json2html-playground main .resizer-horizontal {
    ======================================== */
 
 /* Utility class with high specificity to override any display property */
-body.json2html-playground .hidden {
+body.json2html-simulator .hidden {
   display: none;
 }
 
