@@ -1,11 +1,11 @@
 :root {
-  /* powerscore colors */
-  --link-color: #035fe6;
-  --link-hover-color: #136ff6;
-  --background-color: white;
-  --light-color: #eee;
-  --dark-color: #ccc;
-  --text-color: black;
+  /* powerscore colors - using global themed variables where possible */
+  --link-color: var(--color-link);
+  --link-hover-color: var(--color-link-hover);
+  --background-color: var(--color-background);
+  --text-color: var(--color-text);
+  --light-color: light-dark(var(--gray-100), var(--gray-700));
+  --dark-color: light-dark(var(--gray-300), var(--gray-600));
   --success-color: rgb(0 136 0);
   --improve-color: rgb(255 170 51);
   --error-color: rgb(217 48 37);
@@ -24,8 +24,8 @@ main button {
   font-style: normal;
   font-weight: 600;
   cursor: pointer;
-  color: var(--background-color);
-  background-color: var(--link-color);
+  color: var(--color-button-emphasis-text);
+  background-color: var(--color-button-emphasis-bg);
   margin: 16px 0;
   white-space: nowrap;
   overflow: hidden;
@@ -37,13 +37,14 @@ main a.button:hover,
 main a.button:focus,
 main button:hover,
 main button:focus {
-  background-color: var(--link-hover-color);
+  background-color: var(--color-button-emphasis-bg-hover);
   cursor: pointer;
 }
 
 main button:disabled,
 main button:disabled:hover {
-  background-color: var(--light-color);
+  background-color: var(--color-button-disabled-bg);
+  color: var(--color-button-disabled-text);
   cursor: unset;
 }
 
@@ -51,7 +52,7 @@ main a.button.secondary,
 main button.secondary {
   background-color: unset;
   border: 2px solid currentcolor;
-  color: var(--text-color);
+  color: var(--color-text);
 }
 
 main .icon {

@@ -10,7 +10,7 @@ main .data-element {
         top: -1rem;
         margin: 0;
         background-color: var(--link-color);
-        color: white;
+        color: var(--gray-25);
         border-radius: 4px;
         padding-inline: .5rem;
         text-wrap: nowrap;
@@ -49,7 +49,7 @@ main .data-element {
         }
 
         p.traffic-rank {
-            --traffic-color: blue;
+            --traffic-color: var(--spectrum-blue);
 
             border: 3px solid var(--traffic-color);
             color: var(--traffic-color);
