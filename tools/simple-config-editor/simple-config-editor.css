@@ -36,7 +36,7 @@
 }
 
 .changed-value {
-  background-color: #e3f2fd !important; /* Light blue background for changed values */
+  background-color: light-dark(#e3f2fd, var(--blue-1400)) !important; /* Light blue background for changed values */
 }
 
 .placeholder-text {
@@ -46,7 +46,7 @@
 }
 
 .inherited-value {
-  background-color: var(--gray-50);
+  background-color: light-dark(var(--gray-50), var(--gray-800));
   opacity: 0.8;
 }
 
@@ -71,11 +71,11 @@
 .config-table {
   width: 100%;
   border-collapse: collapse;
-  background: white;
+  background: var(--color-background);
 }
 
 .config-table th {
-  background: var(--gray-100);
+  background: light-dark(var(--gray-100), var(--gray-700));
   padding: var(--spacing-xs) var(--spacing-s);
   text-align: left;
   font-weight: 600;
@@ -93,7 +93,7 @@
 }
 
 .config-table tr:hover {
-  background: var(--gray-50);
+  background: light-dark(var(--gray-50), var(--gray-700));
 }
 
 .config-key-cell {
@@ -118,7 +118,7 @@
 .config-value-input:focus {
   outline: none;
   border-color: var(--blue-500);
-  box-shadow: 0 0 0 2px var(--blue-100);
+  box-shadow: 0 0 0 2px light-dark(var(--blue-100), var(--blue-1100));
 }
 
 .config-value-textarea {
@@ -135,7 +135,7 @@
 .config-value-textarea:focus {
   outline: none;
   border-color: var(--blue-500);
-  box-shadow: 0 0 0 2px var(--blue-100);
+  box-shadow: 0 0 0 2px light-dark(var(--blue-100), var(--blue-1100));
 }
 
 .config-actions-cell {
@@ -170,7 +170,7 @@
 }
 
 .config-value-display.object {
-  background: var(--gray-50);
+  background: light-dark(var(--gray-50), var(--gray-800));
   padding: var(--spacing-xs);
   border-radius: var(--rounding-s);
   border: var(--border-s) solid var(--gray-200);

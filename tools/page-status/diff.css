@@ -126,7 +126,7 @@
 .page-diff .diff-filters {
   padding: var(--spacing-s) var(--spacing-m);
   border-bottom: var(--border-s) solid var(--gray-300);
-  background: var(--gray-50);
+  background: light-dark(var(--gray-50), var(--gray-800));
 }
 
 .page-diff .diff-filter-checkbox {
@@ -136,7 +136,7 @@
   cursor: pointer;
   font-size: var(--body-size-s);
   font-weight: var(--weight-bold);
-  color: var(--gray-700);
+  color: var(--color-font-grey);
   margin: unset;
 }
 
@@ -167,19 +167,19 @@
   text-align: left;
   cursor: pointer;
   font-size: var(--body-size-s);
-  color: var(--gray-800);
+  color: var(--color-text);
   word-break: break-all;
   transition: background-color 0.15s ease;
   outline-offset: unset;
 }
 
 .page-diff .diff-page-list button:hover {
-  background-color: var(--gray-50);
+  background-color: light-dark(var(--gray-50), var(--gray-700));
 }
 
 .page-diff .diff-page-list button.active {
-  background-color: var(--blue-100);
-  color: var(--blue-900);
+  background-color: light-dark(var(--blue-100), var(--blue-1200));
+  color: light-dark(var(--blue-900), var(--blue-400));
   font-weight: var(--weight-bold);
 }
 
@@ -202,12 +202,12 @@
 }
 
 .page-diff .diff-page-list button.no-diff {
-  color: var(--gray-500);
+  color: var(--color-font-grey);
 }
 
 .page-diff .diff-page-list button.no-diff.active {
-  color: var(--gray-600);
-  background-color: var(--gray-100);
+  color: var(--color-font-grey);
+  background-color: light-dark(var(--gray-100), var(--gray-700));
 }
 
 /* Diff content area */
@@ -311,29 +311,29 @@
 
 /* Line type colors - GitHub style */
 .page-diff .diff-line.diff-add {
-  background-color: #e6ffec;
+  background-color: light-dark(#e6ffec, var(--green-1200));
 }
 
 .page-diff .diff-line.diff-add .diff-line-number {
-  background-color: #ccffd8;
-  color: var(--green-900);
+  background-color: light-dark(#ccffd8, var(--green-1100));
+  color: light-dark(var(--green-900), var(--green-400));
 }
 
 .page-diff .diff-line.diff-add .diff-line-content {
-  color: var(--green-900);
+  color: light-dark(var(--green-900), var(--green-400));
 }
 
 .page-diff .diff-line.diff-remove {
-  background-color: #ffebe9;
+  background-color: light-dark(#ffebe9, var(--red-1200));
 }
 
 .page-diff .diff-line.diff-remove .diff-line-number {
-  background-color: #ffd7d5;
-  color: var(--red-900);
+  background-color: light-dark(#ffd7d5, var(--red-1100));
+  color: light-dark(var(--red-900), var(--red-400));
 }
 
 .page-diff .diff-line.diff-remove .diff-line-content {
-  color: var(--red-900);
+  color: light-dark(var(--red-900), var(--red-400));
 }
 
 .page-diff .diff-line.diff-context {
@@ -342,8 +342,8 @@
 
 /* Hunk header */
 .page-diff .diff-hunk-header {
-  background-color: var(--blue-100);
-  color: var(--blue-800);
+  background-color: light-dark(var(--blue-100), var(--blue-1300));
+  color: light-dark(var(--blue-800), var(--blue-400));
   padding: var(--spacing-xs) var(--spacing-m);
   font-size: var(--code-size-s);
   font-family: var(--code-font-family);
@@ -496,7 +496,7 @@
 }
 
 .page-diff .doc-preview-content th {
-  background: var(--gray-100);
+  background: light-dark(var(--gray-100), var(--gray-700));
   font-weight: var(--weight-bold);
 }
 
@@ -507,7 +507,7 @@
   border-radius: var(--border-radius);
   padding: var(--spacing-m);
   margin: var(--spacing-m) 0;
-  background: var(--gray-50);
+  background: light-dark(var(--gray-50), var(--gray-800));
 }
 
 .page-diff .doc-preview-content > div > div::before {
@@ -528,7 +528,8 @@
 .page-diff .doc-preview-content code {
   font-family: var(--code-font-family);
   font-size: var(--code-size-m);
-  background: var(--gray-100);
+  background: light-dark(var(--gray-100), var(--gray-700));
+  color: var(--color-text);
   border-radius: var(--border-radius);
 }
 
@@ -578,7 +579,7 @@
 .page-diff .doc-diff-side-header {
   padding: var(--spacing-s) var(--spacing-m);
   border-bottom: var(--border-s) solid var(--gray-200);
-  background: var(--gray-50);
+  background: light-dark(var(--gray-50), var(--gray-800));
 }
 
 .page-diff .doc-diff-side-label {
@@ -589,21 +590,21 @@
 }
 
 .page-diff .doc-diff-live .doc-diff-side-header {
-  background: #fff5f5;
-  border-bottom-color: #fecaca;
+  background: light-dark(var(--red-100), var(--red-1200));
+  border-bottom-color: light-dark(var(--red-300), var(--red-1100));
 }
 
 .page-diff .doc-diff-live .doc-diff-side-label {
-  color: var(--red-800);
+  color: light-dark(var(--red-800), var(--red-400));
 }
 
 .page-diff .doc-diff-preview .doc-diff-side-header {
-  background: #f0fdf4;
-  border-bottom-color: #bbf7d0;
+  background: light-dark(var(--green-100), var(--green-1200));
+  border-bottom-color: light-dark(var(--green-300), var(--green-1100));
 }
 
 .page-diff .doc-diff-preview .doc-diff-side-label {
-  color: var(--green-800);
+  color: light-dark(var(--green-800), var(--green-400));
 }
 
 .page-diff .doc-diff-side .doc-preview-content {
@@ -614,11 +615,12 @@
 
 /* Diff annotations - additions (in preview) */
 .page-diff .doc-preview-content .diff-added {
-  background-color: #d4edda;
-  border-left: 4px solid #28a745;
+  background-color: light-dark(#d4edda, var(--green-1100));
+  border-left: 4px solid var(--green-800);
   padding-left: var(--spacing-s);
   margin-left: -4px;
   position: relative;
+  color: light-dark(var(--green-1000), var(--green-400));
 }
 
 .page-diff .doc-preview-content .diff-added::before {
@@ -626,19 +628,20 @@
   position: absolute;
   left: -20px;
   top: 0;
-  color: #28a745;
+  color: var(--green-800);
   font-weight: bold;
   font-size: var(--heading-size-s);
 }
 
 /* Diff annotations - deletions (in live) */
 .page-diff .doc-preview-content .diff-removed {
-  background-color: #f8d7da;
-  border-left: 4px solid #dc3545;
+  background-color: light-dark(#f8d7da, var(--red-1100));
+  border-left: 4px solid var(--red-800);
   padding-left: var(--spacing-s);
   margin-left: -4px;
   position: relative;
   opacity: 0.8;
+  color: light-dark(var(--red-1000), var(--red-400));
 }
 
 .page-diff .doc-preview-content .diff-removed::before {
@@ -646,7 +649,7 @@
   position: absolute;
   left: -20px;
   top: 0;
-  color: #dc3545;
+  color: var(--red-800);
   font-weight: bold;
   font-size: var(--heading-size-s);
 }

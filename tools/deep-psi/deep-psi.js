@@ -412,7 +412,7 @@ function createTable(results, averages) {
 
     // Display both representative value (bold, colored) and statistical summary (smaller)
     const valueSpan = `<span style="color: ${color}; font-weight: bold;">${psiVal}</span>`;
-    const deviationSpan = `<small style="color: var(--gray-600); font-size: 0.9em;">(${value} ± ${formattedDeviation})</small>`;
+    const deviationSpan = `<small style="color: var(--color-font-grey); font-size: 0.9em;">(${value} ± ${formattedDeviation})</small>`;
     td.innerHTML = `${valueSpan}<br>${deviationSpan}`;
     avg.append(td);
   });

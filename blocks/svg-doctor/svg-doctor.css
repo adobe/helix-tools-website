@@ -104,6 +104,17 @@
   outline: 2px solid var(--link-hover-color);
 }
 
+/* Site-wide dark mode - only affect initial upload grid, not SVG preview */
+[data-theme="dark"] .svg-doctor .viewbox[data-status='upload'] {
+  --color-checkerboard-bg-fill: #1a1a1a;
+  --color-checkerboard-bg-border: rgb(80 80 80 / 40%);
+}
+
+[data-theme="dark"] .svg-doctor .viewbox[data-status='upload'].hover,
+[data-theme="dark"] .svg-doctor .viewbox[data-status='upload']:hover {
+  --color-checkerboard-bg-fill: #252525;
+}
+
 .svg-doctor .viewbox[data-status='upload'][data-mode='dark'].hover,
 .svg-doctor .viewbox[data-status='upload'][data-mode='dark']:hover {
   --color-checkerboard-bg-fill: #070707;
@@ -131,6 +142,10 @@
   box-shadow: 0 0 20px var(--gray-300);
   margin: var(--spacing-s) 0 var(--spacing-l);
   padding: var(--horizontal-spacing);
+}
+
+[data-theme="dark"] .svg-doctor .form.specs {
+  box-shadow: 0 0 20px var(--gray-800);
 }
 
 .svg-doctor .controls {
@@ -180,6 +195,12 @@
 .svg-doctor .controls-buttons button:hover,
 .svg-doctor .controls-buttons button:focus {
   background-color: var(--gray-400);
+}
+
+[data-theme="dark"] .svg-doctor .controls-buttons button[aria-checked="true"],
+[data-theme="dark"] .svg-doctor .controls-buttons button:hover,
+[data-theme="dark"] .svg-doctor .controls-buttons button:focus {
+  background-color: var(--gray-700);
 }
 
 .svg-doctor .controls-buttons button:hover::after {

@@ -96,7 +96,7 @@
 
 .deep-psi .psi-significance-wrapper li {
   padding: var(--spacing-xs) 0;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid light-dark(var(--gray-100), var(--gray-700));
 }
 
 .deep-psi .psi-significance-wrapper li:last-child {
@@ -121,21 +121,21 @@
 }
 
 .deep-psi table th {
-  background: var(--gray-50);
+  background: light-dark(var(--gray-50), var(--gray-700));
   padding: var(--spacing-m);
   text-align: center;
   font-weight: var(--weight-bold);
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid light-dark(var(--gray-100), var(--gray-600));
 }
 
 .deep-psi table td {
   padding: var(--spacing-m);
   text-align: center;
-  border-bottom: 1px solid var(--gray-50);
+  border-bottom: 1px solid light-dark(var(--gray-50), var(--gray-700));
 }
 
 .deep-psi table tr:nth-child(even) {
-  background-color: var(--gray-25);
+  background-color: light-dark(var(--gray-25), var(--gray-800));
 }
 
 /* Give more width to the Score column */
@@ -243,20 +243,20 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  background: var(--gray-50);
+  background: light-dark(var(--gray-50), var(--gray-700));
 }
 
 .deep-psi table tr.average {
   font-weight: var(--weight-bold);
-  background-color: var(--gray-100);
-  border-top: 2px solid var(--gray-200);
+  background-color: light-dark(var(--gray-100), var(--gray-700));
+  border-top: 2px solid light-dark(var(--gray-200), var(--gray-600));
 }
 
 .deep-psi .table-container table tbody tr.average {
   position: sticky;
   bottom: 0;
   z-index: 10;
-  background: var(--gray-100);
+  background: light-dark(var(--gray-100), var(--gray-700));
 }
 
 .deep-psi table tr.average td {
@@ -361,7 +361,7 @@
 .deep-psi .status-message {
   text-align: center;
   padding: var(--spacing-xl);
-  color: var(--gray-600);
+  color: var(--color-font-grey);
   grid-column: 1 / -1;
   background: var(--layer-elevated);
   border-radius: 0.5rem;
@@ -369,11 +369,11 @@
 }
 
 .deep-psi .error-message {
-  color: var(--red-900);
-  background: var(--red-50);
+  color: light-dark(var(--red-900), var(--red-400));
+  background: light-dark(var(--red-50), var(--red-1200));
   padding: var(--spacing-m);
   border-radius: 0.5rem;
-  border: 1px solid var(--red-100);
+  border: 1px solid light-dark(var(--red-100), var(--red-900));
 }
 
 /* Loading spinner animation */
@@ -403,9 +403,9 @@
   margin: 0 0 var(--spacing-m) 0;
   font-size: var(--detail-size-l);
   font-weight: var(--weight-bold);
-  color: var(--gray-700);
+  color: var(--color-text);
   padding: var(--spacing-s) var(--spacing-m);
-  background: var(--gray-50);
+  background: light-dark(var(--gray-50), var(--gray-800));
   border-radius: 0.5rem;
   border-left: 4px solid var(--blue-500);
   display: flex;
@@ -414,7 +414,7 @@
 }
 
 .deep-psi .table-url-header.loading {
-  color: var(--gray-600);
+  color: var(--color-font-grey);
   border-left-color: var(--orange-500);
 }
 

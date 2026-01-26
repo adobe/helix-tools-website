@@ -239,16 +239,29 @@ function displayImages(images) {
     info.setAttribute('type', 'button');
     info.innerHTML = '<span class="icon icon-info"></span>';
     figure.append(info);
+    // store the image source URL as a data attribute for reliable matching
+    figure.dataset.imageSrc = href;
     // check if image already exists in the gallery
-    const existingImg = gallery.querySelector(`figure img[src="${href}"], figure [data-src="${href}"]`);
-    if (existingImg) {
-      const existingFigure = existingImg.parentElement;
+    const existingFigures = gallery.querySelectorAll('figure');
+    let existingFigure = null;
+    for (const fig of existingFigures) {
+      const existingSrc = fig.dataset.imageSrc || fig.querySelector('img')?.dataset.src || fig.querySelector('img')?.src;
+      if (existingSrc === href) {
+        existingFigure = fig;
+        break;
+      }
+    }
+    if (existingFigure) {
       const existingCount = parseInt(existingFigure.dataset.count, 10);
       if (existingCount !== data.count) {
         // if count has changed, replace existing figure with the new one
         gallery.replaceChild(figure, existingFigure);
       }
-    } else gallery.append(figure);
+      // if count is the same, don't add duplicate - just skip
+    } else {
+      gallery.append(figure);
+      decorateIcons(figure);
+    }
   });
 }
 /**
@@ -342,7 +355,6 @@ async function fetchAndDisplayImages(url) {
   const imagesCounter = document.getElementById('images-counter');
   imagesCounter.textContent = parseInt(imagesCounter.textContent, 10) + uniqueBatchData.length;
   displayImages(uniqueBatchData);
-  decorateIcons(gallery);
   data.length = 0;
   download.disabled = false;
   return data;

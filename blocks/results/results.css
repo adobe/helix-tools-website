@@ -33,7 +33,10 @@ main .results {
       animation-iteration-count: infinite;
       animation-name: loading;
       animation-timing-function: linear;
-      background: linear-gradient(to right, #c9c9c9 8%, #a4a4a4 38%, #c9c9c9 54%);
+      background: linear-gradient(to right,
+        light-dark(var(--gray-200), var(--gray-700)) 8%,
+        light-dark(var(--gray-300), var(--gray-600)) 38%,
+        light-dark(var(--gray-200), var(--gray-700)) 54%);
       background-size: 1000px 640px;
     }
 

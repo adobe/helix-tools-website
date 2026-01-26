@@ -12,8 +12,8 @@
   border-radius: 14px;
   padding: 8px;
   height: 2.5rem;
-  margin-top: -3rem;
   opacity: 0.7;
+  color: var(--gray-900);
 }
 
 .import #environment:empty {
@@ -154,15 +154,15 @@
 
 #results table td:first-child {
   font-weight: bold;
-  background-color: var(--gray-400);
+  background-color: var(--layer-depth-1);
 }
 
 #results table tr:nth-child(odd) td:last-child {
-  background-color: var(--gray-100);
+  background-color: var(--layer-elevated);
 }
 
 #results table tr:nth-child(even) td:last-child {
-  background-color: var(--gray-25);
+  background-color: var(--layer-depth-1);
 }
 
 #results table + a.button {

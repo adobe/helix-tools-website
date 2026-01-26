@@ -1,6 +1,7 @@
 import { createTag } from '../../utils/helpers.js';
 import { loadCSS, toClassName } from '../../scripts/aem.js';
 import { createForm } from '../form/form.js';
+import { getStoredTheme, resolveTheme } from '../../scripts/scripts.js';
 import W3color from './w3color.js';
 
 const COLOR_PROPERTIES = ['fill', 'stroke'];
@@ -488,16 +489,23 @@ function buildControlButton(specs, viewBox) {
 
 function buildPreviewControls(form, viewBox) {
   if (!form.querySelector('.controls')) {
+    // sync preview mode with global theme
+    const globalTheme = resolveTheme(getStoredTheme());
+    const isDark = globalTheme === 'dark';
+
     // build buttons
     const buttons = createTag('div', { class: 'controls-buttons' });
     const controls = createTag('div', { class: 'controls', role: 'toolbar' });
     const modes = createTag('div', { class: 'controls-mode' });
     const lightBtn = buildControlButton({
-      label: 'Light Mode', icon: 'light', effect: 'mode', checked: true,
+      label: 'Light Mode', icon: 'light', effect: 'mode', checked: !isDark,
     }, viewBox);
     const darkBtn = buildControlButton({
-      label: 'Dark Mode', icon: 'dark', effect: 'mode', checked: false,
+      label: 'Dark Mode', icon: 'dark', effect: 'mode', checked: isDark,
     }, viewBox);
+
+    // set initial viewbox mode to match global theme
+    viewBox.dataset.mode = isDark ? 'dark' : 'light';
     const displays = createTag('div', { class: 'controls-display' });
     const imageBtn = buildControlButton({
       label: 'Image Display', icon: 'image', effect: 'display', checked: true,

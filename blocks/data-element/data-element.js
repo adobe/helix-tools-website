@@ -1,4 +1,5 @@
 import { decorateIcons, toClassName } from '../../scripts/aem.js';
+import { swapIcons } from '../../scripts/scripts.js';
 import {
   DATA_TYPES, observeData, provideData, CDN_MAP, UNKNOWN_CDN,
 } from '../results/results-data.js';
@@ -118,6 +119,7 @@ const metrics = {
           <p><span data-param-name="langs" data-name="languages">${langCount}</span> Language(s)</p>
         </div>`;
         decorateIcons(blockInner);
+        swapIcons(blockInner);
         const copyButton = blockInner.querySelector('.page-count button');
         if (isCalculator) {
           copyButton.remove();

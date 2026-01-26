@@ -85,7 +85,12 @@
 .page-status table tbody.results td .icon-wrapper {
   position: relative;
   display: grid;
-  place-items: center; 
+  place-items: center;
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .page-status table tbody.results td .icon-wrapper .icon-redirect img {
+  filter: invert(1);
 }
 
 .page-status table tbody.results td .icon-wrapper .redirect-location {
@@ -98,7 +103,8 @@
   top: -100%;
   left: 50%;
   transform: translateX(-50%);
-  background: white;
+  background: var(--color-background);
+  border: var(--border-m) solid light-dark(transparent, var(--gray-600));
   padding: .75rem;
   border-radius: 0.5rem;
   box-shadow: 0 0 0.5rem rgb(0 0 0 / 25%);
