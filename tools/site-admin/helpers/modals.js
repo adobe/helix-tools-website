@@ -315,7 +315,7 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
       <div class="new-item-result">
         <label>${itemName} Created - Copy Now!</label>
         <div class="token-copy-row">
-          <input type="text" class="item-value" readonly />
+          <input type="password" class="item-value" readonly />
           <button type="button" class="button outline copy-btn">${icon('copy')} Copy</button>
         </div>
         <p class="field-hint"><strong>Save this value!</strong> It will not be shown again.</p>
