@@ -112,18 +112,24 @@ function loadHeadersForPath(path) {
 
 function addNewPath() {
   // eslint-disable-next-line no-alert
-  const newPath = prompt('Enter new path pattern (e.g., /api/**, /docs/**):', '/**');
+  const newPath = prompt('Enter new path pattern (e.g., /tools/**, /fragments/**):', '/**');
   if (newPath && newPath.trim()) {
     const trimmedPath = newPath.trim();
-    if (!originalHeaders[trimmedPath]) {
+    if (!trimmedPath.startsWith('/')) {
+      // eslint-disable-next-line no-alert
+      alert('Path must start with /');
+      return;
+    }
+
+    if (originalHeaders[trimmedPath]) {
+      // eslint-disable-next-line no-alert
+      alert(`Path "${trimmedPath}" already exists.`);
+    } else {
       originalHeaders[trimmedPath] = [];
       populatePathSelect();
-      pathSelect.value = trimmedPath;
-      loadHeadersForPath(trimmedPath);
-    } else {
-      pathSelect.value = trimmedPath;
-      loadHeadersForPath(trimmedPath);
     }
+    pathSelect.value = trimmedPath;
+    loadHeadersForPath(trimmedPath);
   }
 }
 
