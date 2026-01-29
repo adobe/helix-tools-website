@@ -182,3 +182,40 @@
   border-top: 2px solid;
   border-right: 2px solid;
 }
+
+/* ========================================
+   DARK MODE SUPPORT
+   ======================================== */
+
+[data-theme="dark"] .project-admin ol.projects-list li {
+  border-top-color: var(--gray-600);
+}
+
+[data-theme="dark"] .project-admin ol.projects-list li:first-of-type {
+  border-top-color: var(--gray-400);
+}
+
+[data-theme="dark"] .project-admin .status-light::before {
+  color: var(--red-400);
+}
+
+[data-theme="dark"] .project-admin .status-light.http1::before {
+  color: var(--blue-400);
+}
+
+[data-theme="dark"] .project-admin .status-light.http2::before {
+  color: var(--green-400);
+}
+
+[data-theme="dark"] .project-admin .status-light.http3::before {
+  color: var(--yellow-400);
+}
+
+[data-theme="dark"] .project-admin .form-field.picker-field input.button {
+  background-color: var(--gray-700);
+  border-color: var(--gray-600);
+}
+
+[data-theme="dark"] .project-admin .form-field.picker-field input ~ i.symbol {
+  border-left-color: var(--color-link);
+}

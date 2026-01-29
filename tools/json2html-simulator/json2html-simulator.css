@@ -1460,3 +1460,287 @@ body.json2html-simulator .hidden {
   border: 0;
 }
 
+/* ========================================
+   DARK MODE SUPPORT
+   ======================================== */
+
+[data-theme="dark"] body.json2html-simulator {
+  background: var(--gray-900);
+}
+
+[data-theme="dark"] .options-panel {
+  background: var(--gray-800);
+  border-color: var(--gray-600);
+}
+
+[data-theme="dark"] span.options-header {
+  border-bottom-color: var(--gray-600);
+}
+
+[data-theme="dark"] .options-hint {
+  color: var(--gray-400);
+}
+
+[data-theme="dark"] .option-group .option-desc {
+  color: var(--gray-400);
+}
+
+[data-theme="dark"] .option-group.option-checkbox {
+  background: var(--gray-700);
+  border-color: var(--gray-600);
+}
+
+[data-theme="dark"] .option-hint {
+  background: var(--gray-700);
+  color: var(--gray-400);
+}
+
+[data-theme="dark"] .option-hint code {
+  background: var(--gray-800);
+}
+
+[data-theme="dark"] .toggle-option {
+  color: var(--gray-300);
+}
+
+[data-theme="dark"] .validation-message {
+  background: var(--yellow-1200);
+  border-color: var(--yellow-900);
+}
+
+[data-theme="dark"] .validation-title {
+  color: var(--yellow-400);
+}
+
+[data-theme="dark"] .validation-text {
+  color: var(--yellow-300);
+}
+
+[data-theme="dark"] .validation-suggestion {
+  background: var(--gray-800);
+  border-left-color: var(--yellow-700);
+  color: var(--gray-300);
+}
+
+[data-theme="dark"] .validation-suggestion strong {
+  color: var(--yellow-400);
+}
+
+[data-theme="dark"] .validation-suggestion code {
+  background: var(--gray-700);
+  color: var(--blue-400);
+}
+
+[data-theme="dark"] .validation-suggestion pre {
+  background: var(--gray-700);
+}
+
+[data-theme="dark"] .validation-close {
+  color: var(--gray-300);
+}
+
+[data-theme="dark"] .validation-close:hover {
+  background: var(--yellow-1100);
+  color: var(--gray-100);
+}
+
+[data-theme="dark"] .workspace {
+  background: var(--gray-800);
+}
+
+[data-theme="dark"] .editor-header {
+  background: var(--gray-700);
+  border-bottom-color: var(--gray-600);
+}
+
+[data-theme="dark"] .editor-label {
+  color: var(--gray-300);
+}
+
+[data-theme="dark"] .code-highlight {
+  background: var(--gray-900);
+}
+
+[data-theme="dark"] .editor-status {
+  background: var(--gray-700);
+  border-top-color: var(--gray-600);
+}
+
+[data-theme="dark"] .editor-status .status-text,
+[data-theme="dark"] .preview-status .status-text,
+[data-theme="dark"] .preview-status .status-hint {
+  color: var(--gray-400);
+}
+
+[data-theme="dark"] .editor-status:has(.status-error) {
+  background: var(--red-1200);
+  border-top-color: var(--red-900);
+}
+
+[data-theme="dark"] .editor-status:has(.status-error) .status-text {
+  color: var(--red-400);
+}
+
+[data-theme="dark"] .editor-status:has(.status-warning) {
+  background: var(--yellow-1200);
+  border-top-color: var(--yellow-900);
+}
+
+[data-theme="dark"] .editor-status:has(.status-warning) .status-text {
+  color: var(--yellow-400);
+}
+
+[data-theme="dark"] .status-icon.status-ok {
+  color: var(--green-400);
+}
+
+[data-theme="dark"] .status-icon.status-error {
+  color: var(--red-400);
+}
+
+[data-theme="dark"] .status-icon.status-warning {
+  color: var(--yellow-400);
+}
+
+[data-theme="dark"] .resizer {
+  background: var(--gray-700);
+}
+
+[data-theme="dark"] .resizer:hover {
+  background: var(--gray-600);
+}
+
+[data-theme="dark"] .resizer .resizer-handle {
+  background: var(--gray-500);
+}
+
+[data-theme="dark"] body.json2html-simulator main .resizer-vertical,
+[data-theme="dark"] body.json2html-simulator main .resizer-horizontal {
+  background: var(--gray-600);
+}
+
+[data-theme="dark"] .json2html-simulator .preview-panel {
+  border-top-color: var(--gray-600);
+}
+
+[data-theme="dark"] .preview-header {
+  background: var(--gray-700);
+  border-bottom-color: var(--gray-600);
+}
+
+[data-theme="dark"] .preview-label {
+  color: var(--gray-300);
+}
+
+[data-theme="dark"] .preview-tabs {
+  background: var(--gray-600);
+}
+
+[data-theme="dark"] .preview-tab {
+  color: var(--gray-400);
+}
+
+[data-theme="dark"] .preview-tab:hover {
+  color: var(--gray-200);
+}
+
+[data-theme="dark"] .preview-tab.active {
+  background: var(--gray-800);
+  color: var(--gray-100);
+}
+
+[data-theme="dark"] .preview-content {
+  background: var(--gray-800);
+}
+
+[data-theme="dark"] #preview-frame {
+  background: var(--gray-800);
+}
+
+[data-theme="dark"] .source-code {
+  background: var(--gray-900);
+}
+
+[data-theme="dark"] .source-code::-webkit-scrollbar,
+[data-theme="dark"] .source-code::-webkit-scrollbar-track {
+  background: var(--gray-900);
+}
+
+[data-theme="dark"] .source-code::-webkit-scrollbar-thumb {
+  border-color: var(--gray-900);
+}
+
+[data-theme="dark"] .preview-status {
+  background: var(--gray-700);
+  border-top-color: var(--gray-600);
+}
+
+[data-theme="dark"] .preview-status kbd {
+  background: var(--gray-600);
+  border-color: var(--gray-500);
+  color: var(--gray-300);
+  box-shadow: 0 1px 0 var(--gray-500);
+}
+
+[data-theme="dark"] .modal {
+  background: var(--gray-800);
+}
+
+[data-theme="dark"] .modal-header {
+  border-bottom-color: var(--gray-600);
+}
+
+[data-theme="dark"] .modal-close {
+  color: var(--gray-400);
+}
+
+[data-theme="dark"] .modal-close:hover {
+  background: var(--gray-700);
+  color: var(--gray-100);
+}
+
+[data-theme="dark"] .example-card {
+  background: var(--gray-700);
+  border-color: var(--gray-600);
+}
+
+[data-theme="dark"] .example-card:hover {
+  background: var(--gray-600);
+}
+
+[data-theme="dark"] .example-card p {
+  color: var(--gray-400);
+}
+
+[data-theme="dark"] .syntax-item {
+  background: var(--gray-700);
+}
+
+[data-theme="dark"] .syntax-item code {
+  background: var(--gray-900);
+  color: var(--green-400);
+}
+
+[data-theme="dark"] .syntax-item p {
+  color: var(--gray-400);
+}
+
+[data-theme="dark"] .help-links {
+  border-top-color: var(--gray-600);
+}
+
+[data-theme="dark"] body.json2html-simulator main > .simulator-header {
+  border-bottom-color: var(--gray-600);
+}
+
+[data-theme="dark"] .editor-panel.json-panel,
+[data-theme="dark"] .editor-panel.template-panel {
+  border-color: var(--gray-600);
+}
+
+@media (width < 900px) {
+  [data-theme="dark"] .editor-panel {
+    border-bottom-color: var(--gray-600);
+  }
+}
+

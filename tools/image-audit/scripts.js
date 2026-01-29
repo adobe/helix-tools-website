@@ -336,7 +336,6 @@ async function fetchAndDisplayImages(url) {
   const results = document.getElementById('audit-results');
   const download = results.querySelector('button');
   download.disabled = true;
-  const gallery = document.getElementById('image-gallery');
 
   // reset counters
 

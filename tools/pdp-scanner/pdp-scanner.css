@@ -141,3 +141,46 @@
   padding: 0 4px;
   border-radius: 2px;
 }
+
+/* ========================================
+   DARK MODE SUPPORT
+   ======================================== */
+
+[data-theme="dark"] .pdp-scanner th {
+  background-color: var(--gray-700);
+}
+
+[data-theme="dark"] .pdp-scanner .fail {
+  background-color: var(--red-1100);
+  color: var(--red-400);
+}
+
+[data-theme="dark"] .pdp-scanner td.img-container span {
+  background-color: var(--gray-700);
+}
+
+[data-theme="dark"] .pdp-scanner .diff-added {
+  background-color: var(--green-1100);
+  color: var(--green-400);
+}
+
+[data-theme="dark"] .pdp-scanner .diff-removed {
+  background-color: var(--red-1100);
+  color: var(--red-400);
+}
+
+[data-theme="dark"] .pdp-scanner .status-light::before {
+  color: var(--red-400);
+}
+
+[data-theme="dark"] .pdp-scanner .status-light.pass::before {
+  color: var(--green-400);
+}
+
+[data-theme="dark"] .pdp-scanner .status-light.warning::before {
+  color: var(--yellow-400);
+}
+
+[data-theme="dark"] .pdp-scanner .status-light.fail::before {
+  color: var(--red-400);
+}

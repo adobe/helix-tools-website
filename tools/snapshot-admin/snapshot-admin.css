@@ -963,3 +963,191 @@
 #console tr:last-of-type td {
   border-bottom: none;
 }
+
+/* ========================================
+   DARK MODE SUPPORT
+   ======================================== */
+
+[data-theme="dark"] .snapshots-list {
+  border-color: var(--gray-600);
+}
+
+[data-theme="dark"] .snapshots-list li {
+  border-bottom-color: var(--gray-700);
+}
+
+[data-theme="dark"] .snapshot-card {
+  border-color: var(--gray-600);
+}
+
+[data-theme="dark"] .snapshot-card:hover {
+  border-color: var(--gray-500);
+}
+
+[data-theme="dark"] .snapshot-details {
+  border-top-color: var(--gray-700);
+}
+
+[data-theme="dark"] .sa-snapshot-wrapper {
+  background-color: var(--gray-800);
+}
+
+[data-theme="dark"] .sa-snapshot-wrapper.is-open {
+  background-color: var(--blue-1200);
+}
+
+[data-theme="dark"] .sa-snapshot-wrapper.is-saving::after {
+  background-color: var(--transparent-black-800);
+}
+
+[data-theme="dark"] .sa-snapshot-header input {
+  border-bottom-color: var(--gray-500);
+}
+
+[data-theme="dark"] .sa-snapshot-header input:focus {
+  border-bottom-color: var(--blue-400);
+}
+
+[data-theme="dark"] .sa-snapshot-details {
+  border-top-color: var(--gray-600);
+}
+
+[data-theme="dark"] .sa-snapshot-details-left.is-list::after {
+  background: linear-gradient(transparent, var(--gray-900));
+}
+
+[data-theme="dark"] .sa-snapshot-urls {
+  border-color: var(--gray-600);
+}
+
+[data-theme="dark"] .sa-snapshot-urls a:hover {
+  background-color: var(--gray-700);
+}
+
+[data-theme="dark"] .sa-snapshot-urls li {
+  border-bottom-color: var(--gray-700);
+}
+
+[data-theme="dark"] .sa-snapshot-urls .icon-wrap {
+  background-color: var(--gray-700);
+}
+
+[data-theme="dark"] .sa-snapshot-edit-urls {
+  border-color: var(--gray-600);
+}
+
+[data-theme="dark"] .sa-snapshot-sub-heading {
+  color: var(--gray-400);
+}
+
+[data-theme="dark"] .sa-snapshot-action-group button {
+  border-color: var(--gray-600);
+}
+
+[data-theme="dark"] .sa-snapshot-action-group button:disabled {
+  background: var(--gray-800);
+  border-color: var(--gray-700);
+  color: var(--gray-500);
+}
+
+[data-theme="dark"] .sa-snapshot-action-group button:disabled:hover {
+  background-color: var(--gray-800);
+  border-color: var(--gray-700);
+  color: var(--gray-500);
+}
+
+[data-theme="dark"] #create-snapshot-section {
+  background: var(--gray-800);
+  border-color: var(--gray-700);
+}
+
+[data-theme="dark"] #console tr:hover {
+  background-color: var(--gray-800);
+}
+
+[data-theme="dark"] #console td {
+  border-bottom-color: var(--gray-700);
+}
+
+[data-theme="dark"] .sa-dialog-content {
+  box-shadow: var(--shadow-dragged);
+}
+
+[data-theme="dark"] .sa-dialog hr {
+  border-top-color: var(--gray-700);
+}
+
+[data-theme="dark"] .sa-dialog-close-btn:hover {
+  background-color: var(--gray-700);
+}
+
+[data-theme="dark"] .modal-content {
+  border-color: var(--gray-600);
+}
+
+[data-theme="dark"] .modal-header {
+  border-bottom-color: var(--gray-700);
+}
+
+[data-theme="dark"] .modal-close:hover {
+  background-color: var(--gray-700);
+  color: var(--gray-300);
+}
+
+[data-theme="dark"] .modal-footer {
+  border-top-color: var(--gray-700);
+}
+
+[data-theme="dark"] .snapshot-status-badge.locked {
+  background-color: var(--red-1100);
+  color: var(--red-400);
+  border-color: var(--red-900);
+}
+
+[data-theme="dark"] .snapshot-status-badge.unlocked {
+  background-color: var(--green-1100);
+  color: var(--green-400);
+  border-color: var(--green-900);
+}
+
+[data-theme="dark"] .danger-actions h4 {
+  color: var(--red-400);
+}
+
+[data-theme="dark"] .button.danger {
+  color: var(--red-400);
+  background-color: transparent;
+  border-color: var(--red-400);
+}
+
+[data-theme="dark"] .snapshot-info {
+  background-color: var(--gray-800);
+  border-color: var(--gray-700);
+}
+
+[data-theme="dark"] .review-actions {
+  border-top-color: var(--gray-700);
+}
+
+[data-theme="dark"] #snapshot-details .danger-actions {
+  border-top-color: var(--red-800);
+}
+
+[data-theme="dark"] #snapshot-details .snapshot-actions button,
+[data-theme="dark"] #snapshot-details .review-actions button {
+  background: transparent;
+}
+
+[data-theme="dark"] #snapshot-details .snapshot-actions button:disabled,
+[data-theme="dark"] #snapshot-details .review-actions button:disabled {
+  background-color: var(--gray-800);
+  border-color: var(--gray-700);
+  color: var(--gray-500);
+}
+
+[data-theme="dark"] #snapshot-details .snapshot-actions button:disabled:hover,
+[data-theme="dark"] #snapshot-details .review-actions button:disabled:hover {
+  background-color: var(--gray-800);
+  border-color: var(--gray-700);
+  color: var(--gray-500);
+}

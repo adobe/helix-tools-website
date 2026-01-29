@@ -224,24 +224,62 @@ label, legend, .field-help-text, .form-error {
     padding-bottom: var(--horizontal-spacing);
   }
 
-  .image-audit main[data-canvas] > div:not(.canvas):not(.error-wrapper) {
+  .image-audit main[data-canvas] > div:not(.canvas, .error-wrapper) {
     max-width: 340px;
   }
 
   .image-audit main[data-canvas] > .canvas {
     position: absolute;
-    top: var(--header-height);
-    right: 0;
-    bottom: 0;
-    left: 340px;
+    inset: var(--header-height) 0 0 340px;
     max-width: unset;
     margin-top: 0;
     border-top: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden auto;
   }
 
   .image-audit main[data-canvas] > .canvas .gallery {
     padding: var(--horizontal-spacing);
   }
+}
+
+/* ========================================
+   DARK MODE SUPPORT
+   ======================================== */
+
+[data-theme="dark"] .image-audit .error-wrapper {
+  border-color: var(--gray-600);
+}
+
+[data-theme="dark"] .image-audit .error-wrapper .icon svg {
+  fill: var(--red-400);
+  color: var(--red-400);
+}
+
+[data-theme="dark"] .image-audit .error-wrapper .error-title {
+  color: var(--red-400);
+}
+
+[data-theme="dark"] .image-audit .gallery figure::after {
+  background-color: var(--red-1100);
+  color: var(--red-400);
+}
+
+[data-theme="dark"] .image-audit .gallery figure button {
+  background-color: var(--transparent-black-700);
+}
+
+[data-theme="dark"] .image-audit .gallery figure:hover button {
+  background-color: var(--transparent-black-300);
+}
+
+[data-theme="dark"] .image-audit dialog table tr:not(:last-of-type) td {
+  border-bottom-color: var(--gray-600);
+}
+
+[data-theme="dark"] .image-audit dialog img {
+  border-color: var(--gray-700);
+}
+
+[data-theme="dark"] .image-audit .canvas .action-bar button[aria-selected='true'] {
+  background-color: var(--gray-600);
 }

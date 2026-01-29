@@ -148,3 +148,24 @@
     width: 100%;
   }
 }
+
+/* ========================================
+   DARK MODE SUPPORT
+   ======================================== */
+
+[data-theme="dark"] .media-library #media-config-form .form-separator {
+  color: var(--gray-400);
+}
+
+[data-theme="dark"] .media-library #media-config-form .form-divider {
+  background: var(--gray-600);
+}
+
+[data-theme="dark"] .media-library-placeholder .placeholder-message {
+  color: var(--gray-400);
+}
+
+[data-theme="dark"] .media-library-placeholder .loading-spinner {
+  border-color: var(--gray-700);
+  border-top-color: var(--blue-400);
+}
