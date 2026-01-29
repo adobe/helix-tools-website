@@ -1,5 +1,5 @@
 /**
- * JSON2HTML Playground - Interactive tool for experimenting with Mustache templates
+ * JSON2HTML Simulator - Interactive tool for experimenting with Mustache templates
  * Uses server-side rendering via /simulator endpoint
  */
 
@@ -1513,7 +1513,7 @@ function createValidationMessage() {
 }
 
 /**
- * Initialize the playground
+ * Initialize the simulator
  */
 async function init() {
   // Load Prism FIRST - must complete before input listeners are active

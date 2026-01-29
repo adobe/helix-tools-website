@@ -9,22 +9,23 @@
   >
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JSON2HTML Playground</title>
-  <meta name="description" content="Interactive playground to experiment with JSON data and Mustache templates for AEM Edge Delivery Services JSON2HTML feature.">
+  <meta name="lab" content="true">
+  <title>JSON2HTML Simulator</title>
+  <meta name="description" content="Interactive simulator to experiment with JSON data and Mustache templates for AEM Edge Delivery Services JSON2HTML feature.">
   <script nonce="aem" src="/scripts/aem.js" type="module"></script>
   <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
   <link rel="stylesheet" href="/styles/styles.css" />
-  <script nonce="aem" src="/tools/json2html-playground/json2html-playground.js" type="module"></script>
-  <link rel="stylesheet" href="/tools/json2html-playground/json2html-playground.css" />
+  <script nonce="aem" src="/tools/json2html-simulator/json2html-simulator.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/json2html-simulator/json2html-simulator.css" />
 </head>
 
-<body class="json2html-playground">
+<body class="json2html-simulator">
   <header></header>
   <main>
     <!-- HEADER SECTION -->
-    <div class="playground-header">
+    <div class="simulator-header">
       <span class="header-content">
-        <h1>JSON2HTML Playground</h1>
+        <h1>JSON2HTML Simulator</h1>
         <p>Build and test Mustache templates for your JSON endpoints. <a href="https://www.aem.live/developer/json2html" target="_blank" rel="noopener noreferrer">View full documentation →</a></p>
       </span>
       <span class="header-actions">
@@ -122,7 +123,7 @@
               placeholder="Enter your JSON data here..."
             >{
   "title": "Welcome to JSON2HTML",
-  "description": "This playground helps you experiment with Mustache templates.",
+  "description": "This simulator helps you experiment with Mustache templates.",
   "features": [
     { "name": "Live Preview", "enabled": true },
     { "name": "Syntax Highlighting", "enabled": true },
