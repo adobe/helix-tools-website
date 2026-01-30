@@ -254,6 +254,103 @@
   color: var(--blue-800);
 }
 
+/* Diff Toolbar */
+.page-diff .diff-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-m);
+  padding: var(--spacing-s) var(--spacing-m);
+  background: var(--gray-50);
+  border-bottom: var(--border-s) solid var(--gray-300);
+}
+
+.page-diff .diff-toolbar-stats {
+  display: flex;
+  gap: var(--spacing-m);
+  font-size: var(--body-size-s);
+  font-weight: var(--weight-bold);
+}
+
+.page-diff .diff-stat-added {
+  color: var(--green-800);
+}
+
+.page-diff .diff-stat-removed {
+  color: var(--red-800);
+}
+
+.page-diff .diff-toolbar-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+}
+
+.page-diff .diff-nav-position {
+  font-size: var(--body-size-s);
+  color: var(--gray-600);
+  min-width: 50px;
+  text-align: center;
+}
+
+.page-diff .diff-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: var(--spacing-xs) var(--spacing-s);
+  font-size: var(--body-size-s);
+  font-weight: var(--weight-bold);
+  color: var(--gray-700);
+  background: var(--color-background);
+  border: var(--border-s) solid var(--gray-300);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.page-diff .diff-nav-btn:hover {
+  background: var(--gray-100);
+  border-color: var(--gray-400);
+}
+
+.page-diff .diff-nav-btn:active {
+  background: var(--gray-200);
+}
+
+.page-diff .diff-toolbar-toggle {
+  display: flex;
+  align-items: center;
+}
+
+.page-diff .diff-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--body-size-s);
+  color: var(--gray-700);
+  cursor: pointer;
+  margin: 0;
+}
+
+.page-diff .diff-toggle-label input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+@media (width < 600px) {
+  .page-diff .diff-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .page-diff .diff-toolbar-nav {
+    order: -1;
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
 .page-diff .diff-panel-body {
   max-height: 70vh;
   overflow: auto;
@@ -619,6 +716,7 @@
   padding-left: var(--spacing-s);
   margin-left: -4px;
   position: relative;
+  transition: box-shadow 0.2s ease;
 }
 
 .page-diff .doc-preview-content .diff-added::before {
@@ -639,6 +737,7 @@
   margin-left: -4px;
   position: relative;
   opacity: 0.8;
+  transition: box-shadow 0.2s ease;
 }
 
 .page-diff .doc-preview-content .diff-removed::before {
@@ -649,6 +748,43 @@
   color: #dc3545;
   font-weight: bold;
   font-size: var(--heading-size-s);
+}
+
+/* Highlighted change (current navigation target) */
+.page-diff .doc-preview-content .diff-highlight {
+  box-shadow: 0 0 0 3px var(--blue-500), 0 0 8px 4px rgb(59 130 246 / 30%);
+  z-index: 1;
+  position: relative;
+}
+
+.page-diff .doc-preview-content .diff-added.diff-highlight {
+  background-color: #b8e4c7;
+}
+
+.page-diff .doc-preview-content .diff-removed.diff-highlight {
+  background-color: #f1b5ba;
+  opacity: 1;
+}
+
+/* Changes-only view - hide unchanged content */
+.page-diff .diff-panel.changes-only .doc-preview-content > *:not(.diff-added, .diff-removed) {
+  display: none;
+}
+
+/* Add visual separator between changes in changes-only view */
+.page-diff .diff-panel.changes-only .doc-preview-content .diff-added,
+.page-diff .diff-panel.changes-only .doc-preview-content .diff-removed {
+  margin: var(--spacing-s) 0;
+}
+
+.page-diff .diff-panel.changes-only .doc-preview-content .diff-added:first-child,
+.page-diff .diff-panel.changes-only .doc-preview-content .diff-removed:first-child {
+  margin-top: 0;
+}
+
+.page-diff .diff-panel.changes-only .doc-preview-content .diff-added:last-child,
+.page-diff .diff-panel.changes-only .doc-preview-content .diff-removed:last-child {
+  margin-bottom: 0;
 }
 
 /* ==========================================================================

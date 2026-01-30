@@ -40,6 +40,9 @@ let pendingPages = [];
 // Cache for diff results - keyed by page path
 const diffCache = new Map();
 
+// Current change index for navigation
+let currentChangeIndex = -1;
+
 /**
  * Updates the display state of the diff container.
  * @param {string} state - One of: 'loading', 'no-results', 'error', 'results'
@@ -198,11 +201,39 @@ function markPageAsPending(pagePath) {
  * @param {string} previewPageUrl - Preview URL for the link
  * @param {string} livePageUrl - Live URL for the link
  * @param {string} bodyContent - HTML content for the panel body
+ * @param {Object} stats - Optional stats object with addedCount and removedCount
  * @returns {string} Complete panel HTML
  */
-function createDiffPanelHtml(path, previewPageUrl, livePageUrl, bodyContent) {
+function createDiffPanelHtml(path, previewPageUrl, livePageUrl, bodyContent, stats = null) {
+  const totalChanges = stats ? stats.addedCount + stats.removedCount : 0;
+  const hasChanges = totalChanges > 0;
+
+  const toolbarHtml = hasChanges ? `
+    <div class="diff-toolbar">
+      <div class="diff-toolbar-stats">
+        <span class="diff-stat diff-stat-added">+${stats.addedCount} addition${stats.addedCount !== 1 ? 's' : ''}</span>
+        <span class="diff-stat diff-stat-removed">−${stats.removedCount} removal${stats.removedCount !== 1 ? 's' : ''}</span>
+      </div>
+      <div class="diff-toolbar-nav">
+        <span class="diff-nav-position"><span class="diff-nav-current">0</span> / ${totalChanges}</span>
+        <button type="button" class="diff-nav-btn diff-nav-prev" aria-label="Previous change" title="Previous change (↑)">
+          <span class="icon icon-chevron-up">↑</span> Prev
+        </button>
+        <button type="button" class="diff-nav-btn diff-nav-next" aria-label="Next change" title="Next change (↓)">
+          Next <span class="icon icon-chevron-down">↓</span>
+        </button>
+      </div>
+      <div class="diff-toolbar-toggle">
+        <label class="diff-toggle-label">
+          <input type="checkbox" class="diff-toggle-changes-only">
+          <span>Show changes only</span>
+        </label>
+      </div>
+    </div>
+  ` : '';
+
   return `
-    <div class="diff-panel" data-path="${escapeHtml(path)}">
+    <div class="diff-panel" data-path="${escapeHtml(path)}" data-total-changes="${totalChanges}">
       <div class="diff-panel-header">
         <h3>${escapeHtml(path)}</h3>
         <div class="diff-panel-links">
@@ -210,6 +241,7 @@ function createDiffPanelHtml(path, previewPageUrl, livePageUrl, bodyContent) {
           <a href="${livePageUrl}" target="_blank">Live</a>
         </div>
       </div>
+      ${toolbarHtml}
       <div class="diff-panel-body">
         ${bodyContent}
       </div>
@@ -233,6 +265,7 @@ function getElementSignature(el) {
  * Compares elements at the section level and marks differences.
  * @param {Document} previewDom - Preview DOM
  * @param {Document} liveDom - Live DOM
+ * @returns {Object} Object with addedCount and removedCount
  */
 function annotateChanges(previewDom, liveDom) {
   const previewBody = previewDom.querySelector('body');
@@ -254,11 +287,15 @@ function annotateChanges(previewDom, liveDom) {
     previewSignatures.set(sig, el);
   });
 
+  let addedCount = 0;
+  let removedCount = 0;
+
   // Mark preview elements: added if not in live
   previewElements.forEach((el) => {
     const sig = getElementSignature(el);
     if (!liveSignatures.has(sig)) {
       el.classList.add('diff-added');
+      addedCount += 1;
     }
   });
 
@@ -267,8 +304,11 @@ function annotateChanges(previewDom, liveDom) {
     const sig = getElementSignature(el);
     if (!previewSignatures.has(sig)) {
       el.classList.add('diff-removed');
+      removedCount += 1;
     }
   });
+
+  return { addedCount, removedCount };
 }
 
 /**
@@ -276,7 +316,7 @@ function annotateChanges(previewDom, liveDom) {
  * Shows both rendered versions side by side with additions/deletions highlighted.
  * @param {string} liveContent - Live markdown content
  * @param {string} previewContent - Preview markdown content
- * @returns {Promise<Object>} Object with bodyHtml and noDiff flag
+ * @returns {Promise<Object>} Object with bodyHtml, noDiff flag, and change counts
  */
 async function computeDomDiff(liveContent, previewContent) {
   await loadConverter();
@@ -293,11 +333,13 @@ async function computeDomDiff(liveContent, previewContent) {
     return {
       bodyHtml: '<div class="diff-identical">No differences found in content.</div>',
       noDiff: true,
+      addedCount: 0,
+      removedCount: 0,
     };
   }
 
   // Annotate changes in both DOMs
-  annotateChanges(previewDom, liveDom);
+  const { addedCount, removedCount } = annotateChanges(previewDom, liveDom);
 
   // Get the annotated HTML
   const annotatedPreviewHtml = previewDom.querySelector('body').innerHTML;
@@ -325,7 +367,132 @@ async function computeDomDiff(liveContent, previewContent) {
     </div>
   `;
 
-  return { bodyHtml, noDiff: false };
+  return {
+    bodyHtml, noDiff: false, addedCount, removedCount,
+  };
+}
+
+/**
+ * Gets all change elements in the current diff view.
+ * @returns {NodeList} List of change elements
+ */
+function getChangeElements() {
+  return DIFF_CONTENT.querySelectorAll('.diff-added, .diff-removed');
+}
+
+/**
+ * Updates the navigation position display.
+ * @param {number} index - Current index (0-based)
+ * @param {number} total - Total number of changes
+ */
+function updateNavPosition(index, total) {
+  const currentSpan = DIFF_CONTENT.querySelector('.diff-nav-current');
+  if (currentSpan) {
+    currentSpan.textContent = total > 0 ? index + 1 : 0;
+  }
+}
+
+/**
+ * Scrolls to a specific change element and highlights it.
+ * @param {number} index - Index of the change to navigate to
+ */
+function navigateToChange(index) {
+  const changes = getChangeElements();
+  if (changes.length === 0) return;
+
+  // Remove highlight from previous change
+  changes.forEach((el) => el.classList.remove('diff-highlight'));
+
+  // Clamp index to valid range
+  const newIndex = Math.max(0, Math.min(index, changes.length - 1));
+  currentChangeIndex = newIndex;
+
+  // Highlight and scroll to the new change
+  const targetChange = changes[newIndex];
+  if (targetChange) {
+    targetChange.classList.add('diff-highlight');
+    targetChange.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  updateNavPosition(newIndex, changes.length);
+}
+
+/**
+ * Navigates to the next change.
+ */
+function navigateToNextChange() {
+  const changes = getChangeElements();
+  if (changes.length === 0) return;
+
+  const nextIndex = currentChangeIndex < changes.length - 1 ? currentChangeIndex + 1 : 0;
+  navigateToChange(nextIndex);
+}
+
+/**
+ * Navigates to the previous change.
+ */
+function navigateToPrevChange() {
+  const changes = getChangeElements();
+  if (changes.length === 0) return;
+
+  const prevIndex = currentChangeIndex > 0 ? currentChangeIndex - 1 : changes.length - 1;
+  navigateToChange(prevIndex);
+}
+
+/**
+ * Toggles between showing all content or only changes.
+ * @param {boolean} showChangesOnly - Whether to show only changes
+ */
+function toggleChangesOnlyView(showChangesOnly) {
+  const panel = DIFF_CONTENT.querySelector('.diff-panel');
+  if (panel) {
+    panel.classList.toggle('changes-only', showChangesOnly);
+  }
+}
+
+/**
+ * Sets up event listeners for the diff toolbar.
+ */
+function setupDiffToolbar() {
+  // Reset current change index
+  currentChangeIndex = -1;
+
+  // Navigation buttons
+  const prevBtn = DIFF_CONTENT.querySelector('.diff-nav-prev');
+  const nextBtn = DIFF_CONTENT.querySelector('.diff-nav-next');
+
+  if (prevBtn) {
+    prevBtn.addEventListener('click', navigateToPrevChange);
+  }
+  if (nextBtn) {
+    nextBtn.addEventListener('click', navigateToNextChange);
+  }
+
+  // Toggle for changes-only view
+  const toggleCheckbox = DIFF_CONTENT.querySelector('.diff-toggle-changes-only');
+  if (toggleCheckbox) {
+    toggleCheckbox.addEventListener('change', (e) => {
+      toggleChangesOnlyView(e.target.checked);
+    });
+  }
+
+  // Keyboard navigation
+  const handleKeydown = (e) => {
+    // Only handle if diff panel is visible
+    if (DIFF_CONTENT.querySelector('.diff-panel')?.hasAttribute('data-total-changes')) {
+      if (e.key === 'ArrowDown' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        navigateToNextChange();
+      } else if (e.key === 'ArrowUp' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        navigateToPrevChange();
+      }
+    }
+  };
+
+  // Remove previous listener if any and add new one
+  document.removeEventListener('keydown', handleKeydown);
+  document.addEventListener('keydown', handleKeydown);
 }
 
 /**
@@ -354,14 +521,25 @@ async function renderDiffView(page, cached) {
 
   // Render the diff
   let bodyHtml;
+  let stats = null;
   if (cached?.previewContent && cached?.liveContent) {
     const result = await computeDomDiff(cached.liveContent, cached.previewContent);
     bodyHtml = result.bodyHtml;
+    // Use cached stats if available (to avoid recomputation), or use result stats
+    stats = {
+      addedCount: cached.addedCount ?? result.addedCount ?? 0,
+      removedCount: cached.removedCount ?? result.removedCount ?? 0,
+    };
   } else {
     bodyHtml = '<div class="diff-identical">Content not loaded.</div>';
   }
 
-  DIFF_CONTENT.innerHTML = createDiffPanelHtml(path, previewPageUrl, livePageUrl, bodyHtml);
+  DIFF_CONTENT.innerHTML = createDiffPanelHtml(path, previewPageUrl, livePageUrl, bodyHtml, stats);
+
+  // Set up toolbar functionality if there are changes
+  if (stats && (stats.addedCount > 0 || stats.removedCount > 0)) {
+    setupDiffToolbar();
+  }
 }
 
 /**
@@ -427,13 +605,17 @@ async function loadPageDiff(page) {
     ]);
 
     // Compute DOM diff to check if there are differences
-    const { noDiff } = await computeDomDiff(liveContent, previewContent);
+    const {
+      noDiff, addedCount, removedCount,
+    } = await computeDomDiff(liveContent, previewContent);
 
     // Cache the content
     const cached = {
       previewContent,
       liveContent,
       noDiff,
+      addedCount,
+      removedCount,
     };
     diffCache.set(path, cached);
 
