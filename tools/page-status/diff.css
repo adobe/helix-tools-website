@@ -651,3 +651,46 @@
   font-size: var(--heading-size-s);
 }
 
+/* ==========================================================================
+   Embed Mode - optimized for iframe embedding
+   ========================================================================== */
+
+.page-diff.embed-mode {
+  background: var(--color-background);
+}
+
+.page-diff.embed-mode main {
+  padding: 0;
+  margin: 0;
+  max-width: none;
+}
+
+.page-diff.embed-mode main > section {
+  margin: 0;
+}
+
+.page-diff.embed-mode .diff-container {
+  min-height: auto;
+}
+
+.page-diff.embed-mode .diff-panel {
+  border: none;
+  border-radius: 0;
+}
+
+.page-diff.embed-mode .diff-panel-body {
+  max-height: none;
+}
+
+.page-diff.embed-mode .doc-diff-side .doc-preview-content {
+  max-height: none;
+}
+
+/* ==========================================================================
+   Single Page Mode - no navigation sidebar
+   ========================================================================== */
+
+.page-diff.single-page-mode .diff-results {
+  grid-template-columns: 1fr;
+}
+

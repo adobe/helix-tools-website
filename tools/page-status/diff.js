@@ -24,11 +24,15 @@ const DIFF_RESULTS = document.querySelector('.diff-results');
 const DIFF_PAGE_LIST = document.querySelector('.diff-page-list');
 const DIFF_CONTENT = document.querySelector('.diff-content');
 const HIDE_DRAFTS = document.getElementById('hide-drafts');
+const DIFF_NAV = document.querySelector('.diff-nav');
 
 // State
 let currentOrg = '';
 let currentSite = '';
 let currentJob = '';
+let currentPath = '';
+let isEmbedMode = false;
+let isSinglePageMode = false;
 let previewHost = '';
 let liveHost = '';
 let pendingPages = [];
@@ -566,24 +570,81 @@ function renderPageList(autoSelectFirst = true) {
 }
 
 /**
+ * Applies embed mode styling by hiding unnecessary UI elements.
+ */
+function applyEmbedMode() {
+  document.body.classList.add('embed-mode');
+  // Hide header and footer
+  const header = document.querySelector('header');
+  const footer = document.querySelector('footer');
+  if (header) header.style.display = 'none';
+  if (footer) footer.style.display = 'none';
+  // Hide back button and intro text
+  const backButton = document.querySelector('a.button.outline');
+  if (backButton) backButton.style.display = 'none';
+  const introSection = document.querySelector('main > div:first-child');
+  if (introSection) introSection.style.display = 'none';
+}
+
+/**
+ * Applies single page mode styling by hiding the navigation sidebar.
+ */
+function applySinglePageMode() {
+  document.body.classList.add('single-page-mode');
+  // Hide the navigation and filters
+  if (DIFF_NAV) DIFF_NAV.style.display = 'none';
+  // Hide the info section in single page mode (path is shown in the panel header)
+  if (DIFF_INFO) DIFF_INFO.style.display = 'none';
+  // Adjust results grid to single column
+  if (DIFF_RESULTS) DIFF_RESULTS.style.gridTemplateColumns = '1fr';
+}
+
+/**
+ * Loads and displays the diff for a single page directly (without job).
+ * @param {string} path - The page path to diff
+ */
+async function loadSinglePageDiff(path) {
+  const page = { path };
+
+  // Ensure path starts with /
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  page.path = normalizedPath;
+
+  // Load the diff directly
+  await loadPageDiff(page);
+}
+
+/**
  * Main initialization function.
  */
 async function init() {
-  await initConfigField();
-
-  // Get org/site/job from URL params
+  // Get params from URL
   const params = new URLSearchParams(window.location.search);
   currentOrg = params.get('org');
   currentSite = params.get('site');
   currentJob = params.get('job');
+  currentPath = params.get('path');
+  isEmbedMode = params.get('embed') === 'true';
+  isSinglePageMode = !!currentPath && !currentJob;
+
+  // Apply embed mode if requested (do this early for visual consistency)
+  if (isEmbedMode) {
+    applyEmbedMode();
+  }
+
+  // Initialize config field only if not in embed mode
+  if (!isEmbedMode) {
+    await initConfigField();
+  }
 
   if (!currentOrg || !currentSite) {
-    showError('Missing org or site parameters. Please go back to Page Status and try again.');
+    showError('Missing org or site parameters. Use ?org=<org>&site=<site>&path=<path> or &job=<jobId>');
     return;
   }
 
-  if (!currentJob) {
-    showError('Missing job ID. Please run Page Status first, then click Diff Mode.');
+  // Must have either path (single page mode) or job (multi-page mode)
+  if (!currentPath && !currentJob) {
+    showError('Missing path or job parameter. Provide either path=<pagePath> or job=<jobId>');
     return;
   }
 
@@ -611,7 +672,15 @@ async function init() {
     previewHost = hosts.preview;
     liveHost = hosts.live;
 
-    // Fetch job details from existing job (reuse from page-status)
+    // Single page mode: directly load diff for the specified path
+    if (isSinglePageMode) {
+      applySinglePageMode();
+      updateDisplayState('results');
+      await loadSinglePageDiff(currentPath);
+      return;
+    }
+
+    // Multi-page mode: fetch job details and show page list
     const resources = await fetchJobDetails(currentOrg, currentSite, currentJob);
 
     // Filter to pending pages only
