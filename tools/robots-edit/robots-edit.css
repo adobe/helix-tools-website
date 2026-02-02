@@ -38,7 +38,7 @@
   margin: 0;
   padding: 0.4em 0.85em;
   padding-bottom: calc(0.85em + (var(--body-size-s) * var(--line-height-l)));
-  border: var(--border-m) solid var(--gray-300);
+  border: var(--border-m) solid var(--color-border);
   border-radius: var(--rounding-m);
   overflow: auto;
 }
