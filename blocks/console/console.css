@@ -29,7 +29,7 @@
   left: calc(-0.5 * var(--border-s));
   right: calc(-0.5 * var(--border-s));
   height: 0.6em;
-  border: var(--border-s) solid light-dark(var(--gray-300), var(--gray-600));
+  border: var(--border-s) solid var(--color-border);
   background-color: var(--color-background);
 }
 
@@ -67,12 +67,12 @@
 .console tbody tr {
   font-family: monospace;
   font-size: var(--body-size-xs);
-  border-left: var(--border-s) solid light-dark(var(--gray-300), var(--gray-600));
-  border-right: var(--border-s) solid light-dark(var(--gray-300), var(--gray-600));
+  border-left: var(--border-s) solid var(--color-border);
+  border-right: var(--border-s) solid var(--color-border);
 }
 
 .console tbody tr + tr {
-  border-top: var(--border-s) solid light-dark(var(--gray-300), var(--gray-600));
+  border-top: var(--border-s) solid var(--color-border);
 }
 
 .console .status-light {

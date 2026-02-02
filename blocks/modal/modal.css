@@ -14,7 +14,7 @@ body.modal-open {
   max-width: 900px;
   max-height: calc(100dvh - (2 * var(--header-height)));
   padding: 0;
-  border: 1px solid light-dark(var(--gray-300), var(--gray-600));
+  border: 1px solid var(--color-border);
   background-color: var(--color-background);
   color: var(--color-text);
 }

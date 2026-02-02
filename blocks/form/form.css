@@ -19,7 +19,7 @@ main .form h3 {
 main .form input,
 main .form textarea,
 main .form select {
-  border: solid 1px light-dark(var(--gray-300), var(--gray-600));
+  border: solid 1px var(--color-border);
   padding: var(--spacing-xxs) var(--spacing-xs);
   width: 100%;
   max-width: 50rem;

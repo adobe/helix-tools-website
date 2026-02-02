@@ -32,6 +32,7 @@
   --color-white: var(--gray-25);
   --spectrum-blue: var(--blue-900);
   --color-font-grey: light-dark(var(--gray-700), var(--gray-300));
+  --color-border: var(--color-border);
 
   /* button colors */
   --color-button-text: var(--gray-25);
@@ -615,7 +616,7 @@ select:focus:disabled {
 input[readonly],
 textarea[readonly],
 select[readonly] {
-  border-color: light-dark(var(--gray-300), var(--gray-600));
+  border-color: var(--color-border);
 }
 
 input[readonly]:focus,
