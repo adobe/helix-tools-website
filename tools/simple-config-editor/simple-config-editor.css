@@ -36,17 +36,17 @@
 }
 
 .changed-value {
-  background-color: #e3f2fd !important; /* Light blue background for changed values */
+  background-color: light-dark(#e3f2fd, var(--blue-900)) !important; /* Light blue background for changed values */
 }
 
 .placeholder-text {
-  color: var(--gray-500);
+  color: var(--color-font-grey);
   font-style: italic;
   opacity: 0.7;
 }
 
 .inherited-value {
-  background-color: var(--gray-50);
+  background-color: light-dark(var(--gray-50), var(--gray-800));
   opacity: 0.8;
 }
 
@@ -58,12 +58,12 @@
 .sensitive-value {
   font-family: var(--code-font-family);
   letter-spacing: 0.1em;
-  color: var(--gray-600);
+  color: var(--color-font-grey);
 }
 
 .config-table-container {
   overflow-x: auto;
-  border: var(--border-s) solid var(--gray-300);
+  border: var(--border-s) solid var(--color-border);
   border-radius: var(--rounding-m);
   margin-bottom: var(--spacing-m);
 }
@@ -71,20 +71,20 @@
 .config-table {
   width: 100%;
   border-collapse: collapse;
-  background: white;
+  background: var(--layer-elevated);
 }
 
 .config-table th {
-  background: var(--gray-100);
+  background: light-dark(var(--gray-100), var(--gray-800));
   padding: var(--spacing-xs) var(--spacing-s);
   text-align: left;
   font-weight: 600;
-  border-bottom: var(--border-s) solid var(--gray-300);
+  border-bottom: var(--border-s) solid var(--color-border);
 }
 
 .config-table td {
   padding: var(--spacing-xs) var(--spacing-s);
-  border-bottom: var(--border-s) solid var(--gray-200);
+  border-bottom: var(--border-s) solid var(--color-border);
   vertical-align: top;
 }
 
@@ -93,7 +93,7 @@
 }
 
 .config-table tr:hover {
-  background: var(--gray-50);
+  background: light-dark(var(--gray-50), var(--gray-800));
 }
 
 .config-key-cell {
@@ -109,7 +109,7 @@
 .config-value-input {
   width: 100%;
   padding: var(--spacing-xs) var(--spacing-s);
-  border: var(--border-s) solid var(--gray-300);
+  border: var(--border-s) solid var(--color-border);
   border-radius: var(--rounding-s);
   font-family: var(--code-font-family);
   font-size: var(--body-size-s);
@@ -118,14 +118,14 @@
 .config-value-input:focus {
   outline: none;
   border-color: var(--blue-500);
-  box-shadow: 0 0 0 2px var(--blue-100);
+  box-shadow: 0 0 0 2px light-dark(var(--blue-100), var(--blue-900));
 }
 
 .config-value-textarea {
   width: 100%;
   min-height: 60px;
   padding: var(--spacing-xs) var(--spacing-s);
-  border: var(--border-s) solid var(--gray-300);
+  border: var(--border-s) solid var(--color-border);
   border-radius: var(--rounding-s);
   font-family: var(--code-font-family);
   font-size: var(--body-size-s);
@@ -135,7 +135,7 @@
 .config-value-textarea:focus {
   outline: none;
   border-color: var(--blue-500);
-  box-shadow: 0 0 0 2px var(--blue-100);
+  box-shadow: 0 0 0 2px light-dark(var(--blue-100), var(--blue-900));
 }
 
 .config-actions-cell {
@@ -165,15 +165,15 @@
 }
 
 .inherited-value .config-value-display {
-  color: var(--gray-600);
+  color: var(--color-font-grey);
   font-style: italic;
 }
 
 .config-value-display.object {
-  background: var(--gray-50);
+  background: light-dark(var(--gray-50), var(--gray-800));
   padding: var(--spacing-xs);
   border-radius: var(--rounding-s);
-  border: var(--border-s) solid var(--gray-200);
+  border: var(--border-s) solid var(--color-border);
 }
 
 /* Tablet and up (600px+) */
