@@ -46,7 +46,7 @@
   gap: var(--spacing-s);
   align-items: start;
   padding: var(--spacing-s);
-  border: var(--border-m) solid var(--gray-300);
+  border: var(--border-m) solid var(--color-border);
   border-radius: var(--rounding-m);
 }
 
@@ -54,7 +54,7 @@
 .headers-edit .header-item textarea {
   width: 100%;
   padding: 0.4em 0.85em;
-  border: var(--border-m) solid var(--gray-300);
+  border: var(--border-m) solid var(--color-border);
   border-radius: var(--rounding-m);
   font-family: var(--code-font-family);
   font-size: var(--body-size-s);
@@ -67,7 +67,7 @@
 }
 
 .headers-edit .header-item .remove-header {
-  color: var(--red-900);
+  color: light-dark(var(--red-900), var(--red-400));
   background: none;
   border: none;
   cursor: pointer;
@@ -94,15 +94,15 @@
 }
 
 .headers-edit .headers-non-standard-warning {
-  background-color: var(--yellow-100);
+  background-color: light-dark(var(--yellow-100), var(--yellow-900));
   padding: var(--spacing-s);
   border-radius: var(--rounding-m);
-  border: var(--border-m) solid var(--yellow-900);
-  color: black;
+  border: var(--border-m) solid light-dark(var(--yellow-900), var(--yellow-600));
+  color: light-dark(black, var(--yellow-200));
 }
 
 .headers-edit .headers-non-standard-warning a:any-link{
-  color: black;
+  color: light-dark(black, var(--yellow-200));
   font-weight: bold;
 }
 

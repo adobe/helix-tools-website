@@ -1,7 +1,7 @@
 footer {
   padding: var(--spacing-m) var(--horizontal-spacing);
   font-size: var(--body-size-m);
-  color: var(--gray-700);
+  color: var(--color-font-grey);
 }
 
 footer a:any-link {
