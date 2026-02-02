@@ -15,20 +15,33 @@
 @import url('typography.css');
 
 :root {
+  /* enable dark mode support */
+  color-scheme: light dark;
+
   /* layers */
-  --layer-elevated: var(--gray-25);
+  --layer-elevated: light-dark(var(--gray-25), var(--gray-900));
   --layer-base: var(--layer-elevated);
-  --layer-depth: var(--gray-50);
-  --layer-pasteboard: var(--gray-100);
+  --layer-depth: light-dark(var(--gray-50), var(--gray-1000));
+  --layer-pasteboard: light-dark(var(--gray-100), var(--gray-800));
 
   /* colors */
   --color-background: var(--layer-base);
-  --color-text: var(--gray-800);
+  --color-text: light-dark(var(--gray-800), var(--gray-100));
   --color-link: var(--blue-900);
   --color-link-hover: var(--blue-1000);
-  --color-white: var(--gray-25);
-  --spectrum-blue: var(--blue-900);
-  --color-font-grey: var(--gray-700);
+  --color-white: light-dark(var(--gray-25), var(--gray-900));
+  --spectrum-blue: light-dark(var(--blue-900), var(--blue-400));
+  --color-font-grey: light-dark(var(--gray-700), var(--gray-300));
+
+  /* button colors */
+  --color-button-text: var(--gray-25);
+  --color-button-emphasis-bg: light-dark(var(--gray-800), var(--gray-200));
+  --color-button-emphasis-bg-hover: light-dark(var(--gray-900), var(--gray-100));
+  --color-button-emphasis-text: light-dark(var(--gray-25), var(--gray-900));
+  --color-button-accent-bg: light-dark(var(--gray-100), var(--gray-700));
+  --color-button-accent-bg-hover: light-dark(var(--gray-200), var(--gray-600));
+  --color-button-disabled-bg: light-dark(var(--gray-100), var(--gray-700));
+  --color-button-disabled-text: light-dark(var(--gray-400), var(--gray-500));
 
   /* fonts */
   --body-font-family: robotoflex, robotoflex-fallback, sans-serif;
@@ -51,6 +64,20 @@
   /* widths and heights */
   --header-height: 82px;
   --horizontal-spacing: var(--spacing-l);
+}
+
+/* theme override selectors for manual toggle */
+html[data-theme="light"] {
+  color-scheme: light;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* shadows need more opacity on dark backgrounds */
+  --shadow-default: 0 1px 6px 0 var(--transparent-black-600);
+  --shadow-hover: 0 2px 8px 0 var(--transparent-black-600);
+  --shadow-dragged: 0 3px 12px 0 var(--transparent-black-600);
 }
 
 @media (width >=900px) {
@@ -98,7 +125,7 @@ header {
   width: 100%;
   min-height: var(--header-height);
   height: var(--header-height);
-  background-color: #fff;
+  background-color: var(--color-background);
   z-index: 9999;
   transition: height 0.2s, min-height 0.2s;
 }
@@ -169,6 +196,8 @@ dialog {
   border: 0;
   border-radius: var(--rounding-xl);
   padding: calc(44px + (2 * var(--border-l))) 0 0;
+  background-color: var(--color-background);
+  color: var(--color-text);
   overscroll-behavior: none;
 }
 
