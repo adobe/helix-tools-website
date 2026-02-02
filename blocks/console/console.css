@@ -29,7 +29,7 @@
   left: calc(-0.5 * var(--border-s));
   right: calc(-0.5 * var(--border-s));
   height: 0.6em;
-  border: var(--border-s) solid var(--gray-300);
+  border: var(--border-s) solid light-dark(var(--gray-300), var(--gray-600));
   background-color: var(--color-background);
 }
 
@@ -67,12 +67,12 @@
 .console tbody tr {
   font-family: monospace;
   font-size: var(--body-size-xs);
-  border-left: var(--border-s) solid var(--gray-300);
-  border-right: var(--border-s) solid var(--gray-300);
+  border-left: var(--border-s) solid light-dark(var(--gray-300), var(--gray-600));
+  border-right: var(--border-s) solid light-dark(var(--gray-300), var(--gray-600));
 }
 
 .console tbody tr + tr {
-  border-top: var(--border-s) solid var(--gray-300);
+  border-top: var(--border-s) solid light-dark(var(--gray-300), var(--gray-600));
 }
 
 .console .status-light {
@@ -83,42 +83,42 @@
 }
 
 .console .status-light.http2 {
-  background-color: var(--status-ok-bg, #d4edda);
-  color: var(--status-ok-text, #155724);
+  background-color: light-dark(var(--green-100), var(--green-1200));
+  color: light-dark(var(--green-900), var(--green-400));
 }
 
 .console .status-light.http3 {
-  background-color: var(--status-redirect-bg, #fff3cd);
-  color: var(--status-redirect-text, #856404);
+  background-color: light-dark(var(--yellow-100), var(--yellow-1200));
+  color: light-dark(var(--yellow-900), var(--yellow-400));
 }
 
 .console .status-light.http4 {
-  background-color: var(--status-error-bg, #f8d7da);
-  color: var(--status-error-text, #721c24);
+  background-color: light-dark(var(--red-100), var(--red-1200));
+  color: light-dark(var(--red-900), var(--red-400));
 }
 
 .console .status-light.http5 {
-  background-color: var(--status-error-bg, #f8d7da);
-  color: var(--status-error-text, #721c24);
+  background-color: light-dark(var(--red-100), var(--red-1200));
+  color: light-dark(var(--red-900), var(--red-400));
 }
 
 /* Log level status lights */
 .console .status-light.level-info {
-  background-color: var(--status-info-bg, #d1ecf1);
-  color: var(--status-info-text, #0c5460);
+  background-color: light-dark(var(--blue-100), var(--blue-1200));
+  color: light-dark(var(--blue-900), var(--blue-400));
 }
 
 .console .status-light.level-success {
-  background-color: var(--status-ok-bg, #d4edda);
-  color: var(--status-ok-text, #155724);
+  background-color: light-dark(var(--green-100), var(--green-1200));
+  color: light-dark(var(--green-900), var(--green-400));
 }
 
 .console .status-light.level-warning {
-  background-color: var(--status-redirect-bg, #fff3cd);
-  color: var(--status-redirect-text, #856404);
+  background-color: light-dark(var(--yellow-100), var(--yellow-1200));
+  color: light-dark(var(--yellow-900), var(--yellow-400));
 }
 
 .console .status-light.level-error {
-  background-color: var(--status-error-bg, #f8d7da);
-  color: var(--status-error-text, #721c24);
+  background-color: light-dark(var(--red-100), var(--red-1200));
+  color: light-dark(var(--red-900), var(--red-400));
 }

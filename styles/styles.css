@@ -75,9 +75,9 @@ html[data-theme="dark"] {
   color-scheme: dark;
 
   /* shadows need more opacity on dark backgrounds */
-  --shadow-default: 0 1px 6px 0 var(--transparent-black-600);
-  --shadow-hover: 0 2px 8px 0 var(--transparent-black-600);
-  --shadow-dragged: 0 3px 12px 0 var(--transparent-black-600);
+  --shadow-default: 0 1px 6px 0 var(--transparent-black-800);
+  --shadow-hover: 0 2px 8px 0 var(--transparent-black-800);
+  --shadow-dragged: 0 3px 12px 0 var(--transparent-black-800);
 }
 
 @media (width >=900px) {
@@ -477,21 +477,22 @@ a.button {
 .button:disabled,
 .button:disabled:hover,
 .button:disabled:focus {
-  border-color: var(--gray-100);
-  background-color: var(--gray-100);
-  color: var(--gray-400);
+  border-color: var(--color-button-disabled-bg);
+  background-color: var(--color-button-disabled-bg);
+  color: var(--color-button-disabled-text);
   cursor: not-allowed;
 }
 
 .button.emphasis {
-  border-color: var(--gray-800);
-  background-color: var(--gray-800);
+  border-color: var(--color-button-emphasis-bg);
+  background-color: var(--color-button-emphasis-bg);
+  color: var(--color-button-emphasis-text);
 }
 
 .button.emphasis:hover,
 .button.emphasis:focus {
-  border-color: var(--gray-900);
-  background-color: var(--gray-900);
+  border-color: var(--color-button-emphasis-bg-hover);
+  background-color: var(--color-button-emphasis-bg-hover);
 }
 
 .button.outline {
@@ -503,28 +504,28 @@ a.button {
 .button.outline:hover,
 .button.outline:focus {
   border-color: var(--color-link-hover);
-  background-color: var(--blue-100);
+  background-color: light-dark(var(--blue-100), var(--blue-1100));
   color: var(--color-link-hover);
 }
 
 .button.outline:disabled,
 .button.outline:disabled:hover,
 .button.outline:disabled:focus {
-  border-color: var(--gray-100);
+  border-color: var(--color-button-disabled-bg);
   background-color: var(--color-background);
-  color: var(--gray-400);
+  color: var(--color-button-disabled-text);
 }
 
 .button.accent {
-  border-color: var(--gray-100);
+  border-color: var(--color-button-accent-bg);
   color: var(--color-text);
-  background-color: var(--gray-100);
+  background-color: var(--color-button-accent-bg);
 }
 
 .button.accent:hover,
 .button.accent:focus {
-  border-color: var(--gray-200);
-  background-color: var(--gray-200);
+  border-color: var(--color-button-accent-bg-hover);
+  background-color: var(--color-button-accent-bg-hover);
 }
 
 .button.quiet,
@@ -577,7 +578,7 @@ label,
 legend,
 .field-help-text,
 .form-error {
-  color: var(--gray-700);
+  color: var(--color-font-grey);
   font-size: var(--body-size-m);
 }
 
@@ -594,7 +595,7 @@ button:focus {
   outline: var(--border-m) solid var(--color-link);
   outline-offset: var(--border-m);
   border-color: var(--color-text);
-  color: var(--gray-900);
+  color: var(--color-text);
 }
 
 input:disabled,

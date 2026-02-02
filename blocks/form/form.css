@@ -1,9 +1,9 @@
 main .form {
-  background-color: var(--color-white);
+  background-color: var(--color-background);
   padding: var(--spacing-s);
-  border-radius: var(--card-border-radius-l);
-  filter: var(--image-filter-drop-shadow-small);
-  border: solid 1px var(--bg-color-grey);
+  border-radius: var(--rounding-l);
+  box-shadow: var(--shadow-default);
+  border: solid 1px light-dark(var(--gray-200), var(--gray-600));
 }
 
 main .form h2 {
@@ -19,12 +19,12 @@ main .form h3 {
 main .form input,
 main .form textarea,
 main .form select {
-  border: solid 1px var(--bg-color-grey);
+  border: solid 1px light-dark(var(--gray-300), var(--gray-600));
   padding: var(--spacing-xxs) var(--spacing-xs);
   width: 100%;
   max-width: 50rem;
   box-sizing: border-box;
-  border-radius: var(--input-border-radius);
+  border-radius: var(--rounding-m);
   font-size: var(--body-size-s);
   line-height: var(--line-height-m);
   font-family: var(--body-font-family);
@@ -49,7 +49,7 @@ main .form label {
 
 main .form label.required::after {
   content: "*";
-  color: var(--color-black);
+  color: var(--color-text);
   padding-left: var(--spacing-xxxs);
 }
 
