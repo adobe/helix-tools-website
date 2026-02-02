@@ -75,7 +75,7 @@
   border-top: var(--border-s) solid var(--color-border);
 }
 
-/* Console uses filled badges instead of dot indicators */
+/* Console uses filled badges with dot indicators */
 .console .status-light {
   display: inline-block;
   padding: 2px 8px;
@@ -83,8 +83,4 @@
   font-weight: 600;
   background-color: var(--status-bg);
   color: var(--status-color);
-}
-
-.console .status-light::before {
-  display: none;
 }
