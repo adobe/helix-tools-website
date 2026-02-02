@@ -41,7 +41,7 @@
   left: 0;
   right: 0;
   height: var(--border-m);
-  background-color: var(--gray-200);
+  background-color: var(--color-border);
 }
 
 .log-viewer .datetime-wrapper {
@@ -170,7 +170,7 @@
 
   width: 5em;
   height: 5em;
-  color: var(--gray-200);
+  color: var(--color-border);
 }
 
 /* expanded by source */
@@ -186,7 +186,7 @@
 }
 
 .log-viewer table[data-source-expand='true'] thead th:nth-child(n + 5)::before {
-  background-color: var(--gray-50);
+  background-color: var(--layer-elevated);
 }
 
 .log-viewer table[data-source-expand='true'] thead th:nth-child(n + 10)::before {
@@ -212,7 +212,7 @@
 }
 
 .log-viewer table[data-path-expand='true'] thead th:nth-child(n + 11)::before {
-  background-color: var(--gray-50);
+  background-color: var(--layer-elevated);
 }
 
 .log-viewer table[data-path-expand='true'] thead th:nth-child(n + 13)::before {
@@ -222,22 +222,6 @@
 .log-viewer table thead th:nth-child(n + 13),
 .log-viewer table tbody.results td:nth-child(n + 13) {
   display: table-cell !important;
-}
-
-.log-viewer table td .status-light::before {
-  color: var(--red-900);
-}
-
-.log-viewer table td .status-light.http1::before {
-  color: var(--blue-900);
-}
-
-.log-viewer table td .status-light.http2::before {
-  color: var(--green-900);
-}
-
-.log-viewer table td .status-light.http3::before {
-  color: var(--yellow-900);
 }
 
 .log-viewer #logs-source,
@@ -258,7 +242,7 @@
 
 .log-viewer .logs-expander:hover,
 .log-viewer .logs-expander:focus {
-  background-color: var(--gray-100);
+  background-color: var(--color-button-accent-bg);
   cursor: col-resize;
 }
 
@@ -268,7 +252,7 @@
 }
 
 .log-viewer .logs-expander[aria-expanded='true'] {
-  background-color: var(--gray-50);
+  background-color: var(--layer-elevated);
   right: -0.3em;
 }
 
@@ -320,7 +304,7 @@
   font-style: normal;
   border-radius: 50%;
   background-color: var(--red-900);
-  color: white;
+  color: var(--gray-25);
   text-align: center;
 }
 
@@ -341,7 +325,7 @@
 a.disabled,
 button.disabled {
   pointer-events: none;
-  border-color: var(--gray-100);
+  border-color: var(--color-button-disabled-bg);
   background-color: var(--color-background);
-  color: var(--gray-400);
+  color: var(--color-button-disabled-text);
 }
