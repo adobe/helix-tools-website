@@ -490,7 +490,7 @@ a.button {
   border-radius: 1.15em;
   padding: 0.4em 1.15em;
   background-color: var(--color-link);
-  color: var(--color-background);
+  color: var(--gray-25);
   font-size: inherit;
   font-weight: var(--weight-medium);
   text-align: center;
@@ -503,7 +503,6 @@ a.button {
 .button:focus {
   border-color: var(--color-link-hover);
   background-color: var(--color-link-hover);
-  color: var(--color-background);
   text-decoration: none;
 }
 
