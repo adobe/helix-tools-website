@@ -440,6 +440,23 @@ function navigateToPrevChange() {
 }
 
 /**
+ * Keyboard navigation for diff changes.
+ * @param {KeyboardEvent} e - Keyboard event
+ */
+function handleKeydown(e) {
+  // Only handle if diff panel is visible
+  if (DIFF_CONTENT.querySelector('.diff-panel')?.hasAttribute('data-total-changes')) {
+    if (e.key === 'ArrowDown' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      navigateToNextChange();
+    } else if (e.key === 'ArrowUp' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      navigateToPrevChange();
+    }
+  }
+}
+
+/**
  * Toggles between showing all content or only changes.
  * @param {boolean} showChangesOnly - Whether to show only changes
  */
@@ -475,20 +492,6 @@ function setupDiffToolbar() {
       toggleChangesOnlyView(e.target.checked);
     });
   }
-
-  // Keyboard navigation
-  const handleKeydown = (e) => {
-    // Only handle if diff panel is visible
-    if (DIFF_CONTENT.querySelector('.diff-panel')?.hasAttribute('data-total-changes')) {
-      if (e.key === 'ArrowDown' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        navigateToNextChange();
-      } else if (e.key === 'ArrowUp' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        navigateToPrevChange();
-      }
-    }
-  };
 
   // Remove previous listener if any and add new one
   document.removeEventListener('keydown', handleKeydown);
