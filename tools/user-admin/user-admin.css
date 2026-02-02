@@ -79,16 +79,16 @@
   font-family: var(--code-font-family);
   font-size: var(--detail-size-xs);
   padding: var(--spacing-50) var(--spacing-100);
-  background-color: var(--gray-200);
+  background-color: var(--color-button-accent-bg);
   border-radius: var(--rounding-s);
-  color: var(--gray-800);
+  color: var(--color-text);
 }
 
 #users .user-details {
   grid-area: details;
   margin-top: var(--spacing-m);
   padding-top: var(--spacing-m);
-  border-top: var(--border-s) solid var(--gray-300);
+  border-top: var(--border-s) solid var(--color-border);
 }
 
 .user-admin #add-user-wrapper {
@@ -102,7 +102,7 @@
 }
 
 .user-admin .roles-checkbox-group {
-  border: var(--border-s) solid var(--gray-300);
+  border: var(--border-s) solid var(--color-border);
   border-radius: var(--rounding-s);
   padding: var(--spacing-300);
   display: grid;
@@ -139,7 +139,7 @@
 }
 
 .user-admin .roles-checkbox-group label:hover {
-  background-color: var(--gray-100);
+  background-color: var(--color-button-accent-bg);
 }
 
 .user-admin .roles-checkbox-group input[type="checkbox"] {
@@ -151,5 +151,5 @@
 .user-admin .field-help-text {
   margin-top: var(--spacing-100);
   font-size: var(--body-size-s);
-  color: var(--gray-600);
+  color: var(--color-font-grey);
 }
