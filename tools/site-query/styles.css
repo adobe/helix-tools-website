@@ -77,7 +77,7 @@
 
 .site-query table tbody.error span.icon,
 .site-query table tbody.error p strong {
-  color: var(--red-900);
+  color: light-dark(var(--red-900), var(--red-400));
 }
 
 .site-query table a.edit-link {
@@ -85,7 +85,7 @@
 }
 
 .site-query table a.edit-link.disabled {
-  color: var(--red-900);
+  color: light-dark(var(--red-900), var(--red-400));
   font-weight: 500;
   text-decoration: none;
   cursor: default;
