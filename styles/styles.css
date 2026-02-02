@@ -321,6 +321,38 @@ i.symbol.symbol-loading::after {
   }
 }
 
+/* status-light base colors (inherited by dot indicators and badges) */
+.status-light {
+  --status-bg: light-dark(var(--red-100), var(--red-1200));
+  --status-color: light-dark(var(--red-900), var(--red-500));
+}
+
+.status-light.http1,
+.status-light.level-info {
+  --status-bg: light-dark(var(--blue-100), var(--blue-1200));
+  --status-color: light-dark(var(--blue-900), var(--blue-500));
+}
+
+.status-light.http2,
+.status-light.level-success {
+  --status-bg: light-dark(var(--green-100), var(--green-1200));
+  --status-color: light-dark(var(--green-900), var(--green-500));
+}
+
+.status-light.http3,
+.status-light.level-warning {
+  --status-bg: light-dark(var(--yellow-100), var(--yellow-1200));
+  --status-color: light-dark(var(--yellow-900), var(--yellow-500));
+}
+
+.status-light.http4,
+.status-light.http5,
+.status-light.level-error {
+  --status-bg: light-dark(var(--red-100), var(--red-1200));
+  --status-color: light-dark(var(--red-900), var(--red-500));
+}
+
+/* status-light dot indicator (::before pseudo-element) */
 .status-light::before {
   content: '';
   display: inline-block;
@@ -329,26 +361,7 @@ i.symbol.symbol-loading::after {
   margin-right: 0.9ch;
   border-radius: 50%;
   transform: translateY(-0.1em);
-  background-color: currentcolor;
-  color: light-dark(var(--red-900), var(--red-500));
-}
-
-/* status-light color variants for HTTP status codes */
-.status-light.http1::before {
-  color: light-dark(var(--blue-900), var(--blue-500));
-}
-
-.status-light.http2::before {
-  color: light-dark(var(--green-900), var(--green-500));
-}
-
-.status-light.http3::before {
-  color: light-dark(var(--yellow-900), var(--yellow-500));
-}
-
-.status-light.http4::before,
-.status-light.http5::before {
-  color: light-dark(var(--red-900), var(--red-500));
+  background-color: var(--status-color);
 }
 
 /* typography */
