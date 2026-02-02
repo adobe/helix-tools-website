@@ -24,17 +24,24 @@ const DIFF_RESULTS = document.querySelector('.diff-results');
 const DIFF_PAGE_LIST = document.querySelector('.diff-page-list');
 const DIFF_CONTENT = document.querySelector('.diff-content');
 const HIDE_DRAFTS = document.getElementById('hide-drafts');
+const DIFF_NAV = document.querySelector('.diff-nav');
 
 // State
 let currentOrg = '';
 let currentSite = '';
 let currentJob = '';
+let currentPath = '';
+let isEmbedMode = false;
+let isSinglePageMode = false;
 let previewHost = '';
 let liveHost = '';
 let pendingPages = [];
 
 // Cache for diff results - keyed by page path
 const diffCache = new Map();
+
+// Current change index for navigation
+let currentChangeIndex = -1;
 
 /**
  * Updates the display state of the diff container.
@@ -194,11 +201,39 @@ function markPageAsPending(pagePath) {
  * @param {string} previewPageUrl - Preview URL for the link
  * @param {string} livePageUrl - Live URL for the link
  * @param {string} bodyContent - HTML content for the panel body
+ * @param {Object} stats - Optional stats object with addedCount and removedCount
  * @returns {string} Complete panel HTML
  */
-function createDiffPanelHtml(path, previewPageUrl, livePageUrl, bodyContent) {
+function createDiffPanelHtml(path, previewPageUrl, livePageUrl, bodyContent, stats = null) {
+  const totalChanges = stats ? stats.addedCount + stats.removedCount : 0;
+  const hasChanges = totalChanges > 0;
+
+  const toolbarHtml = hasChanges ? `
+    <div class="diff-toolbar">
+      <div class="diff-toolbar-stats">
+        <span class="diff-stat diff-stat-added">+${stats.addedCount} addition${stats.addedCount !== 1 ? 's' : ''}</span>
+        <span class="diff-stat diff-stat-removed">−${stats.removedCount} removal${stats.removedCount !== 1 ? 's' : ''}</span>
+      </div>
+      <div class="diff-toolbar-nav">
+        <span class="diff-nav-position"><span class="diff-nav-current">0</span> / ${totalChanges}</span>
+        <button type="button" class="diff-nav-btn diff-nav-prev" aria-label="Previous change" title="Previous change (↑)">
+          <span class="icon icon-chevron-up">↑</span> Prev
+        </button>
+        <button type="button" class="diff-nav-btn diff-nav-next" aria-label="Next change" title="Next change (↓)">
+          Next <span class="icon icon-chevron-down">↓</span>
+        </button>
+      </div>
+      <div class="diff-toolbar-toggle">
+        <label class="diff-toggle-label">
+          <input type="checkbox" class="diff-toggle-changes-only">
+          <span>Show changes only</span>
+        </label>
+      </div>
+    </div>
+  ` : '';
+
   return `
-    <div class="diff-panel" data-path="${escapeHtml(path)}">
+    <div class="diff-panel" data-path="${escapeHtml(path)}" data-total-changes="${totalChanges}">
       <div class="diff-panel-header">
         <h3>${escapeHtml(path)}</h3>
         <div class="diff-panel-links">
@@ -206,6 +241,7 @@ function createDiffPanelHtml(path, previewPageUrl, livePageUrl, bodyContent) {
           <a href="${livePageUrl}" target="_blank">Live</a>
         </div>
       </div>
+      ${toolbarHtml}
       <div class="diff-panel-body">
         ${bodyContent}
       </div>
@@ -229,6 +265,7 @@ function getElementSignature(el) {
  * Compares elements at the section level and marks differences.
  * @param {Document} previewDom - Preview DOM
  * @param {Document} liveDom - Live DOM
+ * @returns {Object} Object with addedCount and removedCount
  */
 function annotateChanges(previewDom, liveDom) {
   const previewBody = previewDom.querySelector('body');
@@ -250,11 +287,15 @@ function annotateChanges(previewDom, liveDom) {
     previewSignatures.set(sig, el);
   });
 
+  let addedCount = 0;
+  let removedCount = 0;
+
   // Mark preview elements: added if not in live
   previewElements.forEach((el) => {
     const sig = getElementSignature(el);
     if (!liveSignatures.has(sig)) {
       el.classList.add('diff-added');
+      addedCount += 1;
     }
   });
 
@@ -263,8 +304,11 @@ function annotateChanges(previewDom, liveDom) {
     const sig = getElementSignature(el);
     if (!previewSignatures.has(sig)) {
       el.classList.add('diff-removed');
+      removedCount += 1;
     }
   });
+
+  return { addedCount, removedCount };
 }
 
 /**
@@ -272,7 +316,7 @@ function annotateChanges(previewDom, liveDom) {
  * Shows both rendered versions side by side with additions/deletions highlighted.
  * @param {string} liveContent - Live markdown content
  * @param {string} previewContent - Preview markdown content
- * @returns {Promise<Object>} Object with bodyHtml and noDiff flag
+ * @returns {Promise<Object>} Object with bodyHtml, noDiff flag, and change counts
  */
 async function computeDomDiff(liveContent, previewContent) {
   await loadConverter();
@@ -289,11 +333,13 @@ async function computeDomDiff(liveContent, previewContent) {
     return {
       bodyHtml: '<div class="diff-identical">No differences found in content.</div>',
       noDiff: true,
+      addedCount: 0,
+      removedCount: 0,
     };
   }
 
   // Annotate changes in both DOMs
-  annotateChanges(previewDom, liveDom);
+  const { addedCount, removedCount } = annotateChanges(previewDom, liveDom);
 
   // Get the annotated HTML
   const annotatedPreviewHtml = previewDom.querySelector('body').innerHTML;
@@ -321,7 +367,135 @@ async function computeDomDiff(liveContent, previewContent) {
     </div>
   `;
 
-  return { bodyHtml, noDiff: false };
+  return {
+    bodyHtml, noDiff: false, addedCount, removedCount,
+  };
+}
+
+/**
+ * Gets all change elements in the current diff view.
+ * @returns {NodeList} List of change elements
+ */
+function getChangeElements() {
+  return DIFF_CONTENT.querySelectorAll('.diff-added, .diff-removed');
+}
+
+/**
+ * Updates the navigation position display.
+ * @param {number} index - Current index (0-based)
+ * @param {number} total - Total number of changes
+ */
+function updateNavPosition(index, total) {
+  const currentSpan = DIFF_CONTENT.querySelector('.diff-nav-current');
+  if (currentSpan) {
+    currentSpan.textContent = total > 0 ? index + 1 : 0;
+  }
+}
+
+/**
+ * Scrolls to a specific change element and highlights it.
+ * @param {number} index - Index of the change to navigate to
+ */
+function navigateToChange(index) {
+  const changes = getChangeElements();
+  if (changes.length === 0) return;
+
+  // Remove highlight from previous change
+  changes.forEach((el) => el.classList.remove('diff-highlight'));
+
+  // Clamp index to valid range
+  const newIndex = Math.max(0, Math.min(index, changes.length - 1));
+  currentChangeIndex = newIndex;
+
+  // Highlight and scroll to the new change
+  const targetChange = changes[newIndex];
+  if (targetChange) {
+    targetChange.classList.add('diff-highlight');
+    targetChange.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  updateNavPosition(newIndex, changes.length);
+}
+
+/**
+ * Navigates to the next change.
+ */
+function navigateToNextChange() {
+  const changes = getChangeElements();
+  if (changes.length === 0) return;
+
+  const nextIndex = currentChangeIndex < changes.length - 1 ? currentChangeIndex + 1 : 0;
+  navigateToChange(nextIndex);
+}
+
+/**
+ * Navigates to the previous change.
+ */
+function navigateToPrevChange() {
+  const changes = getChangeElements();
+  if (changes.length === 0) return;
+
+  const prevIndex = currentChangeIndex > 0 ? currentChangeIndex - 1 : changes.length - 1;
+  navigateToChange(prevIndex);
+}
+
+/**
+ * Keyboard navigation for diff changes.
+ * @param {KeyboardEvent} e - Keyboard event
+ */
+function handleKeydown(e) {
+  // Only handle if diff panel is visible
+  if (DIFF_CONTENT.querySelector('.diff-panel')?.hasAttribute('data-total-changes')) {
+    if (e.key === 'ArrowDown' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      navigateToNextChange();
+    } else if (e.key === 'ArrowUp' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      navigateToPrevChange();
+    }
+  }
+}
+
+/**
+ * Toggles between showing all content or only changes.
+ * @param {boolean} showChangesOnly - Whether to show only changes
+ */
+function toggleChangesOnlyView(showChangesOnly) {
+  const panel = DIFF_CONTENT.querySelector('.diff-panel');
+  if (panel) {
+    panel.classList.toggle('changes-only', showChangesOnly);
+  }
+}
+
+/**
+ * Sets up event listeners for the diff toolbar.
+ */
+function setupDiffToolbar() {
+  // Reset current change index
+  currentChangeIndex = -1;
+
+  // Navigation buttons
+  const prevBtn = DIFF_CONTENT.querySelector('.diff-nav-prev');
+  const nextBtn = DIFF_CONTENT.querySelector('.diff-nav-next');
+
+  if (prevBtn) {
+    prevBtn.addEventListener('click', navigateToPrevChange);
+  }
+  if (nextBtn) {
+    nextBtn.addEventListener('click', navigateToNextChange);
+  }
+
+  // Toggle for changes-only view
+  const toggleCheckbox = DIFF_CONTENT.querySelector('.diff-toggle-changes-only');
+  if (toggleCheckbox) {
+    toggleCheckbox.addEventListener('change', (e) => {
+      toggleChangesOnlyView(e.target.checked);
+    });
+  }
+
+  // Remove previous listener if any and add new one
+  document.removeEventListener('keydown', handleKeydown);
+  document.addEventListener('keydown', handleKeydown);
 }
 
 /**
@@ -350,14 +524,25 @@ async function renderDiffView(page, cached) {
 
   // Render the diff
   let bodyHtml;
+  let stats = null;
   if (cached?.previewContent && cached?.liveContent) {
     const result = await computeDomDiff(cached.liveContent, cached.previewContent);
     bodyHtml = result.bodyHtml;
+    // Use cached stats if available (to avoid recomputation), or use result stats
+    stats = {
+      addedCount: cached.addedCount ?? result.addedCount ?? 0,
+      removedCount: cached.removedCount ?? result.removedCount ?? 0,
+    };
   } else {
     bodyHtml = '<div class="diff-identical">Content not loaded.</div>';
   }
 
-  DIFF_CONTENT.innerHTML = createDiffPanelHtml(path, previewPageUrl, livePageUrl, bodyHtml);
+  DIFF_CONTENT.innerHTML = createDiffPanelHtml(path, previewPageUrl, livePageUrl, bodyHtml, stats);
+
+  // Set up toolbar functionality if there are changes
+  if (stats && (stats.addedCount > 0 || stats.removedCount > 0)) {
+    setupDiffToolbar();
+  }
 }
 
 /**
@@ -423,13 +608,17 @@ async function loadPageDiff(page) {
     ]);
 
     // Compute DOM diff to check if there are differences
-    const { noDiff } = await computeDomDiff(liveContent, previewContent);
+    const {
+      noDiff, addedCount, removedCount,
+    } = await computeDomDiff(liveContent, previewContent);
 
     // Cache the content
     const cached = {
       previewContent,
       liveContent,
       noDiff,
+      addedCount,
+      removedCount,
     };
     diffCache.set(path, cached);
 
@@ -566,24 +755,81 @@ function renderPageList(autoSelectFirst = true) {
 }
 
 /**
+ * Applies embed mode styling by hiding unnecessary UI elements.
+ */
+function applyEmbedMode() {
+  document.body.classList.add('embed-mode');
+  // Hide header and footer
+  const header = document.querySelector('header');
+  const footer = document.querySelector('footer');
+  if (header) header.style.display = 'none';
+  if (footer) footer.style.display = 'none';
+  // Hide back button and intro text
+  const backButton = document.querySelector('a.button.outline');
+  if (backButton) backButton.style.display = 'none';
+  const introSection = document.querySelector('main > div:first-child');
+  if (introSection) introSection.style.display = 'none';
+}
+
+/**
+ * Applies single page mode styling by hiding the navigation sidebar.
+ */
+function applySinglePageMode() {
+  document.body.classList.add('single-page-mode');
+  // Hide the navigation and filters
+  if (DIFF_NAV) DIFF_NAV.style.display = 'none';
+  // Hide the info section in single page mode (path is shown in the panel header)
+  if (DIFF_INFO) DIFF_INFO.style.display = 'none';
+  // Adjust results grid to single column
+  if (DIFF_RESULTS) DIFF_RESULTS.style.gridTemplateColumns = '1fr';
+}
+
+/**
+ * Loads and displays the diff for a single page directly (without job).
+ * @param {string} path - The page path to diff
+ */
+async function loadSinglePageDiff(path) {
+  const page = { path };
+
+  // Ensure path starts with /
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  page.path = normalizedPath;
+
+  // Load the diff directly
+  await loadPageDiff(page);
+}
+
+/**
  * Main initialization function.
  */
 async function init() {
-  await initConfigField();
-
-  // Get org/site/job from URL params
+  // Get params from URL
   const params = new URLSearchParams(window.location.search);
   currentOrg = params.get('org');
   currentSite = params.get('site');
   currentJob = params.get('job');
+  currentPath = params.get('path');
+  isEmbedMode = params.get('embed') === 'true';
+  isSinglePageMode = !!currentPath && !currentJob;
+
+  // Apply embed mode if requested (do this early for visual consistency)
+  if (isEmbedMode) {
+    applyEmbedMode();
+  }
+
+  // Initialize config field only if not in embed mode
+  if (!isEmbedMode) {
+    await initConfigField();
+  }
 
   if (!currentOrg || !currentSite) {
-    showError('Missing org or site parameters. Please go back to Page Status and try again.');
+    showError('Missing org or site parameters. Use ?org=<org>&site=<site>&path=<path> or &job=<jobId>');
     return;
   }
 
-  if (!currentJob) {
-    showError('Missing job ID. Please run Page Status first, then click Diff Mode.');
+  // Must have either path (single page mode) or job (multi-page mode)
+  if (!currentPath && !currentJob) {
+    showError('Missing path or job parameter. Provide either path=<pagePath> or job=<jobId>');
     return;
   }
 
@@ -611,7 +857,15 @@ async function init() {
     previewHost = hosts.preview;
     liveHost = hosts.live;
 
-    // Fetch job details from existing job (reuse from page-status)
+    // Single page mode: directly load diff for the specified path
+    if (isSinglePageMode) {
+      applySinglePageMode();
+      updateDisplayState('results');
+      await loadSinglePageDiff(currentPath);
+      return;
+    }
+
+    // Multi-page mode: fetch job details and show page list
     const resources = await fetchJobDetails(currentOrg, currentSite, currentJob);
 
     // Filter to pending pages only
