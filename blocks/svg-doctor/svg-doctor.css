@@ -29,6 +29,7 @@
 }
 
 .svg-doctor form label {
+  color: black;
   transition: color .3s;
 }
 
@@ -128,7 +129,7 @@
 /* controls */
 .svg-doctor .form.specs {
   filter: none;
-  box-shadow: 0 0 20px var(--gray-300);
+  box-shadow: 0 0 20px light-dark(var(--gray-300), var(--gray-700));
   margin: var(--spacing-s) 0 var(--spacing-l);
   padding: var(--horizontal-spacing);
 }
@@ -163,7 +164,7 @@
   content: '';
   width: 1px;
   height: 100%;
-  background-color: var(--gray-400);
+  background-color: light-dark(var(--gray-400), var(--gray-600));
 }
 
 .svg-doctor .controls-buttons button {
@@ -179,7 +180,7 @@
 .svg-doctor .controls-buttons button[aria-checked="true"],
 .svg-doctor .controls-buttons button:hover,
 .svg-doctor .controls-buttons button:focus {
-  background-color: var(--gray-400);
+  background-color: light-dark(var(--gray-400), var(--gray-600));
 }
 
 .svg-doctor .controls-buttons button:hover::after {
@@ -190,10 +191,10 @@
   transform: translateX(-50%);
   width: max-content;
   padding: .2rem .5rem;
-  border: 1px solid var(--gray-200);
+  border: 1px solid var(--color-border);
   border-radius: var(--rounding-s);
-  background-color: #070707;
-  color: var(--gray-200);
+  background-color: light-dark(var(--gray-900), var(--gray-100));
+  color: light-dark(var(--gray-200), var(--gray-800));
   z-index: 1;
 }
 

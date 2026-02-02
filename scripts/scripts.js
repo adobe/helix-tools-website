@@ -37,6 +37,68 @@ export function createTag(tag, attributes, html) {
   return el;
 }
 
+/*
+ * Theme management functions
+ */
+const THEME_STORAGE_KEY = 'aem-theme-preference';
+const THEME_VALUES = ['system', 'light', 'dark'];
+
+/**
+ * Gets the stored theme preference from localStorage.
+ * @returns {string} The stored theme ('system', 'light', or 'dark')
+ */
+export function getStoredTheme() {
+  try {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored && THEME_VALUES.includes(stored)) {
+      return stored;
+    }
+  } catch (e) {
+    // localStorage not available
+  }
+  return 'system';
+}
+
+/**
+ * Stores the theme preference in localStorage.
+ * @param {string} theme - The theme to store ('system', 'light', or 'dark')
+ */
+export function storeTheme(theme) {
+  try {
+    if (theme === 'system') {
+      localStorage.removeItem(THEME_STORAGE_KEY);
+    } else {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    }
+  } catch (e) {
+    // localStorage not available
+  }
+}
+
+/**
+ * Resolves 'system' theme to actual 'light' or 'dark' based on user preference.
+ * @param {string} theme - The theme to resolve
+ * @returns {string} The resolved theme ('light' or 'dark')
+ */
+export function resolveTheme(theme) {
+  if (theme === 'system') {
+    const prefersDark = window.matchMedia
+      ? window.matchMedia('(prefers-color-scheme: dark)').matches
+      : false;
+    return prefersDark ? 'dark' : 'light';
+  }
+  return theme;
+}
+
+/**
+ * Applies the theme by setting the data-theme attribute on the document.
+ * @param {string} theme - The theme to apply ('system', 'light', or 'dark')
+ */
+export function applyTheme(theme) {
+  const resolved = resolveTheme(theme);
+  document.documentElement.setAttribute('data-theme', resolved);
+}
+
 /**
  * load fonts.css and set a session storage flag
  */
@@ -241,6 +303,7 @@ async function toolReady() {
  */
 async function loadEager(doc) {
   document.documentElement.lang = 'en';
+  applyTheme(getStoredTheme());
   decorateTemplateAndTheme();
   loadThemeStyles();
   const main = doc.querySelector('main');
