@@ -109,3 +109,35 @@
 .headers-edit .headers-non-standard-warning[aria-hidden='true'] {
   display: none;
 }
+
+.headers-edit .path-selector {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+}
+
+.headers-edit .path-selector .button.small {
+  padding: var(--spacing-xs) var(--spacing-s);
+  font-size: 0.75rem;
+  min-width: auto;
+}
+
+.headers-edit .path-selector[aria-hidden='true'] {
+  display: none;
+}
+
+.headers-edit .path-selector label {
+  font-weight: bold;
+  margin-bottom: 0;
+}
+
+.headers-edit .path-selector select {
+  padding: 0.4em 0.85em;
+  border: var(--border-m) solid var(--gray-300);
+  border-radius: var(--rounding-m);
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+  line-height: var(--line-height-l);
+  min-width: 200px;
+  flex: 1;
+}
