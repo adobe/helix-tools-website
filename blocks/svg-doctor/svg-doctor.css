@@ -29,6 +29,7 @@
 }
 
 .svg-doctor form label {
+  color: black;
   transition: color .3s;
 }
 
