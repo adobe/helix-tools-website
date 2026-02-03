@@ -136,12 +136,15 @@ function filterPendingPages(resources) {
 /**
  * Fetches content from a URL.
  * @param {string} url - URL to fetch
- * @returns {Promise<string>} Content
+ * @returns {Promise<{content: string|null, status: number}>} Content and status
  */
 async function fetchContent(url) {
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
-  return res.text();
+  if (!res.ok) {
+    return { content: null, status: res.status };
+  }
+  const content = await res.text();
+  return { content, status: res.status };
 }
 
 /**
@@ -522,6 +525,20 @@ async function renderDiffView(page, cached) {
     return;
   }
 
+  // Handle new pages (preview only, no live version)
+  if (cached?.isNewPage) {
+    const stats = { addedCount: cached.addedCount ?? 1, removedCount: 0 };
+    DIFF_CONTENT.innerHTML = createDiffPanelHtml(
+      path,
+      previewPageUrl,
+      livePageUrl,
+      cached.bodyHtml,
+      stats,
+    );
+    setupDiffToolbar();
+    return;
+  }
+
   // Render the diff
   let bodyHtml;
   let stats = null;
@@ -602,10 +619,66 @@ async function loadPageDiff(page) {
 
   try {
     // Fetch both versions from admin API
-    const [previewContent, liveContent] = await Promise.all([
+    const [previewResult, liveResult] = await Promise.all([
       fetchContent(previewUrl),
       fetchContent(liveUrl),
     ]);
+
+    // Check if preview content is available
+    if (!previewResult.content) {
+      throw new Error(`Preview content not available (status: ${previewResult.status})`);
+    }
+
+    const previewContent = previewResult.content;
+    const liveContent = liveResult.content;
+
+    // Handle case where live content is not available (new page, never published)
+    if (!liveContent) {
+      await loadConverter();
+      const previewDom = mdToDocDom(previewContent);
+      const previewBodyHtml = previewDom.querySelector('body').innerHTML;
+
+      const newPageHtml = `
+        <div class="diff-new-page">
+          <div class="diff-new-page-notice">
+            <span class="icon icon-info">ℹ</span>
+            <span>This page has not been published yet. The content below shows the preview version.</span>
+          </div>
+          <div class="diff-new-page-preview">
+            <div class="doc-diff-side-header">
+              <span class="doc-diff-side-label">Preview Version (New)</span>
+            </div>
+            <div class="doc-preview-content diff-added">
+              ${previewBodyHtml}
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Cache as new page
+      const cached = {
+        previewContent,
+        liveContent: null,
+        bodyHtml: newPageHtml,
+        noDiff: false,
+        isNewPage: true,
+        addedCount: 1,
+        removedCount: 0,
+      };
+      diffCache.set(path, cached);
+
+      const stats = { addedCount: 1, removedCount: 0 };
+      DIFF_CONTENT.innerHTML = createDiffPanelHtml(
+        path,
+        previewPageUrl,
+        livePageUrl,
+        newPageHtml,
+        stats,
+      );
+      setupDiffToolbar();
+      markPageAsPending(path);
+      return;
+    }
 
     // Compute DOM diff to check if there are differences
     const {
