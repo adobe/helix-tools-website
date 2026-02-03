@@ -118,6 +118,7 @@
         .button {
           min-width: 100px;
           margin: 0;
+          flex: 1;
         }
 
         .reindex-btn {
@@ -133,6 +134,27 @@
           &:active {
             background: var(--blue-900);
             border-color: var(--blue-900);
+          }
+        }
+
+        .remove-index-btn {
+          color: var(--red-700);
+          border-color: var(--red-700);
+
+          &:hover {
+            background: var(--red-700);
+            color: white;
+            border-color: var(--red-700);
+          }
+
+          &:active {
+            background: var(--red-800);
+            border-color: var(--red-800);
+          }
+
+          &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
           }
         }
       }
