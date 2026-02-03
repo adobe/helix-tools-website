@@ -8,6 +8,7 @@
 
 .cards > ul > li {
   border-radius: var(--rounding-l);
+  background-color: var(--layer-elevated);
   box-shadow: var(--shadow-default);
   cursor: pointer;
   transition: box-shadow 0.3s;

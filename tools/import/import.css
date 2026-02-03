@@ -30,7 +30,7 @@
 
 .import .form .field .field-group {
   width: 100%;
-  border: var(--border-m) solid var(--gray-300);
+  border: var(--border-m) solid var(--color-border);
   border-radius: var(--rounding-m);
   padding: 0.85em;
   color: var(--color-text);
@@ -76,7 +76,7 @@
 
 .import .form + div > div:has(#results) {
   margin-top: var(--spacing-m);
-  border-top: var(--border-m) solid var(--gray-300);
+  border-top: var(--border-m) solid var(--color-border);
 }
 
 .import .form .dragover {
@@ -114,18 +114,18 @@
 
 .import button.negative,
 .import button.negative:focus {
-  background-color: var(--gray-100);
-  color: var(--red-800);
-  border-color: var(--red-800);
+  background-color: light-dark(var(--gray-100), var(--gray-800));
+  color: light-dark(var(--red-800), var(--red-400));
+  border-color: light-dark(var(--red-800), var(--red-500));
 }
 
 .import button.negative:focus {
-  outline-color: var(--red-800);
+  outline-color: light-dark(var(--red-800), var(--red-500));
 }
 
 .import button.negative:hover {
-  background-color: var(--red-100);
-  color: var(--red-800);
+  background-color: light-dark(var(--red-100), var(--red-900));
+  color: light-dark(var(--red-800), var(--red-300));
 }
 
 #results table {
@@ -133,7 +133,7 @@
   min-width: 100%;
   grid-template-columns: auto minmax(150px, 1.67fr);
   border-collapse: separate;
-  border: var(--border-s) solid var(--gray-300);
+  border: var(--border-s) solid var(--color-border);
   border-radius: var(--rounding-m);
   border-spacing: 0;
   overflow: hidden;
@@ -154,15 +154,15 @@
 
 #results table td:first-child {
   font-weight: bold;
-  background-color: var(--gray-400);
+  background-color: light-dark(var(--gray-400), var(--gray-700));
 }
 
 #results table tr:nth-child(odd) td:last-child {
-  background-color: var(--gray-100);
+  background-color: light-dark(var(--gray-100), var(--gray-800));
 }
 
 #results table tr:nth-child(even) td:last-child {
-  background-color: var(--gray-25);
+  background-color: light-dark(var(--gray-25), var(--gray-900));
 }
 
 #results table + a.button {
@@ -174,7 +174,7 @@
   width: 1rem;
   height: 1rem;
   margin: 6px 0 0 1rem;
-  border: 3px solid rgb(0 0 0 / 30%);
+  border: 3px solid light-dark(rgb(0 0 0 / 30%), rgb(255 255 255 / 30%));
   border-radius: 50%;
   border-top-color: var(--cyan-700);
   animation: spin 1s ease-in-out infinite;

@@ -7,7 +7,10 @@
   aspect-ratio: 16 / 9;
   margin: 0 auto var(--spacing-s) auto;
   border-radius: var(--image-border-radius-l);
-  background: linear-gradient(135deg, var(--color-white), var(--color-accent-lightgreen-bg));
+  background: light-dark(
+    linear-gradient(135deg, var(--color-white), var(--color-accent-lightgreen-bg)),
+    linear-gradient(135deg, var(--gray-800), var(--gray-900))
+  );
 }
 
 .availability .tooltip-wrapper {
@@ -32,6 +35,8 @@
 
 .availability img,
 .availability svg {
+  --availability-shadow-opacity: light-dark(0.33, 0.6);
+
   display: block;
   max-width: 100%;
   height: auto;
@@ -39,7 +44,7 @@
   border-radius: var(--image-border-radius-xxl);
   background-color: var(--color-white);
   color: var(--bg-color-grey-2);
-  box-shadow: 0 4px 8px rgb(0 0 0 / 33%);
+  box-shadow: 0 4px 8px rgb(0 0 0 / var(--availability-shadow-opacity));
 }
 
 .availability svg circle {

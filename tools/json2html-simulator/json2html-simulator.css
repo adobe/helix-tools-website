@@ -1,4 +1,4 @@
-/* JSON2HTML Playground Styles */
+/* JSON2HTML Simulator Styles */
 
 /* Follows project design system - see styles/styles.css */
 
@@ -7,11 +7,11 @@
    ======================================== */
 
 /* Subtle background to signal "full workspace mode" */
-body.json2html-playground {
-  background: var(--gray-50);
+body.json2html-simulator {
+  background: light-dark(var(--gray-50), var(--gray-900));
 }
 
-body.json2html-playground main {
+body.json2html-simulator main {
   display: flex;
   flex-direction: column;
   height: calc(100vh - 60px);
@@ -24,45 +24,45 @@ body.json2html-playground main {
    HEADER SECTION
    ======================================== */
 
-body.json2html-playground main > .playground-header,
-body.json2html-playground main > .playground-header.section {
+body.json2html-simulator main > .simulator-header,
+body.json2html-simulator main > .simulator-header.section {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: var(--spacing-200);
-  border-bottom: var(--border-s) solid var(--gray-200);
+  border-bottom: var(--border-s) solid var(--color-border);
   flex-shrink: 0;
   margin: 0;
 }
 
-.playground-header .header-content {
+.simulator-header .header-content {
   display: flex;
   flex-direction: column;
 }
 
-.playground-header .header-content h1 {
+.simulator-header .header-content h1 {
   color: var(--color-text);
   font-family: var(--heading-font-family);
   font-weight: var(--weight-extrabold);
   line-height: var(--line-height-m);
 }
 
-.playground-header .header-content p {
+.simulator-header .header-content p {
   margin: var(--spacing-50) 0 0 0;
 }
 
-.playground-header .header-content p a {
+.simulator-header .header-content p a {
   color: var(--color-link);
   text-decoration: none;
   white-space: nowrap;
 }
 
-.playground-header .header-content p a:hover {
+.simulator-header .header-content p a:hover {
   text-decoration: underline;
 }
 
-.playground-header .header-actions {
+.simulator-header .header-actions {
   display: flex;
   gap: var(--spacing-100);
   flex-wrap: wrap;
@@ -70,7 +70,7 @@ body.json2html-playground main > .playground-header.section {
 }
 
 /* AEM wraps content in default-content-wrapper - make it flex row */
-.playground-header > .default-content-wrapper {
+.simulator-header > .default-content-wrapper {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
@@ -80,8 +80,8 @@ body.json2html-playground main > .playground-header.section {
 }
 
 /* Reset margins on AEM wrapper divs inside header */
-body.json2html-playground main .playground-header .header-content-wrapper,
-body.json2html-playground main .playground-header .header-actions-wrapper {
+body.json2html-simulator main .simulator-header .header-content-wrapper,
+body.json2html-simulator main .simulator-header .header-actions-wrapper {
   margin: 0;
 }
 
@@ -89,8 +89,8 @@ body.json2html-playground main .playground-header .header-actions-wrapper {
    CONTROL BAR
    ======================================== */
 
-body.json2html-playground main > .control-bar,
-body.json2html-playground main > .control-bar.section {
+body.json2html-simulator main > .control-bar,
+body.json2html-simulator main > .control-bar.section {
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -102,7 +102,7 @@ body.json2html-playground main > .control-bar.section {
 }
 
 /* AEM wraps content in default-content-wrapper */
-body.json2html-playground main .control-bar > .default-content-wrapper {
+body.json2html-simulator main .control-bar > .default-content-wrapper {
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -112,7 +112,7 @@ body.json2html-playground main .control-bar > .default-content-wrapper {
 }
 
 /* Reset AEM wrapper inside control bar */
-body.json2html-playground main .control-bar .control-options-wrapper {
+body.json2html-simulator main .control-bar .control-options-wrapper {
   margin: 0;
 }
 
@@ -127,7 +127,7 @@ body.json2html-playground main .control-bar .control-options-wrapper {
   align-items: center;
   gap: var(--spacing-100);
   font-size: var(--body-size-s);
-  color: var(--gray-700);
+  color: var(--color-font-grey);
   cursor: pointer;
 }
 
@@ -143,8 +143,8 @@ body.json2html-playground main .control-bar .control-options-wrapper {
 
 .options-panel {
   flex-shrink: 0;
-  background: var(--color-white);
-  border: var(--border-m) solid var(--gray-200);
+  background: var(--layer-elevated);
+  border: var(--border-m) solid var(--color-border);
   border-radius: var(--rounding-m);
   padding: var(--spacing-300) var(--spacing-400);
   animation: slide-down 0.2s ease;
@@ -173,7 +173,7 @@ span.options-header {
   gap: var(--spacing-200);
   margin-bottom: var(--spacing-300);
   padding-bottom: var(--spacing-200);
-  border-bottom: var(--border-s) solid var(--gray-200);
+  border-bottom: var(--border-s) solid var(--color-border);
 }
 
 .options-label {
@@ -184,7 +184,7 @@ span.options-header {
 
 .options-hint {
   font-size: var(--detail-size-m);
-  color: var(--gray-600);
+  color: var(--color-font-grey);
 }
 
 /* Use span to avoid AEM auto-block decoration */
@@ -215,7 +215,7 @@ span.options-grid {
 
 .option-desc {
   font-size: var(--body-size-s);
-  color: var(--gray-600);
+  color: var(--color-font-grey);
   line-height: var(--line-height-m);
   margin-bottom: var(--spacing-100);
 }
@@ -227,7 +227,7 @@ span.options-grid {
 }
 
 .option-group input[type="text"]::placeholder {
-  color: var(--gray-400);
+  color: var(--color-font-grey);
   font-style: italic;
 }
 
@@ -237,9 +237,9 @@ span.options-grid {
   align-items: flex-start;
   gap: var(--spacing-200);
   padding: var(--spacing-200);
-  background: var(--gray-50);
+  background: light-dark(var(--gray-50), var(--gray-800));
   border-radius: var(--rounding-m);
-  border: var(--border-s) solid var(--gray-100);
+  border: var(--border-s) solid var(--color-border);
 }
 
 .option-group.option-checkbox > label {
@@ -275,8 +275,8 @@ span.options-grid {
 /* Option hints - helpful inline tips */
 .option-hint {
   font-size: var(--body-size-xs);
-  color: var(--gray-600);
-  background: var(--gray-50);
+  color: var(--color-font-grey);
+  background: light-dark(var(--gray-50), var(--gray-800));
   padding: var(--spacing-100) var(--spacing-150);
   border-radius: var(--rounding-s);
   border-left: 3px solid var(--spectrum-blue);
@@ -288,7 +288,7 @@ span.options-grid {
 .option-hint code {
   font-family: var(--code-font-family);
   font-size: var(--body-size-xs);
-  background: white;
+  background: var(--layer-elevated);
   padding: 2px 6px;
   border-radius: var(--rounding-xs);
   color: var(--spectrum-blue);
@@ -332,7 +332,7 @@ span.options-grid {
   align-items: flex-start;
   gap: var(--spacing-200);
   padding: var(--spacing-300);
-  background: var(--yellow-100);
+  background: light-dark(var(--yellow-100), var(--yellow-900));
   border: var(--border-m) solid var(--yellow-600);
   border-radius: var(--rounding-m);
   box-shadow: var(--shadow-default);
@@ -355,37 +355,37 @@ span.options-grid {
   margin: 0 0 var(--spacing-100) 0;
   font-size: var(--body-size-l);
   font-weight: var(--weight-bold);
-  color: var(--gray-900);
+  color: light-dark(var(--gray-900), var(--yellow-200));
 }
 
 .validation-text {
   margin: 0 0 var(--spacing-200) 0;
   font-size: var(--body-size-m);
   line-height: var(--line-height-m);
-  color: var(--gray-800);
+  color: light-dark(var(--gray-800), var(--yellow-300));
 }
 
 .validation-suggestion {
   padding: var(--spacing-200);
-  background: var(--color-white);
+  background: var(--layer-elevated);
   border-left: 4px solid var(--yellow-600);
   border-radius: var(--rounding-s);
   font-size: var(--body-size-m);
   line-height: var(--line-height-m);
-  color: var(--gray-800);
+  color: light-dark(var(--gray-800), var(--gray-300));
 }
 
 .validation-suggestion strong {
   display: block;
   margin-bottom: var(--spacing-100);
   font-weight: var(--weight-bold);
-  color: var(--gray-900);
+  color: var(--color-text);
 }
 
 .validation-suggestion code {
   font-family: var(--code-font-family);
   font-size: var(--detail-size-m);
-  background: var(--gray-100);
+  background: light-dark(var(--gray-100), var(--gray-800));
   padding: 2px 6px;
   border-radius: var(--rounding-xs);
   color: var(--spectrum-blue);
@@ -394,7 +394,7 @@ span.options-grid {
 .validation-suggestion pre {
   margin: var(--spacing-100) 0;
   padding: var(--spacing-200);
-  background: var(--gray-100);
+  background: light-dark(var(--gray-100), var(--gray-800));
   border-radius: var(--rounding-s);
   overflow-x: auto;
 }
@@ -412,7 +412,7 @@ span.options-grid {
   border: none;
   border-radius: var(--rounding-s);
   background: transparent;
-  color: var(--gray-700);
+  color: light-dark(var(--gray-700), var(--yellow-300));
   font-size: 28px;
   line-height: 1;
   cursor: pointer;
@@ -420,8 +420,8 @@ span.options-grid {
 }
 
 .validation-close:hover {
-  background: var(--yellow-200);
-  color: var(--gray-900);
+  background: light-dark(var(--yellow-200), var(--yellow-800));
+  color: light-dark(var(--gray-900), var(--yellow-200));
 }
 
 .validation-close:focus {
@@ -440,7 +440,7 @@ span.options-grid {
   gap: 0;
   min-height: 400px;
   min-width: 0; /* Prevent content from affecting flex size */
-  background: var(--color-white);
+  background: var(--layer-elevated);
   border-radius: var(--rounding-m);
   box-shadow: var(--shadow-default);
   overflow: hidden;
@@ -458,7 +458,7 @@ span.options-grid {
 }
 
 /* AEM wraps non-div elements in default-content-wrapper - make it flex */
-body.json2html-playground main .workspace > .default-content-wrapper {
+body.json2html-simulator main .workspace > .default-content-wrapper {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
@@ -529,8 +529,8 @@ body.json2html-playground main .workspace > .default-content-wrapper {
   justify-content: space-between;
   align-items: center;
   padding: var(--spacing-200) var(--spacing-300);
-  background: var(--gray-50);
-  border-bottom: var(--border-s) solid var(--gray-200);
+  background: light-dark(var(--gray-50), var(--gray-800));
+  border-bottom: var(--border-s) solid var(--color-border);
   height: 52px; /* Ensure consistent height with or without buttons */
   box-sizing: border-box;
 }
@@ -538,7 +538,7 @@ body.json2html-playground main .workspace > .default-content-wrapper {
 .editor-label {
   font-size: var(--detail-size-m);
   font-weight: var(--weight-medium);
-  color: var(--gray-700);
+  color: var(--color-font-grey);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -596,14 +596,14 @@ body.json2html-playground main .workspace > .default-content-wrapper {
 }
 
 .code-editor::placeholder {
-  color: var(--gray-500);
-  -webkit-text-fill-color: var(--gray-500);
+  color: var(--color-font-grey);
+  -webkit-text-fill-color: var(--color-font-grey);
 }
 
 /* Highlight overlay - visible code, behind textarea */
 .code-highlight {
   z-index: 0;
-  background: var(--gray-100);
+  background: light-dark(var(--gray-100), var(--gray-800));
   color: var(--color-text);
   pointer-events: none;
   overflow: auto;
@@ -636,8 +636,8 @@ body.json2html-playground main .workspace > .default-content-wrapper {
   align-items: center;
   gap: var(--spacing-100);
   padding: var(--spacing-100) var(--spacing-300);
-  background: var(--gray-50);
-  border-top: var(--border-s) solid var(--gray-200);
+  background: light-dark(var(--gray-50), var(--gray-800));
+  border-top: var(--border-s) solid var(--color-border);
   font-size: var(--detail-size-m);
   min-width: 0; /* Allow flex item to shrink below content width */
   overflow: hidden;
@@ -645,23 +645,23 @@ body.json2html-playground main .workspace > .default-content-wrapper {
 
 /* Error state styling for better visibility */
 .editor-status:has(.status-error) {
-  background: var(--red-100);
-  border-top-color: var(--red-300);
+  background: light-dark(var(--red-100), var(--red-900));
+  border-top-color: light-dark(var(--red-300), var(--red-700));
 }
 
 .editor-status:has(.status-error) .status-text {
-  color: var(--red-900);
+  color: light-dark(var(--red-900), var(--red-300));
   font-weight: var(--weight-medium);
 }
 
 /* Warning state styling */
 .editor-status:has(.status-warning) {
-  background: var(--yellow-100);
-  border-top-color: var(--yellow-300);
+  background: light-dark(var(--yellow-100), var(--yellow-900));
+  border-top-color: light-dark(var(--yellow-300), var(--yellow-700));
 }
 
 .editor-status:has(.status-warning) .status-text {
-  color: var(--yellow-900);
+  color: light-dark(var(--yellow-900), var(--yellow-300));
   font-weight: var(--weight-medium);
 }
 
@@ -670,20 +670,20 @@ body.json2html-playground main .workspace > .default-content-wrapper {
 }
 
 .status-icon.status-ok {
-  color: var(--green-900);
+  color: light-dark(var(--green-900), var(--green-400));
 }
 
 .status-icon.status-error {
-  color: var(--red-900);
+  color: light-dark(var(--red-900), var(--red-400));
 }
 
 .status-icon.status-warning {
-  color: var(--yellow-900);
+  color: light-dark(var(--yellow-900), var(--yellow-400));
 }
 
 /* stylelint-disable-next-line no-descending-specificity */
 .status-text {
-  color: var(--gray-600);
+  color: var(--color-font-grey);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -695,7 +695,7 @@ body.json2html-playground main .workspace > .default-content-wrapper {
    ======================================== */
 
 .resizer {
-  background: var(--gray-100);
+  background: light-dark(var(--gray-100), var(--gray-800));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -704,34 +704,34 @@ body.json2html-playground main .workspace > .default-content-wrapper {
 }
 
 /* Vertical resizer (between JSON and Template) */
-body.json2html-playground main .resizer-vertical {
+body.json2html-simulator main .resizer-vertical {
   flex: 0 0 4px;
   width: 4px;
   min-width: 4px;
   max-width: 4px;
   height: 100%;
   cursor: col-resize;
-  background: var(--gray-200);
+  background: var(--color-border);
 }
 
 /* Horizontal resizer (between editors and preview) */
-body.json2html-playground main .resizer-horizontal {
+body.json2html-simulator main .resizer-horizontal {
   flex: 0 0 4px;
   width: 100%;
   height: 4px;
   min-height: 4px;
   max-height: 4px;
   cursor: row-resize;
-  background: var(--gray-200);
+  background: var(--color-border);
 }
 
 .resizer:hover {
-  background: var(--gray-300);
+  background: light-dark(var(--gray-300), var(--gray-600));
 }
 
 .resizer-handle {
   display: block;
-  background: var(--gray-400);
+  background: light-dark(var(--gray-400), var(--gray-500));
   border-radius: var(--rounding-s);
 }
 
@@ -761,7 +761,7 @@ body.json2html-playground main .resizer-horizontal {
   min-height: 150px;
   min-width: 0; /* Prevent content from affecting flex size */
   overflow: hidden;
-  border-top: var(--border-s) solid var(--gray-200);
+  border-top: var(--border-s) solid var(--color-border);
 }
 
 /* AEM treats preview-panel as a block - override its styling */
@@ -780,15 +780,15 @@ body.json2html-playground main .resizer-horizontal {
   justify-content: space-between;
   align-items: center;
   padding: var(--spacing-200) var(--spacing-300);
-  background: var(--gray-50);
-  border-bottom: var(--border-s) solid var(--gray-200);
+  background: light-dark(var(--gray-50), var(--gray-800));
+  border-bottom: var(--border-s) solid var(--color-border);
   gap: var(--spacing-200);
 }
 
 .preview-label {
   font-size: var(--detail-size-m);
   font-weight: var(--weight-medium);
-  color: var(--gray-700);
+  color: var(--color-font-grey);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -796,7 +796,7 @@ body.json2html-playground main .resizer-horizontal {
 .preview-tabs {
   display: flex;
   gap: var(--spacing-50);
-  background: var(--gray-200);
+  background: light-dark(var(--gray-200), var(--gray-700));
   border-radius: var(--rounding-s);
   padding: var(--spacing-50);
 }
@@ -808,7 +808,7 @@ body.json2html-playground main .resizer-horizontal {
   background: transparent;
   border: none;
   border-radius: var(--rounding-s);
-  color: var(--gray-600);
+  color: var(--color-font-grey);
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -818,7 +818,7 @@ body.json2html-playground main .resizer-horizontal {
 }
 
 .preview-tab.active {
-  background: var(--color-white);
+  background: var(--layer-elevated);
   color: var(--color-text);
   box-shadow: 0 1px 2px var(--transparent-black-100);
 }
@@ -833,7 +833,7 @@ body.json2html-playground main .resizer-horizontal {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--color-white);
+  background: var(--layer-elevated);
   min-height: 0;
   min-width: 0; /* Prevent content from affecting flex size */
   position: relative;
@@ -877,7 +877,7 @@ body.json2html-playground main .resizer-horizontal {
   width: 100%;
   height: 100%;
   border: none;
-  background: var(--color-white);
+  background: var(--layer-elevated);
 }
 
 .source-code {
@@ -889,7 +889,7 @@ body.json2html-playground main .resizer-horizontal {
   font-family: var(--code-font-family);
   font-size: var(--detail-size-m);
   line-height: var(--line-height-l);
-  background: var(--gray-100);
+  background: light-dark(var(--gray-100), var(--gray-800));
   color: var(--color-text);
   white-space: pre-wrap;
   overflow-wrap: break-word;
@@ -898,21 +898,21 @@ body.json2html-playground main .resizer-horizontal {
 
 /* Override scrollbar styling to match source-code background */
 .source-code::-webkit-scrollbar {
-  background: var(--gray-100); /* Set scrollbar container background */
+  background: light-dark(var(--gray-100), var(--gray-800)); /* Set scrollbar container background */
 }
 
 .source-code::-webkit-scrollbar-track {
-  background: var(--gray-100);
+  background: light-dark(var(--gray-100), var(--gray-800));
 }
 
 .source-code::-webkit-scrollbar-thumb {
-  background-color: var(--gray-500);
-  border: 8px solid var(--gray-100); /* Match source-code background instead of layer-depth */
+  background-color: light-dark(var(--gray-500), var(--gray-500));
+  border: 8px solid light-dark(var(--gray-100), var(--gray-800)); /* Match source-code background instead of layer-depth */
   border-radius: 12px;
 }
 
 .source-code::-webkit-scrollbar-thumb:hover {
-  background-color: var(--gray-600);
+  background-color: light-dark(var(--gray-600), var(--gray-400));
 }
 
 .source-code code.language-html {
@@ -928,31 +928,31 @@ body.json2html-playground main .resizer-horizontal {
   align-items: center;
   gap: var(--spacing-300);
   padding: var(--spacing-100) var(--spacing-300);
-  background: var(--gray-50);
-  border-top: var(--border-s) solid var(--gray-200);
+  background: light-dark(var(--gray-50), var(--gray-800));
+  border-top: var(--border-s) solid var(--color-border);
   font-size: var(--detail-size-m);
 }
 
 /* stylelint-disable-next-line no-descending-specificity */
 .preview-status .status-text {
-  color: var(--gray-500);
+  color: var(--color-font-grey);
 }
 
 .preview-status .status-hint {
-  color: var(--gray-500);
+  color: var(--color-font-grey);
   font-size: var(--detail-size-s);
 }
 
 .preview-status kbd {
   display: inline-block;
   padding: var(--spacing-25) var(--spacing-75);
-  background: var(--gray-200);
-  border: var(--border-s) solid var(--gray-300);
+  background: light-dark(var(--gray-200), var(--gray-700));
+  border: var(--border-s) solid var(--color-border);
   border-radius: var(--rounding-s);
   font-family: var(--code-font-family);
   font-size: var(--detail-size-s);
-  color: var(--gray-700);
-  box-shadow: 0 1px 0 var(--gray-300);
+  color: var(--color-font-grey);
+  box-shadow: 0 1px 0 var(--color-border);
 }
 
 /* ========================================
@@ -966,7 +966,7 @@ body.json2html-playground main .resizer-horizontal {
   max-width: 90vw;
   max-height: 85vh;
   box-shadow: var(--shadow-dragged);
-  background: var(--color-white);
+  background: var(--layer-elevated);
 }
 
 .modal::backdrop {
@@ -984,7 +984,7 @@ body.json2html-playground main .resizer-horizontal {
   justify-content: space-between;
   align-items: center;
   padding: var(--spacing-300) var(--spacing-400);
-  border-bottom: var(--border-s) solid var(--gray-200);
+  border-bottom: var(--border-s) solid var(--color-border);
 }
 
 .modal-header h2 {
@@ -1003,13 +1003,13 @@ body.json2html-playground main .resizer-horizontal {
   background: transparent;
   border: none;
   border-radius: var(--rounding-s);
-  color: var(--gray-600);
+  color: var(--color-font-grey);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .modal-close:hover {
-  background: var(--gray-200);
+  background: light-dark(var(--gray-200), var(--gray-700));
   color: var(--color-text);
 }
 
@@ -1034,8 +1034,8 @@ body.json2html-playground main .resizer-horizontal {
   flex-direction: column;
   align-items: flex-start;
   padding: var(--spacing-300);
-  background: var(--gray-50);
-  border: var(--border-s) solid var(--gray-200);
+  background: light-dark(var(--gray-50), var(--gray-800));
+  border: var(--border-s) solid var(--color-border);
   border-radius: var(--rounding-m);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -1043,7 +1043,7 @@ body.json2html-playground main .resizer-horizontal {
 }
 
 .example-card:hover {
-  background: var(--gray-100);
+  background: light-dark(var(--gray-100), var(--gray-700));
   border-color: var(--spectrum-blue);
   box-shadow: var(--shadow-hover);
 }
@@ -1058,7 +1058,7 @@ body.json2html-playground main .resizer-horizontal {
 /* stylelint-disable-next-line no-descending-specificity */
 .example-card p {
   font-size: var(--body-size-s);
-  color: var(--gray-600);
+  color: var(--color-font-grey);
   margin: 0;
 }
 
@@ -1075,7 +1075,7 @@ body.json2html-playground main .resizer-horizontal {
 
 .syntax-item {
   padding: var(--spacing-300);
-  background: var(--gray-50);
+  background: light-dark(var(--gray-50), var(--gray-800));
   border-radius: var(--rounding-m);
   border-left: var(--border-l) solid var(--spectrum-blue);
 }
@@ -1091,7 +1091,7 @@ body.json2html-playground main .resizer-horizontal {
 .syntax-item code {
   display: inline-block;
   padding: var(--spacing-75) var(--spacing-200);
-  background: var(--gray-800);
+  background: light-dark(var(--gray-800), var(--gray-900));
   color: var(--green-600);
   font-family: var(--code-font-family);
   font-size: var(--detail-size-m);
@@ -1102,14 +1102,14 @@ body.json2html-playground main .resizer-horizontal {
 /* stylelint-disable-next-line no-descending-specificity */
 .syntax-item p {
   font-size: var(--body-size-s);
-  color: var(--gray-600);
+  color: var(--color-font-grey);
   margin: 0;
 }
 
 .help-links {
   margin-top: var(--spacing-400);
   padding-top: var(--spacing-300);
-  border-top: var(--border-s) solid var(--gray-200);
+  border-top: var(--border-s) solid var(--color-border);
 }
 
 /* stylelint-disable-next-line no-descending-specificity */
@@ -1132,7 +1132,7 @@ body.json2html-playground main .resizer-horizontal {
    BUTTON OVERRIDES
    ======================================== */
 
-.json2html-playground .button.small {
+.json2html-simulator .button.small {
   padding: var(--spacing-75) var(--spacing-200);
   font-size: var(--detail-size-l);
 }
@@ -1150,7 +1150,7 @@ body.json2html-playground main .resizer-horizontal {
 
 /* Large Screens - maximize workspace */
 @media (width >= 1200px) {
-  body.json2html-playground main {
+  body.json2html-simulator main {
     padding: calc(var(--header-height) + var(--spacing-300)) var(--spacing-100) var(--spacing-300) var(--spacing-100);
   }
 }
@@ -1158,33 +1158,33 @@ body.json2html-playground main .resizer-horizontal {
 /* Extra Large Screens - wider layout for coding workspace */
 @media (width >= 1264px) {
   /* Main content area */
-  body.json2html-playground main {
+  body.json2html-simulator main {
     max-width: 1600px; /* +400px more than design system default (1200px) */
   }
   
   /* Header nav alignment - needs higher specificity to override nested header CSS */
-  body.json2html-playground header.header-wrapper .header .header-nav {
+  body.json2html-simulator header.header-wrapper .header .header-nav {
     max-width: 1600px;
   }
   
   /* Footer content alignment */
-  body.json2html-playground footer section {
+  body.json2html-simulator footer section {
     max-width: 1600px;
   }
 }
 
 /* Ultra-Wide Screens - maximize coding space while preventing panels from being too wide */
 @media (width >= 1920px) {
-  body.json2html-playground main {
+  body.json2html-simulator main {
     max-width: 1800px;
     padding: calc(var(--header-height) + var(--spacing-300)) var(--spacing-50) var(--spacing-300) var(--spacing-50);
   }
   
-  body.json2html-playground header.header-wrapper .header .header-nav {
+  body.json2html-simulator header.header-wrapper .header .header-nav {
     max-width: 1800px;
   }
   
-  body.json2html-playground footer section {
+  body.json2html-simulator footer section {
     max-width: 1800px;
   }
 }
@@ -1203,7 +1203,7 @@ body.json2html-playground main .resizer-horizontal {
   .editor-panel {
     max-width: 100%;
     border-right: none;
-    border-bottom: var(--border-s) solid var(--gray-200);
+    border-bottom: var(--border-s) solid var(--color-border);
     min-height: 300px;
   }
 
@@ -1222,7 +1222,7 @@ body.json2html-playground main .resizer-horizontal {
     min-height: 300px;
   }
 
-  .playground-header {
+  .simulator-header {
     flex-direction: column;
     align-items: flex-start;
   }
@@ -1250,15 +1250,15 @@ body.json2html-playground main .resizer-horizontal {
     font-size: 24px;
   }
 
-  .json2html-playground main {
+  .json2html-simulator main {
     padding: var(--spacing-200);
   }
 
-  .playground-header .header-actions {
+  .simulator-header .header-actions {
     width: 100%;
   }
 
-  .playground-header .header-actions .button {
+  .simulator-header .header-actions .button {
     flex: 1;
     justify-content: center;
   }
@@ -1307,93 +1307,93 @@ body.json2html-playground main .resizer-horizontal {
    ======================================== */
 
 /* AEM wraps elements in wrapper divs - handle the editors-row wrapper */
-.json2html-playground .editors-row-wrapper {
+.json2html-simulator .editors-row-wrapper {
   display: flex;
   flex: 1 1 60%;
   min-height: 200px;
   min-width: 0; /* Prevent content from affecting flex size */
 }
 
-.json2html-playground .editors-row-wrapper > .editors-row {
+.json2html-simulator .editors-row-wrapper > .editors-row {
   display: flex;
   flex: 1;
   width: 100%;
 }
 
 /* Handle editor panel wrappers inside editors-row - use 50% for equal sizing */
-.json2html-playground .editors-row > div {
+.json2html-simulator .editors-row > div {
   display: flex;
   flex: 1 1 50%;
   min-width: 0; /* Prevent content from affecting flex size */
 }
 
-.json2html-playground .json-panel-wrapper,
-.json2html-playground .template-panel-wrapper {
+.json2html-simulator .json-panel-wrapper,
+.json2html-simulator .template-panel-wrapper {
   display: flex;
   flex: 1 1 50%;
   min-width: 0;
 }
 
-.json2html-playground .json-panel-wrapper > .json-panel,
-.json2html-playground .template-panel-wrapper > .template-panel {
+.json2html-simulator .json-panel-wrapper > .json-panel,
+.json2html-simulator .template-panel-wrapper > .template-panel {
   flex: 1;
   width: 100%;
 }
 
 /* Handle preview panel wrapper */
-.json2html-playground .preview-panel-wrapper {
+.json2html-simulator .preview-panel-wrapper {
   display: flex;
   flex: 1 1 40%;
   min-height: 150px;
 }
 
-.json2html-playground .preview-panel-wrapper > .preview-panel {
+.json2html-simulator .preview-panel-wrapper > .preview-panel {
   flex: 1;
   width: 100%;
 }
 
 /* Resizer wrappers should not flex-grow */
-.json2html-playground .resizer-wrapper,
-.json2html-playground .resizer-vertical-wrapper,
-.json2html-playground .resizer-horizontal-wrapper {
+.json2html-simulator .resizer-wrapper,
+.json2html-simulator .resizer-vertical-wrapper,
+.json2html-simulator .resizer-horizontal-wrapper {
   flex: 0 0 auto;
   margin: 0;
 }
 
 /* AEM injects <p> tags inside divs - reset their styles */
-.json2html-playground .editor-header > p,
-.json2html-playground .editor-wrapper > p,
-.json2html-playground .editor-status > p,
-.json2html-playground .preview-header > p,
-.json2html-playground .preview-content > p,
-.json2html-playground .preview-status > p,
-.json2html-playground .preview-tabs > p,
-.json2html-playground .preview-actions > p {
+.json2html-simulator .editor-header > p,
+.json2html-simulator .editor-wrapper > p,
+.json2html-simulator .editor-status > p,
+.json2html-simulator .preview-header > p,
+.json2html-simulator .preview-content > p,
+.json2html-simulator .preview-status > p,
+.json2html-simulator .preview-tabs > p,
+.json2html-simulator .preview-actions > p {
   display: contents;
   margin: 0;
   padding: 0;
 }
 
 /* Ensure editor-header layout still works */
-.json2html-playground .editor-header {
+.json2html-simulator .editor-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 /* Ensure editor-wrapper fills space */
-.json2html-playground .editor-wrapper {
+.json2html-simulator .editor-wrapper {
   display: flex;
   flex: 1;
 }
 
-.json2html-playground .editor-wrapper > p {
+.json2html-simulator .editor-wrapper > p {
   display: flex;
   flex: 1;
 }
 
 /* Ensure preview-content fills space */
-.json2html-playground .preview-content > p {
+.json2html-simulator .preview-content > p {
   display: block;
   position: absolute;
   inset: 0;
@@ -1444,7 +1444,7 @@ body.json2html-playground main .resizer-horizontal {
    ======================================== */
 
 /* Utility class with high specificity to override any display property */
-body.json2html-playground .hidden {
+body.json2html-simulator .hidden {
   display: none;
 }
 
