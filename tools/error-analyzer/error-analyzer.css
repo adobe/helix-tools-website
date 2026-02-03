@@ -83,7 +83,7 @@
   .error-graph-container {
     margin-top: 0;
     margin-inline: var(--spacing-m);
-    border: var(--border-s) solid var(--gray-300);
+    border: var(--border-s) solid var(--color-border);
     border-radius: var(--rounding-l);
     background-color: var(--color-background);
     padding: var(--spacing-m) 0;
@@ -123,7 +123,7 @@
   .error-list-container {
     margin-top: var(--spacing-xl);
     margin-inline: var(--spacing-m);
-    border: var(--border-s) solid var(--gray-300);
+    border: var(--border-s) solid var(--color-border);
     border-radius: var(--rounding-l);
     background-color: var(--color-background);
     position: relative;
@@ -147,7 +147,7 @@
       .spinner {
         width: 48px;
         height: 48px;
-        border: 4px solid var(--gray-300);
+        border: 4px solid var(--color-border);
         border-top-color: var(--color-link);
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
@@ -156,7 +156,7 @@
       .loading-text {
         font-size: var(--body-size-m);
         font-weight: var(--weight-medium);
-        color: var(--gray-700);
+        color: var(--color-font-grey);
       }
     }
 
@@ -177,13 +177,13 @@
     grid-template-columns: 1fr 1fr 1fr;
       gap: var(--spacing-s);
       padding: var(--spacing-s) var(--spacing-s);
-      background-color: var(--gray-100);
-      border-bottom: var(--border-m) solid var(--gray-300);
+      background-color: light-dark(var(--gray-100), var(--gray-800));
+      border-bottom: var(--border-m) solid var(--color-border);
       font-weight: var(--weight-bold);
       font-size: var(--body-size-xs);
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      color: var(--gray-700);
+      color: var(--color-font-grey);
       border-radius: var(--rounding-l) var(--rounding-l) 0 0;
       align-items: center;
 
@@ -217,7 +217,7 @@
         width: 28px;
         height: 28px;
         padding: 0;
-        border: var(--border-s) solid var(--gray-300);
+        border: var(--border-s) solid var(--color-border);
         border-radius: var(--rounding-m);
         background-color: var(--color-background);
         cursor: pointer;
@@ -229,8 +229,8 @@
         }
 
         &:hover {
-          background-color: var(--gray-200);
-          border-color: var(--gray-400);
+          background-color: light-dark(var(--gray-200), var(--gray-700));
+          border-color: light-dark(var(--gray-400), var(--gray-500));
         }
 
         &.has-filters {
@@ -253,14 +253,14 @@
     .filter-panel {
       max-height: 0;
       overflow: hidden;
-      background-color: var(--gray-100);
+      background-color: light-dark(var(--gray-100), var(--gray-800));
       border-bottom: none;
       transition: max-height 0.3s ease, padding 0.3s ease, border-bottom 0.3s ease;
 
       &.open {
         max-height: 400px;
         padding: var(--spacing-m);
-        border-bottom: var(--border-s) solid var(--gray-300);
+        border-bottom: var(--border-s) solid var(--color-border);
       }
 
       .filter-panel-content {
@@ -283,7 +283,7 @@
           font-weight: var(--weight-medium);
           text-transform: uppercase;
           letter-spacing: 0.05em;
-          color: var(--gray-700);
+          color: var(--color-font-grey);
           margin-bottom: var(--spacing-xs);
         }
 
@@ -340,7 +340,7 @@
         grid-template-columns: 1fr 1fr 1fr;
         gap: var(--spacing-s);
         padding: var(--spacing-s) var(--spacing-s);
-        border-bottom: var(--border-s) solid var(--gray-200);
+        border-bottom: var(--border-s) solid var(--color-border);
         align-items: stretch;
 
         @media (width >= 900px) {
@@ -371,9 +371,9 @@
           a {
             padding: var(--spacing-xs);
             border-radius: var(--rounding-m);
-            background-color: rgb(255 255 255 / 90%);
-            color: var(--gray-800);
-            border: var(--border-s) solid var(--gray-300);
+            background-color: light-dark(rgb(255 255 255 / 90%), var(--gray-800));
+            color: var(--color-text);
+            border: var(--border-s) solid var(--color-border);
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -401,11 +401,11 @@
             }
 
             &:hover:not(:disabled) {
-              background-color: var(--gray-100);
-              border-color: var(--gray-400);
+              background-color: light-dark(var(--gray-100), var(--gray-700));
+              border-color: light-dark(var(--gray-400), var(--gray-500));
               box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
               transform: translateY(-1px);
-              color: var(--gray-900);
+              color: var(--color-text);
             }
 
             &:active:not(:disabled) {
@@ -414,9 +414,9 @@
             }
 
             &.copied {
-              background-color: var(--green-100);
+              background-color: light-dark(var(--green-100), var(--green-900));
               border-color: var(--green-500);
-              color: var(--green-900);
+              color: light-dark(var(--green-900), var(--green-400));
             }
           }
         }
@@ -467,7 +467,7 @@
         .error-urls,
         .error-last-seen {
           font-size: var(--body-size-s);
-          color: var(--gray-700);
+          color: var(--color-font-grey);
           display: none;
 
           @media (width >= 900px) {
@@ -493,32 +493,32 @@
               gap: var(--spacing-xs);
               position: relative;
 
-              .url-row {
-                display: flex;
-                align-items: baseline;
-                flex: 1;
-                min-width: 0;
-                gap: 1ch;
+                .url-row {
+                  display: flex;
+                  align-items: baseline;
+                  flex: 1;
+                  min-width: 0;
+                  gap: 1ch;
 
-                .url-text {
-                  color: var(--gray-900);
-                  word-break: break-all;
-                  outline: 2px solid transparent;
-                  transition: outline-color 0.2s ease;
+                  .url-text {
+                    color: var(--color-text);
+                    word-break: break-all;
+                    outline: 2px solid transparent;
+                    transition: outline-color 0.2s ease;
 
-                  &:focus {
-                    outline-color: var(--blue-600);
-                    outline-offset: 2px;
-                    border-radius: var(--rounding-s);
+                    &:focus {
+                      outline-color: var(--blue-600);
+                      outline-offset: 2px;
+                      border-radius: var(--rounding-s);
+                    }
+                  }
+
+                  .url-count {
+                    color: var(--color-font-grey);
+                    font-size: var(--body-size-xs);
+                    white-space: nowrap;
                   }
                 }
-
-                .url-count {
-                  color: var(--gray-600);
-                  font-size: var(--body-size-xs);
-                  white-space: nowrap;
-                }
-              }
 
               &:hover,
               &:focus-within {
@@ -530,7 +530,7 @@
           }
 
           .more-urls {
-            color: var(--gray-500);
+            color: var(--color-font-grey);
             font-size: var(--body-size-xs);
             display: block;
             margin-top: var(--spacing-xs);
@@ -560,23 +560,23 @@
             }
 
             &.critical {
-              background-color: var(--red-100);
-              color: var(--red-900);
+              background-color: light-dark(var(--red-100), var(--red-900));
+              color: light-dark(var(--red-900), var(--red-300));
             }
 
             &.high {
-              background-color: var(--orange-100);
-              color: var(--orange-900);
+              background-color: light-dark(var(--orange-100), var(--orange-900));
+              color: light-dark(var(--orange-900), var(--orange-300));
             }
 
             &.medium {
-              background-color: var(--yellow-100);
-              color: var(--yellow-900);
+              background-color: light-dark(var(--yellow-100), var(--yellow-900));
+              color: light-dark(var(--yellow-900), var(--yellow-300));
             }
 
             &.low {
-              background-color: var(--green-100);
-              color: var(--green-900);
+              background-color: light-dark(var(--green-100), var(--green-900));
+              color: light-dark(var(--green-900), var(--green-300));
             }
           }
 
@@ -584,7 +584,7 @@
             width: 100%;
             max-width: 120px;
             height: 3px;
-            background-color: var(--gray-200);
+            background-color: light-dark(var(--gray-200), var(--gray-700));
             border-radius: var(--rounding-s);
             overflow: hidden;
 

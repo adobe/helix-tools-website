@@ -89,7 +89,7 @@
 }
 
 .snapshots-list {
-  border: var(--border-m) solid var(--gray-300);
+  border: var(--border-m) solid var(--color-border);
   border-radius: var(--rounding-m);
   overflow: hidden;
   background-color: var(--color-background);
@@ -103,7 +103,7 @@
 
 .snapshots-list li {
   display: block;
-  border-bottom: var(--border-s) solid var(--gray-200);
+  border-bottom: var(--border-s) solid var(--color-border);
 }
 
 .snapshots-list li:last-child {
@@ -117,7 +117,7 @@
   list-style: none;
   height: 388px;
   overflow-y: auto;
-  border: var(--border-m) solid var(--gray-300);
+  border: var(--border-m) solid var(--color-border);
   border-radius: var(--rounding-m);
   background-color: var(--color-background);
 }
@@ -133,7 +133,7 @@
 }
 
 .sa-snapshot-urls a:hover {
-  background-color: var(--gray-100);
+  background-color: light-dark(var(--gray-100), var(--gray-800));
   color: var(--color-link);
 }
 
@@ -150,11 +150,11 @@
   width: 32px;
   height: 32px;
   border-radius: var(--rounding-s);
-  background-color: var(--gray-100);
+  background-color: light-dark(var(--gray-100), var(--gray-700));
 }
 
 .sa-snapshot-urls li {
-  border-bottom: var(--border-s) solid var(--gray-200);
+  border-bottom: var(--border-s) solid var(--color-border);
 }
 
 .sa-snapshot-urls li:last-child {
@@ -168,7 +168,7 @@
 
 /* Snapshot cards */
 .snapshot-card {
-  border: var(--border-m) solid var(--gray-300);
+  border: var(--border-m) solid var(--color-border);
   border-radius: var(--rounding-m);
   margin: var(--spacing-400) 0;
   padding: var(--spacing-400);
@@ -177,7 +177,7 @@
 }
 
 .snapshot-card:hover {
-  border-color: var(--gray-400);
+  border-color: light-dark(var(--gray-400), var(--gray-500));
   box-shadow: var(--shadow-default);
 }
 
@@ -200,7 +200,7 @@
 }
 
 .snapshot-details {
-  border-top: var(--border-s) solid var(--gray-200);
+  border-top: var(--border-s) solid var(--color-border);
   padding-top: var(--spacing-400);
   margin-top: var(--spacing-400);
 }
@@ -212,7 +212,7 @@
 .snapshot-edit-form label {
   /* Inherits from project's label styles */
   font-size: var(--body-size-m);
-  color: var(--gray-700);
+  color: var(--color-font-grey);
 }
 
 .snapshot-edit-form input,
@@ -232,7 +232,7 @@
 .review-actions {
   margin-top: var(--spacing-500);
   padding-top: var(--spacing-400);
-  border-top: var(--border-s) solid var(--gray-200);
+  border-top: var(--border-s) solid var(--color-border);
 }
 
 .review-actions h4 {
@@ -267,7 +267,7 @@
 }
 
 #snapshot-details .review-actions button, #snapshot-details .snapshot-actions button {
-  background: white;
+  background: var(--layer-elevated);
   border-color: var(--button-color);
   color: var(--button-color);
   border-width: 2px;
@@ -282,25 +282,25 @@
 
 /* Disabled lock/unlock button styles */
 #snapshot-details .snapshot-actions button:disabled, #snapshot-details .review-actions button:disabled {
-  background-color: var(--gray-100);
-  border-color: var(--gray-200);
-  color: var(--gray-400);
+  background-color: light-dark(var(--gray-100), var(--gray-800));
+  border-color: var(--color-border);
+  color: var(--color-font-grey);
   cursor: not-allowed;
 }
 
 #snapshot-details .snapshot-actions button:disabled:hover, #snapshot-details .review-actions button:disabled:hover {
-  background-color: var(--gray-100);
-  border-color: var(--gray-200);
-  color: var(--gray-400);
+  background-color: light-dark(var(--gray-100), var(--gray-800));
+  border-color: var(--color-border);
+  color: var(--color-font-grey);
 }
 
 /* Create snapshot section */
 #create-snapshot-section {
   margin-top: var(--spacing-600);
   padding: var(--spacing-400);
-  background: var(--gray-100);
+  background: light-dark(var(--gray-100), var(--gray-800));
   border-radius: var(--rounding-m);
-  border: var(--border-s) solid var(--gray-200);
+  border: var(--border-s) solid var(--color-border);
 }
 
 #create-snapshot-section h3 {
@@ -345,12 +345,12 @@
 
 #console td {
   padding: var(--spacing-100) var(--spacing-200);
-  border-bottom: var(--border-s) solid var(--gray-200);
+  border-bottom: var(--border-s) solid var(--color-border);
   vertical-align: top;
 }
 
 #console tr:hover {
-  background-color: var(--gray-100);
+  background-color: light-dark(var(--gray-100), var(--gray-800));
 }
 
 /* Dialog styles using project modal patterns */
@@ -418,13 +418,13 @@
 }
 
 .sa-dialog-close-btn:hover {
-  background-color: var(--gray-100);
+  background-color: light-dark(var(--gray-100), var(--gray-800));
 }
 
 .sa-dialog hr {
   margin: 0 0 var(--spacing-400) 0;
   border: none;
-  border-top: var(--border-s) solid var(--gray-200);
+  border-top: var(--border-s) solid var(--color-border);
 }
 
 .sa-dialog-content-area {
@@ -465,13 +465,13 @@
 .sa-snapshot-wrapper {
   position: relative;
   padding: var(--spacing-300);
-  background-color: var(--gray-50);
+  background-color: light-dark(var(--gray-50), var(--gray-800));
   transition: background-color 0.2s ease-in-out;
   border-radius: var(--rounding-s);
 }
 
 .sa-snapshot-wrapper.is-open {
-  background-color: var(--blue-100);
+  background-color: light-dark(var(--blue-100), var(--blue-900));
 }
 
 .sa-snapshot-wrapper.is-saving::after {
@@ -510,7 +510,7 @@
   border: none;
   padding: 0;
   line-height: 32px;
-  border-bottom: var(--border-m) dotted var(--gray-500);
+  border-bottom: var(--border-m) dotted var(--color-font-grey);
   font-weight: var(--weight-bold);
   font-size: var(--body-size-m);
   color: var(--color-text);
@@ -571,7 +571,7 @@
   gap: var(--spacing-400);
   margin-top: var(--spacing-400);
   padding-top: var(--spacing-400);
-  border-top: var(--border-s) solid var(--gray-300);
+  border-top: var(--border-s) solid var(--color-border);
 }
 
 .sa-snapshot-wrapper.is-open .sa-snapshot-details {
@@ -600,7 +600,7 @@
   height: 388px;
   width: 100%;
   padding: var(--spacing-300);
-  border: var(--border-m) solid var(--gray-300);
+  border: var(--border-m) solid var(--color-border);
   border-radius: var(--rounding-m);
   font-family: var(--code-font-family);
   font-size: var(--body-size-s);
@@ -621,7 +621,7 @@
   text-transform: uppercase;
   font-size: var(--detail-size-s);
   margin-bottom: var(--spacing-100);
-  color: var(--gray-700);
+  color: var(--color-font-grey);
 }
 
 .sa-snapshot-sub-heading-urls {
@@ -657,7 +657,7 @@
 }
 
 .sa-snapshot-sub-heading button:disabled {
-  color: var(--gray-400);
+  color: var(--color-font-grey);
   cursor: not-allowed;
 }
 
@@ -683,7 +683,7 @@
   font-size: var(--detail-size-s);
   font-weight: var(--weight-bold);
   text-align: center;
-  border: var(--border-m) solid var(--gray-300);
+  border: var(--border-m) solid var(--color-border);
   border-radius: var(--rounding-s);
   padding: var(--spacing-200);
   background-color: var(--color-background);
@@ -708,16 +708,16 @@
 }
 
 .sa-snapshot-action-group button:disabled {
-  background: var(--gray-100);
-  border-color: var(--gray-200);
-  color: var(--gray-400);
+  background: light-dark(var(--gray-100), var(--gray-800));
+  border-color: var(--color-border);
+  color: var(--color-font-grey);
   cursor: not-allowed;
 }
 
 .sa-snapshot-action-group button:disabled:hover {
-  background-color: var(--gray-100);
-  border-color: var(--gray-200);
-  color: var(--gray-400);
+  background-color: light-dark(var(--gray-100), var(--gray-800));
+  border-color: var(--color-border);
+  color: var(--color-font-grey);
 }
 
 .sa-snapshot-action-group button.is-editing {
@@ -765,7 +765,7 @@
   position: relative;
   background-color: var(--color-background);
   border-radius: var(--rounding-m);
-  border: var(--border-m) solid var(--gray-300);
+  border: var(--border-m) solid var(--color-border);
   box-shadow: var(--shadow-hover);
   max-width: 400px;
   width: calc(100% - 2 * var(--spacing-400));
@@ -778,7 +778,7 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--spacing-300);
-  border-bottom: var(--border-s) solid var(--gray-200);
+  border-bottom: var(--border-s) solid var(--color-border);
 }
 
 .modal-header h3 {
@@ -792,7 +792,7 @@
   background: none;
   border: none;
   font-size: var(--heading-size-l);
-  color: var(--gray-500);
+  color: var(--color-font-grey);
   cursor: pointer;
   padding: var(--spacing-50);
   border-radius: var(--rounding-s);
@@ -800,8 +800,8 @@
 }
 
 .modal-close:hover {
-  background-color: var(--gray-100);
-  color: var(--gray-700);
+  background-color: light-dark(var(--gray-100), var(--gray-800));
+  color: var(--color-text);
 }
 
 .modal-body {
@@ -816,7 +816,7 @@
 
 .modal-footer {
   padding: var(--spacing-300);
-  border-top: var(--border-s) solid var(--gray-200);
+  border-top: var(--border-s) solid var(--color-border);
   display: flex;
   justify-content: flex-end;
   gap: var(--spacing-200);
@@ -888,9 +888,9 @@
 .snapshot-info {
   margin-bottom: var(--spacing-400);
   padding: var(--spacing-300);
-  background-color: var(--gray-50);
+  background-color: light-dark(var(--gray-50), var(--gray-800));
   border-radius: var(--rounding-m);
-  border: var(--border-s) solid var(--gray-200);
+  border: var(--border-s) solid var(--color-border);
 }
 
 .snapshot-status-badge {
@@ -903,26 +903,26 @@
 }
 
 .snapshot-status-badge.locked {
-  background-color: var(--red-100);
-  color: var(--red-700);
-  border: var(--border-s) solid var(--red-200);
+  background-color: light-dark(var(--red-100), var(--red-900));
+  color: light-dark(var(--red-700), var(--red-300));
+  border: var(--border-s) solid light-dark(var(--red-200), var(--red-700));
 }
 
 .snapshot-status-badge.unlocked {
-  background-color: var(--green-100);
-  color: var(--green-900);
-  border: var(--border-s) solid var(--green-200);
+  background-color: light-dark(var(--green-100), var(--green-900));
+  color: light-dark(var(--green-900), var(--green-300));
+  border: var(--border-s) solid light-dark(var(--green-200), var(--green-700));
 }
 
 .danger-actions h4 {
-  color: var(--red-900);
+  color: light-dark(var(--red-900), var(--red-400));
   margin-bottom: var(--spacing-200);
 }
 
 .button.danger {
-  color: var(--red-900);
-  background-color: white;
-  border-color: var(--red-900);
+  color: light-dark(var(--red-900), var(--red-400));
+  background-color: var(--layer-elevated);
+  border-color: light-dark(var(--red-900), var(--red-500));
   border-width: 2px;
 }
 

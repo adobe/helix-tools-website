@@ -2,13 +2,13 @@
   /* powerscore colors */
   --link-color: #035fe6;
   --link-hover-color: #136ff6;
-  --background-color: white;
-  --light-color: #eee;
-  --dark-color: #ccc;
-  --text-color: black;
-  --success-color: rgb(0 136 0);
-  --improve-color: rgb(255 170 51);
-  --error-color: rgb(217 48 37);
+  --background-color: light-dark(white, var(--gray-900));
+  --light-color: light-dark(#eee, var(--gray-700));
+  --dark-color: light-dark(#ccc, var(--gray-500));
+  --text-color: light-dark(black, var(--gray-100));
+  --success-color: light-dark(rgb(0 136 0), rgb(0 180 0));
+  --improve-color: light-dark(rgb(255 170 51), rgb(255 190 80));
+  --error-color: light-dark(rgb(217 48 37), rgb(240 80 70));
 }
 
 /* powerscore-specific styles scoped to main */

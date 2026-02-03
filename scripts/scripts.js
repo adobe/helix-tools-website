@@ -13,7 +13,6 @@ import {
   getMetadata,
   loadBlock,
   decorateBlock,
-  loadScript,
 } from './aem.js';
 
 /**
@@ -36,6 +35,68 @@ export function createTag(tag, attributes, html) {
     });
   }
   return el;
+}
+
+/*
+ * Theme management functions
+ */
+const THEME_STORAGE_KEY = 'aem-theme-preference';
+const THEME_VALUES = ['system', 'light', 'dark'];
+
+/**
+ * Gets the stored theme preference from localStorage.
+ * @returns {string} The stored theme ('system', 'light', or 'dark')
+ */
+export function getStoredTheme() {
+  try {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored && THEME_VALUES.includes(stored)) {
+      return stored;
+    }
+  } catch (e) {
+    // localStorage not available
+  }
+  return 'system';
+}
+
+/**
+ * Stores the theme preference in localStorage.
+ * @param {string} theme - The theme to store ('system', 'light', or 'dark')
+ */
+export function storeTheme(theme) {
+  try {
+    if (theme === 'system') {
+      localStorage.removeItem(THEME_STORAGE_KEY);
+    } else {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    }
+  } catch (e) {
+    // localStorage not available
+  }
+}
+
+/**
+ * Resolves 'system' theme to actual 'light' or 'dark' based on user preference.
+ * @param {string} theme - The theme to resolve
+ * @returns {string} The resolved theme ('light' or 'dark')
+ */
+export function resolveTheme(theme) {
+  if (theme === 'system') {
+    const prefersDark = window.matchMedia
+      ? window.matchMedia('(prefers-color-scheme: dark)').matches
+      : false;
+    return prefersDark ? 'dark' : 'light';
+  }
+  return theme;
+}
+
+/**
+ * Applies the theme by setting the data-theme attribute on the document.
+ * @param {string} theme - The theme to apply ('system', 'light', or 'dark')
+ */
+export function applyTheme(theme) {
+  const resolved = resolveTheme(theme);
+  document.documentElement.setAttribute('data-theme', resolved);
 }
 
 /**
@@ -182,42 +243,6 @@ export function setUpSideNav(main, aside) {
   return loadBlock(sideNav);
 }
 
-async function loadHighlightLibrary() {
-  const highlightCSS = createTag('link', {
-    rel: 'stylesheet',
-    href: '/libs/highlight/atom-one-dark.min.css',
-  });
-  document.head.append(highlightCSS);
-
-  await loadScript('/libs/highlight/highlight.min.js');
-  const initScript = createTag('script', {}, 'hljs.highlightAll();');
-  document.body.append(initScript);
-}
-
-export async function decorateGuideTemplateCodeBlock() {
-  const firstCodeBlock = document.querySelector('pre code');
-  if (!firstCodeBlock) return;
-
-  const intersectionObserver = new IntersectionObserver(
-    (entries, observer) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          observer.unobserve(entry.target);
-          loadHighlightLibrary();
-        }
-      });
-    },
-    {
-      root: null,
-      rootMargin: '200px', // Adjust rootMargin as needed to trigger intersection at the desired position before the codeblock becomes visible
-      threshold: 0,
-    },
-  );
-
-  // when first codeblock is coming into view, load highlight.js for page
-  intersectionObserver.observe(firstCodeBlock);
-}
-
 function decorateLinks(main) {
   main.querySelectorAll('a').forEach((a) => {
     if (!a.href) return; // Skip anchors without href
@@ -278,6 +303,7 @@ async function toolReady() {
  */
 async function loadEager(doc) {
   document.documentElement.lang = 'en';
+  applyTheme(getStoredTheme());
   decorateTemplateAndTheme();
   loadThemeStyles();
   const main = doc.querySelector('main');
@@ -326,7 +352,6 @@ async function loadLazy(doc) {
     // sidebar + related style setup
     const aside = main.querySelector('main > aside');
     if (aside) setUpSideNav(main, aside);
-    decorateGuideTemplateCodeBlock();
   }
 }
 

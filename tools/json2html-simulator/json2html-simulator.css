@@ -1,0 +1,1462 @@
+/* JSON2HTML Simulator Styles */
+
+/* Follows project design system - see styles/styles.css */
+
+/* ========================================
+   LAYOUT & STRUCTURE
+   ======================================== */
+
+/* Subtle background to signal "full workspace mode" */
+body.json2html-simulator {
+  background: light-dark(var(--gray-50), var(--gray-900));
+}
+
+body.json2html-simulator main {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 60px);
+  min-height: 600px;
+  padding: calc(var(--header-height) + var(--spacing-300)) var(--spacing-200) var(--spacing-300) var(--spacing-200);
+  gap: var(--spacing-200);
+}
+
+/* ========================================
+   HEADER SECTION
+   ======================================== */
+
+body.json2html-simulator main > .simulator-header,
+body.json2html-simulator main > .simulator-header.section {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-200);
+  border-bottom: var(--border-s) solid var(--color-border);
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.simulator-header .header-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.simulator-header .header-content h1 {
+  color: var(--color-text);
+  font-family: var(--heading-font-family);
+  font-weight: var(--weight-extrabold);
+  line-height: var(--line-height-m);
+}
+
+.simulator-header .header-content p {
+  margin: var(--spacing-50) 0 0 0;
+}
+
+.simulator-header .header-content p a {
+  color: var(--color-link);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.simulator-header .header-content p a:hover {
+  text-decoration: underline;
+}
+
+.simulator-header .header-actions {
+  display: flex;
+  gap: var(--spacing-100);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* AEM wraps content in default-content-wrapper - make it flex row */
+.simulator-header > .default-content-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-200);
+  width: 100%;
+}
+
+/* Reset margins on AEM wrapper divs inside header */
+body.json2html-simulator main .simulator-header .header-content-wrapper,
+body.json2html-simulator main .simulator-header .header-actions-wrapper {
+  margin: 0;
+}
+
+/* ========================================
+   CONTROL BAR
+   ======================================== */
+
+body.json2html-simulator main > .control-bar,
+body.json2html-simulator main > .control-bar.section {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--spacing-200);
+  padding: var(--spacing-50) 0;
+  background: transparent;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+/* AEM wraps content in default-content-wrapper */
+body.json2html-simulator main .control-bar > .default-content-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--spacing-200);
+  width: 100%;
+  margin: 0;
+}
+
+/* Reset AEM wrapper inside control bar */
+body.json2html-simulator main .control-bar .control-options-wrapper {
+  margin: 0;
+}
+
+.control-options {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-300);
+}
+
+.toggle-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-100);
+  font-size: var(--body-size-s);
+  color: var(--color-font-grey);
+  cursor: pointer;
+}
+
+.toggle-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--spectrum-blue);
+}
+
+/* ========================================
+   OPTIONS PANEL (Collapsible)
+   ======================================== */
+
+.options-panel {
+  flex-shrink: 0;
+  background: var(--layer-elevated);
+  border: var(--border-m) solid var(--color-border);
+  border-radius: var(--rounding-m);
+  padding: var(--spacing-300) var(--spacing-400);
+  animation: slide-down 0.2s ease;
+}
+
+.options-panel[hidden] {
+  display: none;
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Use span to avoid AEM auto-block decoration */
+span.options-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-200);
+  margin-bottom: var(--spacing-300);
+  padding-bottom: var(--spacing-200);
+  border-bottom: var(--border-s) solid var(--color-border);
+}
+
+.options-label {
+  font-size: var(--body-size-m);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+}
+
+.options-hint {
+  font-size: var(--detail-size-m);
+  color: var(--color-font-grey);
+}
+
+/* Use span to avoid AEM auto-block decoration */
+span.options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--spacing-400) var(--spacing-500);
+}
+
+.option-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.option-group > label {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: var(--spacing-100);
+}
+
+.option-name {
+  font-size: var(--body-size-s);
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+  font-family: var(--code-font-family);
+  margin-bottom: var(--spacing-50);
+}
+
+.option-desc {
+  font-size: var(--body-size-s);
+  color: var(--color-font-grey);
+  line-height: var(--line-height-m);
+  margin-bottom: var(--spacing-100);
+}
+
+/* Text inputs - use design system styles */
+.option-group input[type="text"] {
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+}
+
+.option-group input[type="text"]::placeholder {
+  color: var(--color-font-grey);
+  font-style: italic;
+}
+
+/* Checkbox option group - horizontal layout */
+.option-group.option-checkbox {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--spacing-200);
+  padding: var(--spacing-200);
+  background: light-dark(var(--gray-50), var(--gray-800));
+  border-radius: var(--rounding-m);
+  border: var(--border-s) solid var(--color-border);
+}
+
+.option-group.option-checkbox > label {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--spacing-200);
+  margin-bottom: 0;
+  cursor: pointer;
+}
+
+.option-group.option-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--spectrum-blue);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.option-group.option-checkbox .option-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.option-group.option-checkbox .option-name {
+  margin-bottom: var(--spacing-50);
+}
+
+.option-group.option-checkbox .option-desc {
+  margin-bottom: 0;
+}
+
+/* Option hints - helpful inline tips */
+.option-hint {
+  font-size: var(--body-size-xs);
+  color: var(--color-font-grey);
+  background: light-dark(var(--gray-50), var(--gray-800));
+  padding: var(--spacing-100) var(--spacing-150);
+  border-radius: var(--rounding-s);
+  border-left: 3px solid var(--spectrum-blue);
+  margin-top: var(--spacing-100);
+  line-height: var(--line-height-m);
+  padding-left: var(--spacing-100);
+}
+
+.option-hint code {
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-xs);
+  background: var(--layer-elevated);
+  padding: 2px 6px;
+  border-radius: var(--rounding-xs);
+  color: var(--spectrum-blue);
+  font-weight: var(--weight-medium);
+}
+
+/* ========================================
+   VALIDATION MESSAGE
+   ======================================== */
+
+.validation-message-container {
+  position: fixed;
+  top: calc(var(--header-height) + var(--spacing-300));
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - (2 * var(--spacing-200)));
+  max-width: 1200px;
+  z-index: 100;
+  animation: slide-down-validation 0.3s ease-out;
+  pointer-events: none; /* Allow clicks to pass through the container */
+}
+
+.validation-message-container[hidden] {
+  display: none;
+}
+
+@keyframes slide-down-validation {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.validation-message {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-200);
+  padding: var(--spacing-300);
+  background: light-dark(var(--yellow-100), var(--yellow-900));
+  border: var(--border-m) solid var(--yellow-600);
+  border-radius: var(--rounding-m);
+  box-shadow: var(--shadow-default);
+  pointer-events: auto; /* Re-enable clicks on the actual message */
+}
+
+.validation-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.validation-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.validation-title {
+  display: block;
+  margin: 0 0 var(--spacing-100) 0;
+  font-size: var(--body-size-l);
+  font-weight: var(--weight-bold);
+  color: light-dark(var(--gray-900), var(--yellow-200));
+}
+
+.validation-text {
+  margin: 0 0 var(--spacing-200) 0;
+  font-size: var(--body-size-m);
+  line-height: var(--line-height-m);
+  color: light-dark(var(--gray-800), var(--yellow-300));
+}
+
+.validation-suggestion {
+  padding: var(--spacing-200);
+  background: var(--layer-elevated);
+  border-left: 4px solid var(--yellow-600);
+  border-radius: var(--rounding-s);
+  font-size: var(--body-size-m);
+  line-height: var(--line-height-m);
+  color: light-dark(var(--gray-800), var(--gray-300));
+}
+
+.validation-suggestion strong {
+  display: block;
+  margin-bottom: var(--spacing-100);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+}
+
+.validation-suggestion code {
+  font-family: var(--code-font-family);
+  font-size: var(--detail-size-m);
+  background: light-dark(var(--gray-100), var(--gray-800));
+  padding: 2px 6px;
+  border-radius: var(--rounding-xs);
+  color: var(--spectrum-blue);
+}
+
+.validation-suggestion pre {
+  margin: var(--spacing-100) 0;
+  padding: var(--spacing-200);
+  background: light-dark(var(--gray-100), var(--gray-800));
+  border-radius: var(--rounding-s);
+  overflow-x: auto;
+}
+
+.validation-suggestion pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.validation-close {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: var(--rounding-s);
+  background: transparent;
+  color: light-dark(var(--gray-700), var(--yellow-300));
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.validation-close:hover {
+  background: light-dark(var(--yellow-200), var(--yellow-800));
+  color: light-dark(var(--gray-900), var(--yellow-200));
+}
+
+.validation-close:focus {
+  outline: var(--border-m) solid var(--color-link);
+  outline-offset: var(--border-m);
+}
+
+/* ========================================
+   WORKSPACE (Three Panel Layout)
+   ======================================== */
+
+.workspace {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  gap: 0;
+  min-height: 400px;
+  min-width: 0; /* Prevent content from affecting flex size */
+  background: var(--layer-elevated);
+  border-radius: var(--rounding-m);
+  box-shadow: var(--shadow-default);
+  overflow: hidden;
+}
+
+/* AEM treats workspace as a section - override its styling */
+.workspace.section,
+.workspace.block {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* AEM wraps non-div elements in default-content-wrapper - make it flex */
+body.json2html-simulator main .workspace > .default-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  min-width: 0; /* Prevent content from affecting flex size */
+  margin: 0;
+  overflow: hidden;
+}
+
+/* Ensure section elements in workspace expand properly */
+.workspace section {
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace section.editors-row {
+  flex-direction: row;
+}
+
+.workspace section.preview-panel {
+  flex: 1 1 40%;
+  min-height: 0;
+}
+
+
+/* Top row: JSON and Template side by side */
+.editors-row {
+  display: flex;
+  flex: 1 1 60%;
+  width: 100%;
+  min-height: 200px;
+  min-width: 0; /* Prevent content from affecting flex size */
+  overflow: hidden;
+}
+
+/* AEM treats editors-row as a block - override its styling */
+.editors-row.block {
+  display: flex;
+  width: 100%;
+  max-width: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* ========================================
+   EDITOR PANEL
+   ======================================== */
+
+.editor-panel {
+  flex: 1 1 50%;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  overflow: hidden;
+}
+
+.editor-panel.json-panel {
+  border-right: none;
+}
+
+.editor-panel.template-panel {
+  border-left: none;
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-200) var(--spacing-300);
+  background: light-dark(var(--gray-50), var(--gray-800));
+  border-bottom: var(--border-s) solid var(--color-border);
+  height: 52px; /* Ensure consistent height with or without buttons */
+  box-sizing: border-box;
+}
+
+.editor-label {
+  font-size: var(--detail-size-m);
+  font-weight: var(--weight-medium);
+  color: var(--color-font-grey);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.editor-actions {
+  display: flex;
+  gap: var(--spacing-100);
+}
+
+.editor-wrapper {
+  flex: 1 1 auto;
+  position: relative;
+  overflow: auto;
+  min-height: 0;
+  min-width: 0; /* Prevent content from affecting flex size */
+}
+
+/* Shared styles for textarea and highlight overlay */
+.code-editor,
+.code-highlight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: var(--spacing-300);
+  border: none;
+  border-radius: 0;
+  box-sizing: border-box;
+  font-family: var(--code-font-family);
+  font-size: var(--detail-size-m);
+  line-height: var(--line-height-l);
+  letter-spacing: normal;
+  white-space: pre;
+  tab-size: 2;
+}
+
+/* Textarea - transparent text, visible caret, on top */
+.code-editor {
+  background: transparent;
+  color: transparent;
+  caret-color: var(--color-text);
+  z-index: 1;
+  resize: none;
+  outline: none;
+  overflow: auto;
+  -webkit-text-fill-color: transparent;
+}
+
+.code-editor:focus,
+.code-editor:active {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.code-editor::placeholder {
+  color: var(--color-font-grey);
+  -webkit-text-fill-color: var(--color-font-grey);
+}
+
+/* Highlight overlay - visible code, behind textarea */
+.code-highlight {
+  z-index: 0;
+  background: light-dark(var(--gray-100), var(--gray-800));
+  color: var(--color-text);
+  pointer-events: none;
+  overflow: auto;
+  scrollbar-width: none; /* Firefox */
+}
+
+.code-highlight::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge */
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.code-highlight code {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  white-space: inherit;
+  overflow-wrap: inherit;
+  tab-size: inherit;
+  background: transparent;
+  color: inherit;
+}
+
+.editor-status {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-100);
+  padding: var(--spacing-100) var(--spacing-300);
+  background: light-dark(var(--gray-50), var(--gray-800));
+  border-top: var(--border-s) solid var(--color-border);
+  font-size: var(--detail-size-m);
+  min-width: 0; /* Allow flex item to shrink below content width */
+  overflow: hidden;
+}
+
+/* Error state styling for better visibility */
+.editor-status:has(.status-error) {
+  background: light-dark(var(--red-100), var(--red-900));
+  border-top-color: light-dark(var(--red-300), var(--red-700));
+}
+
+.editor-status:has(.status-error) .status-text {
+  color: light-dark(var(--red-900), var(--red-300));
+  font-weight: var(--weight-medium);
+}
+
+/* Warning state styling */
+.editor-status:has(.status-warning) {
+  background: light-dark(var(--yellow-100), var(--yellow-900));
+  border-top-color: light-dark(var(--yellow-300), var(--yellow-700));
+}
+
+.editor-status:has(.status-warning) .status-text {
+  color: light-dark(var(--yellow-900), var(--yellow-300));
+  font-weight: var(--weight-medium);
+}
+
+.status-icon {
+  font-size: var(--detail-size-m);
+}
+
+.status-icon.status-ok {
+  color: light-dark(var(--green-900), var(--green-400));
+}
+
+.status-icon.status-error {
+  color: light-dark(var(--red-900), var(--red-400));
+}
+
+.status-icon.status-warning {
+  color: light-dark(var(--yellow-900), var(--yellow-400));
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.status-text {
+  color: var(--color-font-grey);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* ========================================
+   RESIZER
+   ======================================== */
+
+.resizer {
+  background: light-dark(var(--gray-100), var(--gray-800));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+/* Vertical resizer (between JSON and Template) */
+body.json2html-simulator main .resizer-vertical {
+  flex: 0 0 4px;
+  width: 4px;
+  min-width: 4px;
+  max-width: 4px;
+  height: 100%;
+  cursor: col-resize;
+  background: var(--color-border);
+}
+
+/* Horizontal resizer (between editors and preview) */
+body.json2html-simulator main .resizer-horizontal {
+  flex: 0 0 4px;
+  width: 100%;
+  height: 4px;
+  min-height: 4px;
+  max-height: 4px;
+  cursor: row-resize;
+  background: var(--color-border);
+}
+
+.resizer:hover {
+  background: light-dark(var(--gray-300), var(--gray-600));
+}
+
+.resizer-handle {
+  display: block;
+  background: light-dark(var(--gray-400), var(--gray-500));
+  border-radius: var(--rounding-s);
+}
+
+.resizer-vertical .resizer-handle {
+  width: 4px;
+  height: 40px;
+}
+
+.resizer-horizontal .resizer-handle {
+  width: 40px;
+  height: 4px;
+}
+
+.resizer:hover .resizer-handle {
+  background: var(--spectrum-blue);
+}
+
+/* ========================================
+   PREVIEW PANEL
+   ======================================== */
+
+.preview-panel {
+  flex: 1 1 40%;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 150px;
+  min-width: 0; /* Prevent content from affecting flex size */
+  overflow: hidden;
+  border-top: var(--border-s) solid var(--color-border);
+}
+
+/* AEM treats preview-panel as a block - override its styling */
+.preview-panel.block {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: none;
+  padding: 0;
+  margin: 0;
+}
+
+.preview-header {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-200) var(--spacing-300);
+  background: light-dark(var(--gray-50), var(--gray-800));
+  border-bottom: var(--border-s) solid var(--color-border);
+  gap: var(--spacing-200);
+}
+
+.preview-label {
+  font-size: var(--detail-size-m);
+  font-weight: var(--weight-medium);
+  color: var(--color-font-grey);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.preview-tabs {
+  display: flex;
+  gap: var(--spacing-50);
+  background: light-dark(var(--gray-200), var(--gray-700));
+  border-radius: var(--rounding-s);
+  padding: var(--spacing-50);
+}
+
+.preview-tab {
+  padding: var(--spacing-75) var(--spacing-200);
+  font-size: var(--detail-size-l);
+  font-weight: var(--weight-medium);
+  background: transparent;
+  border: none;
+  border-radius: var(--rounding-s);
+  color: var(--color-font-grey);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preview-tab:hover {
+  color: var(--color-text);
+}
+
+.preview-tab.active {
+  background: var(--layer-elevated);
+  color: var(--color-text);
+  box-shadow: 0 1px 2px var(--transparent-black-100);
+}
+
+.preview-actions {
+  display: flex;
+  gap: var(--spacing-100);
+}
+
+.preview-content {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--layer-elevated);
+  min-height: 0;
+  min-width: 0; /* Prevent content from affecting flex size */
+  position: relative;
+}
+
+.preview-view {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.preview-view.active {
+  visibility: visible;
+  opacity: 1;
+}
+
+.preview-view[hidden] {
+  visibility: hidden;
+  opacity: 0;
+}
+
+/* Handle AEM's p tag injection in preview view */
+/* stylelint-disable-next-line no-descending-specificity */
+.preview-view > p {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+#preview-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: var(--layer-elevated);
+}
+
+.source-code {
+  margin: 0;
+  padding: var(--spacing-300);
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  font-family: var(--code-font-family);
+  font-size: var(--detail-size-m);
+  line-height: var(--line-height-l);
+  background: light-dark(var(--gray-100), var(--gray-800));
+  color: var(--color-text);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  border-radius: 0; /* Override global pre styling */
+}
+
+/* Override scrollbar styling to match source-code background */
+.source-code::-webkit-scrollbar {
+  background: light-dark(var(--gray-100), var(--gray-800)); /* Set scrollbar container background */
+}
+
+.source-code::-webkit-scrollbar-track {
+  background: light-dark(var(--gray-100), var(--gray-800));
+}
+
+.source-code::-webkit-scrollbar-thumb {
+  background-color: light-dark(var(--gray-500), var(--gray-500));
+  border: 8px solid light-dark(var(--gray-100), var(--gray-800)); /* Match source-code background instead of layer-depth */
+  border-radius: 12px;
+}
+
+.source-code::-webkit-scrollbar-thumb:hover {
+  background-color: light-dark(var(--gray-600), var(--gray-400));
+}
+
+.source-code code.language-html {
+  font-size: inherit;
+  color: var(--color-text);
+  background-color: transparent;
+}
+
+.preview-status {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-300);
+  padding: var(--spacing-100) var(--spacing-300);
+  background: light-dark(var(--gray-50), var(--gray-800));
+  border-top: var(--border-s) solid var(--color-border);
+  font-size: var(--detail-size-m);
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.preview-status .status-text {
+  color: var(--color-font-grey);
+}
+
+.preview-status .status-hint {
+  color: var(--color-font-grey);
+  font-size: var(--detail-size-s);
+}
+
+.preview-status kbd {
+  display: inline-block;
+  padding: var(--spacing-25) var(--spacing-75);
+  background: light-dark(var(--gray-200), var(--gray-700));
+  border: var(--border-s) solid var(--color-border);
+  border-radius: var(--rounding-s);
+  font-family: var(--code-font-family);
+  font-size: var(--detail-size-s);
+  color: var(--color-font-grey);
+  box-shadow: 0 1px 0 var(--color-border);
+}
+
+/* ========================================
+   MODALS
+   ======================================== */
+
+.modal {
+  border: none;
+  border-radius: var(--rounding-l);
+  padding: 0;
+  max-width: 90vw;
+  max-height: 85vh;
+  box-shadow: var(--shadow-dragged);
+  background: var(--layer-elevated);
+}
+
+.modal::backdrop {
+  background: var(--transparent-black-600);
+}
+
+.modal-content {
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-300) var(--spacing-400);
+  border-bottom: var(--border-s) solid var(--color-border);
+}
+
+.modal-header h2 {
+  font-size: var(--heading-size-s);
+  font-weight: var(--weight-bold);
+  margin: 0;
+}
+
+.modal-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-400);
+  background: transparent;
+  border: none;
+  border-radius: var(--rounding-s);
+  color: var(--color-font-grey);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background: light-dark(var(--gray-200), var(--gray-700));
+  color: var(--color-text);
+}
+
+.modal-body {
+  padding: var(--spacing-400);
+  overflow-y: auto;
+}
+
+/* Examples Modal */
+.examples-modal {
+  width: 700px;
+}
+
+.examples-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--spacing-300);
+}
+
+.example-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: var(--spacing-300);
+  background: light-dark(var(--gray-50), var(--gray-800));
+  border: var(--border-s) solid var(--color-border);
+  border-radius: var(--rounding-m);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.example-card:hover {
+  background: light-dark(var(--gray-100), var(--gray-700));
+  border-color: var(--spectrum-blue);
+  box-shadow: var(--shadow-hover);
+}
+
+.example-card h3 {
+  font-size: var(--body-size-m);
+  font-weight: var(--weight-bold);
+  margin: 0 0 var(--spacing-100) 0;
+  color: var(--color-text);
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.example-card p {
+  font-size: var(--body-size-s);
+  color: var(--color-font-grey);
+  margin: 0;
+}
+
+/* Syntax Help Modal */
+.help-modal {
+  width: 600px;
+}
+
+.syntax-reference {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-300);
+}
+
+.syntax-item {
+  padding: var(--spacing-300);
+  background: light-dark(var(--gray-50), var(--gray-800));
+  border-radius: var(--rounding-m);
+  border-left: var(--border-l) solid var(--spectrum-blue);
+}
+
+.syntax-item h3 {
+  font-size: var(--body-size-s);
+  font-weight: var(--weight-bold);
+  margin: 0 0 var(--spacing-100) 0;
+  color: var(--color-text);
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.syntax-item code {
+  display: inline-block;
+  padding: var(--spacing-75) var(--spacing-200);
+  background: light-dark(var(--gray-800), var(--gray-900));
+  color: var(--green-600);
+  font-family: var(--code-font-family);
+  font-size: var(--detail-size-m);
+  border-radius: var(--rounding-s);
+  margin-bottom: var(--spacing-100);
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.syntax-item p {
+  font-size: var(--body-size-s);
+  color: var(--color-font-grey);
+  margin: 0;
+}
+
+.help-links {
+  margin-top: var(--spacing-400);
+  padding-top: var(--spacing-300);
+  border-top: var(--border-s) solid var(--color-border);
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.help-links p {
+  margin: 0 0 var(--spacing-100) 0;
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.help-links a {
+  color: var(--color-link);
+  font-size: var(--body-size-s);
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.help-links a:hover {
+  color: var(--color-link-hover);
+}
+
+/* ========================================
+   BUTTON OVERRIDES
+   ======================================== */
+
+.json2html-simulator .button.small {
+  padding: var(--spacing-75) var(--spacing-200);
+  font-size: var(--detail-size-l);
+}
+
+/* Options toggle button active state */
+#options-toggle-btn.active {
+  background: var(--spectrum-blue);
+  border-color: var(--spectrum-blue);
+  color: var(--color-white);
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+/* Large Screens - maximize workspace */
+@media (width >= 1200px) {
+  body.json2html-simulator main {
+    padding: calc(var(--header-height) + var(--spacing-300)) var(--spacing-100) var(--spacing-300) var(--spacing-100);
+  }
+}
+
+/* Extra Large Screens - wider layout for coding workspace */
+@media (width >= 1264px) {
+  /* Main content area */
+  body.json2html-simulator main {
+    max-width: 1600px; /* +400px more than design system default (1200px) */
+  }
+  
+  /* Header nav alignment - needs higher specificity to override nested header CSS */
+  body.json2html-simulator header.header-wrapper .header .header-nav {
+    max-width: 1600px;
+  }
+  
+  /* Footer content alignment */
+  body.json2html-simulator footer section {
+    max-width: 1600px;
+  }
+}
+
+/* Ultra-Wide Screens - maximize coding space while preventing panels from being too wide */
+@media (width >= 1920px) {
+  body.json2html-simulator main {
+    max-width: 1800px;
+    padding: calc(var(--header-height) + var(--spacing-300)) var(--spacing-50) var(--spacing-300) var(--spacing-50);
+  }
+  
+  body.json2html-simulator header.header-wrapper .header .header-nav {
+    max-width: 1800px;
+  }
+  
+  body.json2html-simulator footer section {
+    max-width: 1800px;
+  }
+}
+
+/* Tablet */
+@media (width < 900px) {
+  .validation-message-container {
+    width: calc(100% - (2 * var(--spacing-300)));
+    top: calc(var(--header-height) + var(--spacing-200));
+  }
+
+  .workspace {
+    flex-direction: column;
+  }
+
+  .editor-panel {
+    max-width: 100%;
+    border-right: none;
+    border-bottom: var(--border-s) solid var(--color-border);
+    min-height: 300px;
+  }
+
+  .resizer {
+    width: 100%;
+    height: 8px;
+    cursor: row-resize;
+  }
+
+  .resizer-handle {
+    width: 40px;
+    height: 4px;
+  }
+
+  .preview-panel {
+    min-height: 300px;
+  }
+
+  .simulator-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .control-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Mobile */
+@media (width < 600px) {
+  .validation-message-container {
+    width: calc(100% - (2 * var(--spacing-100)));
+    top: calc(var(--header-height) + var(--spacing-100));
+  }
+
+  .validation-message {
+    padding: var(--spacing-200);
+  }
+
+  .validation-close {
+    width: 28px;
+    height: 28px;
+    font-size: 24px;
+  }
+
+  .json2html-simulator main {
+    padding: var(--spacing-200);
+  }
+
+  .simulator-header .header-actions {
+    width: 100%;
+  }
+
+  .simulator-header .header-actions .button {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .workspace {
+    min-height: auto;
+  }
+
+  .editor-panel,
+  .preview-panel {
+    min-height: 250px;
+  }
+
+  .preview-header {
+    flex-wrap: wrap;
+  }
+
+  .preview-tabs {
+    order: 1;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .preview-status {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-100);
+  }
+
+  .preview-status .status-hint {
+    font-size: var(--detail-size-xs);
+  }
+
+  .modal {
+    max-width: 95vw;
+    margin: var(--spacing-200);
+  }
+
+  .examples-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ========================================
+   AEM DECORATION FIXES
+   ======================================== */
+
+/* AEM wraps elements in wrapper divs - handle the editors-row wrapper */
+.json2html-simulator .editors-row-wrapper {
+  display: flex;
+  flex: 1 1 60%;
+  min-height: 200px;
+  min-width: 0; /* Prevent content from affecting flex size */
+}
+
+.json2html-simulator .editors-row-wrapper > .editors-row {
+  display: flex;
+  flex: 1;
+  width: 100%;
+}
+
+/* Handle editor panel wrappers inside editors-row - use 50% for equal sizing */
+.json2html-simulator .editors-row > div {
+  display: flex;
+  flex: 1 1 50%;
+  min-width: 0; /* Prevent content from affecting flex size */
+}
+
+.json2html-simulator .json-panel-wrapper,
+.json2html-simulator .template-panel-wrapper {
+  display: flex;
+  flex: 1 1 50%;
+  min-width: 0;
+}
+
+.json2html-simulator .json-panel-wrapper > .json-panel,
+.json2html-simulator .template-panel-wrapper > .template-panel {
+  flex: 1;
+  width: 100%;
+}
+
+/* Handle preview panel wrapper */
+.json2html-simulator .preview-panel-wrapper {
+  display: flex;
+  flex: 1 1 40%;
+  min-height: 150px;
+}
+
+.json2html-simulator .preview-panel-wrapper > .preview-panel {
+  flex: 1;
+  width: 100%;
+}
+
+/* Resizer wrappers should not flex-grow */
+.json2html-simulator .resizer-wrapper,
+.json2html-simulator .resizer-vertical-wrapper,
+.json2html-simulator .resizer-horizontal-wrapper {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+/* AEM injects <p> tags inside divs - reset their styles */
+.json2html-simulator .editor-header > p,
+.json2html-simulator .editor-wrapper > p,
+.json2html-simulator .editor-status > p,
+.json2html-simulator .preview-header > p,
+.json2html-simulator .preview-content > p,
+.json2html-simulator .preview-status > p,
+.json2html-simulator .preview-tabs > p,
+.json2html-simulator .preview-actions > p {
+  display: contents;
+  margin: 0;
+  padding: 0;
+}
+
+/* Ensure editor-header layout still works */
+.json2html-simulator .editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Ensure editor-wrapper fills space */
+.json2html-simulator .editor-wrapper {
+  display: flex;
+  flex: 1;
+}
+
+.json2html-simulator .editor-wrapper > p {
+  display: flex;
+  flex: 1;
+}
+
+/* Ensure preview-content fills space */
+.json2html-simulator .preview-content > p {
+  display: block;
+  position: absolute;
+  inset: 0;
+}
+
+/* ========================================
+   TOAST NOTIFICATION
+   ======================================== */
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--spacing-200) var(--spacing-400);
+  background: var(--gray-900);
+  color: var(--color-white);
+  border-radius: var(--rounding-m);
+  font-size: var(--body-size-s);
+  z-index: 10000;
+  animation: toast-fade-in-out 2s ease forwards;
+}
+
+@keyframes toast-fade-in-out {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+
+  15% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
+  85% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -10px);
+  }
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+/* Utility class with high specificity to override any display property */
+body.json2html-simulator .hidden {
+  display: none;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+

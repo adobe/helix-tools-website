@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>JSON2HTML Simulator</title>
+  <meta name="description" content="Interactive simulator to experiment with JSON data and Mustache templates for AEM Edge Delivery Services JSON2HTML feature.">
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/json2html-simulator/json2html-simulator.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/json2html-simulator/json2html-simulator.css" />
+</head>
+
+<body class="json2html-simulator">
+  <header></header>
+  <main>
+    <!-- HEADER SECTION -->
+    <div class="simulator-header">
+      <span class="header-content">
+        <h1>JSON2HTML Simulator</h1>
+        <p>Build and test Mustache templates for your JSON endpoints. <a href="https://www.aem.live/developer/json2html" target="_blank" rel="noopener noreferrer">View full documentation →</a></p>
+      </span>
+      <span class="header-actions">
+        <button type="button" class="button outline" id="examples-btn">
+          <span class="icon icon-code"></span> Examples
+        </button>
+        <button type="button" class="button outline" id="help-btn">
+          <span class="icon icon-question"></span> Syntax Help
+        </button>
+      </span>
+    </div>
+
+    <!-- CONTROL BAR -->
+    <div class="control-bar">
+      <span class="control-options">
+        <button type="button" class="button small outline" id="options-toggle-btn" title="Toggle Options">
+          ⚙ Options
+        </button>
+        <button type="button" class="button small outline" id="fullscreen-btn" title="Toggle Fullscreen">
+          ⛶
+        </button>
+      </span>
+    </div>
+
+    <!-- OPTIONS PANEL (Collapsible) -->
+    <div class="options-panel" id="options-panel" hidden>
+      <span class="options-header">
+        <span class="options-label">Simulator Options</span>
+        <span class="options-hint">Configure data filtering and URL rewriting. <a href="https://www.aem.live/developer/json2html#configuration-parameters" target="_blank" rel="noopener noreferrer">Learn more →</a></span>
+      </span>
+      <span class="options-grid">
+        <div class="option-group">
+          <label for="option-arrayKey">
+            <span class="option-name">arrayKey</span>
+            <span class="option-desc"><strong>When to use:</strong> Your JSON has nested data and you want to access an inner array (e.g., "data" or "items.products")</span>
+          </label>
+          <input type="text" id="option-arrayKey" placeholder="e.g., data">
+          <div class="option-hint" id="arrayKey-hint">
+            💡 When arrayKey points to an array, wrap your template in <code>{{#.}}...{{/.}}</code> to iterate over items
+          </div>
+        </div>
+        <div class="option-group">
+          <label for="option-pathKey">
+            <span class="option-name">pathKey</span>
+            <span class="option-desc"><strong>When to use:</strong> You want to filter an array to find one specific item by a property name (e.g., "URL" or "path")</span>
+          </label>
+          <input type="text" id="option-pathKey" placeholder="e.g., URL">
+          <div class="option-hint">
+            💡 Use with arrayKey + testPath to filter arrays and extract a single matching item
+          </div>
+        </div>
+        <div class="option-group">
+          <label for="option-testPath">
+            <span class="option-name">testPath</span>
+            <span class="option-desc"><strong>When to use:</strong> The value to match against pathKey to find the right item (e.g., "/products/my-item")</span>
+          </label>
+          <input type="text" id="option-testPath" placeholder="e.g., /page1">
+        </div>
+        <div class="option-group">
+          <label for="option-relativeURLPrefix">
+            <span class="option-name">relativeURLPrefix</span>
+            <span class="option-desc"><strong>When to use:</strong> Your JSON has relative image URLs like "/media/image.jpg" and you want to prefix them with a CDN domain</span>
+          </label>
+          <input type="text" id="option-relativeURLPrefix" placeholder="e.g., https://cdn.example.com">
+        </div>
+        <div class="option-group option-checkbox">
+          <label for="option-genericFallback">
+            <input type="checkbox" id="option-genericFallback">
+            <span class="option-info">
+              <span class="option-name">genericFallback</span>
+              <span class="option-desc"><strong>When to use:</strong> You want auto-generated HTML from your JSON without writing a template</span>
+            </span>
+          </label>
+        </div>
+      </span>
+    </div>
+
+    <!-- MAIN WORKSPACE - Three Panel Layout -->
+    <div class="workspace">
+      <!-- TOP ROW: Editors Side by Side -->
+      <section class="editors-row">
+        <!-- JSON Editor -->
+        <div class="editor-panel json-panel">
+          <div class="editor-header">
+            <span class="editor-label">JSON Data</span>
+            <div class="editor-actions">
+              <button type="button" class="button small outline" id="format-json">Format</button>
+            </div>
+          </div>
+          <div class="editor-wrapper">
+            <textarea 
+              id="json-input" 
+              class="code-editor" 
+              spellcheck="false" 
+              placeholder="Enter your JSON data here..."
+            >{
+  "title": "Welcome to JSON2HTML",
+  "description": "This simulator helps you experiment with Mustache templates.",
+  "features": [
+    { "name": "Live Preview", "enabled": true },
+    { "name": "Syntax Highlighting", "enabled": true },
+    { "name": "Error Detection", "enabled": true }
+  ],
+  "author": {
+    "name": "AEM Developer",
+    "role": "Content Engineer"
+  }
+}</textarea>
+            <pre class="code-highlight" id="json-highlight" aria-hidden="true"><code class="language-json"></code></pre>
+          </div>
+          <div class="editor-status" id="json-status">
+            <span class="status-icon status-ok">✓</span>
+            <span class="status-text">Valid JSON</span>
+          </div>
+        </div>
+
+        <!-- Vertical Resizer -->
+        <span class="resizer resizer-vertical" id="resizer-vertical" title="Drag to resize">
+          <span class="resizer-handle"></span>
+        </span>
+
+        <!-- Template Editor -->
+        <div class="editor-panel template-panel">
+          <div class="editor-header">
+            <span class="editor-label">Mustache Template</span>
+          </div>
+          <div class="editor-wrapper">
+            <textarea 
+              id="template-input" 
+              class="code-editor" 
+              spellcheck="false" 
+              placeholder="Enter your Mustache template here..."
+            ><article class="content-card">
+  <h1>{{title}}</h1>
+  <p class="description">{{description}}</p>
+  
+  <section class="features">
+    <h2>Features</h2>
+    <ul>
+      {{#features}}
+      <li class="feature {{#enabled}}enabled{{/enabled}}">
+        <span class="feature-name">{{name}}</span>
+        {{#enabled}}<span class="badge">Active</span>{{/enabled}}
+      </li>
+      {{/features}}
+    </ul>
+  </section>
+  
+  <footer class="author-info">
+    <p>Created by <strong>{{author.name}}</strong></p>
+    <p class="role">{{author.role}}</p>
+  </footer>
+</article></textarea>
+            <pre class="code-highlight" id="template-highlight" aria-hidden="true"><code class="language-html"></code></pre>
+          </div>
+          <div class="editor-status" id="template-status">
+            <span class="status-icon status-ok">✓</span>
+            <span class="status-text">Template ready</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Horizontal Resizer -->
+      <span class="resizer resizer-horizontal" id="resizer-horizontal" title="Drag to resize">
+        <span class="resizer-handle"></span>
+      </span>
+
+      <!-- BOTTOM ROW: Preview Panel -->
+      <section class="preview-panel">
+        <div class="preview-header">
+          <span class="preview-label">HTML Preview</span>
+          <div class="preview-tabs" role="tablist">
+            <button type="button" class="preview-tab" role="tab" data-view="rendered" aria-selected="false">
+              Rendered
+            </button>
+            <button type="button" class="preview-tab active" role="tab" data-view="source" aria-selected="true">
+              Source
+            </button>
+          </div>
+          <div class="preview-actions">
+            <button type="button" class="button small outline" id="copy-html" title="Copy HTML">
+              <span class="icon icon-copy"></span>
+            </button>
+          </div>
+        </div>
+        <div class="preview-content">
+          <!-- Rendered View -->
+          <div class="preview-view" data-view="rendered" hidden>
+            <iframe
+              id="preview-frame"
+              sandbox="allow-scripts"
+              title="HTML Preview"
+            ></iframe>
+          </div>
+          <!-- Source View -->
+          <div class="preview-view active" data-view="source">
+            <pre id="source-output" class="source-code"><code class="language-html"></code></pre>
+          </div>
+        </div>
+        <div class="preview-status" id="preview-status">
+          <span class="status-text">Last rendered: just now</span>
+          <span class="status-hint" id="keyboard-hint">💡 Press <kbd>Cmd+Enter</kbd> to render instantly</span>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- EXAMPLES MODAL -->
+  <dialog id="examples-modal" class="modal examples-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Example Templates</h2>
+        <button type="button" class="modal-close" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="examples-grid">
+          <button type="button" class="example-card" data-example="basic">
+            <h3>Basic Object</h3>
+            <p>Simple key-value pair rendering</p>
+          </button>
+          <button type="button" class="example-card" data-example="array">
+            <h3>Array Loop</h3>
+            <p>Iterate over arrays with {{#items}}</p>
+          </button>
+          <button type="button" class="example-card" data-example="conditional">
+            <h3>Conditionals</h3>
+            <p>Show/hide based on boolean values</p>
+          </button>
+          <button type="button" class="example-card" data-example="nested">
+            <h3>Nested Data</h3>
+            <p>Access nested object properties</p>
+          </button>
+          <button type="button" class="example-card" data-example="product">
+            <h3>Product Card</h3>
+            <p>E-commerce product example</p>
+          </button>
+          <button type="button" class="example-card" data-example="event">
+            <h3>Event Page</h3>
+            <p>Content fragment example</p>
+          </button>
+          <button type="button" class="example-card" data-example="contentIndex">
+            <h3>Content Index</h3>
+            <p>Blog/article listing with pagination</p>
+          </button>
+          <button type="button" class="example-card" data-example="storeLocator">
+            <h3>Store Locator</h3>
+            <p>Location data with nested address</p>
+          </button>
+          <button type="button" class="example-card" data-example="productCatalog">
+            <h3>Product Catalog</h3>
+            <p>Multiple products with filtering</p>
+          </button>
+          <button type="button" class="example-card" data-example="eventCalendar">
+            <h3>Event Calendar</h3>
+            <p>Events with date and capacity</p>
+          </button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- SYNTAX HELP MODAL -->
+  <dialog id="help-modal" class="modal help-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Mustache Syntax Reference</h2>
+        <button type="button" class="modal-close" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="syntax-reference">
+          <div class="syntax-item">
+            <h3>Variables</h3>
+            <code>{{variable}}</code>
+            <p>Renders the value of <em>variable</em> (HTML escaped)</p>
+          </div>
+          <div class="syntax-item">
+            <h3>Unescaped HTML</h3>
+            <code>{{{rawHtml}}}</code>
+            <p>Renders raw HTML without escaping</p>
+          </div>
+          <div class="syntax-item">
+            <h3>Sections (Loops & Conditionals)</h3>
+            <code>{{#items}}...{{/items}}</code>
+            <p>Loops over arrays or shows content if truthy</p>
+          </div>
+          <div class="syntax-item">
+            <h3>Inverted Sections</h3>
+            <code>{{^items}}...{{/items}}</code>
+            <p>Shows content only if value is falsy or empty</p>
+          </div>
+          <div class="syntax-item">
+            <h3>Nested Properties</h3>
+            <code>{{author.name}}</code>
+            <p>Access nested object properties with dot notation</p>
+          </div>
+          <div class="syntax-item">
+            <h3>Comments</h3>
+            <code>{{! This is a comment }}</code>
+            <p>Comments are not rendered in output</p>
+          </div>
+        </div>
+        <div class="help-links">
+          <p>
+            <a href="https://mustache.github.io/mustache.5.html" target="_blank" rel="noopener noreferrer">
+              Full Mustache Documentation ↗
+            </a>
+          </p>
+          <p>
+            <a href="https://www.aem.live/developer/json2html" target="_blank" rel="noopener noreferrer">
+              AEM JSON2HTML Documentation ↗
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <footer></footer>
+</body>
+
+</html>
+
