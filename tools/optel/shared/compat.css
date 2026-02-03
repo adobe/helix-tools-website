@@ -1,0 +1,275 @@
+/* tools/optel/shared/compat.css - Compatibility Layer
+ * Bridges helix-website conventions to helix-tools-website.
+ * Load AFTER global styles.css but BEFORE tool-specific CSS.
+ *
+ * Contains:
+ * 1. CSS variable mappings (helix-website → helix-tools-website)
+ * 2. Global style resets (scoped to optel tools)
+ * 3. Dark mode overrides
+ */
+
+/* ============================================
+   PART 1: CSS VARIABLE MAPPINGS
+   ============================================ */
+
+:root {
+  /* Typography: helix-website uses --type-*, tools-website uses --heading-size-*, --body-size-* */
+  --type-heading-xl-size: var(--heading-size-xl);
+  --type-heading-l-size: var(--heading-size-l);
+  --type-heading-m-size: var(--heading-size-m);
+  --type-heading-s-size: var(--heading-size-s);
+  --type-heading-xs-size: var(--heading-size-xs);
+  --type-body-xl-size: var(--body-size-xl);
+  --type-body-l-size: var(--body-size-l);
+  --type-body-m-size: var(--body-size-m);
+  --type-body-s-size: var(--body-size-s);
+  --type-body-xs-size: var(--body-size-xs);
+
+  /* Line heights */
+  --type-heading-xl-lh: var(--line-height-m);
+  --type-heading-l-lh: var(--line-height-m);
+  --type-heading-m-lh: var(--line-height-m);
+  --type-body-l-lh: var(--line-height-l);
+  --type-body-s-lh: var(--line-height-l);
+  --type-body-xs-lh: var(--line-height-l);
+
+  /* Navigation */
+  --nav-height: var(--header-height);
+  --nav-z-index: 9999;
+
+  /* Background */
+  --background-color: var(--color-background);
+
+  /* Spectrum semantic colors → base colors */
+  --spectrum-accent-color-800: var(--spectrum-blue-800);
+  --spectrum-accent-color-900: var(--spectrum-blue-900);
+  --spectrum-accent-color-1000: var(--spectrum-blue-1000);
+  --spectrum-accent-color-1100: var(--spectrum-blue-1100);
+  --spectrum-informative-color-800: var(--spectrum-blue-800);
+  --spectrum-informative-color-900: var(--spectrum-blue-900);
+  --spectrum-informative-color-1000: var(--spectrum-blue-1000);
+  --spectrum-informative-color-1100: var(--spectrum-blue-1100);
+  --spectrum-negative-color-800: var(--spectrum-red-800);
+  --spectrum-negative-color-900: var(--spectrum-red-900);
+  --spectrum-negative-color-1000: var(--spectrum-red-1000);
+  --spectrum-negative-color-1100: var(--spectrum-red-1100);
+  --spectrum-positive-color-700: var(--spectrum-green-700);
+  --spectrum-positive-color-900: var(--spectrum-green-900);
+  --spectrum-positive-color-1000: var(--spectrum-green-1000);
+  --spectrum-positive-color-1100: var(--spectrum-green-1100);
+  --spectrum-notice-color-600: var(--spectrum-orange-600);
+  --spectrum-notice-color-700: var(--spectrum-orange-700);
+}
+
+/* ============================================
+   PART 2: GLOBAL STYLE RESETS
+   Scoped to optel tools to avoid breaking header/footer
+   ============================================ */
+
+/* Hide footer */
+body.optel-explorer footer,
+body.optel-oversight footer {
+  display: none;
+}
+
+/* Body reset */
+body.optel-explorer,
+body.optel-oversight {
+  max-width: none;
+  margin: 0;
+  background-color: white;
+}
+
+/* Main element reset */
+body.optel-explorer main,
+body.optel-oversight main {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  padding-top: var(--nav-height);
+  border-radius: 0;
+  background-color: transparent;
+}
+
+/* Section reset */
+body.optel-explorer main > .section,
+body.optel-explorer main > div,
+body.optel-oversight main > .section,
+body.optel-oversight main > div {
+  margin: 0;
+  padding: 0;
+}
+
+body.optel-explorer main > div > div,
+body.optel-oversight main > div > div,
+body.optel-explorer main > .section > div,
+body.optel-oversight main > .section > div {
+  margin: 0;
+}
+
+/* Typography reset */
+body.optel-explorer main h1,
+body.optel-explorer main h2,
+body.optel-explorer main h3,
+body.optel-explorer main h4,
+body.optel-explorer main h5,
+body.optel-explorer main h6,
+body.optel-oversight main h1,
+body.optel-oversight main h2,
+body.optel-oversight main h3,
+body.optel-oversight main h4,
+body.optel-oversight main h5,
+body.optel-oversight main h6 {
+  margin-top: 0;
+  margin-bottom: 0;
+  font-family: inherit;
+  font-weight: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+body.optel-explorer main ul,
+body.optel-explorer main ol,
+body.optel-explorer main dl,
+body.optel-oversight main ul,
+body.optel-oversight main ol,
+body.optel-oversight main dl {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Button reset */
+body.optel-explorer main .button,
+body.optel-explorer main button,
+body.optel-oversight main .button,
+body.optel-oversight main button {
+  border-radius: 0;
+  padding: 0;
+  font-weight: inherit;
+}
+
+/* URL-selector input reset */
+body.optel-explorer main url-selector input,
+body.optel-oversight main url-selector input {
+  border: 0;
+  padding: 0;
+  background-color: transparent;
+}
+
+body.optel-explorer main url-selector input:hover,
+body.optel-explorer main url-selector input:focus,
+body.optel-oversight main url-selector input:hover,
+body.optel-oversight main url-selector input:focus {
+  border: 0;
+  outline: none;
+  box-shadow: none;
+  color: inherit;
+}
+
+body.optel-explorer main url-selector input:disabled,
+body.optel-oversight main url-selector input:disabled {
+  background-color: transparent;
+  color: inherit;
+}
+
+/* Key metrics adjustment */
+body.optel-explorer main .key-metrics ul > * p,
+body.optel-oversight main .key-metrics ul > * p {
+  margin: 0.25em 0;
+}
+
+/* Chart styling */
+body.optel-explorer figure,
+body.optel-oversight figure {
+  margin-top: var(--spacing-m);
+}
+
+/* Split mode scroll containment (1600px+) */
+@media (width >= 1600px) {
+  body.optel-explorer,
+  body.optel-oversight {
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  body.optel-explorer facet-sidebar,
+  body.optel-oversight facet-sidebar {
+    overflow-y: auto;
+  }
+}
+
+/* ============================================
+   PART 3: DARK MODE OVERRIDES
+   ============================================ */
+
+html[data-theme="dark"] body.optel-explorer,
+html[data-theme="dark"] body.optel-oversight {
+  background-color: #1a1a1a;
+}
+
+html[data-theme="dark"] body.optel-explorer fieldset,
+html[data-theme="dark"] body.optel-oversight fieldset {
+  --background-color: #2a2a3a;
+
+  background-color: var(--background-color);
+  color: var(--spectrum-gray-200);
+}
+
+html[data-theme="dark"] body.optel-explorer list-facet[facet="userAgent"] fieldset,
+html[data-theme="dark"] body.optel-oversight list-facet[facet="userAgent"] fieldset {
+  --background-color: #3a2a3a;
+
+  color: #e8b4e8;
+}
+
+html[data-theme="dark"] body.optel-explorer list-facet[facet="url"] fieldset,
+html[data-theme="dark"] body.optel-oversight list-facet[facet="url"] fieldset {
+  --background-color: #2a2a4a;
+
+  color: #b4b4e8;
+}
+
+html[data-theme="dark"] body.optel-explorer fieldset > div:hover,
+html[data-theme="dark"] body.optel-oversight fieldset > div:hover {
+  background-color: #3a3a3a;
+}
+
+html[data-theme="dark"] body.optel-explorer fieldset li,
+html[data-theme="dark"] body.optel-oversight fieldset li,
+html[data-theme="dark"] body.optel-explorer vitals-facet label,
+html[data-theme="dark"] body.optel-oversight vitals-facet label {
+  background-color: #3a3a3a;
+  border-color: #5a5a5a;
+}
+
+html[data-theme="dark"] body.optel-explorer li.score-good,
+html[data-theme="dark"] body.optel-oversight li.score-good,
+html[data-theme="dark"] body.optel-explorer vitals-facet div[data-value^="good"] label,
+html[data-theme="dark"] body.optel-oversight vitals-facet div[data-value^="good"] label {
+  background-color: #1a3a1a;
+  color: #6fdc6f;
+  border-color: #4a8a4a;
+}
+
+html[data-theme="dark"] body.optel-explorer li.score-ni,
+html[data-theme="dark"] body.optel-oversight li.score-ni,
+html[data-theme="dark"] body.optel-explorer vitals-facet div[data-value^="ni"] label,
+html[data-theme="dark"] body.optel-oversight vitals-facet div[data-value^="ni"] label {
+  background-color: #3a2a1a;
+  color: #dcaa6f;
+  border-color: #8a6a4a;
+}
+
+html[data-theme="dark"] body.optel-explorer li.score-poor,
+html[data-theme="dark"] body.optel-oversight li.score-poor,
+html[data-theme="dark"] body.optel-explorer vitals-facet div[data-value^="poor"] label,
+html[data-theme="dark"] body.optel-oversight vitals-facet div[data-value^="poor"] label {
+  background-color: #3a1a1a;
+  color: #dc6f6f;
+  border-color: #8a4a4a;
+}
+
+html[data-theme="dark"] body.optel-explorer #facets div[aria-selected="true"],
+html[data-theme="dark"] body.optel-oversight #facets div[aria-selected="true"] {
+  background-color: #2a3a4a;
+}
