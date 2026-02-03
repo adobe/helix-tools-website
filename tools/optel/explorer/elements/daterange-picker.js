@@ -26,7 +26,7 @@ const STYLES = `
   }
 
   input {
-    width: 100%;
+    width: max-content;
     font: inherit;
     border-color: var(--gray-100);
     border: 2px solid var(--gray-300);
