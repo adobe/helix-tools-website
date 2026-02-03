@@ -37,7 +37,8 @@ export default function createSiteCard(site, orgValue) {
 
   card.innerHTML = `
     <div class="site-card-top">
-      <div class="site-card-badges">
+      <div class="site-card-header">
+        <h3 class="site-card-name">${site.name}</h3>
         <span class="source-badge source-${sourceType.type}" title="Loading...">${sourceType.label}</span>
       </div>
       <div class="card-actions">
@@ -61,9 +62,9 @@ export default function createSiteCard(site, orgValue) {
         </div>
       </div>
     </div>
+    <a href="#" class="site-card-cdn" target="_blank"><span></span>${icon('external')}</a>
     <div class="site-card-body">
       <div class="site-card-info">
-        <h3 class="site-card-name">${site.name}</h3>
         <div class="site-card-sources">
           <a href="#" class="site-card-source" data-type="code" title="Loading..." target="_blank">
             ${icon('code')}
@@ -73,12 +74,14 @@ export default function createSiteCard(site, orgValue) {
           </a>
         </div>
         <div class="site-card-links">
-          <a href="${previewUrl}" target="_blank" class="site-card-link">Preview ${icon('external')}</a>
-          <a href="${liveUrl}" target="_blank" class="site-card-link">Live ${icon('external')}</a>
+          <a href="${previewUrl}" target="_blank" class="site-card-link">Preview</a>
+          <span class="auth-icon auth-preview" aria-hidden="true" title="Preview requires authentication">${icon('lock')}</span>
+          <span class="site-card-links-divider">|</span>
+          <a href="${liveUrl}" target="_blank" class="site-card-link">Live</a>
+          <span class="auth-icon auth-live" aria-hidden="true" title="Live requires authentication">${icon('lock')}</span>
         </div>
-        <a href="#" class="site-card-cdn" target="_blank"><span></span>${icon('external')}</a>
         <div class="site-card-quick-actions">
-          <button type="button" class="quick-action-btn" data-action="edit">${icon('edit')} Edit Config</button>
+          <button type="button" class="quick-action-btn" data-action="edit">${icon('edit')} Edit Sources</button>
           <button type="button" class="quick-action-btn" data-action="logs">${icon('search')} View Logs</button>
         </div>
       </div>
@@ -86,7 +89,6 @@ export default function createSiteCard(site, orgValue) {
         <div class="psi-scores"></div>
       </div>
     </div>
-    <span class="auth-status" aria-hidden="true"></span>
   `;
 
   const menuTrigger = card.querySelector('.menu-trigger');
