@@ -995,11 +995,11 @@ facet-sidebar form {
   padding-right: 50px;
 }
 
-.clipboard,
-a.drilldown,
-a.drillup,
-.clipboard-paste,
-.icon {
+main .clipboard,
+main a.drilldown,
+main a.drillup,
+main .clipboard-paste,
+main .icon {
   margin-left: 8px;
   box-sizing: border-box;
   position: relative;
@@ -1014,10 +1014,10 @@ a.drillup,
   font-size: 0;
 }
 
-.clipboard-paste::after,
-.clipboard-paste::before,
-.icon::after,
-.icon::before {
+main .clipboard-paste::after,
+main .clipboard-paste::before,
+main .icon::after,
+main .icon::before {
   content: "";
   display: block;
   box-sizing: border-box;
@@ -1027,7 +1027,7 @@ a.drillup,
   left: 2px;
 }
 
-.clipboard-paste::before {
+main .clipboard-paste::before {
   border: 2px solid;
   border-bottom-left-radius: 3px;
   border-bottom-right-radius: 3px;
@@ -1035,7 +1035,7 @@ a.drillup,
   height: 6px;
 }
 
-.clipboard-paste::after {
+main .clipboard-paste::after {
   height: 2px;
   background: currentcolor;
   box-shadow: 0 -4px 0 0;
@@ -1043,7 +1043,7 @@ a.drillup,
 }
 
 /* the copy icon looks like two rectangles, overlaid */
-.clipboard::before {
+main .clipboard::before {
   content: "";
   display: block;
   box-sizing: border-box;
@@ -1057,7 +1057,7 @@ a.drillup,
   z-index: 1;
 }
 
-.clipboard::after {
+main .clipboard::after {
   content: "";
   display: block;
   box-sizing: border-box;

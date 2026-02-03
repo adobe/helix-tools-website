@@ -726,8 +726,8 @@ vitals-facet fieldset label {
   padding-right: 50px;
 }
 
-.clipboard,
-.icon {
+main .clipboard,
+main .icon {
   margin-left: 8px;
   box-sizing: border-box;
   position: relative;
@@ -741,8 +741,8 @@ vitals-facet fieldset label {
   font-size: 0;
 }
 
-.icon::after,
-.icon::before {
+main .icon::after,
+main .icon::before {
   content: "";
   display: block;
   box-sizing: border-box;
@@ -753,7 +753,7 @@ vitals-facet fieldset label {
 }
 
 /* the copy icon looks like two rectangles, overlaid */
-.clipboard::before {
+main .clipboard::before {
   content: "";
   display: block;
   box-sizing: border-box;
@@ -767,7 +767,7 @@ vitals-facet fieldset label {
   z-index: 1;
 }
 
-.clipboard::after {
+main .clipboard::after {
   content: "";
   display: block;
   box-sizing: border-box;
