@@ -504,6 +504,7 @@ a.button {
   border-color: var(--color-link-hover);
   background-color: var(--color-link-hover);
   text-decoration: none;
+  color: var(--gray-25);
 }
 
 .button:disabled,
