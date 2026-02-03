@@ -1,13 +1,12 @@
-/* eslint-disable import/no-relative-packages, import/no-unresolved */
+// eslint-disable-next-line import/no-unresolved
 import {
   DataChunks,
   facets,
   series,
   utils,
 } from '@adobe/rum-distiller';
-import DataLoader from '../shared/loader.js';
-import { parseConversionSpec, parseSearchParams } from '../shared/utils.js';
-/* eslint-enable import/no-relative-packages, import/no-unresolved */
+import DataLoader from './loader.js';
+import { parseConversionSpec, parseSearchParams } from './utils.js';
 
 const {
   isKnownFacet,
