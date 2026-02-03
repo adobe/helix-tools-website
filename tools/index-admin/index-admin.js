@@ -319,6 +319,37 @@ function deriveReindexPaths(includes) {
   return [...new Set(paths)];
 }
 
+async function removeIndex(name) {
+  // eslint-disable-next-line no-alert, no-restricted-globals
+  if (!confirm(`Remove index configuration "${name}"?`)) {
+    return;
+  }
+
+  delete loadedIndices.indices[name];
+
+  // eslint-disable-next-line import/no-unresolved
+  YAML = YAML || await import('https://unpkg.com/yaml@2.8.1/browser/index.js');
+  const yamlText = YAML.stringify(loadedIndices);
+  const resp = await fetch(`https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'text/yaml',
+    },
+    body: yamlText,
+  });
+
+  logResponse(consoleBlock, resp.status, ['POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`, resp.headers.get('x-error') || '']);
+
+  if (resp.ok) {
+    const indexesList = document.getElementById('indexes-list');
+    indexesList.innerHTML = '';
+    adminForm.dispatchEvent(new Event('submit'));
+  } else {
+    // eslint-disable-next-line no-alert
+    alert('Failed to remove index, check console for details');
+  }
+}
+
 function populateIndexes(indexes) {
   const indexesList = document.getElementById('indexes-list');
   indexesList.innerHTML = '';
@@ -336,6 +367,14 @@ function populateIndexes(indexes) {
     indexItem.querySelector('.edit-index-btn').addEventListener('click', (e) => {
       e.preventDefault();
       displayIndexDetails(name, indexDef);
+    });
+
+    indexItem.querySelector('.remove-index-btn').addEventListener('click', async (e) => {
+      e.preventDefault();
+      const btn = e.target;
+      btn.disabled = true;
+      await removeIndex(name);
+      btn.disabled = false;
     });
 
     const reindexBtn = indexItem.querySelector('.reindex-btn');
