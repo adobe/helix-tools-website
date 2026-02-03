@@ -1,12 +1,13 @@
-// eslint-disable-next-line import/no-relative-packages
+/* eslint-disable import/no-relative-packages, import/no-unresolved */
 import {
   DataChunks,
   facets,
   series,
   utils,
 } from '@adobe/rum-distiller';
-import DataLoader from './loader.js';
-import { parseConversionSpec, parseSearchParams } from './utils.js';
+import DataLoader from '../shared/loader.js';
+import { parseConversionSpec, parseSearchParams } from '../shared/utils.js';
+/* eslint-enable import/no-relative-packages, import/no-unresolved */
 
 const {
   isKnownFacet,
