@@ -1,7 +1,7 @@
 {
   "name": "code-review-scripts",
   "version": "1.0.0",
-  "description": "Screenshot capture utilities for code review skill",
+  "description": "Screenshot capture utilities for local code review (not for CI)",
   "type": "module",
   "scripts": {
     "capture": "node capture-screenshots.js"

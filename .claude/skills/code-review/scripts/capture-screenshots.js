@@ -1,16 +1,19 @@
 /**
- * Screenshot capture utility for PR reviews
+ * Screenshot capture utility for PR reviews (local use only)
  *
  * Captures screenshots of preview URLs at multiple viewport sizes
- * for visual validation during PR review.
+ * for visual validation during code review.
+ *
+ * NOTE: This script is for local/manual review only.
+ * It cannot be used in GitHub Actions (no browser available).
  *
  * Usage:
- *   node capture-screenshots.js <after-url> [before-url] [output-dir]
+ *   node capture-screenshots.js <after-url> [before-url] [output-dir] [block-selector]
  *
  * Examples:
  *   node capture-screenshots.js https://branch--repo--owner.aem.page/path
  *   node capture-screenshots.js https://branch--repo--owner.aem.page/path https://main--repo--owner.aem.page/path
- *   node capture-screenshots.js https://branch--repo--owner.aem.page/path "" ./my-screenshots
+ *   node capture-screenshots.js https://branch--repo--owner.aem.page/path "" ./my-screenshots ".hero"
  */
 
 import { chromium } from 'playwright';
@@ -27,6 +30,7 @@ const VIEWPORTS = {
 
 /**
  * Capture screenshots of a URL at multiple viewport sizes
+ * @param {object} browser - Playwright browser instance
  * @param {string} url - The URL to capture
  * @param {string} outputDir - Directory to save screenshots
  * @param {string} prefix - Filename prefix (e.g., 'after' or 'before')
