@@ -32,10 +32,16 @@
 }
 
 .cache .tile {
-  box-shadow: 3px 3px 4px rgb(0 0 0 / 10%);
+  --tile-shadow: 3px 3px 4px rgb(0 0 0 / 10%);
+
+  box-shadow: var(--tile-shadow);
   border-radius: 8px;
   margin: 12px 0;
   padding: 12px 0;
+}
+
+html[data-theme="dark"] .cache .tile {
+  --tile-shadow: 3px 3px 8px rgb(0 0 0 / 40%);
 }
 
 .cache div.row {
