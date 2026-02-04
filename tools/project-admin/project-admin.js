@@ -1,3 +1,4 @@
+import { registerToolReady } from '../../scripts/scripts.js';
 import createLoginButton from '../../utils/login.js';
 import { messageSidekick, NO_SIDEKICK } from '../../utils/sidekick.js';
 
@@ -218,9 +219,4 @@ async function init() {
   }, 10000);
 }
 
-const initPromise = init();
-
-// eslint-disable-next-line import/prefer-default-export
-export function ready() {
-  return initPromise;
-}
+registerToolReady(init());
