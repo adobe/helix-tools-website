@@ -4,7 +4,37 @@
  * subscription mechanism for context changes.
  */
 
-import { CONTEXT_STORAGE_KEY, PROJECTS_STORAGE_KEY } from './constants.js';
+// Storage keys for persisting context across sessions
+const CONTEXT_STORAGE_KEY = 'aem-admin-context';
+const PROJECTS_STORAGE_KEY = 'aem-projects';
+
+// Authentication status mappings for site access configuration
+export const AUTH_STATUS_MAP = {
+  none: {
+    status: 'public',
+    label: 'Public',
+    description: 'Anyone can access this site',
+    color: 'green',
+  },
+  site: {
+    status: 'protected',
+    label: 'Authenticated',
+    description: 'Preview and Live require authentication',
+    color: 'blue',
+  },
+  preview: {
+    status: 'preview-only',
+    label: 'Preview Authenticated',
+    description: 'Only Preview requires authentication',
+    color: 'orange',
+  },
+  live: {
+    status: 'live-only',
+    label: 'Live Authenticated',
+    description: 'Only Live requires authentication',
+    color: 'orange',
+  },
+};
 
 /**
  * @typedef {Object} AdminContext

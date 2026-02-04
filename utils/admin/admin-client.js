@@ -3,7 +3,7 @@
  * Base fetch utilities and path builders for AEM Admin API.
  */
 
-import { ADMIN_API_BASE } from './constants.js';
+export const ADMIN_API_BASE = 'https://admin.hlx.page';
 
 /**
  * @typedef {Object} AdminClientOptions
