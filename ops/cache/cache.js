@@ -4,6 +4,20 @@ import { registerToolReady } from '../../scripts/scripts.js';
 
 const API = 'https://helix-cache-debug.adobeaem.workers.dev';
 
+/**
+ * Escapes HTML special characters to prevent XSS.
+ * @param {string} text - Text to escape
+ * @returns {string} - Escaped HTML
+ */
+function escapeHtml(text) {
+  if (typeof text !== 'string') {
+    return String(text);
+  }
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 /** @type {HTMLInputElement} */
 const input = document.querySelector('input#url-input');
 /** @type {HTMLButtonElement} */
@@ -121,7 +135,7 @@ const showCodeModal = async (language, title, text) => {
             <span class="icon"></span>
           </a>
         </div>
-        <pre><code class="language-${language}">${text}</code></pre>
+        <pre><code class="language-${language}">${escapeHtml(text)}</code></pre>
       </div>
     `,
   );
@@ -200,7 +214,7 @@ const tileTemplate = (
         .split(/[,\s+]/)
         .filter((k) => k.length)
         .sort((a, b) => a.length - b.length)
-        .map((k) => `<span class="pill">${k}</span>`)
+        .map((k) => `<span class="pill">${escapeHtml(k)}</span>`)
         .join(' ');
       valCls = 'list';
     }
@@ -414,7 +428,7 @@ async function init() {
       clearInterval(interval);
 
       if (!response.ok) {
-        resultsContainer.innerHTML = `<p class="error">Failed to fetch details: ${response.status} - ${await response.text()}</p>`;
+        resultsContainer.innerHTML = `<p class="error">Failed to fetch details: ${response.status} - ${escapeHtml(await response.text())}</p>`;
         return;
       }
       const data = await response.json();
