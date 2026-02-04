@@ -244,7 +244,12 @@ function getFormData() {
   const data = {};
 
   if (type && CDN_FIELDS[type]) {
-    data.type = type;
+    const isInherited = document.querySelector('input[name="cdn-type"]:disabled:checked');
+
+    if (!isInherited) {
+      data.type = type;
+    }
+
     CDN_FIELDS[type].forEach((field) => {
       const value = formData.get(field.name);
       if (field.name === 'route' && value) {
