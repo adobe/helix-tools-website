@@ -35,6 +35,11 @@ The repository provides the basic structure, blocks, and configuration needed to
         ├── {toolName}.js      # Tool's JavaScript
         └── {toolName}.css     # Tool's styles
         └── index.html         # Tool's HTML File
+├── ops/             # Ops team internal tools (not for general users)
+    └── {toolName}/   - Individual ops tool directory
+        ├── {toolName}.js      # Tool's JavaScript
+        └── {toolName}.css     # Tool's styles
+        └── {toolName}.html    # Tool's HTML File (naming flexible)
 ├── styles/          # Global styles and CSS
     ├── styles.css          # Minimal global styling and layout for your website required for LCP
     └── lazy-styles.css     # Additional global styling and layout for below the fold/post LCP content
