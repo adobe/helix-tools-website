@@ -51,7 +51,7 @@
 }
 
 .cache div.row span.val.bad {
-  color: red;
+  color: light-dark(red, #ff6b6b);
 }
 
 .cache .pill {

@@ -99,7 +99,7 @@ const showModal = (title, content) => {
     <div class="modal-overlay"></div>
     <div class="modal">
       <div class="modal-header">
-        <h3>${title}</h3>
+        <h3>${escapeHtml(title)}</h3>
         <button class="modal-close">\u2715</button>
       </div>
       <div class="modal-content">
@@ -187,7 +187,7 @@ const tileTemplate = (
       <h2>${env}</h2>
       <div class="row">
         <span class="key">URL</span>
-        <span class="val"><a href="${url}">${url}</a> (${status})</span>
+        <span class="val"><a href="${escapeHtml(url)}">${escapeHtml(url)}</a> (${status})</span>
       </div>
       ${
   Object.entries(ENV_HEADERS[env]).map(([key, valKeys]) => {
@@ -217,6 +217,9 @@ const tileTemplate = (
         .map((k) => `<span class="pill">${escapeHtml(k)}</span>`)
         .join(' ');
       valCls = 'list';
+    } else if (val) {
+      // escape plain text values
+      val = escapeHtml(val);
     }
     if ((key === 'Content Length' && !contentLengthMatches && env !== 'Preview')
       || (key === 'Last Modified' && !lastModMatches && env !== 'Preview')
@@ -249,7 +252,7 @@ const renderPurgeSection = (container, data) => {
       <div class="form purge-form">
         <div class="field">
           <label for="purge-host-input">.live Host</label>
-          <input id="purge-host-input" type="text" placeholder="https://ref--repo--owner.aem.live" pattern="[^.]+.[^.]+" value="${inferredDotLiveHost}"/>
+          <input id="purge-host-input" type="text" placeholder="https://ref--repo--owner.aem.live" pattern="[^.]+.[^.]+" value="${escapeHtml(inferredDotLiveHost)}"/>
         </div>
         <div class="field">
           <label for="purge-keys-input">Cache Keys</label>
@@ -304,7 +307,7 @@ const renderPurgeSection = (container, data) => {
       const text = await response.text();
       await showCodeModal('log', 'Purge Result', text);
     } catch (e) {
-      showModal('Purge Error', /* html */`<p>${e.message}</p>`);
+      showModal('Purge Error', /* html */`<p>${escapeHtml(e.message)}</p>`);
     }
   });
 };
@@ -347,27 +350,27 @@ const renderDetails = (data) => {
       </div>
       <div class="row">
         <span class="key">BYOCDN Type</span>
-        <span class="val"><span class="pill badge ${cdnMatchClass}">${byoCdnType}</span></span>
+        <span class="val"><span class="pill badge ${cdnMatchClass}">${escapeHtml(byoCdnType)}</span></span>
       </div>
       <div class="row">
         <span class="key">Actual CDN Type</span>
-        <span class="val"><span class="pill badge ${cdnMatchClass}">${actualCdn}</span></span>
+        <span class="val"><span class="pill badge ${cdnMatchClass}">${escapeHtml(actualCdn)}</span></span>
       </div>
       ${configuredCdnType ? `<div class="row">
         <span class="key">Configured CDN Type</span>
-        <span class="val"><span class="pill badge ${actualCdn === configuredCdnType || (configuredCdnType === 'managed' && actualCdn === 'fastly') ? 'good' : 'bad'}">${configuredCdnType}</span></span>
+        <span class="val"><span class="pill badge ${actualCdn === configuredCdnType || (configuredCdnType === 'managed' && actualCdn === 'fastly') ? 'good' : 'bad'}">${escapeHtml(configuredCdnType)}</span></span>
       </div>` : ''}
       ${configuredCdnHost ? `<div class="row">
         <span class="key">Configured CDN Host</span>
-        <span class="val">${configuredCdnHost}</span>
+        <span class="val">${escapeHtml(configuredCdnHost)}</span>
       </div>` : ''}
       <div class="row">
         <span class="key">Forwarded Host</span>
-        <span class="val">${forwardedHost}</span>
+        <span class="val">${escapeHtml(forwardedHost)}</span>
       </div>
       <div class="row">
         <span class="key">Random Probe ID</span>
-        <span class="val">${data.probe.randomId}</span>
+        <span class="val">${escapeHtml(data.probe.randomId)}</span>
       </div>
     </div>
   `);
