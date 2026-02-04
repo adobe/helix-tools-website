@@ -98,6 +98,12 @@ export const paths = {
 
   // Snapshots
   snapshot: (org, site, ref, name) => `/snapshot/${org}/${site}/${ref}/${name}`,
+
+  // CDN config
+  cdnProd: (org, site) => `/config/${org}/sites/${site}/cdn/prod.json`,
+
+  // Index/query config
+  queryConfig: (org, site) => `/config/${org}/sites/${site}/content/query.yaml`,
 };
 
 /**

@@ -3,6 +3,7 @@ import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { toClassName } from '../../scripts/aem.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { logResponse } from '../../blocks/console/console.js';
+import { adminFetch, paths } from '../../utils/admin/admin-client.js';
 
 const adminForm = document.getElementById('admin-form');
 const site = document.getElementById('site');
@@ -10,6 +11,8 @@ const org = document.getElementById('org');
 const consoleBlock = document.querySelector('.console');
 const addIndexButton = document.getElementById('add-index');
 const fetchButton = document.getElementById('fetch');
+
+const logFn = (status, details) => logResponse(consoleBlock, status, details);
 
 let loadedIndices;
 let YAML;
@@ -149,15 +152,11 @@ function displayIndexDetails(indexName, indexDef, newIndex = false) {
     // eslint-disable-next-line import/no-unresolved
     YAML = YAML || await import('https://unpkg.com/yaml@2.8.1/browser/index.js');
     const yamlText = YAML.stringify(loadedIndices);
-    const resp = await fetch(`https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`, {
+    const resp = await adminFetch(paths.queryConfig(org.value, site.value), {
       method: 'POST',
-      headers: {
-        'content-type': 'text/yaml',
-      },
+      headers: { 'content-type': 'text/yaml' },
       body: yamlText,
-    });
-
-    logResponse(consoleBlock, resp.status, ['POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`, resp.headers.get('x-error') || '']);
+    }, { logFn });
 
     if (resp.ok) {
       indexDetails.close();
@@ -222,24 +221,19 @@ function showJobStatus(jobDetails) {
   statusDialog.showModal();
 }
 
-async function reIndex(indexNames, paths) {
-  const indexUrl = `https://admin.hlx.page/index/${org.value}/${site.value}/main/*`;
+async function reIndex(indexNames, indexPaths) {
+  const indexPath = `${paths.index(org.value, site.value, 'main')}/*`;
   const payload = {
-    paths,
+    paths: indexPaths,
     indexNames,
   };
 
   try {
-    const resp = await fetch(indexUrl, {
+    const resp = await adminFetch(indexPath, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-    });
-
-    const errorMsg = resp.headers.get('x-error') || '';
-    logResponse(consoleBlock, resp.status, ['POST', indexUrl, errorMsg]);
+    }, { logFn });
 
     // If 202 status, return job info
     if (resp.status === 202) {
@@ -252,15 +246,16 @@ async function reIndex(indexNames, paths) {
       return { success: true, detailsUrl: null };
     }
 
+    const errorMsg = resp.headers.get('x-error') || '';
     return { success: false, status: resp.status, error: errorMsg };
   } catch (error) {
-    logResponse(consoleBlock, 0, ['POST', indexUrl, error.message]);
     return { success: false, error: error.message };
   }
 }
 
 async function fetchJobDetails(detailsUrl) {
   try {
+    // Job details URLs are full URLs from the API response, so we use fetch directly
     const detailsResp = await fetch(detailsUrl);
     logResponse(consoleBlock, detailsResp.status, ['GET', detailsUrl, detailsResp.headers.get('x-error') || '']);
 
@@ -288,7 +283,7 @@ function deriveReindexPaths(includes) {
     return ['/*'];
   }
 
-  const paths = includes.map((pattern) => {
+  const derivedPaths = includes.map((pattern) => {
     // If pattern has no wildcards, use it as-is
     if (!pattern.includes('*')) {
       return pattern;
@@ -312,12 +307,12 @@ function deriveReindexPaths(includes) {
   });
 
   // If any path is /*, just return that (covers everything)
-  if (paths.includes('/*')) {
+  if (derivedPaths.includes('/*')) {
     return ['/*'];
   }
 
   // Dedupe paths
-  return [...new Set(paths)];
+  return [...new Set(derivedPaths)];
 }
 
 async function removeIndex(name) {
@@ -331,15 +326,11 @@ async function removeIndex(name) {
   // eslint-disable-next-line import/no-unresolved
   YAML = YAML || await import('https://unpkg.com/yaml@2.8.1/browser/index.js');
   const yamlText = YAML.stringify(loadedIndices);
-  const resp = await fetch(`https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`, {
+  const resp = await adminFetch(paths.queryConfig(org.value, site.value), {
     method: 'POST',
-    headers: {
-      'content-type': 'text/yaml',
-    },
+    headers: { 'content-type': 'text/yaml' },
     body: yamlText,
-  });
-
-  logResponse(consoleBlock, resp.status, ['POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`, resp.headers.get('x-error') || '']);
+  }, { logFn });
 
   if (resp.ok) {
     const indexesList = document.getElementById('indexes-list');
@@ -394,8 +385,8 @@ function populateIndexes(indexes) {
       }
 
       // Determine paths based on include patterns
-      const paths = deriveReindexPaths(indexDef.include);
-      const pathsDisplay = paths.join(', ');
+      const reindexPaths = deriveReindexPaths(indexDef.include);
+      const pathsDisplay = reindexPaths.join(', ');
 
       // eslint-disable-next-line no-alert, no-restricted-globals
       const confirmed = confirm(`Start a Bulk Reindex Job for Index: ${name}?\n\nPaths: ${pathsDisplay}`);
@@ -404,7 +395,7 @@ function populateIndexes(indexes) {
       reindexBtn.textContent = 'Starting...';
       reindexBtn.disabled = true;
 
-      const result = await reIndex([name], paths);
+      const result = await reIndex([name], reindexPaths);
 
       if (result.success && result.detailsUrl) {
         detailsUrl = result.detailsUrl;
@@ -516,9 +507,7 @@ async function init() {
     fetchButton.disabled = true;
 
     try {
-      const indexUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`;
-      const resp = await fetch(indexUrl);
-      logResponse(consoleBlock, resp.status, ['GET', indexUrl, resp.headers.get('x-error') || '']);
+      const resp = await adminFetch(paths.queryConfig(org.value, site.value), {}, { logFn });
 
       if (resp.ok) {
         updateConfig();
