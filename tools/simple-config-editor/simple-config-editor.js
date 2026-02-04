@@ -903,7 +903,7 @@ function extractHostname(value) {
 }
 
 /**
- * Cleans up sidekick host properties by extracting hostnames from URLs
+ * Cleans up sidekick and CDN host properties by extracting hostnames from URLs
  * @param {Object} config - The configuration object
  * @returns {Object} - The cleaned configuration
  */
@@ -920,6 +920,20 @@ function cleanSidekickHostProperties(config) {
         if (cleaned !== config.sidekick[prop]) {
           logMessage(consoleBlock, 'info', ['CLEAN', `Extracted hostname from sidekick.${prop}: ${config.sidekick[prop]} -> ${cleaned}`, '']);
           config.sidekick[prop] = cleaned;
+        }
+      }
+    });
+  }
+
+  // Check if cdn object exists and clean host properties in its environments
+  if (config.cdn && typeof config.cdn === 'object') {
+    const environments = ['prod', 'live', 'preview', 'review'];
+    environments.forEach((env) => {
+      if (config.cdn[env] && typeof config.cdn[env] === 'object' && config.cdn[env].host) {
+        const cleaned = extractHostname(config.cdn[env].host);
+        if (cleaned !== config.cdn[env].host) {
+          logMessage(consoleBlock, 'info', ['CLEAN', `Extracted hostname from cdn.${env}.host: ${config.cdn[env].host} -> ${cleaned}`, '']);
+          config.cdn[env].host = cleaned;
         }
       }
     });
