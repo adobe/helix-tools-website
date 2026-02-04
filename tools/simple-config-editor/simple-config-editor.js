@@ -883,7 +883,7 @@ function extractHostname(value) {
   if (!value || typeof value !== 'string') {
     return value;
   }
-  
+
   // If it contains protocol (://) or starts with //, it's a URL
   if (value.includes('://') || value.startsWith('//')) {
     try {
@@ -897,7 +897,7 @@ function extractHostname(value) {
       return value;
     }
   }
-  
+
   // Already a hostname, return as-is
   return value;
 }
@@ -909,9 +909,9 @@ function extractHostname(value) {
  */
 function cleanSidekickHostProperties(config) {
   if (!config) return config;
-  
+
   const hostProperties = ['host', 'liveHost', 'previewHost', 'reviewHost'];
-  
+
   // Check if sidekick object exists and clean its host properties
   if (config.sidekick && typeof config.sidekick === 'object') {
     hostProperties.forEach((prop) => {
@@ -924,7 +924,7 @@ function cleanSidekickHostProperties(config) {
       }
     });
   }
-  
+
   return config;
 }
 
@@ -947,25 +947,26 @@ async function showMigrationConfirmation(migratedConfig) {
       <pre>${escapeHtml(JSON.stringify(migratedConfig, null, 2))}</pre>
     </div>
   `;
-  
+
   const { showModal, block } = await createModal([modalContent]);
   const dialog = block.querySelector('dialog');
-  
+
   // Store config for migration
   modalContent.dataset.migratedConfig = JSON.stringify(migratedConfig);
-  
+
   // Set up event listeners for migration buttons
   modalContent.querySelector('#confirm-migration').addEventListener('click', async () => {
     dialog.close();
     const configToMigrate = JSON.parse(modalContent.dataset.migratedConfig);
+    // eslint-disable-next-line no-use-before-define
     await performMigration(configToMigrate);
   });
-  
+
   modalContent.querySelector('#cancel-migration').addEventListener('click', () => {
     dialog.close();
     logMessage(consoleBlock, 'info', ['MIGRATE', 'Migration cancelled', '']);
   });
-  
+
   showModal();
 }
 
@@ -976,9 +977,9 @@ async function showMigrationConfirmation(migratedConfig) {
 async function performMigration(configToMigrate) {
   try {
     const adminURL = `https://admin.hlx.page${configPath}`;
-    
+
     logMessage(consoleBlock, 'info', ['MIGRATE', 'Performing migration...', '']);
-    
+
     const response = await fetch(adminURL, {
       method: 'PUT',
       headers: {
@@ -986,26 +987,27 @@ async function performMigration(configToMigrate) {
       },
       body: JSON.stringify(configToMigrate),
     });
-    
+
     // Log the PUT request
     logResponse(consoleBlock, response.status, [
       'PUT',
       adminURL,
       response.headers.get('x-error') || '',
     ]);
-    
+
     if (response.status === 401) {
       await ensureLogin(org.value, site.value);
       return;
     }
-    
+
     if (!response.ok) {
       throw new Error(`Migration failed: HTTP ${response.status}: ${response.statusText}`);
     }
-    
+
     logMessage(consoleBlock, 'success', ['MIGRATE', 'Migration completed successfully', '']);
-    
+
     // Reload the configuration to get the saved migrated config
+    // eslint-disable-next-line no-use-before-define
     await loadConfig();
   } catch (error) {
     logMessage(consoleBlock, 'error', ['MIGRATE', `Migration failed: ${error.message}`, '']);
@@ -1055,35 +1057,34 @@ async function loadConfig() {
     // Handle 404 - offer migration
     if (configResponse.status === 404) {
       logMessage(consoleBlock, 'warning', ['LOAD', 'No configuration file found. Checking for migration options...', '']);
-      
+
       // Try to fetch config with migrate=true to see if migration is possible
       const migrateURL = `https://admin.hlx.page${configPath}?migrate=true`;
       const migrateResponse = await fetch(migrateURL);
-      
+
       logResponse(consoleBlock, migrateResponse.status, [
         'GET',
         migrateURL,
         migrateResponse.headers.get('x-error') || '',
       ]);
-      
+
       if (migrateResponse.status === 401) {
         await ensureLogin(org.value, site.value);
         return;
       }
-      
+
       if (migrateResponse.ok) {
         const migratedConfig = await migrateResponse.json();
-        
+
         // Clean up any fully qualified URLs in host properties before displaying
         const cleanedConfig = cleanSidekickHostProperties({ ...migratedConfig });
-        
+
         configEditor.removeAttribute('aria-hidden');
         showMigrationConfirmation(cleanedConfig);
         logMessage(consoleBlock, 'info', ['MIGRATE', 'Migration preview loaded. Review and confirm to proceed.', '']);
         return;
-      } else {
-        throw new Error(`No configuration found and migration not available: HTTP ${migrateResponse.status}`);
       }
+      throw new Error(`No configuration found and migration not available: HTTP ${migrateResponse.status}`);
     }
 
     if (!configResponse.ok) {
