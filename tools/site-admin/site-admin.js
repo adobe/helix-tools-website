@@ -10,7 +10,7 @@ import {
   getContentSourceType,
   getDAEditorURL,
 } from './helpers/utils.js';
-import { openAddSiteModal, getAuthStatusInfo } from './helpers/modals.js';
+import { openAddSiteModal } from './helpers/modals.js';
 import createSiteCard from './helpers/site-card.js';
 
 const org = document.getElementById('org');
@@ -117,23 +117,22 @@ const displaySites = (sites) => {
         card.dataset.codeUrl = codeUrl;
         card.dataset.contentUrl = contentUrl;
 
-        let authScope = 'none';
-        if (details.access?.site) authScope = 'site';
-        else if (details.access?.preview) authScope = 'preview';
-        else if (details.access?.live) authScope = 'live';
+        const hasPreviewAuth = details.access?.site || details.access?.preview;
+        const hasLiveAuth = details.access?.site || details.access?.live;
+        const hasAnyAuth = hasPreviewAuth || hasLiveAuth;
 
-        if (authScope !== 'none') {
+        if (hasAnyAuth) {
           card.dataset.hasAuth = 'true';
           const lighthouseBtn = card.querySelector('.menu-item[data-action="lighthouse"]');
           lighthouseBtn.disabled = true;
           lighthouseBtn.title = 'Lighthouse unavailable for authenticated sites';
 
-          const statusInfo = getAuthStatusInfo(authScope);
-          const authStatusEl = card.querySelector('.auth-status');
-          authStatusEl.className = `auth-status auth-${statusInfo.color}`;
-          authStatusEl.innerHTML = `${icon('shield')} ${statusInfo.label}`;
-          authStatusEl.title = statusInfo.description;
-          authStatusEl.removeAttribute('aria-hidden');
+          if (hasPreviewAuth) {
+            card.querySelector('.auth-icon.auth-preview').removeAttribute('aria-hidden');
+          }
+          if (hasLiveAuth) {
+            card.querySelector('.auth-icon.auth-live').removeAttribute('aria-hidden');
+          }
         }
 
         const cdnHost = details.cdn?.prod?.host || details.cdn?.host;
