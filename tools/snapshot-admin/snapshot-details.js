@@ -1,3 +1,4 @@
+import { registerToolReady } from '../../scripts/scripts.js';
 import {
   fetchManifest,
   saveManifest,
@@ -536,9 +537,4 @@ async function init() {
   await loadSnapshotDetails();
 }
 
-const initPromise = init();
-
-// eslint-disable-next-line import/prefer-default-export
-export function ready() {
-  return initPromise;
-}
+registerToolReady(init());

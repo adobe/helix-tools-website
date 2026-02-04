@@ -1,5 +1,6 @@
 // eslint-disable-next-line import/extensions, import/no-unresolved
 import pLimit from 'https://cdn.skypack.dev/p-limit@4.0.0';
+import { registerToolReady } from '../../scripts/scripts.js';
 
 // Parse parallelism parameter from URL to control concurrent PSI requests
 const parallelism = new URL(window.location.href).searchParams.get('parallelism');
@@ -804,9 +805,4 @@ function init() {
   return Promise.resolve();
 }
 
-const initPromise = init();
-
-// eslint-disable-next-line import/prefer-default-export
-export function ready() {
-  return initPromise;
-}
+registerToolReady(init());

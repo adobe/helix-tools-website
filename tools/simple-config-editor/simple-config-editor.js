@@ -1,3 +1,4 @@
+import { registerToolReady } from '../../scripts/scripts.js';
 import { logResponse, logMessage } from '../../blocks/console/console.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
@@ -1108,7 +1109,4 @@ initPromise.then(async () => {
   logMessage(consoleBlock, 'info', ['INIT', 'Config Editor initialized', '']);
 });
 
-// eslint-disable-next-line import/prefer-default-export
-export function ready() {
-  return initPromise;
-}
+registerToolReady(initPromise);

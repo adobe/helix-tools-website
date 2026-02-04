@@ -1,3 +1,4 @@
+import { registerToolReady } from '../../scripts/scripts.js';
 import { decorateIcons } from '../../scripts/aem.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
@@ -751,9 +752,4 @@ async function init() {
   runFromParams(window.location.search);
 }
 
-const initPromise = init();
-
-// eslint-disable-next-line import/prefer-default-export
-export function ready() {
-  return initPromise;
-}
+registerToolReady(init());
