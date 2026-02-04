@@ -59,7 +59,7 @@
   padding: 4px 8px;
   margin: 0 4px;
   font-size: 0.8em;
-  border: 1px solid #000;
+  border: 1px solid light-dark(#000, #ccc);
   white-space: nowrap;
   line-height: 2.2;
 }
@@ -84,6 +84,21 @@
   background-color: light-dark(#fff0c6, #5a4a2e);
   border-color: light-dark(#d4a800, #7a6a3d);
   color: light-dark(#6b4500, #e6d6a8);
+}
+
+.cache .tile details {
+  margin-top: 12px;
+}
+
+.cache .tile .pops {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.cache .tile pops-map {
+  display: block;
+  width: 100%;
 }
 
 .cache pre {
