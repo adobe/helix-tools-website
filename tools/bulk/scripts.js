@@ -1,4 +1,5 @@
 import { ensureLogin } from '../../blocks/profile/profile.js';
+import { adminFetch, paths, ADMIN_API_BASE } from '../../utils/admin/admin-client.js';
 
 const log = document.getElementById('logger');
 const adminVersion = new URLSearchParams(window.location.search).get('hlx-admin-version');
@@ -339,10 +340,12 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
     };
     const endpoint = endpoints[operation] || operation;
     const method = methods[operation] || 'POST';
-    const adminURL = `https://admin.hlx.page/${endpoint}/${owner}/${repo}/${branch}${pathname}${adminVersionSuffix}`;
-    const resp = await fetch(adminURL, {
-      method,
-    });
+    const pathBuilder = paths[endpoint];
+    const adminPath = pathBuilder
+      ? `${pathBuilder(owner, repo, branch, pathname)}${adminVersionSuffix}`
+      : `/${endpoint}/${owner}/${repo}/${branch}${pathname}${adminVersionSuffix}`;
+    const adminURL = `${ADMIN_API_BASE}${adminPath}`;
+    const resp = await adminFetch(adminPath, { method });
     resp.text().then(() => {
       counter += 1;
       append(`${counter}/${total}: ${adminURL}`, resp.status);
@@ -370,11 +373,15 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
       const [branch, repo, owner] = hostname.split('.')[0].split('--');
       const bulkText = `$1/${total} URL(s) bulk ${VERB[operation]}ed on ${owner}/${repo} ${forceUpdate ? '(force update)' : ''}`;
       const bulkLog = append(bulkText.replace('$1', 0));
-      const paths = urls.map((url) => new URL(url).pathname);
-      const bulkResp = await fetch(`https://admin.hlx.page/${operation}/${owner}/${repo}/${branch}/*${adminVersionSuffix}`, {
+      const bulkPaths = urls.map((url) => new URL(url).pathname);
+      const pathBuilder = paths[operation];
+      const bulkPath = pathBuilder
+        ? `${pathBuilder(owner, repo, branch, '')}/*${adminVersionSuffix}`
+        : `/${operation}/${owner}/${repo}/${branch}/*${adminVersionSuffix}`;
+      const bulkResp = await adminFetch(bulkPath, {
         method: 'POST',
         body: JSON.stringify({
-          paths,
+          paths: bulkPaths,
           forceUpdate,
         }),
         headers: {
@@ -382,13 +389,13 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
         },
       });
       if (!bulkResp.ok) {
-        append(`Failed to bulk ${VERB[operation]} ${paths.length} URLs on ${origin}: ${await bulkResp.text()}`);
+        append(`Failed to bulk ${VERB[operation]} ${bulkPaths.length} URLs on ${origin}: ${await bulkResp.text()}`);
       } else {
         const { job } = await bulkResp.json();
         const { name } = job;
         const jobStatusPoll = window.setInterval(async () => {
           try {
-            const jobResp = await fetch(`https://admin.hlx.page/job/${owner}/${repo}/${branch}/${VERB[operation]}/${name}/details`);
+            const jobResp = await adminFetch(paths.jobDetails(owner, repo, branch, VERB[operation], name, 'details'));
             const jobStatus = await jobResp.json();
             const {
               state,

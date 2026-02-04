@@ -287,15 +287,13 @@ async function removeLanguage(sitemapName, langCode) {
   delete loadedSitemaps.sitemaps[sitemapName].languages[langCode];
 
   const yamlText = YAML.stringify(loadedSitemaps);
-  const resp = await fetch(`https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, {
+  const resp = await adminFetch(paths.sitemapConfig(org.value, site.value), {
     method: 'POST',
     headers: {
       'content-type': 'text/yaml',
     },
     body: yamlText,
-  });
-
-  logResponse(consoleBlock, resp.status, ['POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, resp.headers.get('x-error') || '']);
+  }, { logFn });
 
   if (resp.ok) {
     const sitemapsList = document.getElementById('sitemaps-list');
@@ -331,15 +329,13 @@ async function removeSitemap(name) {
   delete loadedSitemaps.sitemaps[name];
 
   const yamlText = YAML.stringify(loadedSitemaps);
-  const resp = await fetch(`https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, {
+  const resp = await adminFetch(paths.sitemapConfig(org.value, site.value), {
     method: 'POST',
     headers: {
       'content-type': 'text/yaml',
     },
     body: yamlText,
-  });
-
-  logResponse(consoleBlock, resp.status, ['POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, resp.headers.get('x-error') || '']);
+  }, { logFn });
 
   if (resp.ok) {
     const sitemapsList = document.getElementById('sitemaps-list');

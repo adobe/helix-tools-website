@@ -1,4 +1,6 @@
 /* eslint-disable no-console */
+import { adminFetch, paths } from '../../utils/admin/admin-client.js';
+
 const RUN_REPORT_BUTTON = document.getElementById('run-report');
 const ORPHANED_PAGES_LIST = document.getElementById('orphaned-pages-list');
 const SPINNER = document.getElementById('spinner');
@@ -20,8 +22,7 @@ let LIVE_HOST = null;
  */
 async function fetchHosts(org, site) {
   try {
-    const url = `https://admin.hlx.page/status/${org}/${site}/main`;
-    const res = await fetch(url);
+    const res = await adminFetch(paths.status(org, site, 'main'));
     if (!res.ok) throw res;
     const json = await res.json();
     return {
@@ -51,10 +52,7 @@ async function fetchJobUrl() {
       redirect: 'follow',
       referrerPolicy: 'no-referrer',
     };
-    const res = await fetch(
-      `https://admin.hlx.page/status/${ORG}/${SITE}/main/*`,
-      options,
-    );
+    const res = await adminFetch(`${paths.status(ORG, SITE, 'main')}/*`, options);
     if (!res.ok) throw res;
     const json = await res.json();
     if (!json.job || json.job.state !== 'created') {
@@ -103,12 +101,12 @@ function displayJobDetails() {
   }
 }
 
-async function unpublishOrphanedPages(paths) {
+async function unpublishOrphanedPages(unpublishPaths) {
   // eslint-disable-next-line no-console
-  console.log('Unpublishing', paths);
+  console.log('Unpublishing', unpublishPaths);
   const options = {
     body: JSON.stringify({
-      paths,
+      paths: unpublishPaths,
       delete: true,
     }),
     method: 'POST',
@@ -116,20 +114,14 @@ async function unpublishOrphanedPages(paths) {
       'Content-Type': 'application/json',
     },
   };
-  const liveResp = await fetch(
-    `https://admin.hlx.page/live/${ORG}/${SITE}/main/*`,
-    options,
-  );
+  const liveResp = await adminFetch(`${paths.live(ORG, SITE, 'main', '')}/*`, options);
   if (!liveResp.ok) throw liveResp;
   const liveJson = await liveResp.json();
-  const previewResp = await fetch(
-    `https://admin.hlx.page/preview/${ORG}/${SITE}/main/*`,
-    options,
-  );
+  const previewResp = await adminFetch(`${paths.preview(ORG, SITE, 'main', '')}/*`, options);
   if (!previewResp.ok) throw previewResp;
   const previewJson = await previewResp.json();
   console.log('Unpublished', liveJson, previewJson);
-  STATUS.innerHTML = `Unpublished ${paths.length} Page${paths.length === 1 ? '' : 's'}, re-run report to check again.`;
+  STATUS.innerHTML = `Unpublished ${unpublishPaths.length} Page${unpublishPaths.length === 1 ? '' : 's'}, re-run report to check again.`;
 }
 
 function getCheckedOrphanedPages() {

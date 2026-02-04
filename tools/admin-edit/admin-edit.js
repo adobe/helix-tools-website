@@ -2,6 +2,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { loadScript } from '../../scripts/aem.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { logResponse } from '../../blocks/console/console.js';
+import { paths, ADMIN_API_BASE } from '../../utils/admin/admin-client.js';
 
 const adminForm = document.getElementById('admin-form');
 const adminURL = document.getElementById('admin-url');
@@ -193,9 +194,9 @@ function updateAdminURLSuggestions(org) {
   }
 
   const suggestions = [
-    { url: `https://admin.hlx.page/config/${org}.json`, label: 'Org Config' },
-    { url: `https://admin.hlx.page/config/${org}/profiles.json`, label: 'Profiles' },
-    { url: `https://admin.hlx.page/config/${org}/sites.json`, label: 'Sites' },
+    { url: `${ADMIN_API_BASE}${paths.configJson(org)}`, label: 'Org Config' },
+    { url: `${ADMIN_API_BASE}${paths.profiles(org)}`, label: 'Profiles' },
+    { url: `${ADMIN_API_BASE}${paths.sitesJson(org)}`, label: 'Sites' },
   ];
 
   adminURLList.innerHTML = suggestions
@@ -204,7 +205,8 @@ function updateAdminURLSuggestions(org) {
 }
 
 async function init() {
-  adminURL.value = localStorage.getItem('admin-url') || 'https://admin.hlx.page/status/adobe/aem-boilerplate/main/';
+  const defaultUrl = `${ADMIN_API_BASE}${paths.status('adobe', 'aem-boilerplate', 'main')}/`;
+  adminURL.value = localStorage.getItem('admin-url') || defaultUrl;
 
   // populate datalist with well-known config locations on load
   const initialOrg = extractOrgFromURL(adminURL.value);

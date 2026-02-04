@@ -5,6 +5,7 @@ import {
   messageSidekick,
   NO_SIDEKICK,
 } from '../../utils/sidekick.js';
+import { adminFetch, ADMIN_API_BASE } from '../../utils/admin/admin-client.js';
 
 async function getLoginInfo() {
   return messageSidekick({ action: 'getAuthInfo' });
@@ -96,7 +97,7 @@ async function removeSite(org, site) {
 async function fetchUserInfo(userInfoElem, org, site, loginInfo) {
   let userInfo = '';
   if (Array.isArray(loginInfo) && loginInfo.includes(org)) {
-    const resp = await fetch(`https://admin.hlx.page/profile/${org}/${site}`);
+    const resp = await adminFetch(`/profile/${org}/${site}`);
     if (resp.ok) {
       const { profile } = await resp.json();
       if (profile) {
@@ -136,7 +137,7 @@ function createLoginButton(org, loginInfo, closeModal) {
 
     const selectedSite = target.closest('li').querySelector(`input[name="profile-${org}-site"]:checked`)?.value;
 
-    const loginUrl = new URL(`https://admin.hlx.page/${action}/${org}/${selectedSite}/main`);
+    const loginUrl = new URL(`${ADMIN_API_BASE}/${action}/${org}/${selectedSite}/main`);
     if (!loggedIn) {
       if (opsMode) {
         loginUrl.searchParams.append('idp', 'microsoft');

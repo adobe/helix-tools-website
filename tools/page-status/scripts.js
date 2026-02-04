@@ -2,6 +2,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { decorateIcons } from '../../scripts/aem.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
+import { adminFetch, paths, ADMIN_API_BASE } from '../../utils/admin/admin-client.js';
 import loadingMessages from './loading-messages.js';
 
 const FORM = document.getElementById('status-form');
@@ -446,8 +447,7 @@ function displayResources(resources, live, preview) {
  */
 async function fetchHosts(org, site) {
   try {
-    const url = `https://admin.hlx.page/status/${org}/${site}/main`;
-    const res = await fetch(url);
+    const res = await adminFetch(paths.status(org, site, 'main'));
     if (!res.ok) throw res;
     const json = await res.json();
     return {
@@ -498,10 +498,7 @@ async function fetchJobUrl(org, site, path) {
       redirect: 'follow',
       referrerPolicy: 'no-referrer',
     };
-    const res = await fetch(
-      `https://admin.hlx.page/status/${org}/${site}/main/*`,
-      options,
-    );
+    const res = await adminFetch(`${paths.status(org, site, 'main')}/*`, options);
     if (!res.ok) throw res;
     const json = await res.json();
     if (!json.job || json.job.state !== 'created') {
@@ -553,11 +550,11 @@ async function runJob(url, retry = 10000) {
  * @returns {Promise<>} Promise that resolves once job has run and results are displayed.
  */
 async function runAndDisplayJob(jobUrl, live, preview) {
-  const paths = await runJob(jobUrl);
-  if (!paths || paths.length === 0) {
+  const jobPaths = await runJob(jobUrl);
+  if (!jobPaths || jobPaths.length === 0) {
     throw new Error('No page status data found.');
   }
-  displayResources(paths, live, preview);
+  displayResources(jobPaths, live, preview);
   updateTableDisplay('results');
   enableActionButtons();
 }
@@ -607,7 +604,8 @@ async function runFromParams(search) {
         const { live, preview } = await validateHosts(org, site);
         updateConfig();
         // fetch page status and display results
-        const jobUrl = `https://admin.hlx.page/job/${org}/${site}/main/status/${job}`;
+        // Note: runJob uses fetch directly since it polls the full URL returned from job creation
+        const jobUrl = `${ADMIN_API_BASE}${paths.job(org, site, 'main', 'status', job)}`;
         await runAndDisplayJob(jobUrl, live, preview);
         updateJobParam(job);
       } catch (error) {

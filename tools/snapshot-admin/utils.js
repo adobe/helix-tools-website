@@ -1,6 +1,5 @@
 // Snapshot admin utilities
-
-const AEM_ORIGIN = 'https://admin.hlx.page';
+import { adminFetch, paths } from '../../utils/admin/admin-client.js';
 
 let org;
 let site;
@@ -63,7 +62,7 @@ export async function saveManifest(name, manifestToSave) {
     opts.body = JSON.stringify(manifestToSave);
   }
 
-  const resp = await fetch(`${AEM_ORIGIN}/snapshot/${org}/${site}/main/${name}`, opts);
+  const resp = await adminFetch(paths.snapshot(org, site, 'main', name), opts);
   if (!resp.ok) return formatError(resp);
   const { manifest } = await resp.json();
   manifest.resources = formatResources(name, manifest.resources);
@@ -84,13 +83,13 @@ export async function reviewSnapshot(name, state) {
   };
   // Review status
   const review = `?review=${state}`;
-  const resp = await fetch(`${AEM_ORIGIN}/snapshot/${org}/${site}/main/${name}${review}`, opts);
+  const resp = await adminFetch(`${paths.snapshot(org, site, 'main', name)}${review}`, opts);
   if (!resp.ok) return formatError(resp);
   return { success: true, status: resp.status };
 }
 
 export async function fetchManifest(name) {
-  const resp = await fetch(`${AEM_ORIGIN}/snapshot/${org}/${site}/main/${name}`, {
+  const resp = await adminFetch(paths.snapshot(org, site, 'main', name), {
     headers: {
       'Content-Type': 'application/json',
     },
@@ -102,7 +101,8 @@ export async function fetchManifest(name) {
 }
 
 export async function fetchSnapshots() {
-  const resp = await fetch(`${AEM_ORIGIN}/snapshot/${org}/${site}/main`, {
+  // Fetch snapshots list (no name = list all)
+  const resp = await adminFetch(`/snapshot/${org}/${site}/main`, {
     headers: {
       'Content-Type': 'application/json',
     },
@@ -117,15 +117,15 @@ export async function fetchSnapshots() {
   return { snapshots, status: resp.status };
 }
 
-export async function deleteSnapshotUrls(name, paths = ['/*']) {
-  const results = await Promise.all(paths.map(async (path) => {
+export async function deleteSnapshotUrls(name, urlPaths = ['/*']) {
+  const results = await Promise.all(urlPaths.map(async (urlPath) => {
     const opts = {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
       },
     };
-    const resp = await fetch(`${AEM_ORIGIN}/snapshot/${org}/${site}/main/${name}${path}`, opts);
+    const resp = await adminFetch(`${paths.snapshot(org, site, 'main', name)}${urlPath}`, opts);
     if (!resp.ok) return formatError(resp);
     return { success: resp.status };
   }));
@@ -141,7 +141,7 @@ export async function deleteSnapshot(name) {
       'Content-Type': 'application/json',
     },
   };
-  const resp = await fetch(`${AEM_ORIGIN}/snapshot/${org}/${site}/main/${name}`, opts);
+  const resp = await adminFetch(paths.snapshot(org, site, 'main', name), opts);
   if (!resp.ok) return formatError(resp);
   return { status: resp.status };
 }
@@ -152,8 +152,8 @@ export function setOrgSite(suppliedOrg, suppliedSite) {
 }
 
 export async function updatePaths(name, currPaths, editedHrefs) {
-  const paths = filterPaths(editedHrefs);
-  const { removed, added } = comparePaths(currPaths, paths);
+  const filteredPaths = filterPaths(editedHrefs);
+  const { removed, added } = comparePaths(currPaths, filteredPaths);
 
   // Handle deletes
   if (removed.length > 0) {
@@ -170,13 +170,13 @@ export async function updatePaths(name, currPaths, editedHrefs) {
     };
 
     // This is technically a bulk ops request
-    const resp = await fetch(`${AEM_ORIGIN}/snapshot/${org}/${site}/main/${name}/*`, opts);
+    const resp = await adminFetch(`${paths.snapshot(org, site, 'main', name)}/*`, opts);
     if (!resp.ok) return formatError(resp);
   }
 
   // The formatting of the response will be bulk job-like,
   // so shamelessly use the supplied paths as our truth.
-  const toFormat = paths.map((path) => ({ path }));
+  const toFormat = filteredPaths.map((path) => ({ path }));
   return formatResources(name, toFormat);
 }
 

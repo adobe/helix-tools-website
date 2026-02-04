@@ -6,6 +6,7 @@ import {
   // updatePaths,
   // reviewSnapshot,
 } from './utils.js';
+import { adminFetch, paths } from '../../utils/admin/admin-client.js';
 
 const params = new URLSearchParams(window.location.search);
 const referrer = new URL(params.get('referrer'));
@@ -35,31 +36,26 @@ let currentSnapshot = null;
 let availableSnapshots = [];
 
 // Utility functions for snapshot operations
-async function addToSnapshot(owner, repo, snapshot, paths) {
-  const adminURL = `https://admin.hlx.page/snapshot/${owner}/${repo}/main/${snapshot}`;
-  const url = `${adminURL}/*`;
-  const resp = await fetch(url, {
+async function addToSnapshot(owner, repo, snapshot, addPaths) {
+  const resp = await adminFetch(`${paths.snapshot(owner, repo, 'main', snapshot)}/*`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      paths,
+      paths: addPaths,
     }),
   });
   return resp;
 }
 
 async function deleteFromSnapshot(owner, repo, snapshot, path) {
-  const adminURL = `https://admin.hlx.page/snapshot/${owner}/${repo}/main/${snapshot}`;
-  const url = `${adminURL}${path}`;
-  const resp = await fetch(url, { method: 'DELETE' });
+  const resp = await adminFetch(`${paths.snapshot(owner, repo, 'main', snapshot)}${path}`, { method: 'DELETE' });
   return resp;
 }
 
 async function fetchSnapshotManifest(owner, repo, snapshot) {
-  const adminURL = `https://admin.hlx.page/snapshot/${owner}/${repo}/main/${snapshot}`;
-  const resp = await fetch(adminURL);
+  const resp = await adminFetch(paths.snapshot(owner, repo, 'main', snapshot));
   if (resp.status === 200) {
     const { manifest } = await resp.json();
     return manifest;
@@ -69,22 +65,19 @@ async function fetchSnapshotManifest(owner, repo, snapshot) {
 
 async function fetchStatus(owner, repo, snapshot, path) {
   const status = {};
-  const adminSnapshotURL = `https://admin.hlx.page/status/${owner}/${repo}/main/.snapshots/${snapshot}${path}`;
-  const respSnapshot = await fetch(adminSnapshotURL);
+  const respSnapshot = await adminFetch(paths.status(owner, repo, 'main', `/.snapshots/${snapshot}${path}`));
   if (respSnapshot.status === 200) {
     status.snapshot = await respSnapshot.json();
   }
-  const adminPageURL = `https://admin.hlx.page/status/${owner}/${repo}/main${path}`;
-  const resp = await fetch(adminPageURL);
+  const resp = await adminFetch(paths.status(owner, repo, 'main', path));
   if (resp.status === 200) {
     status.preview = await resp.json();
   }
   return status;
 }
 
-async function updateReviewStatus(owner, repo, snapshot, status) {
-  const adminURL = `https://admin.hlx.page/snapshot/${owner}/${repo}/main/${snapshot}`;
-  const resp = await fetch(`${adminURL}?review=${status}`, {
+async function updateReviewStatus(owner, repo, snapshot, reviewStatus) {
+  const resp = await adminFetch(`${paths.snapshot(owner, repo, 'main', snapshot)}?review=${reviewStatus}`, {
     method: 'POST',
   });
   return resp;

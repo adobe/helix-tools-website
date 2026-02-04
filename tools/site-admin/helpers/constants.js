@@ -1,4 +1,4 @@
-export const ADMIN_API_BASE = 'https://admin.hlx.page';
+export { ADMIN_API_BASE } from '../../../utils/admin/admin-client.js';
 export const PSI_STORAGE_KEY = 'site-admin-psi-scores';
 export const FAVORITES_STORAGE_KEY = 'site-admin-favorites';
 export const VIEW_STORAGE_KEY = 'site-admin-view';

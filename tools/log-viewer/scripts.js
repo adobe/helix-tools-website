@@ -3,6 +3,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { loadPrism, highlight } from '../../utils/prism/prism.js';
+import { adminFetch, paths, ADMIN_API_BASE } from '../../utils/admin/admin-client.js';
 
 // field ids
 const FIELDS = ['date-from', 'date-to'];
@@ -361,7 +362,7 @@ class RewrittenData {
           ${text.length > 26 ? `${text.substring(0, 26)}…` : text}
       </button>`;
     // path is created based on route/source
-    const ADMIN = 'admin.hlx.page';
+    const ADMIN = ADMIN_API_BASE.replace('https://', '');
     const type = this.data.route || this.data.source;
     if (!type) return value || '-';
     if (type === 'code') {
@@ -409,10 +410,10 @@ class RewrittenData {
     if (type === 'sitemap') {
       // when source: sitemap, we get arrays of paths
       if (this.data.updated) {
-        const paths = this.data.updated[0].map(
+        const sitemapPaths = this.data.updated[0].map(
           (update) => writeA(`${this.live}${update}`, update),
         );
-        return paths.join('<br /><br />');
+        return sitemapPaths.join('<br /><br />');
       }
       // when route: sitemap, we only get a path
       return writeA(`${this.live}${this.data.path}`, this.data.path);
@@ -590,17 +591,23 @@ function writeTimeParams(timeframe) {
 async function fetchAllLogs(org, site, timeframe) {
   const logs = [];
   const timeParams = writeTimeParams(timeframe);
-  let nextUrl = `https://admin.hlx.page/log/${org}/${site}/main?${timeParams}`;
+  let nextUrl = `${paths.log(org, site, 'main')}?${timeParams}`;
 
   do {
     try {
       // eslint-disable-next-line no-await-in-loop
-      const res = await fetch(nextUrl);
+      const res = await adminFetch(nextUrl);
       if (!res.ok) throw res;
       // eslint-disable-next-line no-await-in-loop
       const json = await res.json();
       logs.push(...json.entries);
-      nextUrl = json.links ? json.links.next : null;
+      // json.links.next is a full URL, need to extract path
+      if (json.links?.next) {
+        const nextUrlObj = new URL(json.links.next);
+        nextUrl = nextUrlObj.pathname + nextUrlObj.search;
+      } else {
+        nextUrl = null;
+      }
     } catch (error) {
       return { logs, error };
     }
@@ -635,8 +642,7 @@ async function fetchLogs(org, site, timeframe) {
  */
 async function fetchHosts(org, site) {
   try {
-    const url = `https://admin.hlx.page/status/${org}/${site}/main`;
-    const res = await fetch(url);
+    const res = await adminFetch(paths.status(org, site, 'main'));
     if (!res.ok) throw res;
     const json = await res.json();
     return {
