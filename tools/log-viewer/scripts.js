@@ -1,4 +1,5 @@
 /* eslint-disable class-methods-use-this */
+import { registerToolReady } from '../../scripts/scripts.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { loadPrism, highlight } from '../../utils/prism/prism.js';
@@ -957,9 +958,4 @@ async function populateForm(doc) {
   await initConfigField();
 }
 
-const isReady = populateForm(document);
-
-// eslint-disable-next-line import/prefer-default-export
-export async function ready() {
-  await isReady;
-}
+registerToolReady(populateForm(document));

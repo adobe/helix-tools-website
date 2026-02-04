@@ -271,30 +271,19 @@ export function decorateMain(main) {
   decorateButtons(main);
 }
 
+let toolReadinessPromise = Promise.resolve();
+
+/**
+ * Registers one or more promises that must resolve before the page is considered ready.
+ * Tools should call this to signal their initialization requirements.
+ * @param {...Promise} promises - Promises to await for tool readiness
+ */
+export function registerToolReady(...promises) {
+  toolReadinessPromise = Promise.all([toolReadinessPromise, ...promises]);
+}
+
 async function toolReady() {
-  const isToolPage = window.location.pathname.includes('/tools/') && window.location.pathname.endsWith('.html');
-  if (isToolPage) {
-    try {
-      const toolScript = [...document.querySelectorAll('script')].find((s) => {
-        if (s.src && s.src.includes('/tools/')) {
-          const toolName = s.src.split('/tools/').pop().split('/')[0];
-          return s.src.endsWith(`${toolName}.js`) || s.src.endsWith('scripts.js');
-        }
-
-        return false;
-      });
-      if (toolScript) {
-        const mod = await import(toolScript.src);
-        if (mod && mod.ready) {
-          return mod.ready();
-        }
-      }
-    } catch {
-      // do nothing
-    }
-  }
-
-  return Promise.resolve();
+  return toolReadinessPromise;
 }
 
 /**
