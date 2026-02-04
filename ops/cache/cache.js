@@ -149,7 +149,7 @@ const popsTemplate = (pops, type) => {
     <details>
       <summary>POP Details</summary>
       <div class="pops">
-        <pops-map data-cdn-type="${type}" data-pops="${encodeURIComponent(JSON.stringify(pops))}"></pop-map>
+        <pops-map data-cdn-type="${type}" data-pops="${encodeURIComponent(JSON.stringify(pops))}"></pops-map>
       </div>
     </details>
   `;
@@ -258,7 +258,7 @@ const renderPurgeSection = (container, data) => {
     // split keys and paths
     let dotLiveHost;
     try {
-      dotLiveHost = new URL(purgeHostInput.value);
+      dotLiveHost = new URL(purgeHostInput.value).hostname;
     } catch {
       [dotLiveHost] = purgeHostInput.value.split('/');
     }
