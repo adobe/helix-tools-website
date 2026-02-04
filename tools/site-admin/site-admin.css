@@ -147,13 +147,14 @@
   .site-card {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-m);
+    gap: var(--spacing-xs);
     padding: var(--spacing-m);
     background: var(--layer-elevated);
-    border: 1px solid light-dark(var(--gray-200), var(--gray-600));
+    border: 1px solid var(--color-border);
     border-radius: 8px;
     transition: all 0.15s ease;
     position: relative;
+    min-height: 200px;
 
     &:hover {
       border-color: var(--color-border);
@@ -197,10 +198,12 @@
     align-items: center;
   }
 
-  .site-card-badges {
+  .site-card-header {
     display: flex;
     align-items: center;
-    gap: var(--spacing-xs);
+    gap: var(--spacing-s);
+    min-width: 0;
+    flex: 1;
   }
 
   .site-card-body {
@@ -217,38 +220,6 @@
     justify-content: space-between;
   }
 
-  .auth-status {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
-    font-size: 10px;
-    font-weight: 600;
-    border-radius: 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    width: max-content;
-
-    svg {
-      width: 12px;
-      height: 12px;
-    }
-
-    &.auth-blue {
-      background: var(--blue-100);
-      color: var(--blue-700);
-    }
-
-    &.auth-orange {
-      background: var(--orange-100);
-      color: var(--orange-700);
-    }
-
-    &.auth-green {
-      background: var(--green-100);
-      color: var(--green-700);
-    }
-  }
 
   .site-card-info {
     display: flex;
@@ -256,11 +227,12 @@
     gap: var(--spacing-xs);
     min-width: 0;
     flex: 1;
+    height: 100%;
   }
 
   .site-card-name {
     margin: 0;
-    font-size: var(--body-size-l);
+    font-size: var(--body-size-xxl);
     font-weight: 600;
     color: var(--color-text);
     white-space: nowrap;
@@ -304,8 +276,10 @@
 
   .site-card-links {
     display: flex;
+    align-items: center;
     gap: var(--spacing-xs);
-    margin-top: var(--spacing-l);
+    margin-top: var(--spacing-xs);
+    margin-bottom: var(--spacing-xs);
   }
 
   .site-card-link {
@@ -327,13 +301,27 @@
     }
   }
 
+  .site-card-links-divider {
+    color: var(--color-border);
+    font-size: var(--body-size-s);
+  }
+
+  .auth-icon {
+    display: flex;
+    align-items: center;
+
+    svg {
+      width: 14px;
+      height: 14px;
+    }
+  }
+
   .site-card-cdn {
     display: none;
     align-items: center;
     gap: 4px;
     font-size: var(--body-size-xs);
     color: var(--green-800);
-    margin-top: var(--spacing-xs);
     padding: 4px 8px;
     background: var(--green-100);
     border-radius: 4px;
@@ -614,16 +602,26 @@
   }
 
   .psi-score-circle {
-    width: 42px;
-    height: 42px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 700;
     color: white;
     position: relative;
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
     &::before {
       content: '';
@@ -647,7 +645,7 @@
 
   .psi-timestamp {
     font-size: 10px;
-    color: var(--color-font-grey);
+    color: var(--gray-400);
     white-space: nowrap;
   }
 
@@ -1212,6 +1210,7 @@
     flex-direction: row;
     justify-content: space-between;
     align-items: flex-start;
+    height: 100%;
   }
 
   .site-admin .site-card-right {
@@ -1223,6 +1222,7 @@
 
   .site-admin .site-card-quick-actions {
     flex-direction: row;
+    margin-top: auto;
   }
 
   .site-admin .quick-action-btn {
@@ -1240,6 +1240,7 @@
     flex-direction: column;
     align-items: start;
     position: relative;
+    min-height: auto;
   }
 
   .site-admin .sites-grid.list-view .site-card-body {
@@ -1256,10 +1257,6 @@
     align-items: flex-start;
     gap: var(--spacing-m);
     flex: 1;
-  }
-
-  .site-admin .sites-grid.list-view .site-card-name {
-    min-width: 150px;
   }
 
 
