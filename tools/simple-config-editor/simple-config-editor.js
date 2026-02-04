@@ -2,6 +2,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { logResponse, logMessage } from '../../blocks/console/console.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
+import { createModal } from '../../blocks/modal/modal.js';
 
 let currentConfig = {};
 // eslint-disable-next-line no-unused-vars
@@ -874,6 +875,144 @@ function addProperty() {
 }
 
 /**
+ * Extracts hostname from a URL or returns the value if it's already a hostname
+ * @param {string} value - The URL or hostname
+ * @returns {string} - The extracted hostname
+ */
+function extractHostname(value) {
+  if (!value || typeof value !== 'string') {
+    return value;
+  }
+  
+  // If it contains protocol (://) or starts with //, it's a URL
+  if (value.includes('://') || value.startsWith('//')) {
+    try {
+      // Add protocol if missing
+      const urlString = value.startsWith('//') ? `https:${value}` : value;
+      const url = new URL(urlString);
+      return url.hostname;
+    } catch (e) {
+      // If URL parsing fails, return original value
+      logMessage(consoleBlock, 'warning', ['PARSE', `Failed to parse URL: ${value}`, '']);
+      return value;
+    }
+  }
+  
+  // Already a hostname, return as-is
+  return value;
+}
+
+/**
+ * Cleans up sidekick host properties by extracting hostnames from URLs
+ * @param {Object} config - The configuration object
+ * @returns {Object} - The cleaned configuration
+ */
+function cleanSidekickHostProperties(config) {
+  if (!config) return config;
+  
+  const hostProperties = ['host', 'liveHost', 'previewHost', 'reviewHost'];
+  
+  // Check if sidekick object exists and clean its host properties
+  if (config.sidekick && typeof config.sidekick === 'object') {
+    hostProperties.forEach((prop) => {
+      if (config.sidekick[prop]) {
+        const cleaned = extractHostname(config.sidekick[prop]);
+        if (cleaned !== config.sidekick[prop]) {
+          logMessage(consoleBlock, 'info', ['CLEAN', `Extracted hostname from sidekick.${prop}: ${config.sidekick[prop]} -> ${cleaned}`, '']);
+          config.sidekick[prop] = cleaned;
+        }
+      }
+    });
+  }
+  
+  return config;
+}
+
+/**
+ * Shows migration confirmation UI in a modal
+ * @param {Object} migratedConfig - The migrated configuration to display (already cleaned)
+ */
+async function showMigrationConfirmation(migratedConfig) {
+  const modalContent = document.createElement('div');
+  modalContent.className = 'migration-content';
+  modalContent.innerHTML = `
+    <h3>Migrate Configuration</h3>
+    <p>No configuration file exists yet. A configuration can be migrated from your document-based settings (fstab.yaml, .helix/config.xlsx, etc.).</p>
+    <div class="migration-actions">
+      <button id="confirm-migration" class="button primary">Confirm Migration</button>
+      <button id="cancel-migration" class="button outline">Cancel</button>
+    </div>
+    <div class="migration-preview">
+      <h4>Preview of migrated configuration:</h4>
+      <pre>${escapeHtml(JSON.stringify(migratedConfig, null, 2))}</pre>
+    </div>
+  `;
+  
+  const { showModal, block } = await createModal([modalContent]);
+  const dialog = block.querySelector('dialog');
+  
+  // Store config for migration
+  modalContent.dataset.migratedConfig = JSON.stringify(migratedConfig);
+  
+  // Set up event listeners for migration buttons
+  modalContent.querySelector('#confirm-migration').addEventListener('click', async () => {
+    dialog.close();
+    const configToMigrate = JSON.parse(modalContent.dataset.migratedConfig);
+    await performMigration(configToMigrate);
+  });
+  
+  modalContent.querySelector('#cancel-migration').addEventListener('click', () => {
+    dialog.close();
+    logMessage(consoleBlock, 'info', ['MIGRATE', 'Migration cancelled', '']);
+  });
+  
+  showModal();
+}
+
+/**
+ * Performs the migration by updating the config with the migrated configuration
+ * @param {Object} configToMigrate - The cleaned migrated configuration to save
+ */
+async function performMigration(configToMigrate) {
+  try {
+    const adminURL = `https://admin.hlx.page${configPath}`;
+    
+    logMessage(consoleBlock, 'info', ['MIGRATE', 'Performing migration...', '']);
+    
+    const response = await fetch(adminURL, {
+      method: 'PUT',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(configToMigrate),
+    });
+    
+    // Log the PUT request
+    logResponse(consoleBlock, response.status, [
+      'PUT',
+      adminURL,
+      response.headers.get('x-error') || '',
+    ]);
+    
+    if (response.status === 401) {
+      await ensureLogin(org.value, site.value);
+      return;
+    }
+    
+    if (!response.ok) {
+      throw new Error(`Migration failed: HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    logMessage(consoleBlock, 'success', ['MIGRATE', 'Migration completed successfully', '']);
+    
+    // Reload the configuration to get the saved migrated config
+    await loadConfig();
+  } catch (error) {
+    logMessage(consoleBlock, 'error', ['MIGRATE', `Migration failed: ${error.message}`, '']);
+  }
+}
+
+/**
  * Loads the configuration for the selected org/site
  */
 async function loadConfig() {
@@ -911,6 +1050,40 @@ async function loadConfig() {
     if (configResponse.status === 401) {
       await ensureLogin(org.value, site.value);
       return;
+    }
+
+    // Handle 404 - offer migration
+    if (configResponse.status === 404) {
+      logMessage(consoleBlock, 'warning', ['LOAD', 'No configuration file found. Checking for migration options...', '']);
+      
+      // Try to fetch config with migrate=true to see if migration is possible
+      const migrateURL = `https://admin.hlx.page${configPath}?migrate=true`;
+      const migrateResponse = await fetch(migrateURL);
+      
+      logResponse(consoleBlock, migrateResponse.status, [
+        'GET',
+        migrateURL,
+        migrateResponse.headers.get('x-error') || '',
+      ]);
+      
+      if (migrateResponse.status === 401) {
+        await ensureLogin(org.value, site.value);
+        return;
+      }
+      
+      if (migrateResponse.ok) {
+        const migratedConfig = await migrateResponse.json();
+        
+        // Clean up any fully qualified URLs in host properties before displaying
+        const cleanedConfig = cleanSidekickHostProperties({ ...migratedConfig });
+        
+        configEditor.removeAttribute('aria-hidden');
+        showMigrationConfirmation(cleanedConfig);
+        logMessage(consoleBlock, 'info', ['MIGRATE', 'Migration preview loaded. Review and confirm to proceed.', '']);
+        return;
+      } else {
+        throw new Error(`No configuration found and migration not available: HTTP ${migrateResponse.status}`);
+      }
     }
 
     if (!configResponse.ok) {

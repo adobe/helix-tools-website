@@ -268,3 +268,56 @@
     padding: var(--spacing-s) var(--spacing-m);
   }
 }
+
+/* Migration modal styles */
+.migration-content {
+  max-width: 100%;
+}
+
+.migration-content h3 {
+  margin: 0 0 var(--spacing-s) 0;
+  color: light-dark(var(--blue-700), var(--blue-300));
+}
+
+.migration-content p {
+  margin: 0 0 var(--spacing-m) 0;
+}
+
+.migration-actions {
+  display: flex;
+  gap: var(--spacing-s);
+  flex-wrap: wrap;
+  margin-bottom: var(--spacing-m);
+}
+
+.migration-preview {
+  background: var(--layer-elevated);
+  border: var(--border-s) solid var(--color-border);
+  border-radius: var(--rounding-m);
+  padding: var(--spacing-m);
+}
+
+.migration-preview h4 {
+  margin: 0 0 var(--spacing-s) 0;
+  font-size: var(--body-size-m);
+  font-weight: 600;
+}
+
+.migration-preview pre {
+  margin: 0;
+  padding: var(--spacing-s);
+  background: light-dark(var(--gray-50), var(--gray-900));
+  border-radius: var(--rounding-s);
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+  overflow-x: auto;
+  white-space: pre;
+  color: var(--color-font);
+}
+
+/* Tablet and up */
+@media (width >= 600px) {
+  .migration-preview pre {
+    font-size: var(--body-size-m);
+  }
+}
