@@ -44,8 +44,13 @@ jobs:
             1. Run the code-review plugin: /code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}
             2. Read and follow the local code-review skill at .claude/skills/code-review/SKILL.md for EDS-specific review criteria
 
-            IMPORTANT: After completing the review, post a summary comment on the PR using:
-            gh pr comment ${{ github.event.pull_request.number }} --body "YOUR_REVIEW"
+            IMPORTANT: Before posting the review comment, delete any existing Claude review comments:
+            1. List existing comments: gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments --jq '.[] | select(.body | contains("<!-- claude-code-review -->")) | .id'
+            2. Delete each found comment: gh api -X DELETE repos/${{ github.repository }}/issues/comments/{comment_id}
+
+            Then post the review summary using:
+            gh pr comment ${{ github.event.pull_request.number }} --body "<!-- claude-code-review -->
+            YOUR_REVIEW_CONTENT"
 
             The comment should include:
             - Overall assessment (approve/request changes/comment)
