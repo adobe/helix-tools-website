@@ -340,24 +340,24 @@ async function runValidation() {
     const results = await resp.json();
 
     const urlPurgeResult = results.urlPurge || {};
-    const urlPurgeSuccess = urlPurgeResult.status === 'ok';
+    const urlPurgeOk = urlPurgeResult.status === 'ok' || urlPurgeResult.status === 'unsupported';
     updateValidationItem(
       'urlPurge',
-      urlPurgeSuccess ? 'success' : 'error',
+      urlPurgeOk ? 'success' : 'error',
       getErrorMessage(urlPurgeResult),
       urlPurgeResult,
     );
 
     const keyPurgeResult = results.keyPurge || {};
-    const keyPurgeSuccess = keyPurgeResult.status === 'ok';
+    const keyPurgeOk = keyPurgeResult.status === 'ok' || keyPurgeResult.status === 'unsupported';
     updateValidationItem(
       'keyPurge',
-      keyPurgeSuccess ? 'success' : 'error',
+      keyPurgeOk ? 'success' : 'error',
       getErrorMessage(keyPurgeResult),
       keyPurgeResult,
     );
 
-    validationPassed = urlPurgeSuccess && keyPurgeSuccess;
+    validationPassed = urlPurgeOk && keyPurgeOk;
     updateSaveButtonState();
 
     return validationPassed;
