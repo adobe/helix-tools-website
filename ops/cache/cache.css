@@ -69,18 +69,21 @@
 }
 
 .cache .pill.good {
-  background-color: #0f0;
-  border: 1px solid #0f0;
+  background-color: light-dark(#c6f0c6, #2e5a2e);
+  border-color: light-dark(#4a4, #3d7a3d);
+  color: light-dark(#1a4d1a, #a8e6a8);
 }
 
 .cache .pill.bad {
-  background-color: #f00;
-  border: 1px solid #f00;
+  background-color: light-dark(#fdd, #5a2e2e);
+  border-color: light-dark(#d66, #7a3d3d);
+  color: light-dark(#8b0000, #e6a8a8);
 }
 
 .cache .pill.warn {
-  background-color: #ffa500;
-  border: 1px solid #ffa500;
+  background-color: light-dark(#fff0c6, #5a4a2e);
+  border-color: light-dark(#d4a800, #7a6a3d);
+  color: light-dark(#6b4500, #e6d6a8);
 }
 
 .cache pre {
@@ -102,12 +105,14 @@
 
 .cache .modal {
   position: absolute;
-  background-color: #fff;
+  background-color: var(--color-background);
+  color: var(--color-text);
   z-index: 9999;
   left: 50vw;
   transform: translateX(-50%);
   top: 10vh;
   width: min(850px, 90vw);
+  border-radius: var(--rounding-l);
 }
 
 .cache .modal-header {
