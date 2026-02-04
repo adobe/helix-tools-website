@@ -1,6 +1,7 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
+import { adminFetch, paths } from '../../utils/admin/admin-client.js';
 
 const adminForm = document.getElementById('admin-form');
 const bodyForm = document.getElementById('body-form');
@@ -8,6 +9,8 @@ const body = document.getElementById('body');
 const consoleBlock = document.querySelector('.console');
 const site = document.getElementById('site');
 const org = document.getElementById('org');
+
+const logFn = (status, details) => logResponse(consoleBlock, status, details);
 
 async function init() {
   await initConfigField();
@@ -20,18 +23,13 @@ async function init() {
       return;
     }
 
-    const robotsUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/robots.txt`;
-    const resp = await fetch(robotsUrl, {
+    const resp = await adminFetch(paths.robots(org.value, site.value), {
       method: 'POST',
       body: body.value,
-      headers: {
-        'content-type': 'text/plain',
-      },
-    });
+      headers: { 'content-type': 'text/plain' },
+    }, { logFn });
 
-    resp.text().then(() => {
-      logResponse(consoleBlock, resp.status, ['POST', robotsUrl, resp.headers.get('x-error') || '']);
-    });
+    await resp.text();
   });
 
   adminForm.addEventListener('submit', async (e) => {
@@ -42,11 +40,9 @@ async function init() {
       return;
     }
 
-    const robotsUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/robots.txt`;
-    const resp = await fetch(robotsUrl);
+    const resp = await adminFetch(paths.robots(org.value, site.value), {}, { logFn });
     const text = await resp.text();
     body.value = text;
-    logResponse(consoleBlock, resp.status, ['GET', robotsUrl, resp.headers.get('x-error') || '']);
   });
 }
 

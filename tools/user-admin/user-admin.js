@@ -2,6 +2,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
+import { adminFetch, paths } from '../../utils/admin/admin-client.js';
 
 const adminForm = document.getElementById('admin-form');
 const site = document.getElementById('site');
@@ -10,6 +11,8 @@ const consoleBlock = document.querySelector('.console');
 const users = document.getElementById('users');
 const addUserButton = document.getElementById('add-user');
 const accessConfig = { type: 'org', users: [], originalSiteAccess: {} };
+
+const logFn = (status, details) => logResponse(consoleBlock, status, details);
 const addUserDetails = document.getElementById('add-user-details');
 const addUserForm = document.getElementById('add-user-form');
 const addUserEmail = document.getElementById('add-user-email');
@@ -51,9 +54,7 @@ function isValidRoles(rolesContainer) {
 }
 
 async function getOrgConfig() {
-  const adminURL = `https://admin.hlx.page/config/${org.value}.json`;
-  const resp = await fetch(adminURL);
-  logResponse(consoleBlock, resp.status, ['GET', adminURL, resp.headers.get('x-error') || '']);
+  const resp = await adminFetch(paths.configJson(org.value), {}, { logFn });
   if (resp.status === 200) {
     const json = await resp.json();
     return json;
@@ -83,15 +84,11 @@ async function updateSiteAccess() {
     return access;
   };
   const access = toAccess();
-  const adminURL = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/access.json`;
-  const resp = await fetch(adminURL, {
+  await adminFetch(paths.siteAccess(org.value, site.value), {
     method: 'POST',
     body: JSON.stringify(access),
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-  logResponse(consoleBlock, resp.status, ['POST', adminURL, resp.headers.get('x-error') || '']);
+    headers: { 'Content-Type': 'application/json' },
+  }, { logFn });
 }
 
 async function addUserToSite(user) {
@@ -100,15 +97,11 @@ async function addUserToSite(user) {
 }
 
 async function updateOrgUserRoles(user) {
-  const adminURL = `https://admin.hlx.page/config/${org.value}/users/${user.id}.json`;
-  const resp = await fetch(adminURL, {
+  await adminFetch(paths.user(org.value, user.id), {
     method: 'POST',
     body: JSON.stringify(user),
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-  logResponse(consoleBlock, resp.status, ['POST', adminURL, resp.headers.get('x-error') || '']);
+    headers: { 'Content-Type': 'application/json' },
+  }, { logFn });
 }
 
 async function deleteUserFromSite(user) {
@@ -117,23 +110,15 @@ async function deleteUserFromSite(user) {
 }
 
 async function deleteUserFromOrg(user) {
-  const adminURL = `https://admin.hlx.page/config/${org.value}/users/${user.id}.json`;
-  const resp = await fetch(adminURL, {
-    method: 'DELETE',
-  });
-  logResponse(consoleBlock, resp.status, ['DELETE', adminURL, resp.headers.get('x-error') || '']);
+  await adminFetch(paths.user(org.value, user.id), { method: 'DELETE' }, { logFn });
 }
 
 async function addUserToOrg(user) {
-  const adminURL = `https://admin.hlx.page/config/${org.value}/users.json`;
-  const resp = await fetch(adminURL, {
+  await adminFetch(paths.users(org.value), {
     method: 'POST',
     body: JSON.stringify(user),
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-  logResponse(consoleBlock, resp.status, ['POST', adminURL, resp.headers.get('x-error') || '']);
+    headers: { 'Content-Type': 'application/json' },
+  }, { logFn });
 }
 
 async function updateSiteUserRoles(user) {
@@ -200,9 +185,7 @@ function displayUserDetails(elem, user) {
 
 async function getSiteAccessConfig() {
   addUserDetails.setAttribute('aria-hidden', 'true');
-  const adminURL = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/access.json`;
-  const resp = await fetch(adminURL);
-  logResponse(consoleBlock, resp.status, ['GET', adminURL, resp.headers.get('x-error') || '']);
+  const resp = await adminFetch(paths.siteAccess(org.value, site.value), {}, { logFn });
   if (resp.status === 200) {
     const json = await resp.json();
     return json;

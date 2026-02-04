@@ -2,6 +2,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { logResponse, logMessage } from '../../blocks/console/console.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
+import { adminFetch, paths } from '../../utils/admin/admin-client.js';
 
 let currentConfig = {};
 // eslint-disable-next-line no-unused-vars
@@ -882,30 +883,17 @@ async function loadConfig() {
     return;
   }
 
+  const logFn = (status, details) => logResponse(consoleBlock, status, details);
+
   try {
-    configPath = `/config/${org.value}/sites/${site.value}.json`;
-    const adminURL = `https://admin.hlx.page${configPath}`;
-    const aggregateURL = `https://admin.hlx.page/config/${org.value}/aggregated/${site.value}.json`;
+    configPath = paths.site(org.value, site.value);
 
     logMessage(consoleBlock, 'info', ['LOAD', `Loading config from: ${configPath}`, '']);
 
     // Fetch both current config and aggregate config
     const [configResponse, aggregateResponse] = await Promise.all([
-      fetch(adminURL),
-      fetch(aggregateURL),
-    ]);
-
-    // Log the HTTP responses
-    logResponse(consoleBlock, configResponse.status, [
-      'GET',
-      adminURL,
-      configResponse.headers.get('x-error') || '',
-    ]);
-
-    logResponse(consoleBlock, aggregateResponse.status, [
-      'GET',
-      aggregateURL,
-      aggregateResponse.headers.get('x-error') || '',
+      adminFetch(configPath, {}, { logFn }),
+      adminFetch(paths.aggregated(org.value, site.value), {}, { logFn }),
     ]);
 
     if (configResponse.status === 401) {
@@ -960,17 +948,11 @@ async function saveAllChanges() {
     return;
   }
 
+  const logFn = (status, details) => logResponse(consoleBlock, status, details);
+
   try {
     // Fetch current config from server to get latest state
-    const adminURL = `https://admin.hlx.page${configPath}`;
-    const response = await fetch(adminURL);
-
-    // Log the GET request
-    logResponse(consoleBlock, response.status, [
-      'GET',
-      adminURL,
-      response.headers.get('x-error') || '',
-    ]);
+    const response = await adminFetch(configPath, {}, { logFn });
 
     if (response.status === 401) {
       await ensureLogin(org.value, site.value);
@@ -986,34 +968,25 @@ async function saveAllChanges() {
     // Apply all pending changes to the server config
     pendingChanges.forEach((change) => {
       const {
-        key, path, action, newValue,
+        key, path: changePath, action, newValue,
       } = change;
 
       // Only apply changes for properties that are not inherited
       // (inherited properties can't be edited, so they won't have pending changes)
       if (action === 'remove') {
-        removeNestedValue(serverConfig, path, key);
+        removeNestedValue(serverConfig, changePath, key);
       } else {
         // For 'add' and 'edit' actions
-        setNestedValue(serverConfig, path, key, newValue);
+        setNestedValue(serverConfig, changePath, key, newValue);
       }
     });
 
     // POST the updated config back
-    const saveResponse = await fetch(adminURL, {
+    const saveResponse = await adminFetch(configPath, {
       method: 'POST',
       body: JSON.stringify(serverConfig),
-      headers: {
-        'content-type': 'application/json',
-      },
-    });
-
-    // Log the POST request
-    logResponse(consoleBlock, saveResponse.status, [
-      'POST',
-      adminURL,
-      saveResponse.headers.get('x-error') || '',
-    ]);
+      headers: { 'content-type': 'application/json' },
+    }, { logFn });
 
     if (saveResponse.status === 401) {
       await ensureLogin(org.value, site.value);

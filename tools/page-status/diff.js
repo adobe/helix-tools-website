@@ -1,6 +1,7 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
+import { adminFetch, paths, ADMIN_API_BASE } from '../../utils/admin/admin-client.js';
 
 // Lazy-load Dark Alley converter module
 const CONVERTERS_URL = 'https://main--da-nx--adobe.aem.live/nx/utils/converters.js';
@@ -72,8 +73,7 @@ function showError(message) {
  * @returns {Promise<Object>} Object with live and preview hostnames.
  */
 async function fetchHosts(org, site) {
-  const url = `https://admin.hlx.page/status/${org}/${site}/main`;
-  const res = await fetch(url);
+  const res = await adminFetch(paths.status(org, site, 'main'));
   if (!res.ok) throw new Error(`Failed to fetch hosts: ${res.status}`);
   const json = await res.json();
   return {
@@ -90,10 +90,10 @@ async function fetchHosts(org, site) {
  * @returns {Promise<Array>} Array of resources
  */
 async function fetchJobDetails(org, site, jobId) {
-  const jobUrl = `https://admin.hlx.page/job/${org}/${site}/main/status/${jobId}`;
+  const jobPath = paths.jobDetails(org, site, 'main', 'status', jobId);
 
   // First check job status
-  const jobRes = await fetch(jobUrl, { mode: 'cors' });
+  const jobRes = await adminFetch(jobPath, { mode: 'cors' });
   if (!jobRes.ok) throw new Error(`Job fetch failed: ${jobRes.status}`);
 
   const { state } = await jobRes.json();
@@ -102,7 +102,7 @@ async function fetchJobDetails(org, site, jobId) {
   }
 
   // Fetch details
-  const detailsRes = await fetch(`${jobUrl}/details`, { mode: 'cors' });
+  const detailsRes = await adminFetch(`${jobPath}/details`, { mode: 'cors' });
   if (!detailsRes.ok) throw new Error('Failed to fetch job details');
 
   const { data } = await detailsRes.json();
@@ -587,8 +587,10 @@ async function loadPageDiff(page) {
 
   // Build admin API URLs to fetch markdown content
   const fetchPath = path.endsWith('/') ? `${path}index.md` : `${path}.md`;
-  const previewUrl = `https://admin.hlx.page/preview/${currentOrg}/${currentSite}/main${fetchPath}`;
-  const liveUrl = `https://admin.hlx.page/live/${currentOrg}/${currentSite}/main${fetchPath}`;
+  const previewPath = paths.preview(currentOrg, currentSite, 'main', fetchPath);
+  const livePath = paths.live(currentOrg, currentSite, 'main', fetchPath);
+  const previewUrl = `${ADMIN_API_BASE}${previewPath}`;
+  const liveUrl = `${ADMIN_API_BASE}${livePath}`;
 
   // Show loading state
   DIFF_CONTENT.innerHTML = createDiffPanelHtml(

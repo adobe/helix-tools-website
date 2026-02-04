@@ -17,6 +17,7 @@ export const ADMIN_API_BASE = 'https://admin.hlx.page';
 export const paths = {
   // Organization config
   config: (org) => `/config/${org}`,
+  configJson: (org) => `/config/${org}.json`,
 
   // Sites listing
   sites: (org) => `/config/${org}/sites`,
@@ -24,6 +25,9 @@ export const paths = {
 
   // Individual site config
   site: (org, site) => `/config/${org}/sites/${site}.json`,
+
+  // Aggregated config (inherited values)
+  aggregated: (org, site) => `/config/${org}/aggregated/${site}.json`,
 
   // Site secrets
   secrets: (org, site) => `/config/${org}/sites/${site}/secrets.json`,
@@ -33,8 +37,40 @@ export const paths = {
   apiKeys: (org, site) => `/config/${org}/sites/${site}/apiKeys.json`,
   apiKey: (org, site, keyId) => `/config/${org}/sites/${site}/apiKeys/${encodeURIComponent(keyId)}.json`,
 
+  // Site access config
+  siteAccess: (org, site) => `/config/${org}/sites/${site}/access.json`,
+
+  // Robots.txt
+  robots: (org, site) => `/config/${org}/sites/${site}/robots.txt`,
+
+  // Headers config
+  headers: (org, site) => `/config/${org}/sites/${site}/headers.json`,
+
+  // Sitemap config
+  sitemapConfig: (org, site) => `/config/${org}/sites/${site}/content/sitemap.yaml`,
+  sitemapGenerate: (org, site, ref, dest) => `/sitemap/${org}/${site}/${ref}${dest}`,
+
+  // Version management
+  versions: (org) => `/config/${org}/versions.json`,
+  version: (org, versionId) => `/config/${org}/versions/${versionId}.json`,
+  profileVersions: (org, profile) => `/config/${org}/profiles/${profile}/versions.json`,
+  profileVersion: (org, profile, versionId) => `/config/${org}/profiles/${profile}/versions/${versionId}.json`,
+  siteVersions: (org, site) => `/config/${org}/sites/${site}/versions.json`,
+  siteVersion: (org, site, versionId) => `/config/${org}/sites/${site}/versions/${versionId}.json`,
+  restoreOrgVersion: (org, versionId) => `/config/${org}.json?restoreVersion=${versionId}`,
+  restoreProfileVersion: (org, profile, versionId) => `/config/${org}/profiles/${profile}.json?restoreVersion=${versionId}`,
+  restoreSiteVersion: (org, site, versionId) => `/config/${org}/sites/${site}.json?restoreVersion=${versionId}`,
+
+  // User management
+  users: (org) => `/config/${org}/users.json`,
+  user: (org, userId) => `/config/${org}/users/${encodeURIComponent(userId)}.json`,
+
+  // Profiles
+  profiles: (org) => `/config/${org}/profiles.json`,
+  profile: (org, profile) => `/config/${org}/profiles/${profile}.json`,
+
   // Status endpoints
-  status: (org, site, ref, path) => `/status/${org}/${site}/${ref}${path}`,
+  status: (org, site, ref, path = '') => `/status/${org}/${site}/${ref}${path}`,
 
   // Preview/publish operations
   preview: (org, site, ref, path) => `/preview/${org}/${site}/${ref}${path}`,
@@ -56,6 +92,12 @@ export const paths = {
 
   // Log operations
   log: (org, site, ref) => `/log/${org}/${site}/${ref}`,
+
+  // Sidekick config
+  sidekickConfig: (org, site, ref) => `/sidekick/${org}/${site}/${ref}/config.json`,
+
+  // Snapshots
+  snapshot: (org, site, ref, name) => `/snapshot/${org}/${site}/${ref}/${name}`,
 };
 
 /**

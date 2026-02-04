@@ -1,6 +1,7 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
+import { adminFetch, paths } from '../../utils/admin/admin-client.js';
 
 const adminForm = document.getElementById('admin-form');
 const headersForm = document.getElementById('headers-form');
@@ -12,6 +13,8 @@ const org = document.getElementById('org');
 const pathSelect = document.getElementById('path-select');
 const addPathBtn = document.getElementById('add-path');
 const removePathBtn = document.getElementById('remove-path');
+
+const logFn = (status, details) => logResponse(consoleBlock, status, details);
 
 let originalHeaders;
 let currentPath = null;
@@ -75,11 +78,11 @@ function getHeadersData() {
 
 function populatePathSelect() {
   pathSelect.innerHTML = '';
-  const paths = Object.keys(originalHeaders);
-  if (!paths.includes('/**')) {
-    paths.unshift('/**');
+  const headerPaths = Object.keys(originalHeaders);
+  if (!headerPaths.includes('/**')) {
+    headerPaths.unshift('/**');
   }
-  paths.forEach((path) => {
+  headerPaths.forEach((path) => {
     const option = document.createElement('option');
     option.value = path;
     option.textContent = path;
@@ -170,7 +173,6 @@ async function init() {
 
     saveCurrentPathHeaders();
 
-    const headersUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/headers.json`;
     const patchedHeaders = JSON.parse(JSON.stringify(originalHeaders));
 
     Object.keys(patchedHeaders).forEach((path) => {
@@ -180,17 +182,13 @@ async function init() {
     });
 
     const isEmpty = Object.keys(patchedHeaders).length === 0;
-    const resp = await fetch(headersUrl, {
+    const resp = await adminFetch(paths.headers(org.value, site.value), {
       method: isEmpty ? 'DELETE' : 'POST',
       body: isEmpty ? undefined : JSON.stringify(patchedHeaders),
-      headers: isEmpty ? undefined : {
-        'content-type': 'application/json',
-      },
-    });
+      headers: isEmpty ? undefined : { 'content-type': 'application/json' },
+    }, { logFn });
 
-    resp.text().then(() => {
-      logResponse(consoleBlock, resp.status, [isEmpty ? 'DELETE' : 'POST', headersUrl, resp.headers.get('x-error') || '']);
-    });
+    await resp.text();
   });
 
   adminForm.addEventListener('submit', async (e) => {
@@ -201,8 +199,7 @@ async function init() {
       return;
     }
 
-    const headersUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/headers.json`;
-    const resp = await fetch(headersUrl);
+    const resp = await adminFetch(paths.headers(org.value, site.value), {}, { logFn });
     headersList.innerHTML = '';
     const buttonBar = document.querySelector('.button-bar');
     const pathSelector = document.querySelector('.path-selector');
@@ -222,8 +219,6 @@ async function init() {
       pathSelector.setAttribute('aria-hidden', 'false');
       buttonBar.setAttribute('aria-hidden', 'false');
     }
-
-    logResponse(consoleBlock, resp.status, ['GET', headersUrl, resp.headers.get('x-error') || '']);
   });
 }
 

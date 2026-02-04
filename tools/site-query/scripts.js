@@ -1,6 +1,7 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
+import { adminFetch, paths } from '../../utils/admin/admin-client.js';
 
 function getFormData(form) {
   const data = {};
@@ -124,13 +125,13 @@ function displayResult(url, matches, org, site) {
     }
 
     try {
-      const statusRes = await fetch(`https://admin.hlx.page/status/${org}/${site}/main${url.pathname}?editUrl=auto`);
+      const statusRes = await adminFetch(`${paths.status(org, site, 'main', url.pathname)}?editUrl=auto`);
       const status = await statusRes.json();
       let editUrl = status.edit && status.edit.url;
 
       // fallback to sidekick config if status doesn't provide edit URL
       if (!editUrl) {
-        const configRes = await fetch(`https://admin.hlx.page/sidekick/${org}/${site}/main/config.json`);
+        const configRes = await adminFetch(paths.sidekickConfig(org, site, 'main'));
         const config = await configRes.json();
         const editUrlPattern = config.editUrl;
         if (editUrlPattern) {
@@ -280,8 +281,7 @@ async function processUrl(sitemapUrl, query, queryType, org, site) {
 async function fetchHosts(org, site) {
   let status;
   try {
-    const url = `https://admin.hlx.page/status/${org}/${site}/main`;
-    const res = await fetch(url);
+    const res = await adminFetch(paths.status(org, site, 'main'));
     status = res.status;
     const json = await res.json();
     return {
