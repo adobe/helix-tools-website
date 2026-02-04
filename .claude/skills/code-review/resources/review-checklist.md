@@ -322,20 +322,6 @@ const url = `https://api.example.com?q=${encodeURIComponent(userInput)}`;
 | Color problems | Wrong colors, poor contrast, dark mode issues |
 | Icon issues | Missing, wrong size, wrong color |
 
-### Screenshot Commands
-
-```bash
-# Using the capture-screenshots.js utility
-cd .claude/skills/pr-review/scripts
-npm install
-node capture-screenshots.js <after-url> [before-url] [output-dir] [block-selector]
-
-# Examples
-node capture-screenshots.js https://branch--repo--owner.aem.page/path
-node capture-screenshots.js https://branch--repo--owner.aem.page/path https://main--repo--owner.aem.page/path
-node capture-screenshots.js https://branch--repo--owner.aem.page/path "" ./screenshots ".hero"
-```
-
 ### Embedding Screenshots in PR Comment
 
 ```markdown
