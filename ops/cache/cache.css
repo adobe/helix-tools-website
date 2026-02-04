@@ -1,0 +1,183 @@
+.cache #results .see-all {
+  margin: 6px 0;
+}
+
+.cache div.form {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.cache div.field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 750px;
+}
+
+.cache div.purge-form {
+  flex-direction: column;
+}
+
+.cache div.field label {
+  font-size: 0.8em;
+  line-height: 1.2em;
+  font-weight: bold;
+}
+
+.cache input#url-input {
+  width: 100%;
+  max-width: 750px;
+}
+
+.cache .tile {
+  box-shadow: 3px 3px 4px rgb(0 0 0 / 10%);
+  border-radius: 8px;
+  margin: 12px 0;
+  padding: 12px 0;
+}
+
+.cache div.row {
+  display: flex;
+}
+
+.cache div.row span.key {
+  min-width: 200px;
+}
+
+.cache div.row span.val.list {
+  margin: auto -4px;
+}
+
+.cache div.row span.val.bad {
+  color: red;
+}
+
+.cache .pill {
+  border-radius: 20px;
+  padding: 4px 8px;
+  margin: 0 4px;
+  font-size: 0.8em;
+  border: 1px solid #000;
+  white-space: nowrap;
+  line-height: 2.2;
+}
+
+.cache .pill.badge {
+  margin-left: -2px;
+}
+
+.cache .pill.good {
+  background-color: #0f0;
+  border: 1px solid #0f0;
+}
+
+.cache .pill.bad {
+  background-color: #f00;
+  border: 1px solid #f00;
+}
+
+.cache .pill.warn {
+  background-color: #ffa500;
+  border: 1px solid #ffa500;
+}
+
+.cache pre {
+  max-height: 70vh;
+  overflow: scroll;
+}
+
+.cache .modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: #000000a1;
+}
+
+.cache .modal-container {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+}
+
+.cache .modal {
+  position: absolute;
+  background-color: #fff;
+  z-index: 9999;
+  left: 50vw;
+  transform: translateX(-50%);
+  top: 10vh;
+  width: min(850px, 90vw);
+}
+
+.cache .modal-header {
+  display: flex;
+  justify-content: space-between;
+  margin: 20px;
+}
+
+.cache .modal-header h3 {
+  margin: 0 0 0 20px;
+  font-size: 1.5em;
+}
+
+.cache button.modal-close {
+  padding: 5px;
+  cursor: pointer;
+}
+
+.cache .modal-content {
+  width: 90%;
+  margin: auto auto 60px;
+}
+
+.cache .modal-content .code-panel {
+  position: relative;
+}
+
+.cache .modal-content .code-panel .code-actions {
+  position: absolute;
+  right: 0;
+  margin: 10px;
+}
+
+.cache .code-actions a.code-button {
+  display: inline-block;
+  padding: 5px;
+  cursor: pointer;
+}
+
+.cache .code-actions a.code-button span.icon {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.cache .code-actions a.code-button.copy::before {
+  content: 'Copied to clipboard';
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  background-color: #2c2c2c;
+  color: #fff;
+  padding: 5px;
+  border-radius: 5px;
+  transform: translateX(-50%);
+  font-size: 14px;
+  text-wrap-mode: nowrap;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.cache .code-actions a.code-button.copy.show-message::before {
+  opacity: 1;
+}
+
+.cache .code-actions a.code-button.copy span.icon {
+  background-image: url('/icons/copy.svg');
+}
+
+.cache .code-actions a.code-button.download span.icon {
+  background-image: url('/icons/download.svg');
+}
