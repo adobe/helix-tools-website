@@ -114,7 +114,7 @@ function parseBody(body) {
 }
 
 function getErrorMessage(result) {
-  if (result.status === 'ok') {
+  if (result.status === 'ok' || result.status === 'succeeded') {
     return 'Validation successful';
   }
 
@@ -343,7 +343,7 @@ async function runValidation() {
     const results = await resp.json();
 
     const urlPurgeResult = results.urlPurge || {};
-    const urlPurgeOk = urlPurgeResult.status === 'ok' || urlPurgeResult.status === 'unsupported';
+    const urlPurgeOk = ['ok', 'succeeded', 'unsupported'].includes(urlPurgeResult.status);
     updateValidationItem(
       'urlPurge',
       urlPurgeOk ? 'success' : 'error',
@@ -352,7 +352,7 @@ async function runValidation() {
     );
 
     const keyPurgeResult = results.keyPurge || {};
-    const keyPurgeOk = keyPurgeResult.status === 'ok' || keyPurgeResult.status === 'unsupported';
+    const keyPurgeOk = ['ok', 'succeeded', 'unsupported'].includes(keyPurgeResult.status);
     updateValidationItem(
       'keyPurge',
       keyPurgeOk ? 'success' : 'error',
