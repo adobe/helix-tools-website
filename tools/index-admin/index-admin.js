@@ -1,3 +1,4 @@
+import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { toClassName } from '../../scripts/aem.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
@@ -545,9 +546,4 @@ async function init() {
   });
 }
 
-const initPromise = init();
-
-// eslint-disable-next-line import/prefer-default-export
-export function ready() {
-  return initPromise;
-}
+registerToolReady(init());

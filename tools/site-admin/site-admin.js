@@ -1,3 +1,4 @@
+import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
@@ -187,9 +188,4 @@ const initSiteAdmin = async () => {
   }
 };
 
-const initPromise = initSiteAdmin();
-
-// eslint-disable-next-line import/prefer-default-export
-export function ready() {
-  return initPromise;
-}
+registerToolReady(initSiteAdmin());
