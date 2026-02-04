@@ -1,5 +1,6 @@
 import { sampleRUM } from '../../scripts/aem.js';
 import { loadPrismLibrary } from '../../utils/prism/prism.js';
+import { registerToolReady } from '../../scripts/scripts.js';
 
 const API = 'https://helix-cache-debug.adobeaem.workers.dev';
 
@@ -378,7 +379,7 @@ const renderDetails = (data) => {
   renderPurgeSection(resultsContainer, data);
 };
 
-(async () => {
+async function init() {
   const loc = new URL(window.location.href);
   if (loc.searchParams.has('url')) {
     input.value = loc.searchParams.get('url');
@@ -423,4 +424,6 @@ const renderDetails = (data) => {
     }
   });
   sampleRUM.enhance();
-})();
+}
+
+registerToolReady(init());
