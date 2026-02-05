@@ -1,22 +1,7 @@
 import { PSI_STORAGE_KEY, FAVORITES_STORAGE_KEY } from './constants.js';
 
-const ICONS = {};
-
-export const loadIcon = async (name) => {
-  if (ICONS[name]) return ICONS[name];
-  try {
-    const resp = await fetch(`${window.hlx.codeBasePath}/icons/${name}.svg`);
-    if (resp.ok) {
-      ICONS[name] = await resp.text();
-      return ICONS[name];
-    }
-  } catch (e) {
-    // nada.
-  }
-  return '';
-};
-
-export const icon = (name) => ICONS[name] || '';
+// Re-export shared utilities from card-ui
+export { loadIcon, icon, showToast } from '../../../utils/card-ui/card-ui.js';
 
 export const getFavorites = (orgValue) => {
   const stored = localStorage.getItem(`${FAVORITES_STORAGE_KEY}-${orgValue}`);
@@ -41,22 +26,6 @@ export const toggleFavorite = (orgValue, siteName) => {
 
   setFavorites(orgValue, favorites);
   return index === -1;
-};
-
-export const showToast = (message, type = 'success') => {
-  const existingToast = document.querySelector('.toast-notification');
-  if (existingToast) existingToast.remove();
-
-  const toast = document.createElement('div');
-  toast.classList.add('toast-notification', type);
-  toast.textContent = message;
-  document.body.appendChild(toast);
-
-  setTimeout(() => toast.classList.add('show'), 10);
-  setTimeout(() => {
-    toast.classList.remove('show');
-    setTimeout(() => toast.remove(), 300);
-  }, 3000);
 };
 
 export const getContentSourceType = (contentUrl, contentSourceType, isLoading = false) => {

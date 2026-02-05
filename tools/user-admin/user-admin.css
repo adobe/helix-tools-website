@@ -1,7 +1,4 @@
-.user-admin .block[aria-hidden='true'],
-.user-admin #add-user-details[aria-hidden='true'] {
-  display: none;
-}
+/* User Admin Styles */
 
 .user-admin #admin-form {
   display: grid;
@@ -17,139 +14,312 @@
   .user-admin #admin-form .config-field {
     grid-column: 1 / span 2;
   }
-
-  .user-admin #admin-form .url-field {
-    margin-top: 0;
-  }
-}
-
-#users .button-wrapper {
-  grid-area: button;
-  display: flex;
-  gap: var(--spacing-100);
-}
-
-#users .button-wrapper button[aria-hidden='true'] {
-  display: none;
 }
 
 .user-admin #admin-form .button-wrapper {
   align-self: center;
 }
 
-.user-admin .body-wrapper {
-  position: relative;
-  height: 66vmin;
+.user-admin .field-help-text {
+  margin-top: var(--spacing-xs);
+  font-size: var(--body-size-s);
+  color: var(--color-font-grey);
 }
 
-#users {
-  list-style: none;
-  padding: 0;
+.user-admin .field-help-text p {
   margin: 0;
 }
 
-#users li {
-  grid-template-areas: "user-info button" "details details";
-  grid-template-columns: 1fr max-content;
+/* Users Container */
+.user-admin #users-container {
+  min-height: 200px;
+}
+
+.user-admin #users-container .loading,
+.user-admin #users-container .error {
+  color: var(--color-font-grey);
+  font-style: italic;
+  padding: var(--spacing-l);
+  text-align: center;
+}
+
+.user-admin #users-container .error {
+  color: var(--red-600);
+}
+
+/* User Card Specific Styles */
+.user-admin .user-card {
   display: grid;
-  align-items: start;
-  justify-content: space-between;
-  padding: 0.5em 0;
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "info"
+    "badges"
+    "actions";
+  gap: var(--spacing-s);
+}
+
+.user-admin .user-card .user-card-info {
+  grid-area: info;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+  min-width: 0;
+}
+
+.user-admin .user-card .user-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--blue-100);
+  color: var(--blue-700);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.user-admin .user-card .user-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.user-admin .user-card .card-item-name {
+  margin: 0;
+  font-size: var(--body-size-l);
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-admin .user-card .card-item-badges {
+  grid-area: badges;
+}
+
+.user-admin .user-card .card-item-badge {
+  background: light-dark(var(--gray-100), var(--gray-700));
+  color: var(--gray-600);
+  max-height: 20px;
+}
+
+.user-admin .user-card .card-item-actions {
+  grid-area: actions;
+  margin-top: var(--spacing-s);
+}
+
+/* List view specific styles */
+@media (width >= 600px) {
+  .user-admin .card-grid.list-view .user-card {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "info actions"
+      "badges actions";
+    align-items: center;
+    gap: var(--spacing-xs) var(--spacing-l);
+  }
+
+  .user-admin .card-grid.list-view .user-card .card-item-actions {
+    justify-content: flex-end;
+    align-self: center;
+    margin-top: 0;
+  }
+
+  .user-admin .card-grid.list-view .user-card .card-item-badges {
+    align-self: start;
+  }
+}
+
+/* User Modal - dialog is appended to body, use element selector for scoping */
+dialog.user-admin-modal {
+  max-width: 600px;
+  width: 90vw;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 0;
+  box-shadow: var(--shadow-hover);
+  background: var(--color-background);
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   margin: 0;
 }
 
-#users .user-info {
-  grid-area: user-info;
+dialog.user-admin-modal::backdrop {
+  background: rgb(0 0 0 / 50%);
+}
+
+dialog.user-admin-modal .modal-content {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-100);
+  max-height: 85vh;
 }
 
-#users .user-email {
-  font-weight: 500;
-}
-
-#users .user-roles {
+dialog.user-admin-modal .modal-header {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-75);
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-m) var(--spacing-l);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--layer-elevated);
+  border-radius: 12px 12px 0 0;
 }
 
-#users .role-pill {
-  font-family: var(--code-font-family);
-  font-size: var(--detail-size-xs);
-  padding: var(--spacing-50) var(--spacing-100);
-  background-color: var(--color-button-accent-bg);
-  border-radius: var(--rounding-s);
+dialog.user-admin-modal .modal-header h3 {
+  margin: 0;
+  font-size: var(--heading-size-m);
+  color: var(--color-text);
+  padding-right: var(--spacing-400);
+}
+
+dialog.user-admin-modal .modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--color-font-grey);
+  cursor: pointer;
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+dialog.user-admin-modal .modal-close:hover {
+  background: light-dark(var(--gray-200), var(--gray-700));
   color: var(--color-text);
 }
 
-#users .user-details {
-  grid-area: details;
-  margin-top: var(--spacing-m);
-  padding-top: var(--spacing-m);
-  border-top: var(--border-s) solid var(--color-border);
+dialog.user-admin-modal .modal-body {
+  padding: var(--spacing-l);
+  overflow-y: auto;
+  flex: 1;
 }
 
-.user-admin #add-user-wrapper {
-  display: grid;
-  gap: var(--spacing-m);
-}
-
-.user-admin #add-user-details {
-  display: grid;
-  gap: var(--spacing-m);
-}
-
-.user-admin .roles-checkbox-group {
-  border: var(--border-s) solid var(--color-border);
-  border-radius: var(--rounding-s);
-  padding: var(--spacing-300);
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--spacing-100);
-}
-
-@media (width >= 720px) {
-  .user-admin .roles-checkbox-group {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (width >= 900px) {
-  .user-admin .roles-checkbox-group {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-.user-admin .roles-checkbox-group legend {
-  padding: 0 var(--spacing-100);
-  font-weight: 600;
-  grid-column: 1 / -1;
-}
-
-.user-admin .roles-checkbox-group label {
+dialog.user-admin-modal .modal-footer {
   display: flex;
-  align-items: center;
-  gap: var(--spacing-100);
-  cursor: pointer;
-  padding: var(--spacing-100);
-  border-radius: var(--rounding-s);
-  transition: background-color 0.2s;
+  gap: var(--spacing-s);
+  justify-content: flex-end;
+  padding: var(--spacing-l);
+  border-top: 1px solid var(--color-border);
 }
 
-.user-admin .roles-checkbox-group label:hover {
-  background-color: var(--color-button-accent-bg);
+dialog.user-admin-modal .modal-footer .delete-btn {
+  margin-right: auto;
 }
 
-.user-admin .roles-checkbox-group input[type="checkbox"] {
-  cursor: pointer;
-  width: 1.125rem;
-  height: 1.125rem;
+dialog.user-admin-modal .form-field {
+  margin-bottom: var(--spacing-l);
 }
 
-.user-admin .field-help-text {
-  margin-top: var(--spacing-100);
+dialog.user-admin-modal .form-field:last-child {
+  margin-bottom: 0;
+}
+
+dialog.user-admin-modal .form-field label {
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+  color: var(--color-text);
+}
+
+dialog.user-admin-modal .form-field input[type="email"] {
+  width: 100%;
+  padding: var(--spacing-s);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: var(--body-size-m);
+  background: var(--color-background);
+  color: var(--color-text);
+}
+
+dialog.user-admin-modal .form-field input[type="email"]:focus {
+  outline: none;
+  border-color: var(--blue-500);
+  box-shadow: 0 0 0 2px var(--blue-100);
+}
+
+dialog.user-admin-modal .field-hint {
   font-size: var(--body-size-s);
   color: var(--color-font-grey);
+  margin-bottom: var(--spacing-s);
+}
+
+dialog.user-admin-modal .field-hint a {
+  color: var(--blue-600);
+}
+
+/* Roles Grid */
+dialog.user-admin-modal .roles-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: var(--spacing-s);
+  background: var(--layer-elevated);
+}
+
+dialog.user-admin-modal .role-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-s);
+  padding: var(--spacing-s);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+dialog.user-admin-modal .role-option:hover {
+  background: var(--color-button-accent-bg);
+}
+
+dialog.user-admin-modal .role-option input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+dialog.user-admin-modal .role-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+dialog.user-admin-modal .role-name {
+  font-weight: 600;
+  color: var(--color-text);
+  font-size: var(--body-size-m);
+}
+
+dialog.user-admin-modal .role-desc {
+  font-size: var(--body-size-s);
+  color: var(--gray-600);
+  font-weight: normal;
+}
+
+/* Danger Button - scoped to user-admin-modal */
+dialog.user-admin-modal .button.danger {
+  color: var(--red-700);
+  border-color: var(--red-700);
+}
+
+dialog.user-admin-modal .button.danger:hover {
+  background: var(--red-700);
+  color: white;
+  border-color: var(--red-700);
+}
+
+@media (width >= 600px) {
+  .user-admin .form-field.config-field .site-field::before {
+    bottom: 50%;
+    transform: translateY(50%);
+  }
 }
