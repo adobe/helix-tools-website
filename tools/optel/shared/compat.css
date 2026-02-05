@@ -151,25 +151,34 @@ body.optel-oversight main button {
 /* URL-selector input reset */
 body.optel-explorer main url-selector input,
 body.optel-oversight main url-selector input {
-  border: 0;
   padding: 0;
   background-color: transparent;
+}
+
+body.optel-explorer main url-selector input:not(:disabled),
+body.optel-oversight main url-selector input:not(:disabled) {
+  background-color: rgb(0 0 0 / 5%);
 }
 
 body.optel-explorer main url-selector input:hover,
 body.optel-explorer main url-selector input:focus,
 body.optel-oversight main url-selector input:hover,
 body.optel-oversight main url-selector input:focus {
-  border: 0;
-  outline: none;
   box-shadow: none;
   color: inherit;
 }
 
 body.optel-explorer main url-selector input:disabled,
 body.optel-oversight main url-selector input:disabled {
+  border: 0;
   background-color: transparent;
   color: inherit;
+}
+
+/* Hide elements with trailing-hyphen classes (e.g. score- with no value) */
+body.optel-explorer [class$="-"],
+body.optel-oversight [class$="-"] {
+  opacity: 0;
 }
 
 /* Key metrics adjustment */
@@ -272,4 +281,9 @@ html[data-theme="dark"] body.optel-oversight vitals-facet div[data-value^="poor"
 html[data-theme="dark"] body.optel-explorer #facets div[aria-selected="true"],
 html[data-theme="dark"] body.optel-oversight #facets div[aria-selected="true"] {
   background-color: #2a3a4a;
+}
+
+html[data-theme="dark"] body.optel-explorer main url-selector input:not(:disabled),
+html[data-theme="dark"] body.optel-oversight main url-selector input:not(:disabled) {
+  background-color: rgb(255 255 255 / 10%);
 }
