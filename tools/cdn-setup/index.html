@@ -22,6 +22,12 @@
   <main>
     <div>
       <h1>CDN Setup</h1>
+      <p>
+        Configure your content delivery network (CDN) to automatically purge outdated content on your 
+        production domain whenever an author publishes changes. Select your site, choose a CDN provider, 
+        and validate your credentials before saving.
+      </p>
+      <p>See <a href="https://www.aem.live/docs/byo-cdn-setup" target="_blank">BYO CDN Setup</a> documentation to learn more.</p>
     </div>
 
     <div>
@@ -48,27 +54,88 @@
       <form id="cdn-form" aria-hidden="true" disabled>
         <div class="form-field">
           <label for="host">Production Host</label>
-          <input id="host" name="host" type="text" />
-        </div>
-        <div class="cdn-container">
-          <div class="form-field">
-            <label for="cdn-type">CDN Type</label>
-            <select id="cdn-type" name="cdn-type">
-              <option value="">(No CDN Type Selected)</option>
-              <option value="fastly">Fastly</option>
-              <option value="cloudflare">Cloudflare</option>
-              <option value="akamai">Akamai</option>
-              <option value="managed">Managed</option>
-              <option value="cloudfront">CloudFront</option>
-            </select>
+          <input id="host" name="host" type="text" placeholder="e.g. www.yourdomain.com" required />
+          <div class="field-help-text">
+            <p>Host name of production site, e.g. <code>www.yourdomain.com</code></p>
           </div>
+        </div>
 
-          <div id="cdn-fields">
-            <!-- CDN-specific fields will be dynamically added here -->
+        <fieldset class="cdn-type-selector">
+          <legend>CDN Type</legend>
+          <ul class="cdn-type-list">
+            <li data-cdn="managed">
+              <label for="cdn-managed">
+                <img src="/icons/adobe.svg" alt="Adobe">
+                <span>Managed</span>
+                <input id="cdn-managed" name="cdn-type" value="managed" type="radio" />
+              </label>
+              <a class="docs" href="https://www.aem.live/docs/byo-cdn-adobe-managed" target="_blank">Setup Docs</a>
+            </li>
+            <li data-cdn="akamai">
+              <label for="cdn-akamai">
+                <img src="/icons/akamai.svg" alt="Akamai">
+                <input id="cdn-akamai" name="cdn-type" value="akamai" type="radio" />
+              </label>
+              <a class="docs" href="https://www.aem.live/docs/byo-cdn-akamai-setup" target="_blank">Setup Docs</a>
+            </li>
+            <li data-cdn="fastly">
+              <label for="cdn-fastly">
+                <img src="./assets/fastly-logo.svg" alt="Fastly">
+                <input id="cdn-fastly" name="cdn-type" value="fastly" type="radio" />
+              </label>
+              <a class="docs" href="https://www.aem.live/docs/byo-cdn-fastly-setup" target="_blank">Setup Docs</a>
+            </li>
+            <li data-cdn="cloudflare">
+              <label for="cdn-cloudflare">
+                <img src="/icons/cloudflare.svg" alt="Cloudflare">
+                <input id="cdn-cloudflare" name="cdn-type" value="cloudflare" type="radio" />
+              </label>
+              <a class="docs" href="https://www.aem.live/docs/byo-cdn-cloudflare-worker-setup" target="_blank">Setup Docs</a>
+            </li>
+            <li data-cdn="cloudfront">
+              <label for="cdn-cloudfront">
+                <img src="/icons/cloudfront.svg" alt="CloudFront">
+                <span>CloudFront</span>
+                <input id="cdn-cloudfront" name="cdn-type" value="cloudfront" type="radio" />
+              </label>
+              <a class="docs" href="https://www.aem.live/docs/byo-cdn-cloudfront-setup" target="_blank">Setup Docs</a>
+            </li>
+          </ul>
+        </fieldset>
+
+        <div id="cdn-fields" class="cdn-fields">
+          <!-- CDN-specific fields will be dynamically added here -->
+        </div>
+
+        <div id="validation-results" class="validation-results" aria-hidden="true">
+          <h3>Validation Results</h3>
+          <div class="validation-item" data-test="urlPurge">
+            <span class="validation-icon"></span>
+            <div class="validation-content">
+              <strong>URL Purge</strong>
+              <span class="validation-message"></span>
+              <details class="validation-details">
+                <summary>Show details</summary>
+                <pre><code></code></pre>
+              </details>
+            </div>
+          </div>
+          <div class="validation-item" data-test="keyPurge">
+            <span class="validation-icon"></span>
+            <div class="validation-content">
+              <strong>Key Purge</strong>
+              <span class="validation-message"></span>
+              <details class="validation-details">
+                <summary>Show details</summary>
+                <pre><code></code></pre>
+              </details>
+            </div>
           </div>
         </div>
+
         <div class="button-bar">
           <div class="button-wrapper">
+            <button type="button" id="validate" class="button outline" style="display: none">Validate</button>
             <button type="submit" id="save" class="button">Save</button>
           </div>
         </div>
@@ -81,4 +148,4 @@
   </main>
   <footer></footer>
 </body>
-</html> 
+</html>
