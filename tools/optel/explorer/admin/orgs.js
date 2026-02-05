@@ -1,4 +1,5 @@
 import { store, log } from './store.js';
+import { escapeHTML } from '../utils.js';
 
 /** @type {HTMLDivElement} */
 const mainDiv = document.getElementById('rumadmin');
@@ -43,11 +44,11 @@ const createModal = ({
   modal.innerHTML = /* html */`
    <div class="modal-content">
      <span class="cancel">&times;</span>
-     <h2 class="modal-title">${title}</h2>
+     <h2 class="modal-title">${escapeHTML(title)}</h2>
      <div class="content">${content}</div>
-     <div class="modal-actions"> 
-       <button id="btn-accept" class="accept">${acceptText}</button>
-       <button id="btn-cancel" class="cancel">${cancelText}</button>
+     <div class="modal-actions">
+       <button id="btn-accept" class="accept">${escapeHTML(acceptText)}</button>
+       <button id="btn-cancel" class="cancel">${escapeHTML(cancelText)}</button>
      </div>
    </div>`;
 
@@ -88,7 +89,7 @@ const createDomainRow = (org, domain) => {
   row.classList.add('domain-row');
   row.innerHTML = /* html */`
     <div class="cell-checkbox"><input type="checkbox"/></div>
-    <div class="cell-domain">${domain}</div>
+    <div class="cell-domain">${escapeHTML(domain)}</div>
     <div class="cell-domain-actions">
       <button class="btn btn-danger">Remove</button>
     </div>`;
@@ -109,7 +110,7 @@ const createDomainRow = (org, domain) => {
     createModal({
       title: 'Remove domain',
       content: /* html */`
-        <p>Are you sure you want to remove domain '${domain}' from ${org}?</p>
+        <p>Are you sure you want to remove domain '${escapeHTML(domain)}' from ${escapeHTML(org)}?</p>
       `,
       onAccept: async () => {
         try {
@@ -235,7 +236,7 @@ const showOrgkey = (key) => {
     }
 
     createModal({
-      title: `Add domains to ${store.selectedOrg}`,
+      title: `Add domains to ${escapeHTML(store.selectedOrg)}`,
       content: /* html */`
         <textarea placeholder="List of domain(s), separated by spaces/commas"></textarea>
       `,
@@ -268,7 +269,7 @@ const showOrgkey = (key) => {
     createModal({
       title: 'Remove domains',
       content: /* html */`
-        <p>Are you sure you want to remove ${store.selectedDomains.size} domains from ${store.selectedOrg}?</p>
+        <p>Are you sure you want to remove ${store.selectedDomains.size} domains from ${escapeHTML(store.selectedOrg)}?</p>
       `,
       onAccept: async () => {
         try {

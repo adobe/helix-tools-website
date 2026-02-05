@@ -12,13 +12,13 @@ function urlDecode(part, rich = false) {
 
 function labelURLParts(url, prefix, solo = false) {
   if (prefix && url.startsWith(prefix) && !solo) {
-    return `<span class="collapse" title="${url}">${prefix}</span><span class="suffix" title="${urlDecode(url)}">${urlDecode(url.replace(prefix, ''), true)}</span>`;
+    return `<span class="collapse" title="${escapeHTML(url)}">${escapeHTML(prefix)}</span><span class="suffix" title="${escapeHTML(urlDecode(url))}">${urlDecode(escapeHTML(url.replace(prefix, '')), true)}</span>`;
   }
   const u = new URL(url);
   return ['protocol', 'hostname', 'port', 'pathname', 'search', 'hash']
     .map((part) => ({ part, value: u[part], full: u.href }))
     .reduce(
-      (acc, { part, value, full }) => `${acc}<span class="${part}" title="${full}">${value}</span>`,
+      (acc, { part, value, full }) => `${acc}<span class="${part}" title="${escapeHTML(full)}">${escapeHTML(value)}</span>`,
       '',
     );
 }
@@ -46,28 +46,28 @@ export default class LinkFacet extends ListFacet {
       const u = new URL('https://www.aem.live/tools/rum/_ogimage');
       u.searchParams.set('proxyurl', labelText);
       return `
-      <img loading="lazy" src="${u.href}" title="${labelText}" alt="thumbnail image for ${labelText}" onerror="this.classList.add('broken')">
-      <a href="${labelText}" target="_new">${labelURLParts(labelText, prefix, solo)}</a>`;
+      <img loading="lazy" src="${u.href}" title="${escapeHTML(labelText)}" alt="thumbnail image for ${escapeHTML(labelText)}" onerror="this.classList.add('broken')">
+      <a href="${escapeHTML(labelText)}" target="_new">${labelURLParts(labelText, prefix, solo)}</a>`;
     }
     if (thumbnailAtt && (labelText.startsWith('http://') || labelText.startsWith('https://') || labelText.startsWith('android-app://'))) {
       const u = new URL('https://www.aem.live/tools/rum/_ogimage');
       u.searchParams.set('proxyurl', labelText);
       return `
-      <img loading="lazy" src="${u.href}" title="${labelText}" alt="thumbnail image for ${labelText}" onerror="${faviconAtt ? `this.src='https://www.google.com/s2/favicons?domain=${labelText}&sz=256';this.classList.add('favicon');` : 'this.classList.add(\'broken\');'}">
-      <a href="${labelText}" target="_new">${labelURLParts(labelText, prefix, solo)}</a>`;
+      <img loading="lazy" src="${u.href}" title="${escapeHTML(labelText)}" alt="thumbnail image for ${escapeHTML(labelText)}" onerror="${faviconAtt ? `this.src='https://www.google.com/s2/favicons?domain=${encodeURIComponent(labelText)}&sz=256';this.classList.add('favicon');` : 'this.classList.add(\'broken\');'}">
+      <a href="${escapeHTML(labelText)}" target="_new">${labelURLParts(labelText, prefix, solo)}</a>`;
     }
     if (labelText.startsWith('https://') || labelText.startsWith('http://')) {
-      return `<a href="${labelText}" target="_new">${labelText}</a>`;
+      return `<a href="${escapeHTML(labelText)}" target="_new">${escapeHTML(labelText)}</a>`;
     }
     if (labelText.startsWith('referrer:')) {
-      return `<a href="${labelText.replace('referrer:', 'https://')}" target="_new">${labelText.replace('referrer:', '')}</a>`;
+      return `<a href="${escapeHTML(labelText.replace('referrer:', 'https://'))}" target="_new">${escapeHTML(labelText.replace('referrer:', ''))}</a>`;
     }
     if (labelText.startsWith('navigate:')) {
       const domain = new URL(window.location.href).searchParams.get('domain');
-      return `navigate from <a href="${labelText.replace('navigate:', `https://${domain}`)}" target="_new">${labelText.replace('navigate:', '')}</a>`;
+      return `navigate from <a href="${escapeHTML(labelText.replace('navigate:', `https://${domain}`))}" target="_new">${escapeHTML(labelText.replace('navigate:', ''))}</a>`;
     }
     if (this.placeholders && this.placeholders[labelText]) {
-      return (`${this.placeholders[labelText]} [${labelText}]`);
+      return (`${escapeHTML(this.placeholders[labelText])} [${escapeHTML(labelText)}]`);
     }
     return escapeHTML(labelText);
   }

@@ -14,7 +14,7 @@ export default class FileFacet extends ListFacet {
   createLabelHTML(labelText) {
     const removedFragment = labelText.split('#')[0];
     const isImage = removedFragment.startsWith('http') && (removedFragment.endsWith('.png') || removedFragment.endsWith('.jpg') || removedFragment.endsWith('.jpeg') || removedFragment.endsWith('.gif') || removedFragment.endsWith('.svg') || removedFragment.endsWith('.webp'));
-    const imageString = isImage ? `<img class="facet-thumbnail" src="${labelText}">` : '';
+    const imageString = isImage ? `<img class="facet-thumbnail" src="${escapeHTML(labelText)}">` : '';
     return `${imageString}<span class="filename">${escapeHTML(labelText)}</span>`;
   }
 }
