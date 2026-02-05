@@ -177,7 +177,7 @@ function updateDataFacets(filterText, params, checkpoint) {
             .reduce((acc, { target }) => {
               if (typeof target === 'string') {
                 const mi = target.indexOf('/media_');
-                if (cp === 'viewmedia' && mi) {
+                if (cp === 'viewmedia' && mi >= 0) {
                   acc.add(target.substring(mi + 1));
                 } else {
                   acc.add(target);
