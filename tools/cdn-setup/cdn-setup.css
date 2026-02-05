@@ -1,11 +1,386 @@
+/* Base form styles */
 .cdn-setup .form-field {
   margin-bottom: var(--spacing-l);
+}
+
+.cdn-setup [aria-hidden="true"] {
+  display: none;
 }
 
 .cdn-setup .form-field:has(#route) {
   display: none;
 }
 
-.cdn-setup [aria-hidden="true"] {
+.cdn-setup .field-help-text {
+  margin-top: var(--spacing-xs);
+  font-size: var(--body-size-s);
+  color: var(--color-text-secondary);
+}
+
+.cdn-setup .field-help-text p {
+  margin: 0;
+}
+
+/* CDN Type Selector */
+.cdn-setup .cdn-type-selector {
+  border: none;
+  padding: 0;
+  margin-bottom: var(--spacing-l);
+}
+
+.cdn-setup .cdn-type-selector legend {
+  font-weight: var(--weight-medium);
+  margin-bottom: var(--spacing-m);
+  padding: 0;
+}
+
+.cdn-setup .cdn-type-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-m);
+}
+
+.cdn-setup .cdn-type-list li {
+  width: 100%;
+  border: var(--border-m) solid var(--color-border);
+  border-radius: var(--rounding-m);
+  background-color: light-dark(var(--gray-75), var(--gray-800));
+  color: var(--color-text);
+  transition: background-color 0.2s, opacity 0.2s, transform 0.2s, box-shadow 0.2s;
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.cdn-setup .cdn-type-list li[aria-selected='true'] {
+  background-color: var(--layer-elevated);
+  box-shadow: var(--shadow-default);
+  transform: scale(1.05);
+}
+
+.cdn-setup .cdn-type-list li:hover {
+  background-color: light-dark(var(--gray-50), var(--gray-700));
+  box-shadow: var(--shadow-hover);
+}
+
+.cdn-setup .cdn-type-list li[aria-selected='false'] {
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+
+.cdn-setup .cdn-type-list li label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  position: relative;
+  padding: 0.6em 0.85em;
+  cursor: pointer;
+  user-select: none;
+  min-height: 60px;
+  flex-direction: column;
+  height: 100%;
+}
+
+.cdn-setup .cdn-type-list li label span {
+  font-family: var(--body-font-family);
+  font-size: var(--detail-size-s);
+  font-weight: var(--weight-medium);
+  display: block;
+}
+
+.cdn-setup .cdn-type-list li label input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.cdn-setup .cdn-type-list li label img {
+  width: auto;
+  max-width: 100%;
+  height: 32px;
+  transition: filter 0.2s, opacity 0.2s;
+}
+
+.cdn-setup .cdn-type-list li[aria-selected='false'] img {
+  filter: brightness(0);
+  opacity: 0.5;
+}
+
+.cdn-setup .cdn-type-list li[aria-selected='false']:hover img {
+  filter: brightness(1);
+  opacity: 1;
+}
+
+.cdn-setup .cdn-type-list li .docs {
+  position: absolute;
+  bottom: -1.5rem;
+  left: 0;
+  font-size: var(--body-size-s);
   display: none;
-} 
+}
+
+.cdn-setup .cdn-type-list li[aria-selected='true'] .docs {
+  display: block;
+}
+
+/* Dark mode image handling */
+html[data-theme="dark"] .cdn-setup .cdn-type-list li[aria-selected='false'] img,
+html[data-theme="system"] .cdn-setup .cdn-type-list li[aria-selected='false'] img {
+  filter: brightness(1);
+}
+
+@media (prefers-color-scheme: light) {
+  html[data-theme="system"] .cdn-setup .cdn-type-list li[aria-selected='false'] img {
+    filter: brightness(0);
+  }
+}
+
+/* Responsive grid */
+@media (width >= 500px) {
+  .cdn-setup .cdn-type-list li label img {
+    height: 40px;
+  }
+}
+
+@media (width >= 700px) {
+  .cdn-setup .cdn-type-list li label img {
+    height: 48px;
+  }
+}
+
+@media (width >= 900px) {
+  .cdn-setup .cdn-type-list {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .cdn-setup .cdn-type-list li label img {
+    height: 56px;
+  }
+}
+
+/* CDN Fields */
+.cdn-setup .cdn-fields {
+  margin-bottom: var(--spacing-l);
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.cdn-setup .cdn-fields .form-field {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (width >= 700px) {
+  .cdn-setup .cdn-fields .form-field {
+    flex-direction: row;
+    align-items: baseline;
+    gap: var(--spacing-m);
+  }
+
+  .cdn-setup .cdn-fields .form-field label {
+    min-width: 120px;
+    text-align: right;
+  }
+
+  .cdn-setup .cdn-fields .form-field input {
+    flex: 1;
+  }
+}
+
+/* Validation Results */
+.cdn-setup .validation-results {
+  margin: var(--spacing-l) 0;
+  padding: var(--spacing-m);
+  border: var(--border-m) solid var(--color-border);
+  border-radius: var(--rounding-m);
+  background-color: var(--layer-elevated);
+}
+
+.cdn-setup .validation-results h3 {
+  margin: 0 0 var(--spacing-m) 0;
+  font-size: var(--body-size-m);
+}
+
+.cdn-setup .validation-item {
+  display: flex;
+  gap: var(--spacing-m);
+  padding: var(--spacing-s) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.cdn-setup .validation-item:last-child {
+  border-bottom: none;
+}
+
+.cdn-setup .validation-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.cdn-setup .validation-item.pending .validation-icon {
+  background-color: var(--gray-300);
+}
+
+.cdn-setup .validation-item.pending .validation-icon::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background-color: var(--gray-600);
+  border-radius: 50%;
+}
+
+.cdn-setup .validation-item.loading .validation-icon {
+  background-color: var(--blue-400);
+  animation: pulse 1.5s infinite;
+}
+
+.cdn-setup .validation-item.loading .validation-icon::before,
+.cdn-setup .validation-item.loading .validation-icon::after {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background-color: white;
+  border-radius: 50%;
+}
+
+.cdn-setup .validation-item.loading .validation-icon::before {
+  left: 5px;
+}
+
+.cdn-setup .validation-item.loading .validation-icon::after {
+  right: 5px;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.cdn-setup .validation-item.success .validation-icon {
+  background-color: var(--green-600);
+}
+
+/* Checkmark using CSS borders */
+.cdn-setup .validation-item.success .validation-icon::before {
+  content: '';
+  display: block;
+  width: 6px;
+  height: 10px;
+  border: 2px solid white;
+  border-top: 0;
+  border-left: 0;
+  transform: rotate(45deg) translateY(-1px);
+}
+
+.cdn-setup .validation-item.error .validation-icon {
+  background-color: var(--red-600);
+}
+
+/* X icon using CSS borders */
+.cdn-setup .validation-item.error .validation-icon::before,
+.cdn-setup .validation-item.error .validation-icon::after {
+  content: '';
+  position: absolute;
+  width: 2px;
+  height: 12px;
+  background-color: white;
+  border-radius: 1px;
+}
+
+.cdn-setup .validation-item.error .validation-icon::before {
+  transform: rotate(45deg);
+}
+
+.cdn-setup .validation-item.error .validation-icon::after {
+  transform: rotate(-45deg);
+}
+
+.cdn-setup .validation-content {
+  flex: 1;
+}
+
+.cdn-setup .validation-content strong {
+  display: block;
+  margin-bottom: var(--spacing-xs);
+}
+
+.cdn-setup .validation-message {
+  display: block;
+  font-size: var(--body-size-s);
+  color: var(--color-text-secondary);
+}
+
+.cdn-setup .validation-item.success .validation-message {
+  color: var(--green-700);
+}
+
+.cdn-setup .validation-item.error .validation-message {
+  color: var(--red-700);
+}
+
+.cdn-setup .validation-details {
+  margin-top: var(--spacing-s);
+}
+
+.cdn-setup .validation-details summary {
+  cursor: pointer;
+  font-size: var(--body-size-s);
+  color: var(--color-text-secondary);
+}
+
+.cdn-setup .validation-details pre {
+  margin-top: var(--spacing-s);
+  padding: var(--spacing-s);
+  background-color: light-dark(var(--gray-100), var(--gray-900));
+  border-radius: var(--rounding-s);
+  overflow-x: auto;
+  font-size: var(--body-size-xs);
+}
+
+.cdn-setup .validation-details code {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+/* Button bar */
+.cdn-setup .button-bar {
+  margin-top: var(--spacing-l);
+}
+
+.cdn-setup .button-bar .button-wrapper {
+  display: flex;
+  gap: var(--spacing-m);
+}
+
+.cdn-setup #validate {
+  min-width: 100px;
+}
+
+.cdn-setup #save {
+  min-width: 100px;
+}
+
+.cdn-setup #save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Inherited field indicator */
+.cdn-setup .cdn-fields input:disabled {
+  background-color: light-dark(var(--gray-100), var(--gray-800));
+  color: var(--color-text-secondary);
+}
+
+.cdn-setup .cdn-fields input:disabled::placeholder {
+  color: var(--color-text-secondary);
+}
