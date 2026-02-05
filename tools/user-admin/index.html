@@ -14,6 +14,7 @@
   <script nonce="aem" src="/scripts/aem.js" type="module"></script>
   <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
   <link rel="stylesheet" href="/styles/styles.css" />
+  <link rel="stylesheet" href="/utils/card-ui/card-ui.css" />
   <script nonce="aem" src="/tools/user-admin/user-admin.js" type="module"></script>
   <link rel="stylesheet" href="/tools/user-admin/user-admin.css" />
 </head>
@@ -24,6 +25,7 @@
     <!-- TITLE -->
     <div>
       <h1>User Admin</h1>
+      <p>Manage users and their roles for your organization or site.</p>
     </div>
 
     <!-- ADMIN FORM -->
@@ -36,45 +38,23 @@
             <datalist id="org-list"></datalist>
           </div>
           <div class="form-field site-field">
-            <label for="site">Site</label>
+            <label for="site">Site (optional)</label>
             <input name="site" id="site" list="site-list" autocomplete="off" />
             <datalist id="site-list"></datalist>
+            <div class="field-help-text">
+              <p>Leave blank to manage org-level users, or select a site to manage site-specific access.</p>
+            </div>
           </div>
         </section>
         <p class="button-wrapper">
-          <button type="submit" id="fetch" class="button">Fetch</button>
+          <button type="submit" id="fetch" class="button">Fetch Users</button>
           <button type="reset" id="site-reset" class="button outline">Reset</button>
         </p>
       </form>
     </div>
 
-    <!-- BODY FORM -->
-    <div>
-      <h2 id="users-title"></h2>
-      <div id="add-user-wrapper">
-        <div class="button-wrapper">
-          <button id="add-user" class="button">Add User...</button>
-        </div>
-        <div id="add-user-details" aria-hidden="true">
-          <section class="form-field">
-            <form id="add-user-form">
-            <fieldset>
-              <div class="form-field">
-                <label for="add-user-email">Email</label>
-                <input id="add-user-email" name="add-user-email" type="email" />
-              </div>
-              <div class="form-field" id="add-user-roles-container"></div>
-            </fieldset>
-          </section>
-            <span class="button-wrapper">
-              <button id="add-user-save" class="button" type="submit">Save</button>
-              <button id="add-user-cancel" class="button outline" type="reset">Cancel</button>
-            </span>
-          </form>
-        </div>
-      </div>
-      <ul id="users">
-      </ul>
+    <!-- USERS CONTAINER -->
+    <div id="users-container" class="card-ui">
     </div>
 
     <!-- CONSOLE -->
