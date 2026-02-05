@@ -45,7 +45,7 @@ export default class FacetSidebar extends HTMLElement {
     generateReportButton.title = 'Use Claude to generate AI Report';
 
     const icon = document.createElement('img');
-    icon.src = '/icons/icon-claude.svg';
+    icon.src = '/icons/claude.svg';
     icon.alt = 'Claude AI';
     generateReportButton.appendChild(icon);
 
@@ -112,12 +112,16 @@ export default class FacetSidebar extends HTMLElement {
       this.elems.facetsElement.append(facet);
     });
 
+    // TODO: this block doesn't exist (yet)
     // Initialize saved reports lazily
-    const delay = new URLSearchParams(window.location.search).has('report') ? 100 : 500;
-    setTimeout(async () => {
-      await FacetSidebar.loadScript('/blocks/ai-optel-report-generator/reports/report-actions.js');
-      if (window.initializeSavedReports) window.initializeSavedReports();
-    }, delay);
+    // const delay = new URLSearchParams(window.location.search).has('report')
+    //   ? 100 : 500;
+    // setTimeout(async () => {
+    //   await FacetSidebar.loadScript(
+    //     '/blocks/ai-optel-report-generator/reports/report-actions.js',
+    //   );
+    //   if (window.initializeSavedReports) window.initializeSavedReports();
+    // }, delay);
   }
 
   updateFacets(mode) {
@@ -138,9 +142,12 @@ export default class FacetSidebar extends HTMLElement {
       facet.setAttribute('mode', 'hidden');
     });
 
+    const internalFacets = ['filter', 'rawURL', 'conversions', 'vitals'];
+
     const keys = Object.keys(this.dataChunks.facets)
-      // only show facets that have no decorators or are not hidden
-      .filter((key) => key !== 'filter');
+      .filter((key) => !internalFacets.includes(key))
+      .filter((key) => !key.endsWith('!'));
+
     keys.forEach((facetName) => {
       const facetEl = this.querySelector(`[facet="${facetName}"]`);
       // eslint-disable-next-line no-console
