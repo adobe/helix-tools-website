@@ -484,9 +484,10 @@ adminForm.addEventListener('submit', async (e) => {
 
     accessConfig.originalSiteAccess = config;
     const configUsers = [];
-    const roles = Object.keys(config.admin.role || {});
+    const adminRoles = config.admin?.role || {};
+    const roles = Object.keys(adminRoles);
     roles.forEach((role) => {
-      const emails = config.admin.role[role];
+      const emails = adminRoles[role];
       emails.forEach((email) => {
         const user = configUsers.find((u) => u.email === email);
         if (user) user.roles.push(role);
