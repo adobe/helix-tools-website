@@ -26,8 +26,8 @@
   width: 1.4em;
   height: 1.4em;
   line-height: 1em;
-  color: var(--green-100, #15803d);
-  background-color: var(--green-900);
+  color: light-dark(var(--green-100), var(--green-1200));
+  background-color: light-dark(var(--green-900), var(--green-500));
   padding: 0.2em 0.3em;
   border-radius: 50%;
   font-weight: 700;
@@ -39,14 +39,14 @@
 }
 
 .bot-info-alert {
-  color: var(--red-900);
-  border: 1px solid var(--red-900);
+  color: light-dark(var(--red-900), var(--red-500));
+  border: 1px solid light-dark(var(--red-900), var(--red-500));
   font-size: 1.2em;
   font-weight: bold;
   margin-top: 20px;
   padding: 10px;
   border-radius: 10px;
-  background-color: var(--red-100);
+  background-color: light-dark(var(--red-100), var(--red-1200));
 }
 
 
@@ -66,22 +66,30 @@
 
 .bot-info-admin-note {
   font-style: italic;
-  border: 1px solid var(--blue-700);
-  background-color: var(--blue-100);
+  border: 1px solid light-dark(var(--blue-700), var(--blue-500));
+  background-color: light-dark(var(--blue-100), var(--blue-1200));
   border-radius: 10px;
   padding: 10px;
   margin-top: 20px;
+}
+
+.bot-info-admin-note a {
+  color: light-dark(var(--blue-900), var(--cyan-500));
 }
 
 .bot-info-user {
   font-weight: bold;
-  color: var(--blue-900);
+  color: light-dark(var(--blue-900), var(--blue-500));
 }
 
 .bot-info-welcome {
   margin-top: 20px;
-  background-color: var(--green-100);
-  border: 1px solid var(--green-900);
+  background-color: light-dark(var(--green-100), var(--green-1200));
+  border: 1px solid light-dark(var(--green-900), var(--green-500));
   border-radius: 10px;
   padding: 10px;
+}
+
+.bot-info-welcome a {
+  color: light-dark(var(--blue-900), var(--cyan-500));
 }

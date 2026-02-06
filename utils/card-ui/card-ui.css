@@ -1,0 +1,384 @@
+/* Shared Card UI Styles */
+
+/* Card Container */
+.card-ui .card-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-l);
+}
+
+.card-ui .card-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-m);
+}
+
+.card-ui .card-count {
+  color: var(--color-font-grey);
+  font-size: var(--body-size-m);
+}
+
+.card-ui .card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-m);
+  width: 100%;
+}
+
+.card-ui .card-search {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.card-ui .card-search .search-input {
+  font-size: var(--body-size-s);
+  flex: 1;
+  background: transparent;
+  padding: var(--spacing-xs) var(--spacing-s);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.card-ui .card-search .search-input::placeholder {
+  color: var(--color-font-grey);
+}
+
+.card-ui .card-search:focus-within .search-input {
+  border-color: var(--blue-500);
+  box-shadow: 0 0 0 2px var(--blue-100);
+  outline: none;
+}
+
+.card-ui .view-toggle {
+  display: none;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.card-ui .view-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: var(--color-background);
+  border: none;
+  cursor: pointer;
+  color: var(--color-font-grey);
+  transition: all 0.15s ease;
+}
+
+.card-ui .view-btn:not(:last-child) {
+  border-right: 1px solid var(--color-border);
+}
+
+.card-ui .view-btn:hover {
+  background: var(--color-button-accent-bg);
+  color: var(--color-text);
+}
+
+.card-ui .view-btn:focus {
+  outline: 2px solid var(--blue-500);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+.card-ui .view-btn.active {
+  background: var(--color-button-accent-bg);
+  color: var(--blue-800);
+}
+
+.card-ui .view-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.card-ui .add-btn {
+  width: 100%;
+  order: 10;
+  font-size: var(--body-size-s);
+  padding: var(--spacing-xs) var(--spacing-s);
+}
+
+/* Card Grid */
+.card-ui .card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--spacing-m);
+}
+
+.card-ui .card-grid.list-view {
+  grid-template-columns: 1fr;
+}
+
+/* Generic Card */
+.card-ui .card-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+  padding: var(--spacing-m);
+  background: var(--layer-elevated);
+  border: 1px solid light-dark(var(--gray-200), var(--gray-600));
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.card-ui .card-item:hover {
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-hover);
+}
+
+.card-ui .card-item[aria-hidden="true"] {
+  display: none;
+}
+
+.card-ui .card-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-s);
+}
+
+.card-ui .card-item-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+  min-width: 0;
+  flex: 1;
+}
+
+.card-ui .card-item-name {
+  margin: 0;
+  font-size: var(--body-size-l);
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-ui .card-item-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.card-ui .card-item-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  background: var(--color-button-accent-bg);
+  color: var(--color-text);
+  font-family: var(--code-font-family);
+}
+
+.card-ui .card-item-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+.card-ui .card-item-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 12px;
+  font-size: var(--body-size-xs);
+  color: var(--color-font-grey);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.card-ui .card-item-btn:hover {
+  background: var(--color-button-accent-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.card-ui .card-item-btn:focus {
+  outline: 2px solid var(--blue-500);
+  outline-offset: 1px;
+}
+
+.card-ui .card-item-btn.danger {
+  color: var(--red-700);
+  border-color: var(--red-700);
+}
+
+.card-ui .card-item-btn.danger:hover {
+  background: var(--red-700);
+  color: white;
+}
+
+.card-ui .card-item-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Modal Styles - scoped with specific class since dialogs are appended to body */
+dialog.card-modal {
+  max-width: 600px;
+  width: 90vw;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 0;
+  box-shadow: var(--shadow-hover);
+  background: var(--color-background);
+}
+
+dialog.card-modal::backdrop {
+  background: rgb(0 0 0 / 50%);
+}
+
+dialog.card-modal .modal-content {
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
+}
+
+dialog.card-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-l);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--layer-elevated);
+  border-radius: 12px 12px 0 0;
+}
+
+dialog.card-modal .modal-header h3 {
+  margin: 0;
+  font-size: var(--heading-size-m);
+  color: var(--color-text);
+}
+
+dialog.card-modal .modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--color-font-grey);
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+dialog.card-modal .modal-close:hover {
+  background: light-dark(var(--gray-200), var(--gray-700));
+  color: var(--color-text);
+}
+
+dialog.card-modal .modal-body {
+  padding: var(--spacing-l);
+  overflow-y: auto;
+  flex: 1;
+}
+
+dialog.card-modal .modal-footer {
+  display: flex;
+  gap: var(--spacing-s);
+  justify-content: flex-end;
+  padding: var(--spacing-l);
+  border-top: 1px solid var(--color-border);
+}
+
+/* Toast Notification - scoped with specific class since toasts are appended to body */
+.card-ui-toast.toast-notification {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background-color: var(--gray-900);
+  color: white;
+  padding: var(--spacing-s) var(--spacing-l);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+  font-size: var(--body-size-s);
+  font-weight: 500;
+  opacity: 0;
+  transition: all 0.3s ease;
+  z-index: 10000;
+  pointer-events: none;
+}
+
+.card-ui-toast.toast-notification.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.card-ui-toast.toast-notification.success {
+  background-color: var(--green-700);
+}
+
+.card-ui-toast.toast-notification.error {
+  background-color: var(--red-800);
+}
+
+/* Responsive */
+@media (width >= 600px) {
+  .card-ui .card-header {
+    flex-wrap: nowrap;
+  }
+
+  .card-ui .card-actions {
+    flex-wrap: nowrap;
+    width: auto;
+  }
+
+  .card-ui .card-search {
+    flex: 0;
+  }
+
+  .card-ui .card-search .search-input {
+    width: 200px;
+  }
+
+  .card-ui .view-toggle {
+    display: flex;
+  }
+
+  .card-ui .add-btn {
+    width: auto;
+    order: 0;
+    font-size: var(--body-size-m);
+    padding: var(--spacing-s) var(--spacing-m);
+  }
+
+  .card-ui .card-grid.list-view .card-item {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spacing-l);
+  }
+
+  .card-ui .card-grid.list-view .card-item-header {
+    flex: 1;
+  }
+
+  .card-ui .card-grid.list-view .card-item-badges {
+    flex: 1;
+    justify-content: flex-start;
+  }
+}
