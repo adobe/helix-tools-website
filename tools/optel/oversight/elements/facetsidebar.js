@@ -112,16 +112,14 @@ export default class FacetSidebar extends HTMLElement {
       this.elems.facetsElement.append(facet);
     });
 
-    // TODO: this block doesn't exist (yet)
     // Initialize saved reports lazily
-    // const delay = new URLSearchParams(window.location.search).has('report')
-    //   ? 100 : 500;
-    // setTimeout(async () => {
-    //   await FacetSidebar.loadScript(
-    //     '/blocks/ai-optel-report-generator/reports/report-actions.js',
-    //   );
-    //   if (window.initializeSavedReports) window.initializeSavedReports();
-    // }, delay);
+    const delay = new URLSearchParams(window.location.search).has('report') ? 100 : 500;
+    setTimeout(async () => {
+      await FacetSidebar.loadScript(
+        '/blocks/ai-optel-report-generator/reports/report-actions.js',
+      );
+      if (window.initializeSavedReports) window.initializeSavedReports();
+    }, delay);
   }
 
   updateFacets(mode) {

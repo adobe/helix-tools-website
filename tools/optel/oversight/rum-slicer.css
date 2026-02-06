@@ -1312,7 +1312,6 @@ body.optel-oversight main .ai-optel-report-generator-button {
   padding: 8px 12px;
   transition: all 0.2s;
   margin-left: 8px;
-  display: none; /* temporarily disabling */
   align-items: center;
   justify-content: center;
 }
