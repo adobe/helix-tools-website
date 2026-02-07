@@ -42,6 +42,18 @@
             <p>Enter an <code>.aem.live</code> URL from your site. <a href="#" id="discover-origin-link">Don't know your origin?</a></p>
           </div>
         </div>
+        <div class="form-field">
+          <label for="prod-page-url">Production page URL <span class="optional">(optional)</span></label>
+          <input
+            type="url"
+            id="prod-page-url"
+            name="prodPageUrl"
+            placeholder="https://www.example.com/path/to/page"
+          />
+          <div class="field-help-text">
+            <p>Use when your CDN rewrites URLs so the production page URL differs from the AEM path. Image delivery check will use this as the base for production image URLs.</p>
+          </div>
+        </div>
         <p class="button-wrapper">
           <button type="submit" id="run-check" class="button">Run CDN Check</button>
           <button type="reset" class="button outline">Clear</button>

@@ -419,26 +419,32 @@ function getCacheStatus(headers) {
   };
 }
 
-async function checkCaching(cdnConfig, aemUrl) {
+async function checkCaching(cdnConfig, aemUrl, prodPageUrlOverride = null) {
   const checkId = 'check-caching';
 
-  // Use production host, or aem.live host for managed CDN
+  const prodUrl = prodPageUrlOverride
+    ? new URL(prodPageUrlOverride).href
+    : null;
   const prodHost = cdnConfig?.host || aemUrl.host;
 
-  if (!prodHost) {
+  if (!prodUrl && !prodHost) {
     updateCheckState(checkId, 'skip', 'Skipped');
     addResultLine(checkId, 'Skipped: Production host not configured', 'warning');
     return { score: 0 };
   }
 
+  const urlToTest = prodUrl || `https://${prodHost}${aemUrl.pathname}`;
+
   updateCheckState(checkId, 'running', 'Testing...');
 
   try {
-    const prodUrl = `https://${prodHost}${aemUrl.pathname}`;
-    addResultLine(checkId, `Testing: ${prodUrl}`, 'info');
+    if (prodPageUrlOverride) {
+      addResultLine(checkId, 'Using supplied production URL', 'info');
+    }
+    addResultLine(checkId, `Testing: ${urlToTest}`, 'info');
 
     // First request using reveal=headers to get actual CDN headers
-    const resp1 = await fetch(corsProxy(prodUrl, { revealHeaders: true }), {
+    const resp1 = await fetch(corsProxy(urlToTest, { revealHeaders: true }), {
       method: 'GET',
     });
 
@@ -487,7 +493,7 @@ async function checkCaching(cdnConfig, aemUrl) {
     await new Promise((resolve) => { setTimeout(resolve, 1000); });
 
     // Second request
-    const resp2 = await fetch(corsProxy(prodUrl, { revealHeaders: true }), {
+    const resp2 = await fetch(corsProxy(urlToTest, { revealHeaders: true }), {
       method: 'GET',
     });
 
@@ -567,15 +573,35 @@ async function check404Caching(cdnConfig, aemUrl) {
       throw new Error(`Proxy request failed: ${resp1.status}`);
     }
 
-    const data1 = await resp1.json();
-    const status1 = parseInt(data1.status, 10);
-    const headers1 = data1.headers || [];
+    let data1 = await resp1.json();
+    let status1 = parseInt(data1.status, 10);
+    let headers1 = data1.headers || [];
 
     // Use configured CDN type (CORS proxy masks actual CDN headers)
     const detectedCdn = cdnConfig?.type || 'managed';
 
-    // Check status
-    if (status1 !== 404) {
+    let urlForSecondRequest = prodUrl;
+
+    if (status1 === 301) {
+      const getHeader = (name) => headers1.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value || '';
+      const location = getHeader('location');
+      if (location) {
+        const targetUrl = new URL(location, prodUrl).href;
+        addResultLine(checkId, 'Received 301 redirect, checking Location URL for caching', 'info');
+        addResultLine(checkId, `Target: ${targetUrl}`, 'info');
+
+        const targetResp1 = await fetch(corsProxy(targetUrl, { revealHeaders: true }), { method: 'GET' });
+        if (!targetResp1.ok) {
+          throw new Error(`Redirect target request failed: ${targetResp1.status}`);
+        }
+        data1 = await targetResp1.json();
+        status1 = parseInt(data1.status, 10);
+        headers1 = data1.headers || [];
+        urlForSecondRequest = targetUrl;
+      } else {
+        addResultLine(checkId, '301 without Location header', 'warning');
+      }
+    } else if (status1 !== 404) {
       addResultLine(checkId, `Unexpected status: ${status1} (expected 404)`, 'warning');
     } else {
       addResultLine(checkId, 'First request: 404 response received', 'info');
@@ -598,8 +624,8 @@ async function check404Caching(cdnConfig, aemUrl) {
     // Wait a moment
     await new Promise((resolve) => { setTimeout(resolve, 1500); });
 
-    // Second request
-    const resp2 = await fetch(corsProxy(prodUrl, { revealHeaders: true }), {
+    // Second request (to same URL as we have headers for: prodUrl or redirect target)
+    const resp2 = await fetch(corsProxy(urlForSecondRequest, { revealHeaders: true }), {
       method: 'GET',
     });
 
@@ -614,12 +640,14 @@ async function check404Caching(cdnConfig, aemUrl) {
     const cache2 = getCacheStatus(headers2);
     cacheDisplay(cache2, 'Second request');
 
-    // Check if 404 is being cached (second request should show a hit or increased age)
+    // Check if content is being cached (second request should show a hit or increased age)
     const isCached = cache2.isHit || (cache2.age > cache1.age);
+    const isRedirectTarget = urlForSecondRequest !== prodUrl;
+    const contentLabel = isRedirectTarget ? 'Redirect target' : '404 responses';
 
     if (isCached) {
-      updateCheckState(checkId, 'pass', '404s Cached');
-      addResultLine(checkId, `404 responses are cached (${cache2.reason})`, 'success');
+      updateCheckState(checkId, 'pass', isRedirectTarget ? 'Redirect Cached' : '404s Cached');
+      addResultLine(checkId, `${contentLabel} are cached (${cache2.reason})`, 'success');
       return { score: 100 };
     }
 
@@ -629,12 +657,12 @@ async function check404Caching(cdnConfig, aemUrl) {
     if (cacheControl.includes('no-cache') || cacheControl.includes('no-store') || cacheControl.includes('private')) {
       updateCheckState(checkId, 'warning', 'Not Cacheable');
       addResultLine(checkId, `Cache-Control: ${cacheControl}`, 'warning');
-      addResultLine(checkId, '404 responses may not be cacheable due to headers', 'warning');
+      addResultLine(checkId, `${contentLabel} may not be cacheable due to headers`, 'warning');
       return { score: 50 };
     }
 
     updateCheckState(checkId, 'warning', 'Not Cached');
-    addResultLine(checkId, '404 responses do not appear to be cached', 'warning');
+    addResultLine(checkId, `${contentLabel} do not appear to be cached`, 'warning');
     return { score: 25 };
   } catch (e) {
     updateCheckState(checkId, 'fail', 'Error');
@@ -643,11 +671,11 @@ async function check404Caching(cdnConfig, aemUrl) {
   }
 }
 
-async function checkImages(cdnConfig, aemUrl, org, site, branch) {
+async function checkImages(cdnConfig, aemUrl, org, site, branch, prodPageUrlOverride = null) {
   const checkId = 'check-images';
 
-  // Skip for managed CDN - images served from same origin
-  if (!cdnConfig?.host) {
+  // Skip for managed CDN - images served from same origin (unless prod URL supplied for rewriting)
+  if (!cdnConfig?.host && !prodPageUrlOverride) {
     updateCheckState(checkId, 'skip', 'N/A');
     addResultLine(checkId, 'Managed CDN: Images served from same origin', 'info');
     return { score: 100, skipped: true };
@@ -657,9 +685,19 @@ async function checkImages(cdnConfig, aemUrl, org, site, branch) {
 
   try {
     // Fetch the page content from .aem.live to find images
-    const aemLiveUrl = `https://${branch}--${site}--${org}.aem.live${aemUrl.pathname}`;
+    const aemPageUrl = `https://${branch}--${site}--${org}.aem.live${aemUrl.pathname}`;
+    const prodPageUrl = prodPageUrlOverride
+      ? new URL(prodPageUrlOverride).href
+      : `https://${cdnConfig.host}${aemUrl.pathname}`;
+    const prodOrigin = prodPageUrlOverride
+      ? new URL(prodPageUrlOverride).origin
+      : `https://${cdnConfig.host}`;
 
-    const pageResp = await fetch(corsProxy(aemLiveUrl));
+    if (prodPageUrlOverride) {
+      addResultLine(checkId, 'Using supplied production page URL for comparison', 'info');
+    }
+
+    const pageResp = await fetch(corsProxy(aemPageUrl));
     if (!pageResp.ok) {
       updateCheckState(checkId, 'fail', 'Page Error');
       addResultLine(checkId, `Could not fetch page: ${pageResp.status}`, 'error');
@@ -688,19 +726,19 @@ async function checkImages(cdnConfig, aemUrl, org, site, branch) {
       const imgSrc = img.getAttribute('src');
       if (!imgSrc || imgSrc.startsWith('data:')) return;
 
-      // Construct absolute URLs
+      // Resolve URLs with page as base so relative paths (e.g. ./media_xxx.png) normalize
       let aemImgUrl;
       let prodImgUrl;
 
       if (imgSrc.startsWith('http')) {
-        aemImgUrl = imgSrc;
-        prodImgUrl = imgSrc.replace(
-          new RegExp(`https?://${branch}--${site}--${org}\\.aem\\.(live|page)`),
-          `https://${cdnConfig.host}`,
+        aemImgUrl = new URL(imgSrc).href;
+        const aemOrigin = new RegExp(
+          `^https?://${branch}--${site}--${org}\\.aem\\.(live|page)`,
         );
+        prodImgUrl = new URL(imgSrc).href.replace(aemOrigin, prodOrigin);
       } else {
-        aemImgUrl = `https://${branch}--${site}--${org}.aem.live${imgSrc.startsWith('/') ? '' : '/'}${imgSrc}`;
-        prodImgUrl = `https://${cdnConfig.host}${imgSrc.startsWith('/') ? '' : '/'}${imgSrc}`;
+        aemImgUrl = new URL(imgSrc, aemPageUrl).href;
+        prodImgUrl = new URL(imgSrc, prodPageUrl).href;
       }
 
       try {
@@ -723,9 +761,13 @@ async function checkImages(cdnConfig, aemUrl, org, site, branch) {
 
           if (sizeMatch && typeMatch) {
             addResultLine(checkId, `✓ ${shortSrc}`, 'success');
+            addResultLine(checkId, `  AEM: ${aemImgUrl}`, 'info');
+            addResultLine(checkId, `  Prod: ${prodImgUrl}`, 'info');
             passCount += 1;
           } else {
             addResultLine(checkId, `! ${shortSrc}`, 'warning');
+            addResultLine(checkId, `  AEM: ${aemImgUrl}`, 'info');
+            addResultLine(checkId, `  Prod: ${prodImgUrl}`, 'info');
             if (!sizeMatch) {
               addResultLine(checkId, `  Size: AEM=${aemSize}, Prod=${prodSize}`, 'warning');
             }
@@ -736,10 +778,14 @@ async function checkImages(cdnConfig, aemUrl, org, site, branch) {
           }
         } else {
           addResultLine(checkId, `✗ ${shortSrc}: Not found on production`, 'error');
+          addResultLine(checkId, `  AEM: ${aemImgUrl}`, 'info');
+          addResultLine(checkId, `  Prod: ${prodImgUrl}`, 'info');
           failCount += 1;
         }
       } catch (imgError) {
         addResultLine(checkId, `? ${imgSrc}: Could not compare`, 'warning');
+        addResultLine(checkId, `  AEM: ${aemImgUrl}`, 'info');
+        addResultLine(checkId, `  Prod: ${prodImgUrl}`, 'info');
       }
     }));
 
@@ -901,7 +947,7 @@ async function checkRedirects(org, site, branch, cdnConfig) {
 }
 
 // Main check runner
-async function runChecks(pageUrl) {
+async function runChecks(pageUrl, prodPageUrl = null) {
   hideError();
   resetChecks();
 
@@ -923,7 +969,7 @@ async function runChecks(pageUrl) {
     // Wait for login event
     window.addEventListener('profile-update', async ({ detail: loginInfo }) => {
       if (loginInfo.includes(org)) {
-        runChecks(pageUrl);
+        runChecks(pageUrl, prodPageUrl);
       }
     }, { once: true });
     return;
@@ -962,7 +1008,7 @@ async function runChecks(pageUrl) {
   updateScore(calculateCurrentScore(scores), true);
 
   // Check 3: Caching Behavior
-  const cachingResult = await checkCaching(cdnConfig, aemUrl);
+  const cachingResult = await checkCaching(cdnConfig, aemUrl, prodPageUrl || undefined);
   scores['check-caching'] = cachingResult.score;
   updateScore(calculateCurrentScore(scores), true);
 
@@ -972,7 +1018,14 @@ async function runChecks(pageUrl) {
   updateScore(calculateCurrentScore(scores), true);
 
   // Check 5: Image Delivery
-  const imagesResult = await checkImages(cdnConfig, aemUrl, org, site, branch);
+  const imagesResult = await checkImages(
+    cdnConfig,
+    aemUrl,
+    org,
+    site,
+    branch,
+    prodPageUrl || undefined,
+  );
   scores['check-images'] = imagesResult.score;
   updateScore(calculateCurrentScore(scores), true);
 
@@ -1203,18 +1256,21 @@ async function init() {
 
   const params = new URLSearchParams(window.location.search);
   const urlParam = params.get('url');
+  const prodPageUrlParam = params.get('prodPageUrl') || null;
 
   if (urlParam) {
-    // Populate the input field
     document.getElementById('url').value = urlParam;
+    const prodPageUrlInput = document.getElementById('prod-page-url');
+    if (prodPageUrlParam) {
+      prodPageUrlInput.value = prodPageUrlParam;
+    }
 
-    // Auto-run the check
     const submitButton = FORM.querySelector('button[type="submit"]');
     submitButton.disabled = true;
     submitButton.textContent = 'Checking...';
 
     try {
-      await runChecks(urlParam);
+      await runChecks(urlParam, prodPageUrlParam);
     } finally {
       submitButton.disabled = false;
       submitButton.textContent = 'Run CDN Check';

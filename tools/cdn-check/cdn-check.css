@@ -388,6 +388,7 @@
 
 .check-result .result-line {
   margin: var(--spacing-xs) 0;
+  word-break: break-all;
 }
 
 .check-result .result-line.success {
