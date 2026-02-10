@@ -13,8 +13,7 @@ const pendingLogins = new Map();
  * @param {string} [site] - Site name (defaults to 'default')
  * @returns {Promise<boolean>} True if authenticated after call completes
  */
-export async function ensureAuth(org, site) {
-  // Check if already authenticated
+async function ensureAuth(org, site) {
   const authInfo = await messageSidekick({ action: 'getAuthInfo' });
 
   if (authInfo === NO_SIDEKICK) {
@@ -74,17 +73,29 @@ export function getCurrentConfig() {
 /**
  * Registers a callback for config readiness.
  * Fires immediately if URL params contain an org, then listens for config-update events.
- * @param {Function} callback - Called with { org, site }
+ * When authRequired is true, awaits ensureAuth before firing the callback.
+ * Dedup (orgOnly) only skips when the previous call was authenticated,
+ * so a failed auth allows retry on the next config-update for the same org.
+ * @param {Function} callback - Called with { org, site, authenticated }
  * @param {Object} [options]
- * @param {boolean} [options.orgOnly] - Dedup by org value (resets on each config-update)
+ * @param {boolean} [options.orgOnly] - Dedup by org value
+ * @param {boolean} [options.authRequired] - Check auth before firing callback
  */
-export function onConfigReady(callback, { orgOnly } = {}) {
+export function onConfigReady(callback, { orgOnly, authRequired } = {}) {
   let lastOrg = null;
+  let lastAuthenticated = false;
 
-  const fire = ({ org, site }) => {
-    if (orgOnly && org === lastOrg) return;
+  const fire = async ({ org, site }) => {
+    if (orgOnly && org === lastOrg && lastAuthenticated) return;
     lastOrg = org;
-    callback({ org, site });
+
+    let authenticated = true;
+    if (authRequired) {
+      authenticated = await ensureAuth(org, site);
+    }
+    lastAuthenticated = authenticated;
+
+    callback({ org, site, authenticated });
   };
 
   // Check URL params immediately for direct links

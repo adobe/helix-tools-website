@@ -1,5 +1,5 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import { onConfigReady, getConsoleLogger, ensureAuth } from '../../utils/tool-config.js';
+import { onConfigReady, getConsoleLogger } from '../../utils/tool-config.js';
 import { VIEW_STORAGE_KEY } from './helpers/constants.js';
 import { fetchSites, fetchSiteDetails } from './helpers/api-helper.js';
 import {
@@ -152,11 +152,6 @@ const displaySitesForOrg = async (orgValue) => {
 
   if (status === 200 && sites) {
     displaySites(sites, orgValue);
-  } else if (status === 401) {
-    const loggedIn = await ensureAuth(orgValue);
-    if (loggedIn) {
-      return displaySitesForOrg(orgValue);
-    }
   } else {
     sitesElem.removeAttribute('aria-hidden');
     const wrapper = document.createElement('div');
@@ -164,7 +159,6 @@ const displaySitesForOrg = async (orgValue) => {
     wrapper.textContent = `Failed to load sites for "${orgValue}" (HTTP ${status}). Check the activity log for details.`;
     sitesElem.appendChild(wrapper);
   }
-  return null;
 };
 
 window.addEventListener('sites-refresh', (e) => {
@@ -179,9 +173,9 @@ const initSiteAdmin = async () => {
   ];
   await Promise.all(neededIcons.map(loadIcon));
 
-  onConfigReady(({ org }) => {
-    if (org) displaySitesForOrg(org);
-  }, { orgOnly: true });
+  onConfigReady(({ org, authenticated }) => {
+    if (org && authenticated) displaySitesForOrg(org);
+  }, { orgOnly: true, authRequired: true });
 };
 
 registerToolReady(initSiteAdmin());
