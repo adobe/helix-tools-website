@@ -161,21 +161,26 @@ const displaySitesForOrg = async (orgValue) => {
   }
 };
 
-window.addEventListener('sites-refresh', (e) => {
-  displaySitesForOrg(e.detail.orgValue);
-});
-
 const initSiteAdmin = async () => {
+  onConfigReady(({ org, authenticated }) => {
+    if (org && authenticated) {
+      displaySitesForOrg(org);
+    } else {
+      sitesElem.ariaHidden = false;
+      sitesElem.replaceChildren();
+    }
+  }, { orgOnly: true, authRequired: true });
+
+  window.addEventListener('sites-refresh', (e) => {
+    displaySitesForOrg(e.detail.orgValue);
+  });
+
   const neededIcons = [
     'code', 'document', 'edit', 'copy', 'external', 'trash', 'key',
     'check', 'more-vertical', 'shield', 'lock', 'activity',
     'user', 'search', 'grid', 'list', 'star',
   ];
   await Promise.all(neededIcons.map(loadIcon));
-
-  onConfigReady(({ org, authenticated }) => {
-    if (org && authenticated) displaySitesForOrg(org);
-  }, { orgOnly: true, authRequired: true });
 };
 
 registerToolReady(initSiteAdmin());

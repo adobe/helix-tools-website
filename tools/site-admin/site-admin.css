@@ -677,7 +677,7 @@
     white-space: nowrap;
   }
 
-  [aria-hidden='true'] {
+  main [aria-hidden='true'] {
     display: none;
   }
 }

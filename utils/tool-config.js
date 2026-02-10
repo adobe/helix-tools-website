@@ -3,6 +3,10 @@ import { logResponse } from '../blocks/console/console.js';
 
 const LOGIN_TIMEOUT = 120000;
 
+// Brief delay after login to let the sidekick propagate the auth token
+const POST_LOGIN_SETTLE = 500;
+const settle = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
+
 // Debounce login attempts per org
 const pendingLogins = new Map();
 
@@ -38,14 +42,29 @@ async function ensureAuth(org, site) {
 
   const loginPromise = (async () => {
     try {
+      let loginSite = site;
+      if (!loginSite) {
+        const sites = await messageSidekick({ action: 'getSites' });
+        if (Array.isArray(sites)) {
+          const match = sites.find((s) => s.org === org);
+          if (match) loginSite = match.site || match.repo || '';
+        }
+      }
+
+      if (!loginSite) {
+        window.dispatchEvent(new CustomEvent('config-add-site', { detail: { org } }));
+        return false;
+      }
+
       const success = await messageSidekick({
         action: 'login',
         org,
-        site: site || 'default',
+        site: loginSite,
       }, null, LOGIN_TIMEOUT);
 
       if (success) {
-        window.dispatchEvent(new CustomEvent('auth-update', { detail: { org } }));
+        await settle(POST_LOGIN_SETTLE);
+        window.dispatchEvent(new CustomEvent('auth-update', { detail: { org, authenticated: true } }));
         return true;
       }
       return false;
@@ -74,6 +93,8 @@ export function getCurrentConfig() {
  * Registers a callback for config readiness.
  * Fires immediately if URL params contain an org, then listens for config-update events.
  * When authRequired is true, awaits ensureAuth before firing the callback.
+ * Also listens for auth-update events (login/logout) and re-fires the callback
+ * with the new auth state — without prompting login again.
  * Dedup (orgOnly) only skips when the previous call was authenticated,
  * so a failed auth allows retry on the next config-update for the same org.
  * @param {Function} callback - Called with { org, site, authenticated }
@@ -83,11 +104,13 @@ export function getCurrentConfig() {
  */
 export function onConfigReady(callback, { orgOnly, authRequired } = {}) {
   let lastOrg = null;
+  let lastSite = '';
   let lastAuthenticated = false;
 
   const fire = async ({ org, site }) => {
     if (orgOnly && org === lastOrg && lastAuthenticated) return;
     lastOrg = org;
+    lastSite = site;
 
     let authenticated = true;
     if (authRequired) {
@@ -108,6 +131,17 @@ export function onConfigReady(callback, { orgOnly, authRequired } = {}) {
   window.addEventListener('config-update', (e) => {
     fire(e.detail);
   });
+
+  // Listen for auth-update events (login/logout) and re-fire without prompting login
+  if (authRequired) {
+    window.addEventListener('auth-update', (e) => {
+      const { org: authOrg, authenticated } = e.detail;
+      if (authOrg !== lastOrg) return;
+      if (authenticated === lastAuthenticated) return;
+      lastAuthenticated = authenticated;
+      callback({ org: authOrg, site: lastSite, authenticated });
+    });
+  }
 }
 
 /**

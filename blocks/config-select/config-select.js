@@ -123,6 +123,7 @@ function isOpsMode(altKey) {
 }
 
 const LOGIN_TIMEOUT = 120000;
+const POST_LOGIN_SETTLE = 500;
 
 /**
  * Triggers sign-in via the Sidekick extension.
@@ -135,6 +136,8 @@ async function sidekickLogin(org, site, onComplete, opsMode = false) {
     idp: opsMode ? 'microsoft' : undefined,
     tenant: opsMode ? 'common' : undefined,
   }, null, LOGIN_TIMEOUT);
+  // let the sidekick propagate the auth token before proceeding
+  if (success) await new Promise((resolve) => { setTimeout(resolve, POST_LOGIN_SETTLE); });
   if (onComplete) await onComplete(success);
 }
 
@@ -217,9 +220,7 @@ function createRecentItem(org, site, loggedIn, button, popover, recentList) {
       logMessage(getConsoleBlock(), CONSOLE_LEVEL.INFO, ['AUTH', `Signing out of ${org}\u2026`]);
       openLogoutWindow(org, site, () => {
         logMessage(getConsoleBlock(), CONSOLE_LEVEL.SUCCESS, ['AUTH', `Signed out of ${org}`]);
-        // eslint-disable-next-line no-use-before-define
-        buildRecentList(recentList, button, popover);
-        updateButtonStatus(button);
+        window.dispatchEvent(new CustomEvent('auth-update', { detail: { org, authenticated: false } }));
       });
     });
     li.append(signOutBtn);
@@ -285,11 +286,11 @@ async function selectSite(org, site, button, popover, recentList, altKey = false
   updateStorage(org, site);
   updateButtonLabel(button);
   closePopover(button, popover);
-  dispatchConfigUpdate(org, site);
 
   logMessage(getConsoleBlock(), CONSOLE_LEVEL.INFO, ['SELECT', `Selected site: ${org} / ${site}`]);
 
-  // auto-login if not signed in
+  // auto-login if not signed in, then dispatch config-update once auth is resolved
+  // (dispatching before auth would race with tools that call ensureAuth on config-update)
   const loginInfo = await getAuthInfo();
   if (Array.isArray(loginInfo) && !loginInfo.includes(org)) {
     const opsMode = isOpsMode(altKey);
@@ -297,15 +298,13 @@ async function selectSite(org, site, button, popover, recentList, altKey = false
     await sidekickLogin(org, site, async (success) => {
       if (success) {
         logMessage(getConsoleBlock(), CONSOLE_LEVEL.SUCCESS, ['AUTH', `Signed in to ${org}`]);
-        dispatchConfigUpdate(org, site);
       } else {
         logMessage(getConsoleBlock(), CONSOLE_LEVEL.ERROR, ['AUTH', `Sign-in to ${org} failed`]);
       }
-      await buildRecentList(recentList, button, popover);
-      await updateButtonStatus(button);
     }, opsMode);
   }
 
+  dispatchConfigUpdate(org, site);
   await buildRecentList(recentList, button, popover);
   await updateButtonStatus(button);
 }
@@ -600,5 +599,18 @@ export default async function decorate(block) {
   window.addEventListener('auth-update', async () => {
     await buildRecentList(recentList, button, popover);
     await updateButtonStatus(button);
+  });
+
+  // Open add-site form when ensureAuth can't resolve a site for an org
+  window.addEventListener('config-add-site', (e) => {
+    const { org } = e.detail;
+    button.setAttribute('aria-expanded', 'true');
+    popover.setAttribute('aria-hidden', 'false');
+    const addDetails = popover.querySelector('.config-add-details');
+    addDetails.open = true;
+    const orgInput = addDetails.querySelector('#config-select-org');
+    orgInput.value = org;
+    orgInput.dispatchEvent(new Event('change'));
+    addDetails.querySelector('#config-select-site').focus();
   });
 }
