@@ -27,7 +27,6 @@ header.header-wrapper {
         align-items: center;
         gap: var(--spacing-m);
 
-        .config-select,
         .console {
           display: none;
         }

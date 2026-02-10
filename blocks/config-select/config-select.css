@@ -1,0 +1,316 @@
+/* config-select collapsed button */
+.config-select .config-select-button {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+  padding: 0.4em 1.15em;
+  border: var(--border-m) solid currentcolor;
+  border-radius: 1.15em;
+  cursor: pointer;
+  color: var(--color-text);
+  background-color: var(--color-background);
+  transition: border-color 0.2s, background-color 0.2s;
+  max-width: 300px;
+  white-space: nowrap;
+}
+
+.config-select .config-select-button:hover {
+  border-color: var(--color-link-hover);
+  background-color: light-dark(var(--blue-100), var(--gray-800));
+  color: var(--color-link-hover);
+}
+
+.config-select .config-select-button:focus-visible {
+  outline: 2px solid var(--color-link);
+  outline-offset: 2px;
+}
+
+.config-select .config-select-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.config-select .config-select-icon {
+  display: flex;
+  flex-shrink: 0;
+  width: 1em;
+  height: 1em;
+}
+
+.config-select .config-select-icon svg {
+  width: 100%;
+  height: 100%;
+  stroke: currentcolor;
+  fill: none;
+}
+
+/* status dot in header button */
+.config-select .config-select-status {
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 0.5em;
+  height: 0.5em;
+}
+
+.config-select .config-select-status::before {
+  margin-right: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.config-select .config-select-button .symbol-chevron {
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+.config-select .config-select-button[aria-expanded='true'] .symbol-chevron::before {
+  transform: translate(-50%, 0%) rotate(-135deg);
+}
+
+/* mobile: icon-only button */
+@media (width < 600px) {
+  .config-select .config-select-label,
+  .config-select .config-select-button .symbol-chevron {
+    display: none;
+  }
+
+  .config-select .config-select-button {
+    max-width: none;
+    padding: 0.4em;
+    border-radius: var(--rounding-m);
+    width: 40px;
+    height: 40px;
+    justify-content: center;
+    position: relative;
+  }
+
+  .config-select .config-select-status {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+  }
+
+  .config-select .config-select-status::before {
+    width: 0.4em;
+    height: 0.4em;
+  }
+}
+
+/* config-select popover */
+.config-select {
+  position: relative;
+}
+
+.config-select .config-popover {
+  position: absolute;
+  top: calc(100% + var(--spacing-xs));
+  left: 0;
+  width: max(100%, 500px);
+  display: none;
+  opacity: 0;
+  background: var(--color-background);
+  padding: var(--spacing-m);
+  box-shadow: var(--shadow-default);
+  z-index: 1;
+  border-radius: var(--rounding-l);
+  max-height: calc(100dvh - var(--header-height) - (2 * var(--spacing-s)));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  transition-property: all;
+  transition-duration: 0.3s;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-behavior: allow-discrete;
+}
+
+.config-select .config-popover[aria-hidden='false'] {
+  display: block;
+  opacity: 1;
+
+  @starting-style {
+    opacity: 0;
+  }
+}
+
+@media screen and (prefers-reduced-motion: reduce) {
+  .config-select .config-popover {
+    transition: none;
+  }
+}
+
+/* mobile: popover takes more width */
+@media (width < 600px) {
+  .config-select .config-popover {
+    position: fixed;
+    left: var(--horizontal-spacing);
+    right: var(--horizontal-spacing);
+    top: calc(var(--header-height) + var(--spacing-s));
+    width: auto;
+  }
+}
+
+/* popover headings */
+.config-select .config-popover h4 {
+  margin: 0 0 var(--spacing-xs);
+  font-size: var(--body-size-m);
+  font-weight: var(--weight-bold);
+  color: var(--color-font-grey);
+}
+
+.config-select .config-popover h4:not(:first-child) {
+  margin-top: var(--spacing-m);
+  padding-top: var(--spacing-m);
+  border-top: var(--border-s) solid var(--color-border);
+}
+
+/* recent sites list */
+.config-select .config-recent {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.config-select .config-recent-button {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+  width: 100%;
+  padding: var(--spacing-xs) var(--spacing-s);
+  border: none;
+  border-radius: var(--rounding-m);
+  background: none;
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition: background-color 0.15s;
+}
+
+.config-select .config-recent-button:hover {
+  background-color: var(--layer-depth);
+}
+
+.config-select .config-recent-button:focus-visible {
+  outline: 2px solid var(--color-link);
+  outline-offset: -2px;
+}
+
+.config-select .config-recent-item.selected .config-recent-button {
+  font-weight: var(--weight-bold);
+}
+
+/* status dot in recent items — override the default ::before margin */
+.config-select .config-recent-button .status-light {
+  flex-shrink: 0;
+}
+
+.config-select .config-recent-button .status-light::before {
+  margin-right: 0;
+}
+
+.config-select .config-recent-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* sign out button per item */
+.config-select .config-recent-item {
+  display: flex;
+  align-items: center;
+}
+
+.config-select .config-sign-out {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5em;
+  height: 1.5em;
+  padding: 0;
+  border: none;
+  border-radius: var(--rounding-s);
+  background: none;
+  color: var(--color-font-grey);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background-color 0.15s;
+}
+
+.config-select .config-sign-out svg {
+  width: 1em;
+  height: 1em;
+}
+
+.config-select .config-sign-out:hover {
+  color: var(--color-text);
+  background-color: var(--layer-depth);
+}
+
+.config-select .config-sign-out:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--color-link);
+  outline-offset: -2px;
+}
+
+.config-select .config-recent-item:hover .config-sign-out,
+.config-select .config-recent-item.selected .config-sign-out {
+  opacity: 1;
+}
+
+/* sign in button on unauthenticated items */
+.config-select .config-sign-in {
+  flex-shrink: 0;
+  font-size: var(--body-size-s);
+  padding: 0.2em 0.75em;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.config-select .config-sign-in:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--color-link);
+  outline-offset: 2px;
+}
+
+.config-select .config-recent-item:hover .config-sign-in,
+.config-select .config-recent-item.selected .config-sign-in {
+  opacity: 1;
+}
+
+.config-select .config-show-all-button {
+  color: var(--color-link);
+  font-size: var(--body-size-m);
+}
+
+.config-select .config-recent-empty {
+  padding: var(--spacing-xs) var(--spacing-s);
+  color: var(--color-font-grey);
+  font-size: var(--body-size-m);
+}
+
+/* add new form */
+.config-select .config-add-form {
+  display: grid;
+  gap: var(--spacing-s);
+}
+
+.config-select .config-add-field label {
+  margin-bottom: 0.25em;
+  font-size: var(--body-size-s);
+}
+
+.config-select .config-add-field input {
+  font-size: var(--body-size-m);
+}
+
+.config-select .config-add-actions {
+  display: flex;
+  gap: var(--spacing-s);
+}
+
+.config-select .config-add-button {
+  font-size: var(--body-size-m);
+  padding: 0.3em 1em;
+}
