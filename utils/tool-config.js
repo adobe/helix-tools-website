@@ -116,8 +116,11 @@ export function onConfigReady(callback, { orgOnly, authRequired } = {}) {
     if (authRequired) {
       authenticated = await ensureAuth(org, site);
     }
-    lastAuthenticated = authenticated;
 
+    // A newer fire() call may have changed the org while we awaited ensureAuth
+    if (org !== lastOrg) return;
+
+    lastAuthenticated = authenticated;
     callback({ org, site, authenticated });
   };
 
