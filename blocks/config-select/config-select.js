@@ -191,7 +191,6 @@ function createRecentItem(org, site, loggedIn, button, popover, recentList) {
     const signInLabel = document.createElement('span');
     signInLabel.className = 'config-sign-in-label';
     signInLabel.textContent = 'Sign in';
-    signInLabel.setAttribute('aria-hidden', 'true');
     itemBtn.append(signInLabel);
   }
 
