@@ -26,10 +26,6 @@ header.header-wrapper {
         display: flex;
         align-items: center;
         gap: var(--spacing-m);
-
-        .console {
-          display: none;
-        }
       }
 
       .nav-toggles {
