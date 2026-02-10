@@ -146,6 +146,8 @@ function appendRow(block, row) {
       tbody.prepend(queued);
     }
     tbody.prepend(row);
+    const emptyMsg = block.querySelector('.console-empty');
+    if (emptyMsg) emptyMsg.remove();
     markUnread(block);
   } else {
     preInitQ.push(row);
@@ -281,6 +283,11 @@ export default async function decorate(block) {
   const table = document.createElement('table');
   table.id = 'console';
   const tbody = document.createElement('tbody');
+  const emptyRow = buildMessageRow({
+    level: CONSOLE_LEVEL.INFO, action: '', message: 'No activity yet', time: '',
+  });
+  emptyRow.classList.add('console-empty');
+  tbody.append(emptyRow);
   table.append(tbody);
   panel.append(table);
 
@@ -297,7 +304,10 @@ export default async function decorate(block) {
     tbody.prepend(preInitQ.shift());
   }
 
-  // If there are stored messages, show unread indicator
+  // If there are stored or queued messages, remove empty state and show unread
+  if (stored.length > 0 || preInitQ.length > 0) {
+    emptyRow.remove();
+  }
   if (stored.length > 0) {
     toggle.classList.add('has-unread');
   }

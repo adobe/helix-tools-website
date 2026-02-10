@@ -53,11 +53,11 @@
 
 /* Dropdown panel — anchored to the .console block */
 .console .console-panel {
-  position: absolute;
-  top: calc(100% + var(--spacing-xs));
-  left: 0;
-  max-width: 700px;
-  max-height: 50vh;
+  position: fixed;
+  top: calc(var(--header-height) + var(--spacing-s));
+  left: var(--horizontal-spacing);
+  right: var(--horizontal-spacing);
+  max-height: calc(100dvh - var(--header-height) - (2 * var(--spacing-s)));
   display: none;
   opacity: 0;
   background: var(--color-background);
@@ -88,16 +88,6 @@
   }
 }
 
-/* mobile: fixed positioning so it doesn't overflow off-screen */
-@media (width < 900px) {
-  .console .console-panel {
-    position: fixed;
-    left: var(--horizontal-spacing);
-    right: var(--horizontal-spacing);
-    top: calc(var(--header-height) + var(--spacing-s));
-    max-width: none;
-  }
-}
 
 /* Table styles */
 .console table {
