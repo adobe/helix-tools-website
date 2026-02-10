@@ -8,6 +8,11 @@ import {
   getSidekickId,
   messageSidekick,
 } from '../../utils/sidekick.js';
+import { logMessage, CONSOLE_LEVEL } from '../console/console.js';
+
+function getConsoleBlock() {
+  return document.querySelector('.console');
+}
 
 let currentOrg = '';
 let currentSite = '';
@@ -209,7 +214,9 @@ function createRecentItem(org, site, loggedIn, button, popover, recentList) {
     signOutBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>';
     signOutBtn.addEventListener('click', (e) => {
       e.stopPropagation();
+      logMessage(getConsoleBlock(), CONSOLE_LEVEL.INFO, ['AUTH', `Signing out of ${org}\u2026`]);
       openLogoutWindow(org, site, () => {
+        logMessage(getConsoleBlock(), CONSOLE_LEVEL.SUCCESS, ['AUTH', `Signed out of ${org}`]);
         // eslint-disable-next-line no-use-before-define
         buildRecentList(recentList, button, popover);
         updateButtonStatus(button);
@@ -280,13 +287,22 @@ async function selectSite(org, site, button, popover, recentList, altKey = false
   closePopover(button, popover);
   dispatchConfigUpdate(org, site);
 
+  logMessage(getConsoleBlock(), CONSOLE_LEVEL.INFO, ['SELECT', `Selected site: ${org} / ${site}`]);
+
   // auto-login if not signed in
   const loginInfo = await getAuthInfo();
   if (Array.isArray(loginInfo) && !loginInfo.includes(org)) {
-    await sidekickLogin(org, site, async () => {
+    const opsMode = isOpsMode(altKey);
+    logMessage(getConsoleBlock(), CONSOLE_LEVEL.INFO, ['AUTH', `Signing in to ${org}${opsMode ? ' (ops mode)' : ''}\u2026`]);
+    await sidekickLogin(org, site, async (success) => {
+      if (success) {
+        logMessage(getConsoleBlock(), CONSOLE_LEVEL.SUCCESS, ['AUTH', `Signed in to ${org}`]);
+      } else {
+        logMessage(getConsoleBlock(), CONSOLE_LEVEL.ERROR, ['AUTH', `Sign-in to ${org} failed`]);
+      }
       await buildRecentList(recentList, button, popover);
       await updateButtonStatus(button);
-    }, isOpsMode(altKey));
+    }, opsMode);
   }
 
   await buildRecentList(recentList, button, popover);

@@ -248,6 +248,13 @@
   opacity: 1;
 }
 
+/* ops mode: Alt key held — emphasize sign-in labels */
+.config-select .config-sign-in-label.emphasis {
+  opacity: 1;
+  border-color: var(--color-link);
+  color: var(--color-link);
+}
+
 .config-select .config-show-all-button {
   color: var(--color-link);
   font-size: var(--body-size-m);
