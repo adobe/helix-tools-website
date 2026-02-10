@@ -69,6 +69,7 @@ function buildRequestRow({
 
   const urlCell = document.createElement('td');
   urlCell.textContent = url;
+  if (!error) urlCell.colSpan = 2;
   row.append(urlCell);
 
   if (error) {
@@ -101,6 +102,7 @@ function buildMessageRow({
   row.append(actionCell);
 
   const msgCell = document.createElement('td');
+  msgCell.colSpan = 2;
   msgCell.textContent = message;
   row.append(msgCell);
 

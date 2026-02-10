@@ -25,44 +25,12 @@
     <div>
       <h1>Site Admin</h1>
       <p>
-        Manage the sites of an org.
+        Manage the sites of an org. Change orgs by selecting a site above.
       </p>
     </div> 
 
-    <!-- ADMIN FORM -->
-    <div>
-      <form id="site-admin-form">
-        <section class="form-field config-field">
-          <div class="form-field org-field">
-            <label for="org">Organization</label>
-            <input name="org" id="org" list="org-list" autocomplete="off" required />
-            <datalist id="org-list"></datalist>
-            <div class="field-help-text">
-              <p>
-                Make sure you are logged into sidekick on a project of the org selected
-              </p>
-            </div>
-          </div>
-          <div class="form-field site-field" style="display: none;">
-            <label for="site">Site</label>
-            <input name="site" id="site" list="site-list" autocomplete="off" disabled />
-            <datalist id="site-list"></datalist>
-          </div>
-        </section>
-        <p class="button-wrapper">
-          <button type="submit" id="list" class="button">List</button>
-          <button type="reset" id="reset" class="button outline">Reset</button>
-        </p>
-      </form>
-    </div>
-
-    <!-- BODY FORM -->
+    <!-- BODY -->
     <div id="sites" aria-hidden="true">
-    </div>
-
-    <!-- CONSOLE -->
-    <div>
-      <div class="console"></div>
     </div>
 
   </main>

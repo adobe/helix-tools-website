@@ -297,6 +297,7 @@ async function selectSite(org, site, button, popover, recentList, altKey = false
     await sidekickLogin(org, site, async (success) => {
       if (success) {
         logMessage(getConsoleBlock(), CONSOLE_LEVEL.SUCCESS, ['AUTH', `Signed in to ${org}`]);
+        dispatchConfigUpdate(org, site);
       } else {
         logMessage(getConsoleBlock(), CONSOLE_LEVEL.ERROR, ['AUTH', `Sign-in to ${org} failed`]);
       }
@@ -575,6 +576,11 @@ async function populateInitialConfig(button, popover, recentList, orgDatalist, s
   updateButtonLabel(button);
   await buildRecentList(recentList, button, popover);
   await updateButtonStatus(button);
+
+  // Dispatch initial config so tools that registered listeners during eager loading receive it
+  if (currentOrg) {
+    dispatchConfigUpdate(currentOrg, currentSite);
+  }
 }
 
 export default async function decorate(block) {
@@ -589,4 +595,10 @@ export default async function decorate(block) {
   block.append(button, popover);
 
   await populateInitialConfig(button, popover, recentList, orgDatalist, siteDatalist);
+
+  // Refresh UI when tools trigger auth via ensureAuth
+  window.addEventListener('auth-update', async () => {
+    await buildRecentList(recentList, button, popover);
+    await updateButtonStatus(button);
+  });
 }
