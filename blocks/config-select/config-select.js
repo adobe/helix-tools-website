@@ -74,14 +74,18 @@ function dispatchConfigUpdate(org, site) {
 function updateButtonLabel(button) {
   const label = button.querySelector('.config-select-label');
   if (currentOrg && currentSite) {
-    label.textContent = `${currentOrg} / ${currentSite}`;
-    button.setAttribute('aria-label', `${currentOrg} / ${currentSite}`);
+    const site = `${currentOrg} / ${currentSite}`;
+    label.textContent = site;
+    button.title = site;
+    button.setAttribute('aria-label', `Switch site (current: ${site})`);
   } else if (currentOrg) {
     label.textContent = currentOrg;
-    button.setAttribute('aria-label', currentOrg);
+    button.title = currentOrg;
+    button.setAttribute('aria-label', `Switch site (current: ${currentOrg})`);
   } else {
     label.textContent = 'Select site\u2026';
-    button.setAttribute('aria-label', 'Select site');
+    button.title = 'Select site';
+    button.setAttribute('aria-label', 'Select a site');
   }
 }
 
@@ -93,16 +97,17 @@ async function getAuthInfo() {
 }
 
 /**
- * Updates the status dot on the header button to reflect login state.
+ * Updates the user icon ring on the header button to reflect login state.
  */
 async function updateButtonStatus(button) {
-  const dot = button.querySelector('.config-select-status');
-  if (!dot || !currentOrg) return;
+  const icon = button.querySelector('.config-select-icon');
+  if (!icon || !currentOrg) return;
 
   const loginInfo = await getAuthInfo();
   const loggedIn = Array.isArray(loginInfo) && loginInfo.includes(currentOrg);
 
-  dot.className = `config-select-status status-light ${loggedIn ? 'level-success' : 'level-error'}`;
+  icon.classList.remove('level-success', 'level-error');
+  icon.classList.add('status-light', loggedIn ? 'level-success' : 'level-error');
 }
 
 /**
@@ -112,22 +117,31 @@ function isOpsMode(altKey) {
   return window.localStorage.getItem('aem-ops-mode') === 'true' || altKey;
 }
 
+const LOGIN_TIMEOUT = 120000;
+
 /**
- * Opens a login/logout window for the given org/site.
+ * Triggers sign-in via the Sidekick extension.
  */
-function openAuthWindow(action, org, site, onComplete, opsMode = false) {
-  const loginUrl = new URL(`https://admin.hlx.page/${action}/${org}/${site || 'default'}/main`);
+async function sidekickLogin(org, site, onComplete, opsMode = false) {
+  const success = await messageSidekick({
+    action: 'login',
+    org,
+    site: site || 'default',
+    idp: opsMode ? 'microsoft' : undefined,
+    tenant: opsMode ? 'common' : undefined,
+  }, null, LOGIN_TIMEOUT);
+  if (onComplete) await onComplete(success);
+}
 
-  if (action === 'login' && opsMode) {
-    loginUrl.searchParams.append('idp', 'microsoft');
-    loginUrl.searchParams.append('tenantId', 'common');
-    loginUrl.searchParams.append('selectAccount', true);
-  }
+/**
+ * Opens a logout window for the given org/site.
+ */
+function openLogoutWindow(org, site, onComplete) {
+  const logoutUrl = new URL(`https://admin.hlx.page/logout/${org}/${site || 'default'}/main`);
+  logoutUrl.searchParams.append('extensionId', getSidekickId());
+  const authWindow = window.open(logoutUrl.toString(), '_blank');
 
-  loginUrl.searchParams.append('extensionId', getSidekickId());
-  const authWindow = window.open(loginUrl.toString(), '_blank');
-
-  const poll = setInterval(async () => {
+  const poll = setInterval(() => {
     if (authWindow.closed) {
       clearInterval(poll);
       if (onComplete) setTimeout(onComplete, 200);
@@ -162,13 +176,24 @@ function createRecentItem(org, site, loggedIn, button, popover, recentList) {
 
   const dot = document.createElement('span');
   dot.className = `status-light ${loggedIn ? 'level-success' : 'level-error'}`;
-  dot.setAttribute('aria-label', loggedIn ? 'Signed in' : 'Not signed in');
+  dot.setAttribute('aria-hidden', 'true');
 
   const text = document.createElement('span');
   text.className = 'config-recent-text';
-  text.textContent = site ? `${org} / ${site}` : org;
+  const siteName = site ? `${org} / ${site}` : org;
+  text.textContent = siteName;
 
+  const status = loggedIn ? 'signed in' : 'not signed in';
+  itemBtn.setAttribute('aria-label', `${siteName} (${status})`);
   itemBtn.append(dot, text);
+
+  if (!loggedIn) {
+    const signInLabel = document.createElement('span');
+    signInLabel.className = 'config-sign-in-label';
+    signInLabel.textContent = 'Sign in';
+    signInLabel.setAttribute('aria-hidden', 'true');
+    itemBtn.append(signInLabel);
+  }
 
   itemBtn.addEventListener('click', (e) => {
     // eslint-disable-next-line no-use-before-define
@@ -185,27 +210,13 @@ function createRecentItem(org, site, loggedIn, button, popover, recentList) {
     signOutBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>';
     signOutBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      openAuthWindow('logout', org, site, () => {
+      openLogoutWindow(org, site, () => {
         // eslint-disable-next-line no-use-before-define
         buildRecentList(recentList, button, popover);
         updateButtonStatus(button);
       });
     });
     li.append(signOutBtn);
-  } else {
-    const signInBtn = document.createElement('button');
-    signInBtn.className = 'button config-sign-in';
-    signInBtn.type = 'button';
-    signInBtn.textContent = 'Sign in';
-    signInBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openAuthWindow('login', org, site, () => {
-        // eslint-disable-next-line no-use-before-define
-        buildRecentList(recentList, button, popover);
-        updateButtonStatus(button);
-      }, isOpsMode(e.altKey));
-    });
-    li.append(signInBtn);
   }
 
   return li;
@@ -273,9 +284,9 @@ async function selectSite(org, site, button, popover, recentList, altKey = false
   // auto-login if not signed in
   const loginInfo = await getAuthInfo();
   if (Array.isArray(loginInfo) && !loginInfo.includes(org)) {
-    openAuthWindow('login', org, site, () => {
-      buildRecentList(recentList, button, popover);
-      updateButtonStatus(button);
+    await sidekickLogin(org, site, async () => {
+      await buildRecentList(recentList, button, popover);
+      await updateButtonStatus(button);
     }, isOpsMode(altKey));
   }
 
@@ -284,11 +295,11 @@ async function selectSite(org, site, button, popover, recentList, altKey = false
 }
 
 /**
- * Fetches the grid SVG icon and returns it as an element.
+ * Fetches the profile SVG icon and returns it as an element.
  */
-async function fetchGridIcon() {
+async function fetchProfileIcon() {
   try {
-    const resp = await fetch('/icons/grid.svg');
+    const resp = await fetch('/icons/profile.svg');
     if (resp.ok) {
       const temp = document.createElement('div');
       temp.innerHTML = await resp.text();
@@ -310,18 +321,15 @@ function createSelectButton() {
   button.type = 'button';
   button.setAttribute('aria-expanded', 'false');
   button.setAttribute('aria-haspopup', 'true');
-  button.setAttribute('aria-label', 'Select site');
+  button.setAttribute('aria-label', 'Select a site');
+  button.title = 'Select site';
 
   const icon = document.createElement('span');
   icon.className = 'config-select-icon';
   icon.setAttribute('aria-hidden', 'true');
-  fetchGridIcon().then((svg) => {
+  fetchProfileIcon().then((svg) => {
     if (svg) icon.replaceChildren(svg);
   });
-
-  const statusDot = document.createElement('span');
-  statusDot.className = 'config-select-status';
-  statusDot.setAttribute('aria-hidden', 'true');
 
   const label = document.createElement('span');
   label.className = 'config-select-label';
@@ -331,7 +339,7 @@ function createSelectButton() {
   chevron.className = 'symbol symbol-chevron';
   chevron.setAttribute('aria-hidden', 'true');
 
-  button.append(icon, statusDot, label, chevron);
+  button.append(icon, label, chevron);
   return button;
 }
 
@@ -349,9 +357,16 @@ function createPopover(button) {
   const recentList = document.createElement('ul');
   recentList.className = 'config-recent';
 
-  // Add new section
-  const addHeading = document.createElement('h4');
-  addHeading.textContent = 'Add New';
+  // Add new section — collapsed by default
+  const addDetails = document.createElement('details');
+  addDetails.className = 'config-add-details';
+  const addSummary = document.createElement('summary');
+  addSummary.textContent = 'Add New';
+  const summaryChevron = document.createElement('i');
+  summaryChevron.className = 'symbol symbol-chevron';
+  summaryChevron.setAttribute('aria-hidden', 'true');
+  addSummary.append(summaryChevron);
+  addDetails.append(addSummary);
   const addForm = document.createElement('div');
   addForm.className = 'config-add-form';
 
@@ -399,11 +414,11 @@ function createPopover(button) {
 
   addForm.append(orgField, siteField, addActions);
 
+  addDetails.append(addForm);
   popover.append(
     recentHeading,
     recentList,
-    addHeading,
-    addForm,
+    addDetails,
   );
 
   // Org input changes → reset site list
@@ -444,8 +459,9 @@ function createPopover(button) {
  */
 function initPopoverToggle(button, popover) {
   function toggleOpsIndicator(altKey) {
-    const signIn = popover.querySelector('.config-sign-in');
-    if (signIn) signIn.classList.toggle('emphasis', altKey);
+    popover.querySelectorAll('.config-sign-in-label').forEach((el) => {
+      el.classList.toggle('emphasis', altKey);
+    });
   }
 
   function opsKeyDownListener(e) {
