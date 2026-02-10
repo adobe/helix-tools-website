@@ -89,6 +89,34 @@
 }
 
 
+/* Panel header with clear button */
+.console .console-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--spacing-xs);
+}
+
+.console .console-clear {
+  padding: 0.2em 0.6em;
+  border: none;
+  border-radius: var(--rounding-s);
+  background: none;
+  color: var(--color-font-grey);
+  font-size: var(--body-size-s);
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.console .console-clear:hover {
+  color: var(--color-text);
+  background-color: var(--layer-depth);
+}
+
+.console .console-clear:focus-visible {
+  outline: 2px solid var(--color-link);
+  outline-offset: 2px;
+}
+
 /* Table styles */
 .console table {
   width: calc(100% - 1px);

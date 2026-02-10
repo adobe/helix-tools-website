@@ -148,6 +148,8 @@ function appendRow(block, row) {
     tbody.prepend(row);
     const emptyMsg = block.querySelector('.console-empty');
     if (emptyMsg) emptyMsg.remove();
+    const clearBtnEl = block.querySelector('.console-clear');
+    if (clearBtnEl) clearBtnEl.hidden = false;
     markUnread(block);
   } else {
     preInitQ.push(row);
@@ -280,16 +282,37 @@ export default async function decorate(block) {
   panel.className = 'console-panel';
   panel.setAttribute('aria-hidden', 'true');
 
+  // Panel header with clear button
+  const panelHeader = document.createElement('div');
+  panelHeader.className = 'console-header';
+  const clearBtn = document.createElement('button');
+  clearBtn.className = 'console-clear';
+  clearBtn.type = 'button';
+  clearBtn.textContent = 'Clear';
+  clearBtn.setAttribute('aria-label', 'Clear activity log');
+  panelHeader.append(clearBtn);
+
   const table = document.createElement('table');
   table.id = 'console';
   const tbody = document.createElement('tbody');
-  const emptyRow = buildMessageRow({
-    level: CONSOLE_LEVEL.INFO, action: '', message: 'No activity yet', time: '',
-  });
-  emptyRow.classList.add('console-empty');
-  tbody.append(emptyRow);
+
+  function showEmptyState() {
+    const row = buildMessageRow({
+      level: CONSOLE_LEVEL.INFO, action: '', message: 'No activity yet', time: '',
+    });
+    row.classList.add('console-empty');
+    tbody.replaceChildren(row);
+    clearBtn.hidden = true;
+  }
+
+  showEmptyState();
   table.append(tbody);
-  panel.append(table);
+  panel.append(panelHeader, table);
+
+  clearBtn.addEventListener('click', () => {
+    sessionStorage.removeItem(STORAGE_KEY);
+    showEmptyState();
+  });
 
   block.append(toggle, panel);
 
@@ -306,7 +329,9 @@ export default async function decorate(block) {
 
   // If there are stored or queued messages, remove empty state and show unread
   if (stored.length > 0 || preInitQ.length > 0) {
-    emptyRow.remove();
+    const empty = tbody.querySelector('.console-empty');
+    if (empty) empty.remove();
+    clearBtn.hidden = false;
   }
   if (stored.length > 0) {
     toggle.classList.add('has-unread');
