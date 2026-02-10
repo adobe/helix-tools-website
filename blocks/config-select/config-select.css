@@ -1,3 +1,8 @@
+/* wrapper is the flex child — allow it to shrink */
+.config-select-wrapper {
+  min-width: 0;
+}
+
 /* config-select collapsed button */
 .config-select .config-select-button {
   display: flex;
@@ -10,7 +15,9 @@
   color: var(--color-text);
   background: none;
   transition: background-color 0.2s;
-  max-width: 250px;
+  width: 100%;
+  max-width: 350px;
+  overflow: hidden;
   white-space: nowrap;
 }
 
@@ -26,6 +33,7 @@
 .config-select .config-select-label {
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 
 /* profile icon with auth-state ring */
@@ -63,22 +71,6 @@
 
 .config-select .config-select-button[aria-expanded='true'] .symbol-chevron::before {
   transform: translate(-50%, 0%) rotate(-135deg);
-}
-
-/* mobile: icon-only ghost button */
-@media (width < 600px) {
-  .config-select .config-select-label,
-  .config-select .config-select-button .symbol-chevron {
-    display: none;
-  }
-
-  .config-select .config-select-button {
-    max-width: none;
-    padding: 0;
-    width: 40px;
-    height: 40px;
-    justify-content: center;
-  }
 }
 
 /* config-select popover */

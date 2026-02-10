@@ -26,6 +26,7 @@ header.header-wrapper {
         display: flex;
         align-items: center;
         gap: var(--spacing-m);
+        min-width: 0;
       }
 
       .nav-toggles {
