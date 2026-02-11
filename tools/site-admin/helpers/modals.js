@@ -1,21 +1,12 @@
 import { createModal } from '../../../blocks/modal/modal.js';
+import { createAdminFetch, ADMIN_PATHS } from '../../../utils/admin-fetch.js';
+import { getConsoleLogger } from '../../../utils/tool-config.js';
 import { AUTH_STATUS_MAP } from './constants.js';
-import {
-  fetchSiteDetails,
-  fetchSiteAccess,
-  updateSiteAccess,
-  saveSiteConfig,
-  deleteSiteConfig,
-  fetchSecrets,
-  createSecret,
-  deleteSecret,
-  fetchApiKeys,
-  createApiKey,
-  deleteApiKey,
-} from './api-helper.js';
 import {
   icon, showToast, formatDate, isExpired,
 } from './utils.js';
+
+const adminFetch = createAdminFetch(getConsoleLogger());
 
 /* eslint-disable no-alert, no-restricted-globals */
 
@@ -63,10 +54,15 @@ export const saveSiteAndRefresh = async (
   contentSrc,
   existingConfig,
   dialogCloseCallback,
-  logFn = null,
 ) => {
   const siteConfig = buildSiteConfig(existingConfig, codeSrc, contentSrc);
-  const success = await saveSiteConfig(orgValue, siteName, siteConfig, logFn);
+  const resp = await adminFetch(ADMIN_PATHS.site, { org: orgValue, site: siteName }, {
+    method: 'POST',
+    body: JSON.stringify(siteConfig),
+    headers: { 'content-type': 'application/json' },
+  });
+  await resp.text();
+  const success = resp.ok;
 
   if (success && dialogCloseCallback) {
     dialogCloseCallback();
@@ -79,9 +75,12 @@ export const deleteSiteAndRefresh = async (
   orgValue,
   siteName,
   dialogCloseCallback,
-  logFn = null,
 ) => {
-  const success = await deleteSiteConfig(orgValue, siteName, logFn);
+  const resp = await adminFetch(ADMIN_PATHS.site, { org: orgValue, site: siteName }, {
+    method: 'DELETE',
+  });
+  await resp.text();
+  const success = resp.ok;
 
   if (success && dialogCloseCallback) {
     dialogCloseCallback();
@@ -99,7 +98,6 @@ export const openEditSourceModal = async (
   siteName,
   codeUrl,
   contentUrl,
-  logFn = null,
 ) => {
   const { dialog, container, showModal } = await setupModal('', `
     <div class="site-modal-header">
@@ -133,7 +131,8 @@ export const openEditSourceModal = async (
     const newCodeUrl = container.querySelector('#edit-code').value.trim();
     const newContentUrl = container.querySelector('#edit-content').value.trim();
 
-    const siteDetails = await fetchSiteDetails(orgValue, siteName) || {};
+    const detailResp = await adminFetch(ADMIN_PATHS.site, { org: orgValue, site: siteName });
+    const siteDetails = detailResp.ok ? await detailResp.json() : {};
     const closeDialog = () => dialog.close();
     const success = await saveSiteAndRefresh(
       orgValue,
@@ -142,7 +141,6 @@ export const openEditSourceModal = async (
       newContentUrl,
       siteDetails,
       closeDialog,
-      logFn,
     );
 
     if (!success) {
@@ -167,10 +165,17 @@ export const openAuthModal = async (siteName, orgValue) => {
     </div>
   `);
 
-  const [secrets, access] = await Promise.all([
-    fetchSecrets(orgValue, siteName),
-    fetchSiteAccess(orgValue, siteName),
+  const [secretsResp, accessResp] = await Promise.all([
+    adminFetch(ADMIN_PATHS.secrets, { org: orgValue, site: siteName }),
+    adminFetch(ADMIN_PATHS.site, { org: orgValue, site: siteName }),
   ]);
+
+  let secrets;
+  if (secretsResp.ok) secrets = Object.values(await secretsResp.json());
+  else if (secretsResp.status === 404) secrets = [];
+  else secrets = null;
+
+  const access = accessResp.ok ? (await accessResp.json()).access || {} : {};
 
   let currentScope = 'none';
   if (access.site) currentScope = 'site';
@@ -265,7 +270,12 @@ export const openAuthModal = async (siteName, orgValue) => {
     let tokenId = currentAccess.secretId?.[0] || '';
 
     if (scope !== 'none' && !tokenId && (!secrets || secrets.length === 0)) {
-      const result = await createSecret(orgValue, siteName);
+      const secretResp = await adminFetch(
+        ADMIN_PATHS.secrets,
+        { org: orgValue, site: siteName },
+        { method: 'POST' },
+      );
+      const result = secretResp.ok ? await secretResp.json() : null;
       if (result) tokenId = result.id;
     }
 
@@ -278,7 +288,16 @@ export const openAuthModal = async (siteName, orgValue) => {
 
     if (access.admin) newAccess.admin = access.admin;
 
-    const success = await updateSiteAccess(orgValue, siteName, newAccess);
+    const siteParams = { org: orgValue, site: siteName };
+    const currentResp = await adminFetch(ADMIN_PATHS.site, siteParams);
+    const currentConfig = currentResp.ok ? await currentResp.json() : {};
+    currentConfig.access = newAccess;
+    const updateResp = await adminFetch(ADMIN_PATHS.site, siteParams, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(currentConfig),
+    });
+    const success = updateResp.ok;
     btn.disabled = false;
     btn.textContent = success ? 'Saved!' : 'Save';
     if (success) {
@@ -413,9 +432,24 @@ export const openSecretModal = (siteName, orgValue) => openManageItemsModal(site
   itemName: 'Secret',
   itemNamePlural: 'Secrets',
   iconName: 'lock',
-  fetchFn: fetchSecrets,
-  createFn: createSecret,
-  deleteFn: deleteSecret,
+  fetchFn: async (org, site) => {
+    const resp = await adminFetch(ADMIN_PATHS.secrets, { org, site });
+    if (resp.ok) return Object.values(await resp.json());
+    if (resp.status === 404) return [];
+    return null;
+  },
+  createFn: async (org, site) => {
+    const resp = await adminFetch(ADMIN_PATHS.secrets, { org, site }, { method: 'POST' });
+    return resp.ok ? resp.json() : null;
+  },
+  deleteFn: async (org, site, secretId) => {
+    const resp = await adminFetch(
+      ADMIN_PATHS.secret,
+      { org, site, secretId: encodeURIComponent(secretId) },
+      { method: 'DELETE' },
+    );
+    return resp.ok;
+  },
   showExpiration: false,
 });
 
@@ -424,13 +458,31 @@ export const openApiKeyModal = (siteName, orgValue) => openManageItemsModal(site
   itemName: 'API Key',
   itemNamePlural: 'API Keys',
   iconName: 'key',
-  fetchFn: fetchApiKeys,
-  createFn: createApiKey,
-  deleteFn: deleteApiKey,
+  fetchFn: async (org, site) => {
+    const resp = await adminFetch(ADMIN_PATHS.apiKeys, { org, site });
+    if (resp.ok) {
+      const data = await resp.json();
+      return Object.entries(data).map(([id, val]) => ({ id, ...val }));
+    }
+    if (resp.status === 404) return [];
+    return null;
+  },
+  createFn: async (org, site) => {
+    const resp = await adminFetch(ADMIN_PATHS.apiKeys, { org, site }, { method: 'POST' });
+    return resp.ok ? resp.json() : null;
+  },
+  deleteFn: async (org, site, keyId) => {
+    const resp = await adminFetch(
+      ADMIN_PATHS.apiKey,
+      { org, site, keyId: encodeURIComponent(keyId) },
+      { method: 'DELETE' },
+    );
+    return resp.ok;
+  },
   showExpiration: true,
 });
 
-export const openAddSiteModal = async (orgValue, defaultCode = '', defaultContent = '', logFn = null) => {
+export const openAddSiteModal = async (orgValue, defaultCode = '', defaultContent = '') => {
   const { dialog, container, showModal } = await setupModal('add-site-modal', `
     <div class="site-modal-header">
       <h2>Add New Site</h2>
@@ -478,7 +530,6 @@ export const openAddSiteModal = async (orgValue, defaultCode = '', defaultConten
       contentUrl,
       {},
       () => dialog.close(),
-      logFn,
     );
 
     if (!success) {

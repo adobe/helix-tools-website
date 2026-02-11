@@ -1,7 +1,7 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { onConfigReady, getConsoleLogger } from '../../utils/tool-config.js';
+import { createAdminFetch, ADMIN_PATHS } from '../../utils/admin-fetch.js';
 import { VIEW_STORAGE_KEY } from './helpers/constants.js';
-import { fetchSites, fetchSiteDetails } from './helpers/api-helper.js';
 import {
   loadIcon,
   icon,
@@ -13,7 +13,7 @@ import { openAddSiteModal } from './helpers/modals.js';
 import createSiteCard from './helpers/site-card.js';
 
 const sitesElem = document.querySelector('div#sites');
-const logFn = getConsoleLogger();
+const adminFetch = createAdminFetch(getConsoleLogger());
 
 const displaySites = (sites, orgValue) => {
   sitesElem.ariaHidden = false;
@@ -41,7 +41,7 @@ const displaySites = (sites, orgValue) => {
     </div>
   `;
 
-  header.querySelector('.add-site-btn').addEventListener('click', () => openAddSiteModal(orgValue, '', '', logFn));
+  header.querySelector('.add-site-btn').addEventListener('click', () => openAddSiteModal(orgValue));
 
   sitesElem.appendChild(header);
 
@@ -80,7 +80,8 @@ const displaySites = (sites, orgValue) => {
     const card = createSiteCard(site, orgValue);
     grid.appendChild(card);
 
-    fetchSiteDetails(orgValue, site.name).then((details) => {
+    adminFetch(ADMIN_PATHS.site, { org: orgValue, site: site.name }).then(async (resp) => {
+      const details = resp.ok ? await resp.json() : null;
       if (details) {
         const contentUrl = details.content?.source?.url || '';
         const contentSourceType = details.content?.source?.type || '';
@@ -148,7 +149,9 @@ const displaySitesForOrg = async (orgValue) => {
   sitesElem.setAttribute('aria-hidden', 'true');
   sitesElem.replaceChildren();
 
-  const { sites, status } = await fetchSites(orgValue, logFn);
+  const resp = await adminFetch(ADMIN_PATHS.sites, { org: orgValue });
+  const sites = resp.ok ? (await resp.json()).sites : null;
+  const { status } = resp;
 
   if (status === 200 && sites) {
     displaySites(sites, orgValue);
