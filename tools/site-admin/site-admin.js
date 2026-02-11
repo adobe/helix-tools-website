@@ -166,8 +166,14 @@ const initSiteAdmin = async () => {
     if (org && authenticated) {
       displaySitesForOrg(org);
     } else {
-      sitesElem.ariaHidden = false;
+      sitesElem.removeAttribute('aria-hidden');
       sitesElem.replaceChildren();
+      const wrapper = document.createElement('div');
+      wrapper.className = 'sites-error';
+      wrapper.textContent = org
+        ? `Sign in to "${org}" to view sites.`
+        : 'Select a site above to get started.';
+      sitesElem.appendChild(wrapper);
     }
   }, { orgOnly: true, authRequired: true });
 
