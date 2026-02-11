@@ -162,6 +162,10 @@ function openLogoutWindow(org, site, onComplete) {
  * Closes the popover and resets aria state.
  */
 function closePopover(button, popover) {
+  // Move focus out before hiding so assistive tech doesn't lose track of the focused element
+  if (popover.contains(document.activeElement)) {
+    button.focus();
+  }
   button.setAttribute('aria-expanded', 'false');
   popover.setAttribute('aria-hidden', 'true');
 }
