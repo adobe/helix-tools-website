@@ -205,8 +205,7 @@
   background: none;
   color: var(--color-font-grey);
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s, color 0.15s, background-color 0.15s;
+  transition: color 0.15s, background-color 0.15s;
 }
 
 .config-select .config-sign-out svg {
@@ -220,15 +219,8 @@
 }
 
 .config-select .config-sign-out:focus-visible {
-  opacity: 1;
   outline: 2px solid var(--color-link);
   outline-offset: -2px;
-}
-
-.config-select .config-recent-item:hover .config-sign-out,
-.config-select .config-recent-item:focus-within .config-sign-out,
-.config-select .config-recent-item.selected .config-sign-out {
-  opacity: 1;
 }
 
 /* sign in label inside recent button */
@@ -236,23 +228,26 @@
   flex-shrink: 0;
   font-size: var(--body-size-s);
   padding: 0.15em 0.6em;
-  border: var(--border-s) solid currentcolor;
+  border: var(--border-s) solid var(--color-link);
   border-radius: 1em;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.config-select .config-recent-button:hover .config-sign-in-label,
-.config-select .config-recent-button:focus-visible .config-sign-in-label,
-.config-select .config-recent-item.selected .config-sign-in-label {
-  opacity: 1;
-}
-
-/* ops mode: Alt key held — emphasize sign-in labels */
-.config-select .config-sign-in-label.emphasis {
-  opacity: 1;
-  border-color: var(--color-link);
   color: var(--color-link);
+  transition: color 0.15s, border-color 0.15s;
+}
+
+/* ops-only labels (Switch account) are hidden unless ops mode is active */
+.config-select .config-sign-in-label.ops-only {
+  display: none;
+}
+
+/* ops mode: Alt key held — show switch-account labels, darken style, hide sign-out buttons */
+.config-select .config-popover.ops-mode .config-sign-in-label {
+  display: inline;
+  border-color: var(--color-text);
+  color: var(--color-text);
+}
+
+.config-select .config-popover.ops-mode .config-sign-out {
+  display: none;
 }
 
 .config-select .config-show-all-button {

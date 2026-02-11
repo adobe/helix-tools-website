@@ -69,8 +69,8 @@ function updateParams(org, site) {
 /**
  * Dispatches a config-update event on window.
  */
-function dispatchConfigUpdate(org, site) {
-  window.dispatchEvent(new CustomEvent('config-update', { detail: { org, site } }));
+function dispatchConfigUpdate(org, site, { force = false } = {}) {
+  window.dispatchEvent(new CustomEvent('config-update', { detail: { org, site, force } }));
 }
 
 /**
@@ -128,13 +128,14 @@ const POST_LOGIN_SETTLE = 500;
 /**
  * Triggers sign-in via the Sidekick extension.
  */
-async function sidekickLogin(org, site, onComplete, opsMode = false) {
+async function sidekickLogin(org, site, onComplete, opsMode = false, selectAccount = false) {
   const success = await messageSidekick({
     action: 'login',
     org,
     site: site || 'default',
     idp: opsMode ? 'microsoft' : undefined,
     tenant: opsMode ? 'common' : undefined,
+    selectAccount: selectAccount || undefined,
   }, null, LOGIN_TIMEOUT);
   // let the sidekick propagate the auth token before proceeding
   if (success) await new Promise((resolve) => { setTimeout(resolve, POST_LOGIN_SETTLE); });
@@ -166,8 +167,10 @@ function closePopover(button, popover) {
   if (popover.contains(document.activeElement)) {
     button.focus();
   }
+  popover.classList.remove('ops-mode');
   button.setAttribute('aria-expanded', 'false');
   popover.setAttribute('aria-hidden', 'true');
+  popover.dispatchEvent(new Event('popover-close'));
 }
 
 const RECENT_LIMIT = 5;
@@ -199,12 +202,10 @@ function createRecentItem(org, site, loggedIn, button, popover, recentList) {
   itemBtn.setAttribute('aria-label', `${siteName} (${status})`);
   itemBtn.append(dot, text);
 
-  if (!loggedIn) {
-    const signInLabel = document.createElement('span');
-    signInLabel.className = 'config-sign-in-label';
-    signInLabel.textContent = 'Sign in';
-    itemBtn.append(signInLabel);
-  }
+  const signInLabel = document.createElement('span');
+  signInLabel.className = loggedIn ? 'config-sign-in-label ops-only' : 'config-sign-in-label';
+  signInLabel.textContent = loggedIn ? 'Switch account' : 'Sign in';
+  itemBtn.append(signInLabel);
 
   itemBtn.addEventListener('click', (e) => {
     // eslint-disable-next-line no-use-before-define
@@ -293,11 +294,12 @@ async function selectSite(org, site, button, popover, recentList, altKey = false
 
   logMessage(getConsoleBlock(), CONSOLE_LEVEL.INFO, ['SELECT', `Selected site: ${org} / ${site}`]);
 
-  // auto-login if not signed in, then dispatch config-update once auth is resolved
+  // auto-login if not signed in, or re-login in ops mode to allow account switching
   // (dispatching before auth would race with tools that call ensureAuth on config-update)
   const loginInfo = await getAuthInfo();
-  if (Array.isArray(loginInfo) && !loginInfo.includes(org)) {
-    const opsMode = isOpsMode(altKey);
+  const isLoggedIn = Array.isArray(loginInfo) && loginInfo.includes(org);
+  const opsMode = isOpsMode(altKey);
+  if (!isLoggedIn || opsMode) {
     logMessage(getConsoleBlock(), CONSOLE_LEVEL.INFO, ['AUTH', `Signing in to ${org}${opsMode ? ' (ops mode)' : ''}\u2026`]);
     await sidekickLogin(org, site, async (success) => {
       if (success) {
@@ -305,10 +307,10 @@ async function selectSite(org, site, button, popover, recentList, altKey = false
       } else {
         logMessage(getConsoleBlock(), CONSOLE_LEVEL.ERROR, ['AUTH', `Sign-in to ${org} failed`]);
       }
-    }, opsMode);
+    }, opsMode, isLoggedIn);
   }
 
-  dispatchConfigUpdate(org, site);
+  dispatchConfigUpdate(org, site, { force: isLoggedIn && opsMode });
   await buildRecentList(recentList, button, popover);
   await updateButtonStatus(button);
 }
@@ -478,9 +480,7 @@ function createPopover(button) {
  */
 function initPopoverToggle(button, popover) {
   function toggleOpsIndicator(altKey) {
-    popover.querySelectorAll('.config-sign-in-label').forEach((el) => {
-      el.classList.toggle('emphasis', altKey);
-    });
+    popover.classList.toggle('ops-mode', altKey);
   }
 
   function opsKeyDownListener(e) {
@@ -500,10 +500,12 @@ function initPopoverToggle(button, popover) {
     window.removeEventListener('keyup', opsKeyUpListener);
   }
 
+  // Clean up listeners whenever the popover closes, regardless of what triggered it
+  popover.addEventListener('popover-close', removeListeners);
+
   function clickOutsideListener(e) {
     if (!e.target.closest('.config-select')) {
       closePopover(button, popover);
-      removeListeners();
     }
   }
 
@@ -511,7 +513,6 @@ function initPopoverToggle(button, popover) {
     if (e.key === 'Escape') {
       closePopover(button, popover);
       button.focus();
-      removeListeners();
     }
   }
 
@@ -519,7 +520,6 @@ function initPopoverToggle(button, popover) {
     const expanded = button.getAttribute('aria-expanded') === 'true';
     if (expanded) {
       closePopover(button, popover);
-      removeListeners();
     } else {
       button.setAttribute('aria-expanded', 'true');
       popover.setAttribute('aria-hidden', 'false');

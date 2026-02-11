@@ -107,8 +107,8 @@ export function onConfigReady(callback, { orgOnly, authRequired } = {}) {
   let lastSite = '';
   let lastAuthenticated = false;
 
-  const fire = async ({ org, site }) => {
-    if (orgOnly && org === lastOrg && lastAuthenticated) return;
+  const fire = async ({ org, site, force }) => {
+    if (orgOnly && org === lastOrg && lastAuthenticated && !force) return;
     lastOrg = org;
     lastSite = site;
 
