@@ -7,7 +7,10 @@ const { tTest, zTestTwoProportions } = stats;
 
 async function addSignificanceFlag(element, metric, baseline) {
   let p = 1;
-  if (Array.isArray(metric.values) && Array.isArray(baseline.values)) {
+  if (
+    Array.isArray(metric.values) && metric.values.length > 0
+    && Array.isArray(baseline.values) && baseline.values.length > 0
+  ) {
     // for two arrays of values, we use a t-test
     p = tTest(metric.values, baseline.values);
   } else if (
