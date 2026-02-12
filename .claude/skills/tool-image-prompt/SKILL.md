@@ -15,27 +15,25 @@ Read [references/style-guide.md](references/style-guide.md) before starting — 
 
 Ask the user:
 1. **Tool name** — what is it called?
-2. **Category** — Production, Content, Admin, or Development tool?
+2. **Category** — Content, Admin, or Development tool? (This determines the color palette — confirm with the user.)
 3. **Function** — what does the tool do, in one sentence?
 4. **Key concepts** — 2-3 core actions or ideas the tool deals with
 
 Also: check if the tool has a corresponding page on www.aem.live (search `site:www.aem.live <tool concept>`) and look at its hero image for visual inspiration.
 
-### Step 2: Choose Background Style and Color Palette
+### Step 2: Choose Background Style
 
-Ask the user two things:
+The **color palette** is determined by the tool's category confirmed in Step 1 (see style guide):
+- **Content** → Pink / Lavender
+- **Admin** → Blue / Periwinkle
+- **Development** → Green / Lime
 
-**Background treatment:**
+State which palette will be used. Do not ask the user to choose a palette separately.
+
+Ask the user to choose a **background treatment:**
 1. **Soft gradient** (default) — smooth pastel gradient
 2. **Grid / graph paper** — light pastel with subtle grid overlay
 3. **Gradient + grid hybrid** — soft gradient with faint grid texture
-
-**Color palette** (indicate which is typical for the tool's category, but let the user choose):
-1. **Pink / Lavender** — pink to soft lavender (typical for Content tools)
-2. **Blue / Periwinkle** — light blue to periwinkle (typical for Admin tools)
-3. **Green / Lime** — lime to soft yellow-green (typical for Development tools)
-
-Do not auto-select a palette based on tool category — always ask. The user may have a preference that differs from the typical palette.
 
 ### Step 3: Propose Visual Concepts
 
@@ -53,7 +51,7 @@ Construct the prompt following this template:
 ```
 [Central icon or simplified illustration described clearly],
 centered in the frame, [small accent icons or badges if any],
-[background style: soft gradient / grid texture / hybrid] in [category pastel colors],
+[background style: soft gradient / grid texture / hybrid] in [category palette colors per style guide],
 clean, modern, friendly illustration style,
 soft drop shadows, rounded shapes, flat design with subtle depth,
 light and airy composition, generous whitespace,

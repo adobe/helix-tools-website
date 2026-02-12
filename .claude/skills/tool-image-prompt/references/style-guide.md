@@ -43,40 +43,39 @@ Most tools on tools.aem.live have one or more corresponding documentation pages 
 
 **Base palette:** Light, warm pastels. Soft and inviting, not saturated or dark.
 
-**Suggested palettes:**
+**Color palette is determined by tool category:**
 
-| Palette | Background Gradient | Accent Color |
-|---|---|---|
-| Pink / Lavender | Pink to lavender | Soft purple |
-| Blue / Periwinkle | Light blue to periwinkle | Blue-violet |
-| Green / Lime | Lime to soft yellow-green | Fresh green |
+| Category | Palette | Background Gradient | Accent Color |
+|---|---|---|---|
+| Content | Pink / Lavender | Pink to lavender | Soft purple |
+| Admin | Blue / Periwinkle | Light blue to periwinkle | Blue-violet |
+| Development | Green / Lime | Lime to soft yellow-green | Fresh green |
 
-These are starting points, not rules — always ask the user which palette they prefer. The exact hue can shift to complement the subject icon.
+This is a hard rule — do not ask the user to choose a palette. The exact hue can shift to complement the subject icon, but must stay within the category's palette family.
 
 ## Subject Matter
 - **Clear and recognizable** — the icon/illustration should immediately suggest what the tool does
 - Simplified, stylized representations (not photorealistic)
 - Common subjects: browser windows, gears, documents, folder icons, shields, charts, code brackets, network nodes
 - Small floating accent icons add context (file type badges, status indicators)
+- 1-2 accent badges maximum — don't overcrowd the composition
 
-## Existing Tool Images (Reference)
+### Visual Metaphor Guidelines
 
-### Current style (use as reference for new images)
+When proposing concepts, prefer these patterns based on what the tool does:
 
-| Tool | Description | Palette | Background |
-|---|---|---|---|
-| Bulk Operations | Large segmented progress ring center, 5 varied webpage cards around it, checkmark/diamond accents | Pink / lavender | Grid |
+**UI elements as subjects** — Use browser windows, spreadsheet grids, or panels when the tool itself is a UI for viewing/editing structured content (e.g., Page Status → browser with status rows, Simple Config Editor → spreadsheet grid with gear).
 
-### Legacy (to be regenerated)
+**Real-world analogies** — Use concrete, recognizable objects that map clearly to the tool's function. The metaphor should be immediately understandable at thumbnail size (e.g., robots.txt Editor → traffic barrier for allow/block, HTTP Headers → envelope attached to a page for metadata, Version Admin → rewind arrow for rollback, Deep PSI Comparison → performance gauges side by side).
 
-| Tool | Description |
-|---|---|
-| Admin Edit | Colorful diagonal ribbons/layers with faint code texture |
-| Sitemap Admin | Code symbol in teal circle with radiating node lines on dark navy |
-| Error Analyzer | Stylized magnifying glass over abstract 3D bar charts |
-| Page Status | Isometric geometric shapes with data visualization elements |
-| CDN Setup | Industrial pipes in a workshop setting |
-| Log Viewer | Magnifying glass on stacked documents |
+**Connection/structure diagrams** — Use hub-and-spoke or network layouts for tools that deal with site-wide structure or relationships between elements (e.g., Index Admin → book with radiating connections, Sitemap Admin → central hub with page nodes).
+
+**General principles:**
+- Prefer metaphors that communicate the tool's purpose at card thumbnail size
+- Concrete beats abstract — a traffic barrier says "access control" faster than an abstract shield
+- Consider the tool's core UX: if users interact with a spreadsheet, show a spreadsheet
+- Avoid being too literal about the tool name when the function tells a better story
+
 
 ## Anti-Patterns
 - Dark or moody backgrounds
