@@ -1055,3 +1055,72 @@
   grid-template-columns: 1fr;
 }
 
+/* ==========================================================================
+   New Page Notice - preview only, never published
+   ========================================================================== */
+
+.page-diff .diff-new-page {
+  padding: var(--spacing-m);
+  background: var(--gray-50);
+}
+
+.page-diff .diff-new-page-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+  padding: var(--spacing-m);
+  margin-bottom: var(--spacing-m);
+  background: linear-gradient(135deg, var(--blue-100) 0%, var(--indigo-100) 100%);
+  border: var(--border-s) solid var(--blue-300);
+  border-radius: var(--rounding-l);
+  color: var(--blue-900);
+  font-weight: var(--weight-medium);
+}
+
+.page-diff .diff-new-page-notice .icon {
+  font-size: var(--heading-size-m);
+  flex-shrink: 0;
+}
+
+.page-diff .diff-new-page-preview {
+  border: var(--border-s) solid var(--green-200);
+  border-radius: var(--rounding-l);
+  overflow: hidden;
+  background: var(--color-background);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.page-diff .diff-new-page-preview .doc-diff-side-header {
+  padding: var(--spacing-s) var(--spacing-m);
+  background: linear-gradient(135deg, var(--green-100) 0%, var(--green-50, #f0fdf4) 100%);
+  border-bottom: var(--border-s) solid var(--green-200);
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.page-diff .diff-new-page-preview .doc-diff-side-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--body-size-s);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--green-800);
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.page-diff .diff-new-page-preview .doc-diff-side-label::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentcolor;
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.page-diff .diff-new-page-preview .doc-preview-content {
+  padding: var(--spacing-m);
+  background-color: var(--green-100);
+  border-left: 4px solid var(--green-600);
+}
