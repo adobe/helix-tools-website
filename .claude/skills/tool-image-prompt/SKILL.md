@@ -21,12 +21,21 @@ Ask the user:
 
 Also: check if the tool has a corresponding page on www.aem.live (search `site:www.aem.live <tool concept>`) and look at its hero image for visual inspiration.
 
-### Step 2: Choose Background Style
+### Step 2: Choose Background Style and Color Palette
 
-Ask the user which background treatment to use:
+Ask the user two things:
+
+**Background treatment:**
 1. **Soft gradient** (default) — smooth pastel gradient
 2. **Grid / graph paper** — light pastel with subtle grid overlay
 3. **Gradient + grid hybrid** — soft gradient with faint grid texture
+
+**Color palette** (indicate which is typical for the tool's category, but let the user choose):
+1. **Pink / Lavender** — pink to soft lavender (typical for Content tools)
+2. **Blue / Periwinkle** — light blue to periwinkle (typical for Admin tools)
+3. **Green / Lime** — lime to soft yellow-green (typical for Development tools)
+
+Do not auto-select a palette based on tool category — always ask. The user may have a preference that differs from the typical palette.
 
 ### Step 3: Propose Visual Concepts
 

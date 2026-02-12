@@ -33,25 +33,25 @@ Each image uses one of these background treatments (choose based on what feels r
 
 ### Drawing Inspiration
 
-Most tools on tools.aem.live have a corresponding documentation page on www.aem.live. When generating an image for a tool:
-1. Check if a related page exists on www.aem.live (search `site:www.aem.live <tool concept>`)
-2. Look at its hero image for visual cues — subject matter, iconography, color palette
-3. Use similar visual language but adapt for the specific tool's purpose
+Most tools on tools.aem.live have one or more corresponding documentation pages on www.aem.live. When generating an image for a tool:
+1. Search for related pages on www.aem.live (search `site:www.aem.live <tool concept>`) — there may be multiple relevant pages
+2. For each relevant page, extract the hero image URL from the `og:image` meta tag: `curl -s <url> | grep 'og:image"'`
+3. Download the images and view them with the Read tool for visual cues — subject matter, iconography, color palette
+4. Use similar visual language but adapt for the specific tool's purpose
 
 ## Color System
 
 **Base palette:** Light, warm pastels. Soft and inviting, not saturated or dark.
 
-**Category background palettes:**
+**Suggested palettes:**
 
-| Category | Background Gradient | Accent Color |
+| Palette | Background Gradient | Accent Color |
 |---|---|---|
-| Production Tools | Peach to soft coral | Warm orange |
-| Content Tools | Pink to lavender | Soft purple |
-| Admin Tools | Light blue to periwinkle | Blue-violet |
-| Development Tools | Lime to soft yellow-green | Fresh green |
+| Pink / Lavender | Pink to lavender | Soft purple |
+| Blue / Periwinkle | Light blue to periwinkle | Blue-violet |
+| Green / Lime | Lime to soft yellow-green | Fresh green |
 
-These are starting points — the exact hue can shift to complement the subject icon.
+These are starting points, not rules — always ask the user which palette they prefer. The exact hue can shift to complement the subject icon.
 
 ## Subject Matter
 - **Clear and recognizable** — the icon/illustration should immediately suggest what the tool does
@@ -61,16 +61,22 @@ These are starting points — the exact hue can shift to complement the subject 
 
 ## Existing Tool Images (Reference)
 
-| Tool | Description | Legacy? |
-|---|---|---|
-| Admin Edit | Colorful diagonal ribbons/layers with faint code texture | Yes — old style |
-| Sitemap Admin | Code symbol in teal circle with radiating node lines on dark navy | Yes — old style |
-| Error Analyzer | Stylized magnifying glass over abstract 3D bar charts | Yes — old style |
-| Page Status | Isometric geometric shapes with data visualization elements | Yes — old style |
-| CDN Setup | Industrial pipes in a workshop setting | Yes — old style |
-| Log Viewer | Magnifying glass on stacked documents | Yes — old style |
+### Current style (use as reference for new images)
 
-All existing images use the old dark/abstract style and should be regenerated to match this updated guide.
+| Tool | Description | Palette | Background |
+|---|---|---|---|
+| Bulk Operations | Large segmented progress ring center, 5 varied webpage cards around it, checkmark/diamond accents | Pink / lavender | Grid |
+
+### Legacy (to be regenerated)
+
+| Tool | Description |
+|---|---|
+| Admin Edit | Colorful diagonal ribbons/layers with faint code texture |
+| Sitemap Admin | Code symbol in teal circle with radiating node lines on dark navy |
+| Error Analyzer | Stylized magnifying glass over abstract 3D bar charts |
+| Page Status | Isometric geometric shapes with data visualization elements |
+| CDN Setup | Industrial pipes in a workshop setting |
+| Log Viewer | Magnifying glass on stacked documents |
 
 ## Anti-Patterns
 - Dark or moody backgrounds
