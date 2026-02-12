@@ -17,7 +17,14 @@ Full guide: [Create Credentials](https://developer.adobe.com/firefly-services/do
 
 ## Environment Variables
 
-Set these in your shell profile or `.env` file:
+**Option A — `.env` file (recommended):** Create a `.env` file at `.claude/skills/tool-image-prompt/scripts/.cache/.env` (this directory is gitignored):
+
+```
+FIREFLY_CLIENT_ID=your-client-id
+FIREFLY_CLIENT_SECRET=your-client-secret
+```
+
+**Option B — shell profile:** Export in your shell profile (e.g. `~/.zshrc`):
 
 ```bash
 export FIREFLY_CLIENT_ID="your-client-id"
