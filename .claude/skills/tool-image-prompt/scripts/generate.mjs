@@ -8,12 +8,12 @@
  *   - See references/firefly-setup.md for credential setup instructions
  *
  * Usage:
- *   node generate.mjs --prompt "your firefly prompt" [--output tool-image] [--n 4]
+ *   node generate.mjs --prompt "your firefly prompt" [--output tool-image] [--n 4] [--reference path/to/image.jpg]
  */
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -43,18 +43,28 @@ try {
 const IMS_TOKEN_URL = 'https://ims-na1.adobelogin.com/ims/token/v3';
 const FIREFLY_API_BASE = 'https://firefly-api.adobe.io';
 const GENERATE_ENDPOINT = `${FIREFLY_API_BASE}/v3/images/generate-async`;
+const UPLOAD_ENDPOINT = `${FIREFLY_API_BASE}/v2/storage/image`;
 const TOKEN_MAX_AGE_MS = 23 * 60 * 60 * 1000; // 23 hours (tokens expire at 24h)
+
+const MIME_TYPES = {
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.webp': 'image/webp',
+};
 
 const { values: args } = parseArgs({
   options: {
     prompt: { type: 'string' },
     output: { type: 'string', default: 'tool-image' },
     n: { type: 'string', default: '4' },
+    reference: { type: 'string' },
+    'style-strength': { type: 'string', default: '60' },
   },
 });
 
 if (!args.prompt) {
-  console.error('Usage: node generate.mjs --prompt "your prompt" [--output name] [--n 4]');
+  console.error('Usage: node generate.mjs --prompt "your prompt" [--output name] [--n 4] [--reference image.jpg] [--style-strength 60]');
   process.exit(1);
 }
 
@@ -113,13 +123,47 @@ async function getAccessToken() {
   return data.access_token;
 }
 
-async function submitJob(token, prompt, numVariations) {
+async function uploadImage(token, imagePath) {
+  const ext = extname(imagePath).toLowerCase();
+  const contentType = MIME_TYPES[ext];
+  if (!contentType) {
+    throw new Error(`Unsupported image format: ${ext}. Use .jpg, .png, or .webp`);
+  }
+
+  const imageData = await readFile(imagePath);
+  const resp = await fetch(UPLOAD_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': contentType,
+      'x-api-key': clientId,
+      Authorization: `Bearer ${token}`,
+    },
+    body: imageData,
+  });
+
+  if (!resp.ok) {
+    throw new Error(`Upload failed: ${resp.status} ${await resp.text()}`);
+  }
+  const data = await resp.json();
+  return data.images[0].id;
+}
+
+async function submitJob(token, prompt, numVariations, styleUploadId) {
   const body = {
     prompt,
     numVariations,
     contentClass: 'art',
-    size: { width: 2048, height: 2048 },
+    size: { width: 2304, height: 1792 },
   };
+
+  if (styleUploadId) {
+    body.style = {
+      imageReference: {
+        source: { uploadId: styleUploadId },
+      },
+      strength: parseInt(args['style-strength'], 10),
+    };
+  }
 
   const resp = await fetch(GENERATE_ENDPOINT, {
     method: 'POST',
@@ -177,8 +221,15 @@ async function main() {
   console.log('Authenticating...');
   const token = await getAccessToken();
 
+  let styleUploadId = null;
+  if (args.reference) {
+    console.log(`Uploading style reference: ${args.reference}...`);
+    styleUploadId = await uploadImage(token, args.reference);
+    console.log(`Uploaded (id: ${styleUploadId})`);
+  }
+
   console.log(`Submitting job (${numVariations} variations)...`);
-  const job = await submitJob(token, args.prompt, numVariations);
+  const job = await submitJob(token, args.prompt, numVariations, styleUploadId);
 
   const { statusUrl } = job;
   if (!statusUrl) {
