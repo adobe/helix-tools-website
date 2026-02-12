@@ -9,6 +9,18 @@ Generate Adobe Firefly prompts for tool card thumbnail images on https://tools.a
 
 Read [references/style-guide.md](references/style-guide.md) before starting — it defines the visual style, color system, background treatments, and reference examples from www.aem.live.
 
+## Prerequisites
+
+Before starting the workflow, verify Firefly credentials are available by running:
+
+```bash
+node .claude/skills/tool-image-prompt/scripts/generate.mjs --check
+```
+
+If this succeeds, proceed with the workflow. If it fails, see [references/firefly-setup.md](references/firefly-setup.md) and guide the user through setup.
+
+**Do NOT manually check environment variables yourself.** The script handles all credential validation. Never run `echo $FIREFLY_CLIENT_ID`, `env | grep FIREFLY`, `printenv`, or similar commands. Always use `--check` instead.
+
 ## Workflow
 
 ### Step 1: Gather Tool Context
@@ -84,7 +96,7 @@ node .claude/skills/tool-image-prompt/scripts/generate.mjs \
 
 This saves `tool-image-1.jpg` through `tool-image-4.jpg` in the current directory.
 
-**Setup required:** `FIREFLY_CLIENT_ID` and `FIREFLY_CLIENT_SECRET` environment variables. If not configured, see [references/firefly-setup.md](references/firefly-setup.md) and guide the user through setup before continuing. If the user prefers to generate images manually in the Firefly web UI, present the prompt and recommended settings instead.
+If the prerequisite check passed, credentials are already configured. If the user prefers to generate images manually in the Firefly web UI, present the prompt and recommended settings instead.
 
 ### Step 6: Review and Refine
 

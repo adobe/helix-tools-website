@@ -60,10 +60,11 @@ const { values: args } = parseArgs({
     n: { type: 'string', default: '4' },
     reference: { type: 'string' },
     'style-strength': { type: 'string', default: '60' },
+    check: { type: 'boolean', default: false },
   },
 });
 
-if (!args.prompt) {
+if (!args.prompt && !args.check) {
   console.error('Usage: node generate.mjs --prompt "your prompt" [--output name] [--n 4] [--reference image.jpg] [--style-strength 60]');
   process.exit(1);
 }
@@ -76,6 +77,11 @@ if (!clientId || !clientSecret) {
   console.error('Add them to .cache/.env or set as environment variables.');
   console.error('See references/firefly-setup.md for setup instructions.');
   process.exit(1);
+}
+
+if (args.check) {
+  console.log('Firefly credentials OK.');
+  process.exit(0);
 }
 
 async function loadCachedToken() {
