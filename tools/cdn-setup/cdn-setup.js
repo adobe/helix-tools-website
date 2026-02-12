@@ -1,6 +1,6 @@
 /* eslint-disable no-alert */
 import { registerToolReady } from '../../scripts/scripts.js';
-import { initConfigField } from '../../utils/config/config.js';
+import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { logResponse } from '../../blocks/console/console.js';
 
@@ -422,6 +422,15 @@ async function saveConfig() {
 
 async function init() {
   await initConfigField();
+
+  // Update URL params when org or site changes
+  org.addEventListener('change', () => {
+    updateConfig();
+  });
+
+  site.addEventListener('change', () => {
+    updateConfig();
+  });
 
   cdnTypeRadios.forEach((radio) => {
     radio.addEventListener('change', () => {
