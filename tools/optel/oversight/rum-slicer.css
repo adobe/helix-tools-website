@@ -1304,7 +1304,7 @@ html[data-theme="dark"] daterange-picker {
 }
 
 /* AI OpTel Report Generator Button */
-.ai-optel-report-generator-button {
+body.optel-oversight main .ai-optel-report-generator-button {
   background: white;
   border: 2px solid var(--ai-claude-orange);
   border-radius: 6px;
@@ -1312,12 +1312,11 @@ html[data-theme="dark"] daterange-picker {
   padding: 8px 12px;
   transition: all 0.2s;
   margin-left: 8px;
-  display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.ai-optel-report-generator-button:hover {
+body.optel-oversight main .ai-optel-report-generator-button:hover {
   transform: scale(1.05);
   box-shadow: 0 2px 8px rgb(var(--ai-claude-orange-rgb) / 30%);
 }
