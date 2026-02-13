@@ -1,7 +1,13 @@
+function labelFromPath(path) {
+  const segment = path.split('/').filter(Boolean).find((s, i, a) => i > 0 && a[i - 1] === 'tools');
+  if (!segment) return path;
+  return segment.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function findTitle(path) {
-  const toolCatalot = document.querySelector('.block.tool-catalog');
-  const tool = toolCatalot.querySelector(`a[href="${path}"]`);
-  return tool ? tool.textContent : path;
+  const toolCatalog = document.querySelector('.block.tool-catalog');
+  const tool = toolCatalog?.querySelector(`a[href="${path}"]`);
+  return tool ? tool.textContent : labelFromPath(path);
 }
 
 function buildRecentNav(visits, heading) {
