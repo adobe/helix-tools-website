@@ -1,0 +1,80 @@
+.tool-catalog > form {
+  margin-bottom: var(--spacing-l);
+
+  .form-field input {
+    width: 100%;
+    padding: var(--spacing-s) var(--spacing-m);
+    font-size: var(--body-size-m);
+    border: 1px solid var(--color-border);
+    border-radius: var(--rounding-l);
+    background: var(--color-background);
+    color: var(--color-text);
+  }
+}
+
+.tool-catalog > ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--horizontal-spacing);
+}
+
+.tool-catalog > ul > li {
+  border-radius: var(--rounding-l);
+  background-color: var(--layer-elevated);
+  box-shadow: var(--shadow-default);
+  overflow: hidden;
+  position: relative;
+}
+
+.tool-catalog > ul > li.cards-card-linked {
+  cursor: pointer;
+  transition: box-shadow 0.3s;
+}
+
+.tool-catalog > ul > li.cards-card-linked:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+.tool-catalog .cards-card-image,
+.tool-catalog .cards-card-image img {
+  border-radius: var(--rounding-l) var(--rounding-l) 0 0;
+  line-height: 0;
+}
+
+.tool-catalog .cards-card-image img {
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.tool-catalog .cards-card-lab {
+  --ribbon-offset: 48px;
+  --ribbon-width: calc(var(--ribbon-offset) * 5);
+
+  position: absolute;
+  top: calc(var(--ribbon-offset) - 0.5em);
+  left: calc(var(--ribbon-offset) - var(--ribbon-width) / 2);
+  width: var(--ribbon-width);
+  padding: var(--spacing-xxs) 0;
+  background-color: var(--purple-900);
+  color: var(--gray-25);
+  font-size: var(--detail-size-xs);
+  font-weight: var(--weight-bold);
+  text-align: center;
+  text-transform: uppercase;
+  transform: rotate(-45deg);
+  transform-origin: center center;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.tool-catalog .cards-card-body {
+  margin: var(--horizontal-spacing);
+}
+
+.tool-catalog .cards-card-body > :first-child {
+  margin-top: 0;
+}
+
