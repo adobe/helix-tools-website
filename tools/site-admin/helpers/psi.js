@@ -1,4 +1,5 @@
-import { fetchPsiScores } from './api-helper.js';
+import { createAdminFetch, ADMIN_PATHS } from '../../../utils/admin-fetch.js';
+import { getConsoleLogger } from '../../../utils/tool-config.js';
 import {
   getPsiScores,
   savePsiScores,
@@ -6,6 +7,8 @@ import {
   formatTimestamp,
   showToast,
 } from './utils.js';
+
+const adminFetch = createAdminFetch(getConsoleLogger());
 
 export const renderPsiScores = (card, siteName, orgValue) => {
   const scores = getPsiScores();
@@ -49,7 +52,23 @@ export const runPsiForCard = async (card, siteName, orgValue) => {
     </div>
   `;
 
-  const result = await fetchPsiScores(orgValue, siteName);
+  const liveUrl = `https://main--${siteName}--${orgValue}.aem.live/`;
+  const resp = await adminFetch(
+    `${ADMIN_PATHS.psi}?url={url}`,
+    { org: orgValue, site: siteName, url: encodeURIComponent(liveUrl) },
+  );
+
+  let result = null;
+  if (resp.ok) {
+    const data = await resp.json();
+    const categories = data.lighthouseResult?.categories || {};
+    result = {
+      performance: Math.round((categories.performance?.score || 0) * 100),
+      accessibility: Math.round((categories.accessibility?.score || 0) * 100),
+      bestPractices: Math.round((categories['best-practices']?.score || 0) * 100),
+      timestamp: Date.now(),
+    };
+  }
 
   if (result) {
     const scores = getPsiScores();

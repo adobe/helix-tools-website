@@ -1,0 +1,318 @@
+/* wrapper is the flex child — allow it to shrink */
+.config-select-wrapper {
+  min-width: 0;
+}
+
+/* config-select collapsed button */
+.config-select .config-select-button {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+  padding: var(--spacing-xs) var(--spacing-s);
+  border: none;
+  border-radius: var(--rounding-m);
+  cursor: pointer;
+  color: var(--color-text);
+  background: none;
+  transition: background-color 0.2s;
+  width: 100%;
+  max-width: 350px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.config-select .config-select-button:hover {
+  background-color: var(--layer-depth);
+}
+
+.config-select .config-select-button:focus-visible {
+  outline: 2px solid var(--color-link);
+  outline-offset: 2px;
+}
+
+.config-select .config-select-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* profile icon with auth-state ring */
+.config-select .config-select-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 3px solid var(--color-border);
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.config-select .config-select-icon svg {
+  width: 140%;
+  height: 140%;
+}
+
+.config-select .config-select-icon.status-light {
+  border-color: var(--status-color);
+}
+
+/* suppress the default status-light ::before dot on the icon */
+.config-select .config-select-icon.status-light::before {
+  display: none;
+}
+
+.config-select .config-select-button .symbol-chevron {
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+.config-select .config-select-button[aria-expanded='true'] .symbol-chevron::before {
+  transform: translate(-50%, 0%) rotate(-135deg);
+}
+
+/* config-select popover */
+.config-select {
+  position: relative;
+}
+
+.config-select .config-popover {
+  position: absolute;
+  top: calc(100% + var(--spacing-xs));
+  left: 0;
+  width: max(100%, 500px);
+  display: none;
+  opacity: 0;
+  background: var(--color-background);
+  padding: var(--spacing-m);
+  box-shadow: var(--shadow-hover);
+  z-index: 1;
+  border-radius: var(--rounding-l);
+  max-height: calc(100dvh - var(--header-height) - (2 * var(--spacing-s)));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  transition-property: all;
+  transition-duration: 0.3s;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-behavior: allow-discrete;
+}
+
+.config-select .config-popover[aria-hidden='false'] {
+  display: block;
+  opacity: 1;
+
+  @starting-style {
+    opacity: 0;
+  }
+}
+
+@media screen and (prefers-reduced-motion: reduce) {
+  .config-select .config-popover {
+    transition: none;
+  }
+}
+
+/* mobile: popover takes more width */
+@media (width < 600px) {
+  .config-select .config-popover {
+    position: fixed;
+    left: var(--horizontal-spacing);
+    right: var(--horizontal-spacing);
+    top: calc(var(--header-height) + var(--spacing-s));
+    width: auto;
+  }
+}
+
+/* popover headings */
+.config-select .config-popover h4 {
+  margin: 0 0 var(--spacing-xs);
+  font-size: var(--body-size-m);
+  font-weight: var(--weight-bold);
+  color: var(--color-font-grey);
+}
+
+/* recent sites list */
+.config-select .config-recent {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.config-select .config-recent-button {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+  width: 100%;
+  padding: var(--spacing-s) var(--spacing-s);
+  border: none;
+  border-radius: var(--rounding-m);
+  background: none;
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition: background-color 0.15s;
+}
+
+.config-select .config-recent-button:hover {
+  background-color: var(--layer-depth);
+}
+
+.config-select .config-recent-button:focus-visible {
+  outline: 2px solid var(--color-link);
+  outline-offset: -2px;
+}
+
+.config-select .config-recent-item.selected .config-recent-button {
+  font-weight: var(--weight-bold);
+}
+
+/* status dot in recent items — override the default ::before margin */
+.config-select .config-recent-button .status-light {
+  flex-shrink: 0;
+}
+
+.config-select .config-recent-button .status-light::before {
+  margin-right: 0;
+}
+
+.config-select .config-recent-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* sign out button per item */
+.config-select .config-recent-item {
+  display: flex;
+  align-items: center;
+}
+
+.config-select .config-sign-out {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5em;
+  height: 1.5em;
+  padding: 0;
+  border: none;
+  border-radius: var(--rounding-s);
+  background: none;
+  color: var(--color-font-grey);
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.config-select .config-sign-out svg {
+  width: 1em;
+  height: 1em;
+}
+
+.config-select .config-sign-out:hover {
+  color: var(--color-text);
+  background-color: var(--layer-depth);
+}
+
+.config-select .config-sign-out:focus-visible {
+  outline: 2px solid var(--color-link);
+  outline-offset: -2px;
+}
+
+/* sign in label inside recent button */
+.config-select .config-sign-in-label {
+  flex-shrink: 0;
+  font-size: var(--body-size-s);
+  padding: 0.15em 0.6em;
+  border: var(--border-s) solid var(--color-link);
+  border-radius: 1em;
+  color: var(--color-link);
+  transition: color 0.15s, border-color 0.15s;
+}
+
+/* ops-only labels (Switch account) are hidden unless ops mode is active */
+.config-select .config-sign-in-label.ops-only {
+  display: none;
+}
+
+/* ops mode: Alt key held — show switch-account labels, darken style, hide sign-out buttons */
+.config-select .config-popover.ops-mode .config-sign-in-label {
+  display: inline;
+  border-color: var(--color-text);
+  color: var(--color-text);
+}
+
+.config-select .config-popover.ops-mode .config-sign-out {
+  display: none;
+}
+
+.config-select .config-show-all-button {
+  color: var(--color-link);
+  font-size: var(--body-size-m);
+}
+
+.config-select .config-recent-empty {
+  padding: var(--spacing-xs) var(--spacing-s);
+  color: var(--color-font-grey);
+  font-size: var(--body-size-m);
+}
+
+/* add new section — collapsed by default */
+.config-select .config-add-details {
+  margin-top: var(--spacing-m);
+  padding-top: var(--spacing-m);
+  border-top: var(--border-s) solid var(--color-border);
+}
+
+.config-select .config-add-details summary {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: var(--body-size-m);
+  font-weight: var(--weight-bold);
+  color: var(--color-font-grey);
+  list-style: none;
+  gap: var(--spacing-xs);
+}
+
+.config-select .config-add-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.config-select .config-add-details summary .symbol-chevron {
+  transition: transform 0.2s;
+}
+
+.config-select .config-add-details[open] summary .symbol-chevron::before {
+  transform: translate(-50%, 0%) rotate(-135deg);
+}
+
+/* add new form */
+.config-select .config-add-form {
+  margin-top: var(--spacing-s);
+  display: grid;
+  gap: var(--spacing-s);
+}
+
+.config-select .config-add-field label {
+  margin-bottom: 0.25em;
+  font-size: var(--body-size-s);
+}
+
+.config-select .config-add-field input {
+  font-size: var(--body-size-m);
+}
+
+.config-select .config-add-actions {
+  display: flex;
+  gap: var(--spacing-s);
+}
+
+.config-select .config-add-button {
+  font-size: var(--body-size-m);
+  padding: 0.3em 1em;
+}

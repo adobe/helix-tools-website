@@ -50,7 +50,7 @@ function setFieldValue(field, value, type) {
  * @param {HTMLElement} list - Datalist element.
  * @param {string[]} values - Array of values to populate as options.
  */
-function populateList(list, values) {
+export function populateList(list, values) {
   values.forEach((value) => {
     if (value && ![...list.options].some((o) => o.value === value)) {
       const option = document.createElement('option');
@@ -66,7 +66,7 @@ function populateList(list, values) {
  * @param {HTMLInputElement} site - Site input element.
  * @param {HTMLDatalistElement} list - Site datalist element to populate with options.
  */
-function resetSiteListForOrg(org, site, list) {
+export function resetSiteListForOrg(org, site, list) {
   // clear site list
   while (list.firstChild) list.removeChild(list.firstChild);
   // repopulate site and site list from storage
@@ -97,7 +97,7 @@ function updateParams(fields) {
  * @param {string} org - Organization name.
  * @param {string} site - Site name within org.
  */
-function updateStorage(org, site) {
+export function updateStorage(org, site) {
   const projects = JSON.parse(localStorage.getItem('aem-projects'));
   if (projects) {
     // ensure org is most recent in orgs array
@@ -116,12 +116,20 @@ function updateStorage(org, site) {
         projects.sites[org] = [site];
       }
     }
+    // update mru list (max 5)
+    if (site) {
+      const key = `${org}/${site}`;
+      const mru = (projects.mru || []).filter((m) => m !== key);
+      mru.unshift(key);
+      projects.mru = mru.slice(0, 5);
+    }
     localStorage.setItem('aem-projects', JSON.stringify(projects));
   } else {
     // init project org and site storage
     const project = {
       orgs: [org],
       sites: site ? { [org]: [site] } : {},
+      mru: site ? [`${org}/${site}`] : [],
     };
     localStorage.setItem('aem-projects', JSON.stringify(project));
   }
@@ -131,7 +139,7 @@ function updateStorage(org, site) {
  * Adds all sidekick projects to storage data
  * Since no order guarantee is made for sidekick projects, just add them at end of lists.
  */
-function updateStorageFromSidekick(projects) {
+export function updateStorageFromSidekick(projects) {
   let aemProjects = JSON.parse(localStorage.getItem('aem-projects'));
   if (!aemProjects) {
     aemProjects = { orgs: [], sites: {} };

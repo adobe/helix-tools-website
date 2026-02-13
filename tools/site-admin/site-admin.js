@@ -1,9 +1,7 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import { initConfigField } from '../../utils/config/config.js';
-import { logResponse } from '../../blocks/console/console.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
+import { onConfigReady, getConsoleLogger } from '../../utils/tool-config.js';
+import { createAdminFetch, ADMIN_PATHS } from '../../utils/admin-fetch.js';
 import { VIEW_STORAGE_KEY } from './helpers/constants.js';
-import { fetchSites, fetchSiteDetails } from './helpers/api-helper.js';
 import {
   loadIcon,
   icon,
@@ -14,14 +12,10 @@ import {
 import { openAddSiteModal } from './helpers/modals.js';
 import createSiteCard from './helpers/site-card.js';
 
-const org = document.getElementById('org');
-const consoleBlock = document.querySelector('.console');
 const sitesElem = document.querySelector('div#sites');
+const adminFetch = createAdminFetch(getConsoleLogger());
 
-// Logging wrapper for API calls
-const logFn = (status, details) => logResponse(consoleBlock, status, details);
-
-const displaySites = (sites) => {
+const displaySites = (sites, orgValue) => {
   sitesElem.ariaHidden = false;
   sitesElem.textContent = '';
 
@@ -47,7 +41,7 @@ const displaySites = (sites) => {
     </div>
   `;
 
-  header.querySelector('.add-site-btn').addEventListener('click', () => openAddSiteModal(org.value, '', '', logFn));
+  header.querySelector('.add-site-btn').addEventListener('click', () => openAddSiteModal(orgValue));
 
   sitesElem.appendChild(header);
 
@@ -73,7 +67,7 @@ const displaySites = (sites) => {
     });
   });
 
-  const favorites = getFavorites(org.value);
+  const favorites = getFavorites(orgValue);
   const sortedSites = [...sites].sort((a, b) => {
     const aFav = favorites.includes(a.name);
     const bFav = favorites.includes(b.name);
@@ -83,10 +77,11 @@ const displaySites = (sites) => {
   });
 
   sortedSites.forEach((site) => {
-    const card = createSiteCard(site, org.value);
+    const card = createSiteCard(site, orgValue);
     grid.appendChild(card);
 
-    fetchSiteDetails(org.value, site.name).then((details) => {
+    adminFetch(ADMIN_PATHS.site, { org: orgValue, site: site.name }).then(async (resp) => {
+      const details = resp.ok ? await resp.json() : null;
       if (details) {
         const contentUrl = details.content?.source?.url || '';
         const contentSourceType = details.content?.source?.type || '';
@@ -154,38 +149,47 @@ const displaySitesForOrg = async (orgValue) => {
   sitesElem.setAttribute('aria-hidden', 'true');
   sitesElem.replaceChildren();
 
-  const { sites, status } = await fetchSites(orgValue, logFn);
+  const resp = await adminFetch(ADMIN_PATHS.sites, { org: orgValue });
+  const sites = resp.ok ? (await resp.json()).sites : null;
+  const { status } = resp;
 
   if (status === 200 && sites) {
-    displaySites(sites);
-  } else if (status === 401) {
-    const loggedIn = await ensureLogin(orgValue);
-    if (loggedIn) {
-      return displaySitesForOrg(orgValue);
-    }
+    displaySites(sites, orgValue);
+  } else {
+    sitesElem.removeAttribute('aria-hidden');
+    const wrapper = document.createElement('div');
+    wrapper.className = 'sites-error';
+    wrapper.textContent = `Failed to load sites for "${orgValue}" (HTTP ${status}). Check the activity log for details.`;
+    sitesElem.appendChild(wrapper);
   }
-  return null;
 };
 
-window.addEventListener('sites-refresh', (e) => {
-  displaySitesForOrg(e.detail.orgValue);
-});
-
 const initSiteAdmin = async () => {
+  onConfigReady(({ org, authenticated }) => {
+    if (org && authenticated) {
+      displaySitesForOrg(org);
+    } else {
+      sitesElem.removeAttribute('aria-hidden');
+      sitesElem.replaceChildren();
+      const wrapper = document.createElement('div');
+      wrapper.className = 'sites-error';
+      wrapper.textContent = org
+        ? `Sign in to "${org}" to view sites.`
+        : 'Select a site above to get started.';
+      sitesElem.appendChild(wrapper);
+    }
+  }, { orgOnly: true, authRequired: true });
+
+  window.addEventListener('sites-refresh', (e) => {
+    displaySitesForOrg(e.detail.orgValue);
+  });
+
   const neededIcons = [
     'code', 'document', 'edit', 'copy', 'external', 'trash', 'key',
     'check', 'more-vertical', 'shield', 'lock', 'activity',
     'user', 'search', 'grid', 'list', 'star',
   ];
   await Promise.all(neededIcons.map(loadIcon));
-  await initConfigField();
-  if (!org.value) org.value = localStorage.getItem('org') || 'adobe';
-  if (org.value) {
-    const loggedIn = await ensureLogin(org.value);
-    if (loggedIn) {
-      displaySitesForOrg(org.value);
-    }
-  }
 };
 
 registerToolReady(initSiteAdmin());

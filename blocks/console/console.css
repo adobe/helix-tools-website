@@ -1,17 +1,123 @@
-/* Console block styles */
 .console {
-  max-width: 100%;
-  padding: 0.6em 0;
-  overflow-x: auto;
-  max-height: calc(100dvh - var(--header-height));
+  position: relative;
 }
 
-@media (width >= 600px) {
-  .console {
-    max-height: unset;
+/* Console toggle button — matches .theme-toggle style */
+.console .console-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: var(--rounding-m);
+  cursor: pointer;
+  color: var(--color-text);
+  background: none;
+  transition: background-color 0.2s;
+}
+
+.console .console-toggle:hover {
+  background-color: var(--layer-depth);
+}
+
+.console .console-toggle:focus-visible {
+  outline: 2px solid var(--color-link);
+  outline-offset: 2px;
+}
+
+.console .console-toggle svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentcolor;
+}
+
+/* Unread indicator dot */
+.console .console-indicator {
+  display: none;
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--red-800);
+}
+
+.console .console-toggle.has-unread .console-indicator {
+  display: block;
+}
+
+/* Dropdown panel — anchored to the .console block */
+.console .console-panel {
+  position: fixed;
+  top: calc(var(--header-height) + var(--spacing-s));
+  left: var(--horizontal-spacing);
+  right: var(--horizontal-spacing);
+  max-height: calc(100dvh - var(--header-height) - (2 * var(--spacing-s)));
+  display: none;
+  opacity: 0;
+  background: var(--color-background);
+  padding: var(--spacing-m);
+  box-shadow: var(--shadow-hover);
+  z-index: 1;
+  border-radius: var(--rounding-l);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  transition-property: all;
+  transition-duration: 0.3s;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-behavior: allow-discrete;
+}
+
+.console .console-panel[aria-hidden='false'] {
+  display: block;
+  opacity: 1;
+
+  @starting-style {
+    opacity: 0;
   }
 }
 
+@media screen and (prefers-reduced-motion: reduce) {
+  .console .console-panel {
+    transition: none;
+  }
+}
+
+
+/* Panel header with clear button */
+.console .console-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--spacing-xs);
+}
+
+.console .console-clear {
+  padding: 0.2em 0.6em;
+  border: none;
+  border-radius: var(--rounding-s);
+  background: none;
+  color: var(--color-font-grey);
+  font-size: var(--body-size-s);
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.console .console-clear:hover {
+  color: var(--color-text);
+  background-color: var(--layer-depth);
+}
+
+.console .console-clear:focus-visible {
+  outline: 2px solid var(--color-link);
+  outline-offset: 2px;
+}
+
+/* Table styles */
 .console table {
   width: calc(100% - 1px);
   border-collapse: collapse;

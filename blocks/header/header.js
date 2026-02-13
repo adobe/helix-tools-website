@@ -1,4 +1,4 @@
-import { getMetadata, loadBlock } from '../../scripts/aem.js';
+import { getMetadata } from '../../scripts/aem.js';
 import {
   swapIcons,
   applyTheme,
@@ -122,7 +122,7 @@ function toggleNav(button, sections) {
 export default async function decorate(block) {
   // load nav as fragment
   const navMeta = getMetadata('nav');
-  const navPath = navMeta ? new URL(navMeta, window.location).pathname : '/nav';
+  const navPath = navMeta ? new URL(navMeta, window.location).pathname : '/drafts/shsteimer/admin-nav';
   const fragment = await loadFragment(navPath);
 
   // decorate nav DOM
@@ -131,7 +131,7 @@ export default async function decorate(block) {
   nav.classList.add('header-nav');
   while (fragment.firstElementChild) nav.append(fragment.firstElementChild);
 
-  const classes = ['title', 'sections', 'tools'];
+  const classes = ['workspace', 'sections'];
   classes.forEach((c, i) => {
     const section = nav.children[i];
     if (section) {
@@ -140,43 +140,7 @@ export default async function decorate(block) {
     }
   });
 
-  // decorate title
-  const title = nav.querySelector('.nav-title');
   const sections = nav.querySelector('.nav-sections');
-  if (title) {
-    if (sections) {
-      // make button
-      const button = document.createElement('button');
-      button.classList.add('button', 'outline', 'toggle-nav');
-      button.id = 'toggle-nav';
-      button.setAttribute('aria-label', 'Open navigation');
-      button.setAttribute('aria-haspopup', true);
-      button.setAttribute('aria-expanded', false);
-      button.setAttribute('aria-controls', 'nav-sections');
-      button.textContent = title.textContent;
-      title.replaceWith(button);
-
-      const buttonIcon = document.createElement('span');
-      buttonIcon.classList.add('toggle-nav-icon');
-      button.append(buttonIcon);
-
-      button.addEventListener('click', () => {
-        toggleNav(button, sections);
-      });
-
-      sections.setAttribute('aria-hidden', true);
-    } else if (!title.querySelector('a[href]')) {
-      const content = title.querySelector('h1, h2, h3, h4, h5, h6, p');
-      content.className = 'title-content';
-      if (content && content.textContent) {
-        const link = document.createElement('a');
-        link.href = '/';
-        link.innerHTML = content.innerHTML;
-        content.innerHTML = link.outerHTML;
-      }
-    }
-  }
-
   // decorate sections
   if (sections) {
     const wrapper = document.createElement('nav');
@@ -197,48 +161,32 @@ export default async function decorate(block) {
     });
   }
 
-  // add login button
-  const tools = nav.querySelector('.nav-tools');
-  if (tools) {
-    const toolsList = tools.querySelector('ul');
-    toolsList.classList.add('tools-list');
+  // build nav-toggles with hamburger and theme toggle
+  const navToggles = document.createElement('div');
+  navToggles.className = 'nav-toggles';
 
-    toolsList.querySelectorAll('a').forEach((a) => {
-      const url = new URL(a.href);
-      if (url.hostname !== 'tools.aem.live' && url.hostname !== window.location.hostname) {
-        a.classList.add('button', 'outline');
-        a.target = '_blank';
-        a.title = a.textContent;
-      }
+  const hamburger = document.createElement('button');
+  hamburger.className = 'toggle-nav';
+  hamburger.id = 'toggle-nav';
+  hamburger.setAttribute('type', 'button');
+  hamburger.setAttribute('aria-expanded', 'false');
+  hamburger.setAttribute('aria-label', 'Open navigation');
+  hamburger.setAttribute('aria-controls', 'nav-sections');
+  hamburger.innerHTML = '🛠️ <span class="toggle-nav-icon"></span>';
+  hamburger.addEventListener('click', () => toggleNav(hamburger, sections));
+  navToggles.append(hamburger);
 
-      const icon = a.querySelector('.icon');
-      if (icon) {
-        const label = document.createElement('span');
-        label.classList.add('label');
-        label.textContent = a.textContent;
-        a.replaceChildren(label, icon);
-      }
-    });
+  const themeToggle = document.createElement('button');
+  themeToggle.className = 'theme-toggle';
+  themeToggle.setAttribute('type', 'button');
+  navToggles.append(themeToggle);
+  initThemeToggle(themeToggle);
 
-    // add theme toggle
-    const themeToggleLi = document.createElement('li');
-    const themeToggle = document.createElement('button');
-    themeToggle.classList.add('theme-toggle');
-    themeToggle.setAttribute('type', 'button');
-    themeToggleLi.append(themeToggle);
-    toolsList.append(themeToggleLi);
-    initThemeToggle(themeToggle);
-
-    const loginBlock = document.createElement('div');
-    loginBlock.classList.add('profile');
-    loginBlock.dataset.blockName = 'profile';
-
-    if (tools.querySelector('.icon-user')) {
-      tools.querySelector('.icon-user').replaceWith(loginBlock);
-    } else {
-      tools.append(loginBlock);
-    }
-    await loadBlock(loginBlock);
+  // insert nav-toggles between workspace and sections
+  if (sections) {
+    nav.insertBefore(navToggles, sections);
+  } else {
+    nav.append(navToggles);
   }
 
   const navWrapper = document.createElement('div');
