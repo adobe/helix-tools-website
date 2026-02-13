@@ -15,3 +15,4 @@ MIGRATION_PLAN.md
 
 .playwright-mcp/
 .claude/settings.local.json
+.claude/skills/tool-image-prompt/scripts/.cache/
