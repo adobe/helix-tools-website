@@ -148,11 +148,26 @@ body.optel-oversight main button {
   font-weight: inherit;
 }
 
+/* Preserve circular back-to-report button */
+body.optel-oversight main .back-to-report-btn {
+  border-radius: 50%;
+  padding: 0;
+}
+
 /* URL-selector input reset */
 body.optel-explorer main url-selector input,
 body.optel-oversight main url-selector input {
   padding: 0;
   background-color: transparent;
+}
+
+body.optel-oversight facet-sidebar {
+  padding-top: 20px;
+}
+
+/* Reduce font-weight of URL input field */
+body.optel-oversight main .title url-selector input {
+  font-weight: 600;
 }
 
 body.optel-explorer main url-selector input:not(:disabled),
