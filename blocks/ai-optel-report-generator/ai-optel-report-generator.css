@@ -202,6 +202,12 @@
   cursor: pointer;
 }
 
+.report-generate-btn:focus:not(:disabled),
+.report-action-btn.primary:focus:not(:disabled) {
+  background: var(--color-btn-primary);
+  color: white;
+}
+
 .report-generate-btn:active:not(:disabled) {
   transform: translateY(0);
 }
