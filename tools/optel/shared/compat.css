@@ -207,6 +207,12 @@ body.optel-oversight figure {
   }
 }
 
+/* Allow background scrolling when AI report modal is open */
+body.optel-oversight:has(.report-modal-overlay) {
+  overflow: auto;
+  height: auto;
+}
+
 /* ============================================
    PART 3: DARK MODE OVERRIDES
    ============================================ */
