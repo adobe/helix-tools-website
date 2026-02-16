@@ -138,6 +138,14 @@ body.optel-oversight main dl {
   margin-bottom: 0;
 }
 
+/* Fieldset text color reset - inherit from fieldset parent */
+body.optel-explorer main fieldset legend,
+body.optel-explorer main fieldset label,
+body.optel-oversight main fieldset legend,
+body.optel-oversight main fieldset label {
+  color: inherit;
+}
+
 /* Button reset */
 body.optel-explorer main .button,
 body.optel-explorer main button,
