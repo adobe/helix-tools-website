@@ -122,7 +122,7 @@ function formatCode(code, text) {
   validateJSON(code.textContent);
 
   // eslint-disable-next-line no-undef
-  Prism.highlightElement(code);
+  if (typeof Prism !== 'undefined') Prism.highlightElement(code);
 }
 
 /**
