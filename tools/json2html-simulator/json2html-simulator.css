@@ -14,8 +14,7 @@ body.json2html-simulator {
 body.json2html-simulator main {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 60px);
-  min-height: 600px;
+  min-height: calc(100vh - 60px); /* min-height lets main grow when options panel is open, keeping footer below content */
   padding: calc(var(--header-height) + var(--spacing-300)) var(--spacing-200) var(--spacing-300) var(--spacing-200);
   gap: var(--spacing-200);
 }
@@ -438,7 +437,7 @@ span.options-grid {
   flex-direction: column;
   flex: 1 1 auto;
   gap: 0;
-  min-height: 400px;
+  min-height: 200px; /* reduced from 400px to allow shrinking when options panel is open */
   min-width: 0; /* Prevent content from affecting flex size */
   background: var(--layer-elevated);
   border-radius: var(--rounding-m);
@@ -490,7 +489,7 @@ body.json2html-simulator main .workspace > .default-content-wrapper {
   display: flex;
   flex: 1 1 60%;
   width: 100%;
-  min-height: 200px;
+  min-height: 100px;
   min-width: 0; /* Prevent content from affecting flex size */
   overflow: hidden;
 }
@@ -556,6 +555,29 @@ body.json2html-simulator main .workspace > .default-content-wrapper {
   min-width: 0; /* Prevent content from affecting flex size */
 }
 
+/* Line numbers gutter - positioned absolutely on the left, synced to textarea scroll via JS */
+.line-numbers {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 36px;
+  height: 100%;
+  padding: var(--spacing-300) var(--spacing-75) var(--spacing-300) var(--spacing-50);
+  background: light-dark(var(--gray-200), var(--gray-900));
+  border-right: var(--border-s) solid var(--color-border);
+  font-family: var(--code-font-family);
+  font-size: var(--detail-size-m);
+  line-height: var(--line-height-l);
+  color: light-dark(var(--gray-500), var(--gray-600));
+  text-align: right;
+  user-select: none;
+  overflow: hidden; /* scroll position synced via JS */
+  white-space: pre;
+  box-sizing: border-box;
+  z-index: 2;
+  pointer-events: none;
+}
+
 /* Shared styles for textarea and highlight overlay */
 .code-editor,
 .code-highlight {
@@ -565,7 +587,7 @@ body.json2html-simulator main .workspace > .default-content-wrapper {
   width: 100%;
   height: 100%;
   margin: 0;
-  padding: var(--spacing-300);
+  padding: var(--spacing-300) var(--spacing-300) var(--spacing-300) calc(36px + var(--spacing-200));
   border: none;
   border-radius: 0;
   box-sizing: border-box;
@@ -575,6 +597,18 @@ body.json2html-simulator main .workspace > .default-content-wrapper {
   letter-spacing: normal;
   white-space: pre;
   tab-size: 2;
+}
+
+/* Error line highlight — semi-transparent band behind the error line, positioned via JS */
+.error-line-highlight {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  background: light-dark(rgb(220 50 50 / 10%), rgb(255 80 80 / 14%));
+  pointer-events: none;
+  z-index: 1;
+  display: none;
 }
 
 /* Textarea - transparent text, visible caret, on top */
@@ -758,7 +792,7 @@ body.json2html-simulator main .resizer-horizontal {
   display: flex;
   flex-direction: column;
   width: 100%;
-  min-height: 150px;
+  min-height: 80px;
   min-width: 0; /* Prevent content from affecting flex size */
   overflow: hidden;
   border-top: var(--border-s) solid var(--color-border);
