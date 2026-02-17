@@ -10,12 +10,14 @@ function findTitle(path) {
   return tool ? tool.textContent : labelFromPath(path);
 }
 
-function buildRecentNav(visits, heading) {
+function buildRecentNav(merged, heading, hasStoredVisits) {
   if (!heading) {
     // eslint-disable-next-line no-param-reassign
     heading = document.createElement('h2');
     heading.textContent = 'Recent tools';
   }
+  if (!hasStoredVisits) heading.textContent = 'Quick Access';
+
   heading.id = 'recent-tools-nav-heading';
   const nav = document.createElement('nav');
   nav.classList.add('recent-tools-nav');
@@ -23,7 +25,7 @@ function buildRecentNav(visits, heading) {
   nav.append(heading);
   nav.innerHTML += `
     <ul>
-      ${visits.map((v) => `<li><a href="${v.path}">${findTitle(v.path)}</a></li>`).join('')}
+      ${merged.map((v) => `<li><a href="${v.path}">${findTitle(v.path)}</a></li>`).join('')}
     </ul>
   `;
   return nav;
@@ -39,5 +41,5 @@ export default async function decorate(block) {
     .filter((item, index, arr) => arr.findIndex((i) => i.path === item.path) === index)
     .slice(0, 5);
   const heading = block.querySelector('h2');
-  block.replaceChildren(buildRecentNav(merged, heading));
+  block.replaceChildren(buildRecentNav(merged, heading, visits.length > 0));
 }
