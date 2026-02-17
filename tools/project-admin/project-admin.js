@@ -112,7 +112,7 @@ function displayProject(config, editMode = false) {
       <div>
         <div>Preview:</div><div>${externalLink(previewUrl, new URL(previewUrl).host)}</div>
       </div>
-      ${host ? `<div><div>Production: </div><div>${externalLink(host, host)}</div></div>` : ''}
+      ${host ? `<div><div>Production: </div><div>${externalLink(`https://${host}`, host)}</div></div>` : ''}
     </div>`;
 
   const details = li.querySelector('.projects-project-details');
