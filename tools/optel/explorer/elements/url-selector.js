@@ -70,10 +70,11 @@ export default class URLSelector extends HTMLElement {
       datalist.remove();
     }
 
+    let domainsLoaded;
     input.addEventListener('mouseover', () => {
       const token = getPersistentToken();
       if (token && !isIncognitoMode()) {
-        fetch('https://bundles.aem.page/domains?suggested=true', {
+        domainsLoaded = fetch('https://bundles.aem.page/domains?suggested=true', {
           headers: {
             accept: 'application/json',
             authorization: `Bearer ${token}`,
@@ -95,7 +96,8 @@ export default class URLSelector extends HTMLElement {
       input.select();
     });
 
-    input.addEventListener('input', () => {
+    input.addEventListener('input', async () => {
+      if (domainsLoaded) await domainsLoaded;
       // filter the domains and append to the datalist
       const allDomainsAttr = input.getAttribute('data-all-domains');
       if (!allDomainsAttr) return;
