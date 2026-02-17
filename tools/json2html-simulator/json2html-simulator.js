@@ -31,6 +31,11 @@ const jsonInput = document.getElementById('json-input');
 const templateInput = document.getElementById('template-input');
 const jsonHighlight = document.getElementById('json-highlight');
 const templateHighlight = document.getElementById('template-highlight');
+// eslint-disable-next-line prefer-destructuring
+const jsonLineNumbers = document.getElementById('json-line-numbers');
+const templateLineNumbers = document.getElementById('template-line-numbers');
+const jsonErrorHighlight = document.getElementById('json-error-highlight');
+const templateErrorHighlight = document.getElementById('template-error-highlight');
 const previewFrame = document.getElementById('preview-frame');
 const sourceOutput = document.getElementById('source-output');
 const jsonStatus = document.getElementById('json-status');
@@ -69,6 +74,96 @@ let prismLoadPromise = null;
 // ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
+
+/**
+ * Convert a character offset in a string to a line:col position (1-based)
+ * @param {string} text - Full text content
+ * @param {number} pos - Character offset
+ * @returns {{ line: number, col: number }}
+ */
+function positionToLineCol(text, pos) {
+  const before = text.substring(0, pos);
+  const lines = before.split('\n');
+  return { line: lines.length, col: lines[lines.length - 1].length + 1 };
+}
+
+/**
+ * Find the last unclosed {{#section}} opening using a stack.
+ * Handles nested sections of the same name correctly.
+ * @param {string} text - Template text
+ * @param {string} escapedName - Regex-escaped section name
+ * @param {number} [limit] - Only scan up to this character index (exclusive)
+ * @returns {number} Character index of unclosed opening, or -1
+ */
+function findUnclosedSectionOpening(text, escapedName, limit) {
+  const re = new RegExp(`\\{\\{([#/])\\s*${escapedName}\\s*\\}\\}`, 'g');
+  const stack = [];
+  let m = re.exec(text);
+  while (m !== null && (limit === undefined || m.index < limit)) {
+    if (m[1] === '#') stack.push(m.index);
+    else if (stack.length > 0) stack.pop();
+    m = re.exec(text);
+  }
+  return stack.length > 0 ? stack[stack.length - 1] : -1;
+}
+
+/**
+ * Update line number gutter for an editor
+ * @param {HTMLTextAreaElement} textarea - Source textarea
+ * @param {HTMLElement} lineNumbersEl - Line numbers element
+ */
+function updateLineNumbers(textarea, lineNumbersEl) {
+  if (!lineNumbersEl) return;
+  const lineCount = (textarea.value.match(/\n/g) || []).length + 1;
+  lineNumbersEl.textContent = Array.from({ length: lineCount }, (_, i) => i + 1).join('\n');
+}
+
+/**
+ * Reposition the error line highlight to account for the textarea's current scroll offset.
+ * Called on initial placement and whenever the textarea scrolls.
+ * @param {HTMLTextAreaElement} textarea
+ * @param {HTMLElement} highlightEl
+ */
+function syncErrorHighlight(textarea, highlightEl) {
+  const line = parseInt(highlightEl.dataset.errorLine, 10);
+  if (!line) return;
+  const style = getComputedStyle(textarea);
+  const paddingTop = parseFloat(style.paddingTop);
+  const lineHeight = parseFloat(style.lineHeight);
+  highlightEl.style.top = `${paddingTop + (line - 1) * lineHeight - textarea.scrollTop}px`;
+}
+
+/**
+ * Show or hide the error line highlight band in an editor.
+ * Pass line=0 (or omit) to clear the highlight.
+ * @param {HTMLTextAreaElement} textarea - The editor textarea (used to measure line height)
+ * @param {HTMLElement} highlightEl - The .error-line-highlight div
+ * @param {number} [line] - 1-based line number to highlight
+ */
+function setErrorHighlight(textarea, highlightEl, line) {
+  if (!highlightEl) return;
+  if (!line || line < 1) {
+    highlightEl.style.display = 'none';
+    highlightEl.dataset.errorLine = '';
+    return;
+  }
+  const style = getComputedStyle(textarea);
+  const paddingTop = parseFloat(style.paddingTop);
+  const lineHeight = parseFloat(style.lineHeight);
+  highlightEl.dataset.errorLine = line;
+  highlightEl.style.height = `${lineHeight}px`;
+  highlightEl.style.display = 'block';
+  // Only scroll if the error line is not already visible in the viewport
+  const lineTop = paddingTop + (line - 1) * lineHeight;
+  const lineBottom = lineTop + lineHeight;
+  const { scrollTop, clientHeight } = textarea;
+  const isVisible = lineTop >= scrollTop && lineBottom <= scrollTop + clientHeight;
+  if (!isVisible) {
+    const visibleCenter = (clientHeight - lineHeight) / 2;
+    textarea.scrollTop = Math.max(0, lineTop - visibleCenter);
+  }
+  syncErrorHighlight(textarea, highlightEl);
+}
 
 /**
  * Show a toast notification
@@ -305,11 +400,17 @@ function validateJson() {
   try {
     const parsed = JSON.parse(value);
     updateStatus(jsonStatus, 'ok', 'Valid JSON');
+    setErrorHighlight(jsonInput, jsonErrorHighlight);
     return parsed;
   } catch (e) {
     const match = e.message.match(/position (\d+)/);
-    const position = match ? ` at position ${match[1]}` : '';
-    updateStatus(jsonStatus, 'error', `Invalid JSON${position}`);
+    if (match) {
+      const { line } = positionToLineCol(value, parseInt(match[1], 10));
+      updateStatus(jsonStatus, 'error', `Invalid JSON at line ${line}`);
+      setErrorHighlight(jsonInput, jsonErrorHighlight, line);
+    } else {
+      updateStatus(jsonStatus, 'error', 'Invalid JSON');
+    }
     return null;
   }
 }
@@ -575,6 +676,7 @@ async function render() {
     const html = await response.text();
     updatePreview(html);
     updateStatus(templateStatus, 'ok', 'Rendered successfully');
+    setErrorHighlight(templateInput, templateErrorHighlight);
     updatePreviewStatus('Last rendered: just now');
   } catch (e) {
     // Ignore abort errors (expected when user types quickly)
@@ -588,9 +690,110 @@ async function render() {
       updatePreview('');
       updateStatus(templateStatus, 'error', 'Connection failed');
     } else {
+      // Convert bare character offset ("at N") to a useful location.
+      // Special case: "Unclosed section" errors report the end-of-template position,
+      // not the opening tag position. Search for the opening tag instead.
+      let errorMessage = e.message;
+      const atPosMatch = errorMessage.match(/\bat (\d+)$/);
+      if (atPosMatch && templateInput) {
+        const templateText = templateInput.value;
+        const unclosedSectionMatch = errorMessage.match(/Unclosed section "([^"]+)"/);
+        const unclosedTagMatch = /^Unclosed tag/.test(errorMessage);
+
+        if (unclosedSectionMatch) {
+          const charPos = parseInt(atPosMatch[1], 10);
+          const sectionName = unclosedSectionMatch[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+          if (charPos >= templateText.length) {
+            // EOF case: Mustache scanned to the end without finding the close tag.
+            // Use a stack to find the actual last unclosed opening tag.
+            const openPos = findUnclosedSectionOpening(templateText, sectionName);
+            if (openPos !== -1) {
+              const { line } = positionToLineCol(templateText, openPos);
+              errorMessage = errorMessage.replace(/\bat \d+$/, `opened at line ${line}`);
+            } else {
+              errorMessage = errorMessage.replace(/\bat \d+$/, '');
+            }
+          } else {
+            // Mismatch case: a {{/wrongTag}} was encountered while this section was open.
+            // Extract the wrong close tag name, then decide how to describe the problem.
+            const wrongTagMatch = templateText.substring(charPos).match(/^\{\{\/\s*([^}\s]+)\s*\}\}/);
+            if (wrongTagMatch && wrongTagMatch[1] !== unclosedSectionMatch[1]) {
+              const wrongLine = positionToLineCol(templateText, charPos).line;
+              const wrongEscaped = wrongTagMatch[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              // Check if the wrong close tag has a matching open before it.
+              // If not, it is an orphan — blame the orphan directly rather than the outer section.
+              const wrongOpenPos = findUnclosedSectionOpening(templateText, wrongEscaped, charPos);
+              if (wrongOpenPos === -1) {
+                // Orphan close tag: {{/wrongTag}} has no matching {{#wrongTag}} before it.
+                // unclosedSectionMatch[1] is what WAS open at this point (from the Mustache stack),
+                // so we can tell the user exactly which section is still open — no guessing needed.
+                const openSectionName = unclosedSectionMatch[1];
+                const openSectionEscaped = openSectionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const openSectionPos = findUnclosedSectionOpening(templateText, openSectionEscaped);
+                const openSectionLine = openSectionPos !== -1
+                  ? positionToLineCol(templateText, openSectionPos).line : null;
+                const replacement = openSectionLine
+                  ? `Unexpected {{/${wrongTagMatch[1]}}} at line ${wrongLine}`
+                    + ` — '{{#${openSectionName}}}' at line ${openSectionLine} is still open`
+                  : `Unexpected {{/${wrongTagMatch[1]}}} at line ${wrongLine}`
+                    + ` — no opening {{#${wrongTagMatch[1]}}} found`;
+                errorMessage = errorMessage.replace(/Unclosed section "[^"]+" at \d+$/, replacement);
+              } else {
+                // Out-of-order: the named section is genuinely unclosed; also show the wrong tag.
+                const openPos = findUnclosedSectionOpening(templateText, sectionName);
+                if (openPos !== -1) {
+                  const openLine = positionToLineCol(templateText, openPos).line;
+                  errorMessage = errorMessage.replace(/\bat \d+$/, `opened at line ${openLine} — unexpected {{/${wrongTagMatch[1]}}} at line ${wrongLine}`);
+                } else {
+                  errorMessage = errorMessage.replace(/\bat \d+$/, `— unexpected {{/${wrongTagMatch[1]}}} at line ${wrongLine}`);
+                }
+              }
+            } else {
+              const { line } = positionToLineCol(templateText, charPos);
+              errorMessage = errorMessage.replace(/\bat \d+$/, `at line ${line}`);
+            }
+          }
+        } else if (unclosedTagMatch) {
+          // "Unclosed tag" also reports end-of-template position.
+          // Find the last {{ that has no matching }}.
+          let unmatched = -1;
+          let pos = 0;
+          while (pos < templateText.length) {
+            const openIdx = templateText.indexOf('{{', pos);
+            if (openIdx === -1) break;
+            const closeIdx = templateText.indexOf('}}', openIdx + 2);
+            if (closeIdx === -1) { unmatched = openIdx; break; }
+            pos = openIdx + 2;
+          }
+          if (unmatched !== -1) {
+            const { line } = positionToLineCol(templateText, unmatched);
+            errorMessage = errorMessage.replace(/\bat \d+$/, `at line ${line}`);
+          } else {
+            errorMessage = errorMessage.replace(/\bat \d+$/, '');
+          }
+        } else {
+          const charPos = parseInt(atPosMatch[1], 10);
+          const { line } = positionToLineCol(templateText, charPos);
+          // Rephrase "Unopened section" to match the plain-English orphan close tag format.
+          const unopenedMatch = errorMessage.match(/^Unopened section "([^"]+)"/);
+          if (unopenedMatch) {
+            const tagName = unopenedMatch[1];
+            errorMessage = `Unexpected {{/${tagName}}} at line ${line}`
+              + ` — no opening {{#${tagName}}} found`;
+          } else {
+            // All other errors report an accurate position.
+            errorMessage = errorMessage.replace(/\bat \d+$/, `at line ${line}`);
+          }
+        }
+      }
       // Clear preview - error shown in status field only
       updatePreview('');
-      updateStatus(templateStatus, 'error', `Render error: ${e.message}`);
+      updateStatus(templateStatus, 'error', `Render error: ${errorMessage}`);
+      // Highlight the error line — extract the first "line N" reference from the message
+      const lineMatch = errorMessage.match(/\bline (\d+)/);
+      const errorLine = lineMatch ? parseInt(lineMatch[1], 10) : 0;
+      setErrorHighlight(templateInput, templateErrorHighlight, errorLine);
     }
   } finally {
     setLoadingState(false);
@@ -1189,6 +1392,8 @@ async function loadExample(exampleType) {
     }
 
     validateJson();
+    updateLineNumbers(jsonInput, jsonLineNumbers);
+    updateLineNumbers(templateInput, templateLineNumbers);
     await updateAllEditorHighlights();
     await render();
   }
@@ -1287,21 +1492,27 @@ function setupEditorListeners() {
   jsonInput?.addEventListener('input', () => {
     validateJson();
     updateEditorHighlight(jsonInput, jsonHighlight, 'json');
+    updateLineNumbers(jsonInput, jsonLineNumbers);
     handleInput();
   });
 
   jsonInput?.addEventListener('scroll', () => {
     syncScroll(jsonInput, jsonHighlight);
+    if (jsonLineNumbers) jsonLineNumbers.scrollTop = jsonInput.scrollTop;
+    syncErrorHighlight(jsonInput, jsonErrorHighlight);
   });
 
   // Template input listeners
   templateInput?.addEventListener('input', () => {
     updateEditorHighlight(templateInput, templateHighlight, 'handlebars');
+    updateLineNumbers(templateInput, templateLineNumbers);
     handleInput();
   });
 
   templateInput?.addEventListener('scroll', () => {
     syncScroll(templateInput, templateHighlight);
+    if (templateLineNumbers) templateLineNumbers.scrollTop = templateInput.scrollTop;
+    syncErrorHighlight(templateInput, templateErrorHighlight);
   });
 }
 
@@ -1533,6 +1744,10 @@ async function init() {
 
   // Initialize editor syntax highlighting (Prism is now guaranteed loaded)
   await updateAllEditorHighlights();
+
+  // Initialize line numbers for both editors
+  updateLineNumbers(jsonInput, jsonLineNumbers);
+  updateLineNumbers(templateInput, templateLineNumbers);
 
   // Initial render
   render();
