@@ -49,6 +49,11 @@
   object-fit: cover;
 }
 
+/* Softer images in dark mode (less harsh/bright), similar to cards tone-down variant */
+html[data-theme="dark"] .tool-catalog .cards-card-image img {
+  filter: brightness(0.8);
+}
+
 .tool-catalog .cards-card-lab {
   --ribbon-offset: 48px;
   --ribbon-width: calc(var(--ribbon-offset) * 5);
