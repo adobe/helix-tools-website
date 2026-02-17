@@ -461,6 +461,12 @@ export async function ensureLogin(org, site) {
     }
     await showModal(block, org);
 
+    // re-check login state — it may have changed while the modal was being built
+    const refreshedLoginInfo = await getLoginInfo();
+    if (Array.isArray(refreshedLoginInfo) && refreshedLoginInfo.includes(org)) {
+      return true;
+    }
+
     const orgItems = [...block.querySelectorAll('#profile-projects .profile-orgs > li')];
     const orgItem = orgItems.find((li) => li.dataset.name === org);
     if (orgItem) {
@@ -475,7 +481,7 @@ export async function ensureLogin(org, site) {
     if (orgItem && siteItem) {
       // select site and place focus on login button
       siteItem.querySelector('input[type="radio"]').checked = true;
-      orgItem.querySelector('.button.login')?.focus();
+      orgItem.querySelector('.button.login').focus();
     } else if (orgItem && !site) {
       // org exists but no site specified: select first site in org and prompt user to log in
       orgItem.querySelector('li > input[type="radio"]').checked = true;
