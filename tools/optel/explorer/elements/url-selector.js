@@ -97,7 +97,9 @@ export default class URLSelector extends HTMLElement {
 
     input.addEventListener('input', () => {
       // filter the domains and append to the datalist
-      const allDomains = input.getAttribute('data-all-domains').split(',');
+      const allDomainsAttr = input.getAttribute('data-all-domains');
+      if (!allDomainsAttr) return;
+      const allDomains = allDomainsAttr.split(',');
       datalist.innerHTML = '';
       let limit = 10;
       for (let i = 0; i < allDomains.length; i += 1) {
