@@ -195,8 +195,9 @@ const analyzeUrls = (rawUrls) => {
       .toLowerCase()
       .replace(/\/{2,}/g, '/')
       .split('/')
-      .map((segment) => {
-        const jsonSuffix = segment.endsWith('.json') ? '.json' : '';
+      .map((segment, i, arr) => {
+        const isLast = i === arr.length - 1;
+        const jsonSuffix = isLast && segment.endsWith('.json') ? '.json' : '';
         const base = jsonSuffix ? segment.slice(0, -5) : segment;
         return base
           .normalize('NFD')
