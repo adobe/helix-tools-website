@@ -601,196 +601,176 @@ function hideValidationError() {
 }
 
 /**
+ * POST to the simulator endpoint and return the rendered HTML.
+ * Throws with a human-readable message on HTTP or server errors.
+ * @param {string} jsonValue - Raw JSON string
+ * @param {string} template - Mustache template string
+ * @param {Object} options - Simulator options
+ * @param {AbortSignal} signal - Abort signal for cancellation
+ * @returns {Promise<string>} Rendered HTML
+ */
+async function fetchRenderedHtml(jsonValue, template, options, signal) {
+  const requestBody = {
+    json: encodeURIComponent(jsonValue),
+    template: encodeURIComponent(template),
+  };
+  if (Object.keys(options).length > 0) {
+    requestBody.options = options;
+  }
+
+  const response = await fetch(SIMULATOR_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(requestBody),
+    signal,
+  });
+
+  if (!response.ok) {
+    let errorMessage = `Server error: ${response.status}`;
+    try {
+      const errorData = await response.json();
+      if (errorData.error && errorData.message) errorMessage = errorData.message;
+    } catch {
+      const errorText = await response.text();
+      if (errorText) errorMessage = errorText;
+    }
+    throw new Error(errorMessage);
+  }
+
+  return response.text();
+}
+
+/**
+ * Translate a raw Mustache error message into a human-readable form
+ * by converting character offsets to line numbers and clarifying error types.
+ * Pure function — no side effects.
+ * @param {string} rawMessage - Error message from the simulator
+ * @param {string} templateText - Current template content
+ * @returns {string} Human-readable error message
+ */
+function humanizeRenderError(rawMessage, templateText) {
+  const msg = rawMessage;
+  const atPosMatch = msg.match(/\bat (\d+)$/);
+  if (!atPosMatch) return msg;
+
+  const charPos = parseInt(atPosMatch[1], 10);
+  const unclosedSectionMatch = msg.match(/Unclosed section "([^"]+)"/);
+  const unclosedTagMatch = /^Unclosed tag/.test(msg);
+
+  if (unclosedSectionMatch) {
+    const sectionName = unclosedSectionMatch[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    if (charPos >= templateText.length) {
+      // EOF case: position is end-of-template — find where the section actually opened.
+      const openPos = findUnclosedSectionOpening(templateText, sectionName);
+      const suffix = openPos !== -1
+        ? `opened at line ${positionToLineCol(templateText, openPos).line}` : '';
+      return msg.replace(/\bat \d+$/, suffix);
+    }
+
+    // Mismatch case: a {{/wrongTag}} was encountered while this section was open.
+    const wrongTagMatch = templateText.substring(charPos).match(/^\{\{\/\s*([^}\s]+)\s*\}\}/);
+    if (wrongTagMatch && wrongTagMatch[1] !== unclosedSectionMatch[1]) {
+      const wrongLine = positionToLineCol(templateText, charPos).line;
+      const wrongEscaped = wrongTagMatch[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const wrongOpenPos = findUnclosedSectionOpening(templateText, wrongEscaped, charPos);
+
+      if (wrongOpenPos === -1) {
+        // Orphan close tag: the wrong tag has no opener before it.
+        // The Mustache stack tells us exactly which section IS open — no guessing.
+        const openSectionName = unclosedSectionMatch[1];
+        const openSectionEscaped = openSectionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const openSectionPos = findUnclosedSectionOpening(templateText, openSectionEscaped);
+        const openSectionLine = openSectionPos !== -1
+          ? positionToLineCol(templateText, openSectionPos).line : null;
+        const replacement = openSectionLine
+          ? `Unexpected {{/${wrongTagMatch[1]}}} at line ${wrongLine}`
+            + ` — '{{#${openSectionName}}}' at line ${openSectionLine} is still open`
+          : `Unexpected {{/${wrongTagMatch[1]}}} at line ${wrongLine}`
+            + ` — no opening {{#${wrongTagMatch[1]}}} found`;
+        return msg.replace(/Unclosed section "[^"]+" at \d+$/, replacement);
+      }
+
+      // Out-of-order: the named section is genuinely unclosed.
+      const openPos = findUnclosedSectionOpening(templateText, sectionName);
+      if (openPos !== -1) {
+        const openLine = positionToLineCol(templateText, openPos).line;
+        return msg.replace(/\bat \d+$/, `opened at line ${openLine} — unexpected {{/${wrongTagMatch[1]}}} at line ${wrongLine}`);
+      }
+      return msg.replace(/\bat \d+$/, `— unexpected {{/${wrongTagMatch[1]}}} at line ${wrongLine}`);
+    }
+
+    return msg.replace(/\bat \d+$/, `at line ${positionToLineCol(templateText, charPos).line}`);
+  }
+
+  if (unclosedTagMatch) {
+    // "Unclosed tag" reports end-of-template — find the last unmatched {{.
+    let unmatched = -1;
+    let pos = 0;
+    while (pos < templateText.length) {
+      const openIdx = templateText.indexOf('{{', pos);
+      if (openIdx === -1) break;
+      const closeIdx = templateText.indexOf('}}', openIdx + 2);
+      if (closeIdx === -1) { unmatched = openIdx; break; }
+      pos = openIdx + 2;
+    }
+    if (unmatched !== -1) {
+      return msg.replace(/\bat \d+$/, `at line ${positionToLineCol(templateText, unmatched).line}`);
+    }
+    return msg.replace(/\bat \d+$/, '');
+  }
+
+  // "Unopened section" and all other errors report an accurate position.
+  const { line } = positionToLineCol(templateText, charPos);
+  const unopenedMatch = msg.match(/^Unopened section "([^"]+)"/);
+  if (unopenedMatch) {
+    const tagName = unopenedMatch[1];
+    return `Unexpected {{/${tagName}}} at line ${line} — no opening {{#${tagName}}} found`;
+  }
+  return msg.replace(/\bat \d+$/, `at line ${line}`);
+}
+
+/**
  * Render the template with JSON data via /simulator endpoint
  */
 async function render() {
   const jsonValue = jsonInput?.value?.trim();
   const template = templateInput?.value || '';
 
-  // Validate JSON first
   const jsonData = validateJson();
   if (!jsonData) {
-    // Clear preview - error shown in status field only
     updatePreview('');
     return;
   }
 
-  // Validate options and template compatibility
   const options = getSimulatorOptions();
   const validationError = validateOptionsTemplateCompatibility(jsonData, options, template);
   if (validationError) {
     displayValidationError(validationError);
     return;
   }
-
-  // Hide validation error if it was showing
   hideValidationError();
 
-  // Cancel any pending request
-  if (abortController) {
-    abortController.abort();
-  }
+  if (abortController) abortController.abort();
   abortController = new AbortController();
-
   setLoadingState(true);
 
   try {
-    // Build request body with options
-    const requestBody = {
-      json: encodeURIComponent(jsonValue),
-      template: encodeURIComponent(template),
-    };
-
-    // Add options if any are set
-    if (Object.keys(options).length > 0) {
-      requestBody.options = options;
-    }
-
-    const response = await fetch(SIMULATOR_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-      signal: abortController.signal,
-    });
-
-    if (!response.ok) {
-      // Try to get error message from response
-      let errorMessage = `Server error: ${response.status}`;
-      try {
-        const errorData = await response.json();
-        if (errorData.error && errorData.message) {
-          errorMessage = errorData.message;
-        }
-      } catch {
-        // Response wasn't JSON, use the text
-        const errorText = await response.text();
-        if (errorText) {
-          errorMessage = errorText;
-        }
-      }
-      throw new Error(errorMessage);
-    }
-
-    const html = await response.text();
+    const html = await fetchRenderedHtml(jsonValue, template, options, abortController.signal);
     updatePreview(html);
     updateStatus(templateStatus, 'ok', 'Rendered successfully');
     setErrorHighlight(templateInput, templateErrorHighlight);
     updatePreviewStatus('Last rendered: just now');
   } catch (e) {
-    // Ignore abort errors (expected when user types quickly)
-    if (e.name === 'AbortError') {
-      return;
-    }
+    if (e.name === 'AbortError') return;
 
-    // Network error
     if (e.message === 'Failed to fetch') {
-      // Clear preview - error shown in status field only
       updatePreview('');
       updateStatus(templateStatus, 'error', 'Connection failed');
     } else {
-      // Convert bare character offset ("at N") to a useful location.
-      // Special case: "Unclosed section" errors report the end-of-template position,
-      // not the opening tag position. Search for the opening tag instead.
-      let errorMessage = e.message;
-      const atPosMatch = errorMessage.match(/\bat (\d+)$/);
-      if (atPosMatch && templateInput) {
-        const templateText = templateInput.value;
-        const unclosedSectionMatch = errorMessage.match(/Unclosed section "([^"]+)"/);
-        const unclosedTagMatch = /^Unclosed tag/.test(errorMessage);
-
-        if (unclosedSectionMatch) {
-          const charPos = parseInt(atPosMatch[1], 10);
-          const sectionName = unclosedSectionMatch[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-          if (charPos >= templateText.length) {
-            // EOF case: Mustache scanned to the end without finding the close tag.
-            // Use a stack to find the actual last unclosed opening tag.
-            const openPos = findUnclosedSectionOpening(templateText, sectionName);
-            if (openPos !== -1) {
-              const { line } = positionToLineCol(templateText, openPos);
-              errorMessage = errorMessage.replace(/\bat \d+$/, `opened at line ${line}`);
-            } else {
-              errorMessage = errorMessage.replace(/\bat \d+$/, '');
-            }
-          } else {
-            // Mismatch case: a {{/wrongTag}} was encountered while this section was open.
-            // Extract the wrong close tag name, then decide how to describe the problem.
-            const wrongTagMatch = templateText.substring(charPos).match(/^\{\{\/\s*([^}\s]+)\s*\}\}/);
-            if (wrongTagMatch && wrongTagMatch[1] !== unclosedSectionMatch[1]) {
-              const wrongLine = positionToLineCol(templateText, charPos).line;
-              const wrongEscaped = wrongTagMatch[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-              // Check if the wrong close tag has a matching open before it.
-              // If not, it is an orphan — blame the orphan directly rather than the outer section.
-              const wrongOpenPos = findUnclosedSectionOpening(templateText, wrongEscaped, charPos);
-              if (wrongOpenPos === -1) {
-                // Orphan close tag: {{/wrongTag}} has no matching {{#wrongTag}} before it.
-                // unclosedSectionMatch[1] is what WAS open at this point (from the Mustache stack),
-                // so we can tell the user exactly which section is still open — no guessing needed.
-                const openSectionName = unclosedSectionMatch[1];
-                const openSectionEscaped = openSectionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const openSectionPos = findUnclosedSectionOpening(templateText, openSectionEscaped);
-                const openSectionLine = openSectionPos !== -1
-                  ? positionToLineCol(templateText, openSectionPos).line : null;
-                const replacement = openSectionLine
-                  ? `Unexpected {{/${wrongTagMatch[1]}}} at line ${wrongLine}`
-                    + ` — '{{#${openSectionName}}}' at line ${openSectionLine} is still open`
-                  : `Unexpected {{/${wrongTagMatch[1]}}} at line ${wrongLine}`
-                    + ` — no opening {{#${wrongTagMatch[1]}}} found`;
-                errorMessage = errorMessage.replace(/Unclosed section "[^"]+" at \d+$/, replacement);
-              } else {
-                // Out-of-order: the named section is genuinely unclosed; also show the wrong tag.
-                const openPos = findUnclosedSectionOpening(templateText, sectionName);
-                if (openPos !== -1) {
-                  const openLine = positionToLineCol(templateText, openPos).line;
-                  errorMessage = errorMessage.replace(/\bat \d+$/, `opened at line ${openLine} — unexpected {{/${wrongTagMatch[1]}}} at line ${wrongLine}`);
-                } else {
-                  errorMessage = errorMessage.replace(/\bat \d+$/, `— unexpected {{/${wrongTagMatch[1]}}} at line ${wrongLine}`);
-                }
-              }
-            } else {
-              const { line } = positionToLineCol(templateText, charPos);
-              errorMessage = errorMessage.replace(/\bat \d+$/, `at line ${line}`);
-            }
-          }
-        } else if (unclosedTagMatch) {
-          // "Unclosed tag" also reports end-of-template position.
-          // Find the last {{ that has no matching }}.
-          let unmatched = -1;
-          let pos = 0;
-          while (pos < templateText.length) {
-            const openIdx = templateText.indexOf('{{', pos);
-            if (openIdx === -1) break;
-            const closeIdx = templateText.indexOf('}}', openIdx + 2);
-            if (closeIdx === -1) { unmatched = openIdx; break; }
-            pos = openIdx + 2;
-          }
-          if (unmatched !== -1) {
-            const { line } = positionToLineCol(templateText, unmatched);
-            errorMessage = errorMessage.replace(/\bat \d+$/, `at line ${line}`);
-          } else {
-            errorMessage = errorMessage.replace(/\bat \d+$/, '');
-          }
-        } else {
-          const charPos = parseInt(atPosMatch[1], 10);
-          const { line } = positionToLineCol(templateText, charPos);
-          // Rephrase "Unopened section" to match the plain-English orphan close tag format.
-          const unopenedMatch = errorMessage.match(/^Unopened section "([^"]+)"/);
-          if (unopenedMatch) {
-            const tagName = unopenedMatch[1];
-            errorMessage = `Unexpected {{/${tagName}}} at line ${line}`
-              + ` — no opening {{#${tagName}}} found`;
-          } else {
-            // All other errors report an accurate position.
-            errorMessage = errorMessage.replace(/\bat \d+$/, `at line ${line}`);
-          }
-        }
-      }
-      // Clear preview - error shown in status field only
+      const errorMessage = humanizeRenderError(e.message, templateInput?.value ?? '');
       updatePreview('');
       updateStatus(templateStatus, 'error', `Render error: ${errorMessage}`);
-      // Highlight the error line — extract the first "line N" reference from the message
       const lineMatch = errorMessage.match(/\bline (\d+)/);
       const errorLine = lineMatch ? parseInt(lineMatch[1], 10) : 0;
       setErrorHighlight(templateInput, templateErrorHighlight, errorLine);
