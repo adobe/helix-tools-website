@@ -195,11 +195,16 @@ const analyzeUrls = (rawUrls) => {
       .toLowerCase()
       .replace(/\/{2,}/g, '/')
       .split('/')
-      .map((segment) => segment
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, ''))
+      .map((segment, i, arr) => {
+        const isLast = i === arr.length - 1;
+        const jsonSuffix = isLast && segment.endsWith('.json') ? '.json' : '';
+        const base = jsonSuffix ? segment.slice(0, -5) : segment;
+        return base
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '') + jsonSuffix;
+      })
       .join('/');
     return urlObj.toString();
   };
