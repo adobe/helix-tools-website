@@ -96,15 +96,27 @@ function positionToLineCol(text, pos) {
  * @returns {number} Character index of unclosed opening, or -1
  */
 function findUnclosedSectionOpening(text, escapedName, limit) {
-  const re = new RegExp(`\\{\\{([#/])\\s*${escapedName}\\s*\\}\\}`, 'g');
+  const re = new RegExp(`\\{\\{([#^/])\\s*${escapedName}\\s*\\}\\}`, 'g');
   const stack = [];
   let m = re.exec(text);
   while (m !== null && (limit === undefined || m.index < limit)) {
-    if (m[1] === '#') stack.push(m.index);
+    if (m[1] === '#' || m[1] === '^') stack.push(m.index);
     else if (stack.length > 0) stack.pop();
     m = re.exec(text);
   }
   return stack.length > 0 ? stack[stack.length - 1] : -1;
+}
+
+/**
+ * Return the sigil character ('#' or '^') of a Mustache opening tag at charIndex.
+ * Falls back to '#' if the position doesn't look like a tag opener.
+ * @param {string} text
+ * @param {number} charIndex
+ * @returns {string}
+ */
+function sectionSigilAt(text, charIndex) {
+  const after = text.slice(charIndex + 2).trimStart();
+  return after.startsWith('^') ? '^' : '#';
 }
 
 /**
@@ -679,20 +691,24 @@ function humanizeRenderError(rawMessage, templateText) {
         // Orphan close tag: the wrong tag has no opener before it.
         // The Mustache stack tells us exactly which section IS open — no guessing.
         const openSectionName = unclosedSectionMatch[1];
-        const openSectionEscaped = openSectionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const openSectionPos = findUnclosedSectionOpening(templateText, openSectionEscaped);
+        // Limit scan to charPos so a later {{/name}} doesn't pop the stack.
+        const openSectionEsc = openSectionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const openSectionPos = findUnclosedSectionOpening(templateText, openSectionEsc, charPos);
         const openSectionLine = openSectionPos !== -1
           ? positionToLineCol(templateText, openSectionPos).line : null;
+        const openSectionSigil = openSectionPos !== -1
+          ? sectionSigilAt(templateText, openSectionPos) : '#';
         const replacement = openSectionLine
           ? `Unexpected {{/${wrongTagMatch[1]}}} at line ${wrongLine}`
-            + ` — '{{#${openSectionName}}}' at line ${openSectionLine} is still open`
+            + ` — '{{${openSectionSigil}${openSectionName}}}' at line ${openSectionLine} is still open`
           : `Unexpected {{/${wrongTagMatch[1]}}} at line ${wrongLine}`
             + ` — no opening {{#${wrongTagMatch[1]}}} found`;
         return msg.replace(/Unclosed section "[^"]+" at \d+$/, replacement);
       }
 
       // Out-of-order: the named section is genuinely unclosed.
-      const openPos = findUnclosedSectionOpening(templateText, sectionName);
+      // Limit to charPos so a later {{/sectionName}} doesn't pop the stack.
+      const openPos = findUnclosedSectionOpening(templateText, sectionName, charPos);
       if (openPos !== -1) {
         const openLine = positionToLineCol(templateText, openPos).line;
         return msg.replace(/\bat \d+$/, `opened at line ${openLine} — unexpected {{/${wrongTagMatch[1]}}} at line ${wrongLine}`);
