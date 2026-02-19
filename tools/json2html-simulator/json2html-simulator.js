@@ -31,7 +31,6 @@ const jsonInput = document.getElementById('json-input');
 const templateInput = document.getElementById('template-input');
 const jsonHighlight = document.getElementById('json-highlight');
 const templateHighlight = document.getElementById('template-highlight');
-// eslint-disable-next-line prefer-destructuring
 const jsonLineNumbers = document.getElementById('json-line-numbers');
 const templateLineNumbers = document.getElementById('template-line-numbers');
 const jsonErrorHighlight = document.getElementById('json-error-highlight');
