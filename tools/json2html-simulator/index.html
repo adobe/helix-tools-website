@@ -116,6 +116,7 @@
             </div>
           </div>
           <div class="editor-wrapper">
+            <div class="line-numbers" id="json-line-numbers" aria-hidden="true"></div>
             <textarea 
               id="json-input" 
               class="code-editor" 
@@ -135,6 +136,7 @@
   }
 }</textarea>
             <pre class="code-highlight" id="json-highlight" aria-hidden="true"><code class="language-json"></code></pre>
+            <div class="error-line-highlight" id="json-error-highlight" aria-hidden="true"></div>
           </div>
           <div class="editor-status" id="json-status">
             <span class="status-icon status-ok">✓</span>
@@ -153,6 +155,7 @@
             <span class="editor-label">Mustache Template</span>
           </div>
           <div class="editor-wrapper">
+            <div class="line-numbers" id="template-line-numbers" aria-hidden="true"></div>
             <textarea 
               id="template-input" 
               class="code-editor" 
@@ -180,6 +183,7 @@
   </footer>
 </article></textarea>
             <pre class="code-highlight" id="template-highlight" aria-hidden="true"><code class="language-html"></code></pre>
+            <div class="error-line-highlight" id="template-error-highlight" aria-hidden="true"></div>
           </div>
           <div class="editor-status" id="template-status">
             <span class="status-icon status-ok">✓</span>
