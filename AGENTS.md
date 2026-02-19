@@ -121,6 +121,19 @@ Each block should be self-contained and re-useable, with CSS and JS files follow
 
 Auto-blocking is the process of creating blocks that aren't explicitly authored into the page based on patterns in the content. See the `buildAutoBlocks` function in `scripts.js`.
 
+### Tools vs CMS Content Pages
+
+This site has two types of pages:
+
+- **CMS content pages** are authored in the CMS and rendered using blocks. The page structure comes from the CMS; blocks decorate that content. Most pages on the site (e.g., the homepage, documentation) work this way.
+- **Standalone tools** live in `tools/` and have their own `index.html`, scripts, and styles. They are complete HTML pages accessed at `/tools/{toolname}/index.html` (files in the code repo require extensions, unlike CMS pages where extensions are stripped). Standalone tools still import and use blocks (e.g., `profile` for login, `modal` for dialogs) and load the global AEM page decoration pipeline (`scripts/aem.js`, `scripts/scripts.js`).
+
+Some tools are implemented as **CMS-based tools** (e.g., `power-score`, `svg-doctor`) — they have a CMS content page under `/tools/` but their code and logic lives in `blocks/`. To work on these, inspect the content page (e.g., `curl http://localhost:3000/tools/{toolname}`) to understand which blocks are used and how the page is structured.
+
+When adding a new tool, decide which pattern fits:
+- Use a **standalone tool** (`tools/`) when the tool needs its own page with custom HTML structure
+- Use a **CMS-based tool** (`blocks/`) when the tool can work as a block dropped into an authored page
+
 ### Three-Phase Page Loading
 
 Pages are progressively loaded in three phases to maximize performance. This process begins when `loadPage` from scripts.js is called.
@@ -178,10 +191,8 @@ With this information, you can construct URLs for the preview environment (same 
 5. Test locally before committing
 
 ### Modifying Existing Tools
-1. Identify the tool directory in `tools/`
-2. Make changes to JavaScript, CSS, and/or HTML
-3. Test functionality thoroughly
-4. Ensure changes don't break existing tool features
+- Standalone tools: code lives in `tools/`
+- CMS-based tools (e.g., `power-score`, `svg-doctor`): code lives in `blocks/`, but the page structure is authored in the CMS. Inspect the content page (e.g., `curl http://localhost:3000/tools/{toolname}`) to understand which blocks are used before making changes.
 
 ## Troubleshooting
 
