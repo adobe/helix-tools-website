@@ -1,4 +1,6 @@
-# Agents Instructions
+# AGENTS.md
+
+This project is a website built with Edge Delivery Services in Adobe Experience Manager Sites as a Cloud Service. As an agent, follow the instructions in this file to deliver code based on Adobe's standards for fast, easy-to-author, and maintainable web experiences.
 
 ## Project Overview
 
@@ -20,29 +22,31 @@ The repository provides the basic structure, blocks, and configuration needed to
 - Install dependencies: `npm install`
 - Start local development: `npx -y @adobe/aem-cli up --no-open --forward-browser-logs` (run in background, if possible)
   - Install the AEM CLI globally by running `npm install -g @adobe/aem-cli` then `aem up` is equivalent to the command above
-- Run linting: `npm run lint`
-- Fix linting issues: `npm run lint:fix`
+  - The dev server runs at `http://localhost:3000` with auto-reload. Open it in playwright, puppeteer, or a browser. If none are available, ask the human to open it and give feedback.
+- Run linting before committing: `npm run lint`
+- Auto-Fix linting issues: `npm run lint:fix`
 
 ## Project Structure
 
 ```
 ├── blocks/          # Reusable content blocks
-    └── {blockName}/   - Individual block directory
-        ├── {blockName}.js      # Block's JavaScript
-        └── {blockName}.css     # Block's styles
+    └── {blockname}/   - Individual block directory
+        ├── {blockname}.js      # Block's JavaScript
+        └── {blockname}.css     # Block's styles
 ├── tools/           # Tool-specific implementations
-    └── {toolName}/   - Individual tool directory
-        ├── {toolName}.js      # Tool's JavaScript
-        └── {toolName}.css     # Tool's styles
+    └── {toolname}/   - Individual tool directory
+        ├── {toolname}.js      # Tool's JavaScript
+        └── {toolname}.css     # Tool's styles
         └── index.html         # Tool's HTML File
 ├── ops/             # Ops team internal tools (not for general users)
-    └── {toolName}/   - Individual ops tool directory
-        ├── {toolName}.js      # Tool's JavaScript
-        └── {toolName}.css     # Tool's styles
-        └── {toolName}.html    # Tool's HTML File (naming flexible)
+    └── {toolname}/   - Individual ops tool directory
+        ├── {toolname}.js      # Tool's JavaScript
+        └── {toolname}.css     # Tool's styles
+        └── {toolname}.html    # Tool's HTML File (naming flexible)
 ├── styles/          # Global styles and CSS
     ├── styles.css          # Minimal global styling and layout for your website required for LCP
-    └── lazy-styles.css     # Additional global styling and layout for below the fold/post LCP content
+    ├── lazy-styles.css     # Additional global styling and layout for below the fold/post LCP content
+    └── fonts.css           # Font definitions
 ├── scripts/         # JavaScript libraries and utilities
     ├── aem.js           # Core AEM Library for Edge Delivery page decoration logic (NEVER MODIFY THIS FILE)
     ├── scripts.js       # Global JavaScript utilities, main entry point for page decoration
@@ -62,9 +66,14 @@ The repository provides the basic structure, blocks, and configuration needed to
 - Use Unix line endings (LF)
 
 ### CSS
-- Mobile-first responsive design (breakpoints: 600px/900px/1200px)
-- All selectors scoped to blocks: `.{blockName} .selector`
 - Follow Stylelint standard configuration
+- Use modern CSS features (CSS Grid, Flexbox, CSS Custom Properties)
+- Maintain responsive design principles
+  - Declare styles mobile first, use `min-width` media queries at 600px/900px/1200px for tablet and desktop
+- Ensure all selectors are scoped to the block.
+  - Bad: `.item-list`
+  - Good: `.{blockname} .item-list`
+- Avoid classes `{blockname}-container` and `{blockname}-wrapper` as those are used on sections and could be confusing.
 
 ### HTML
 - Use semantic HTML5 elements
@@ -73,13 +82,44 @@ The repository provides the basic structure, blocks, and configuration needed to
 
 ## Key Concepts
 
+### Content
+
+CMS authored content is a key part of every AEM Website. The content of a page is broken into sections. Sections can have default content (text, headings, links, etc.) as well as content in blocks.
+
+If no authored content exists to test against, you can create static HTML files in a `drafts/` folder at the project root. Pass `--html-folder drafts` when starting the dev server. Follow the aem markup structure and save files with `.html` or `.plain.html` extensions.
+
+Background on content and markup structure can be found at https://www.aem.live/developer/markup-sections-blocks and https://www.aem.live/developer/markup-reference respectively.
+
+You can inspect the contents of any page with `curl http://localhost:3000/path/to/page`, `curl http://localhost:3000/path/to/page.md`, and `curl http://localhost:3000/path/to/page.plain.html`
+
 ### Blocks
 
-Blocks are the re-usable building blocks of AEM. Blocks add styling and functionality to content. Each block has an initial content structure it expects, and transforms the HTML using DOM APIs to render a final structure.
+Blocks are the re-usable building blocks of AEM. Blocks add styling and functionality to content. Each block has an initial content structure it expects, and transforms the html in the block using DOM APIs to render a final structure.
 
-**Key principle:** The initial content structure is the contract between authors and developers. Design this structure before writing any code, and be careful when making changes that could break existing pages.
+The initial content structure is important because it impacts how the author will create the content and how you will write your code to decorate it. In some sense, you can think of this structure as the contract for your block between the author and the developer. You should decide on this initial structure before writing any code, and be careful when making changes to code that makes assumptions about that structure as it could break existing pages.
 
-**Tip:** Use `curl http://localhost:3000/path/to/page` to inspect the HTML delivered by the backend before making assumptions.
+The block javascript should export a default function which is called to perform the block decoration:
+
+```
+/**
+ * loads and decorates the block
+ * @param {Element} block The block element
+ */
+export default async function decorate(block) {
+  // 1. Load dependencies
+  // 2. Extract configuration, if applicable
+  // 3. Transform DOM
+  // 4. Add event listeners
+}
+```
+
+Use `curl` and `console.log` to inspect the HTML delivered by the backend and the DOM nodes to be decorated before making assumptions. Remember that authors may omit or add fields to a block, so your code must handle this gracefully.
+
+Each block should be self-contained and re-useable, with CSS and JS files following the naming convention: `blockname.css`, `blockname.js`. Blocks should be responsive and accessible by default.
+
+### Auto-Blocking
+
+Auto-blocking is the process of creating blocks that aren't explicitly authored into the page based on patterns in the content. See the `buildAutoBlocks` function in `scripts.js`.
 
 ### Three-Phase Page Loading
 
@@ -89,34 +129,27 @@ Pages are progressively loaded in three phases to maximize performance. This pro
 * Lazy - load all other page content, including the header and footer.
 * Delayed - load things that can be safely loaded later here and incur a performance penalty when loaded earlier
 
-## Development Workflow
-
-### Local Development
-1. Run `npx -y @adobe/aem-cli up --no-open` to start the AEM Proxy server
-2. Open `http://localhost:3000` in your browser, puppeteer, playwright, or other tools. If none of those are available, instruct the human to open the URL in the browser and give feedback
-3. Make changes to files - they will auto-reload
-4. Use browser dev tools to test responsive design
-
-### File Organization
-- Block files: `blocks/{blockname}/{blockname}.js` and `{blockname}.css`
-- Global styles: `styles/styles.css` (eager), `styles/lazy-styles.css` (lazy)
-- Font definitions: `styles/fonts.css`
-- Each block should be self-contained, responsive, and accessible
-
 ## Testing & Quality Assurance
 
-### Quick Reference
-- **Linting:** `npm run lint` (must pass before commits), `npm run lint:fix` to auto-fix
-- **Performance:** Follow https://www.aem.live/developer/keeping-it-100
-- **Accessibility:** Proper heading hierarchy, alt text, WCAG 2.1 AA guidelines
+### Performance
+- Follow AEM Edge Delivery performance best practices https://www.aem.live/developer/keeping-it-100
+- Images uploaded by authors are automatically optimized, all images and assets committed to git must be optimized and checked for size
+- Use lazy loading for non-critical resources (`lazy-styles.css` and `delayed.js`)
+- Minimize JavaScript bundle size by avoiding dependencies, using automatic code splitting provided by `/blocks/`
+
+### Accessibility
+- Ensure proper heading hierarchy
+- Include alt text for images
+- Test with screen readers
+- Follow WCAG 2.1 AA guidelines
 
 ## Deployment
 
 ### Environments
 
-Edge Delivery Services provides you with three environments. Your local development server at `http://localhost:3000` serves code from your local working copy (even uncommitted code) and content that has been previewed by authors. You can access this at any time when the development server is running.
+Your local development server at `http://localhost:3000` serves code from your local working copy (even uncommitted code) and content that has been previewed by authors. You can access this at any time when the development server is running.
 
-For all other environments, you need to know the GitHub owner and repository name (`gh repo view --json nameWithOwner` or `git remote -v`) and the current branch name `git branch`)
+For all other environments, you need to know the GitHub owner and repository name (`gh repo view --json nameWithOwner` or `git remote -v`) and the current branch name (`git branch`)
 
 With this information, you can construct URLs for the preview environment (same content as `localhost:3000`) and the production environment (same content as the live website, approved by authors)
 
@@ -127,13 +160,13 @@ With this information, you can construct URLs for the preview environment (same 
 ### Publishing Process
 1. Push changes to a feature branch
 2. AEM Code Sync automatically processes changes making them available on feature preview environment for that branch
-3. Open a pull request to merge changes to `main`
-   - **REQUIRED:** Include preview link in PR description: `https://{branch}--helix-tools-website--adobe.aem.page/{path}`
-   - This link is used for automated performance testing (PSI checks)
-   - Without this link, your PR will be rejected
-4. Verify checks pass: `gh checks` or `gh pr checks --watch`
-5. A human reviewer will review the code, inspect the preview URL, and merge the PR
-6. AEM Code Sync updates the main branch for production
+3. Run a PageSpeed Insights check at https://developers.google.com/speed/pagespeed/insights/?url=YOUR_URL against the feature preview URL and fix any issues. Target a score of 100
+4. Open a pull request to merge changes to `main`
+   1. in the PR description, include a link to `https://{branch}--helix-tools-website--adobe.aem.page/{path}` with a path to a file that illustrates the change you've made. This is the same path you have been testing with locally. WITHOUT THIS YOUR PR WILL BE REJECTED
+   2. If an existing page to demonstrate your changes doesn't exist, create test content as a static html file and ask the user for help copying it to a cms content page you can link in the PR
+5. use `gh pr checks` to verify the status of code synchronization, linting, and performance tests
+6. A human reviewer will review the code, inspect the provided URL and merge the PR
+7. AEM Code Sync updates the main branch for production
 
 ## Common Tasks
 
@@ -153,25 +186,26 @@ With this information, you can construct URLs for the preview environment (same 
 ## Troubleshooting
 
 ### Getting Help
-
-**Key documentation resources:**
-- [Developer Tutorial](https://www.aem.live/developer/tutorial)
-- [The Anatomy of a Project](https://www.aem.live/developer/anatomy-of-a-project)
-
-**Manual search:** `site:www.aem.live` when searching the web
+- Check [AEM Edge Delivery documentation](https://www.aem.live/docs/)
+- Review [Developer Tutorial](https://www.aem.live/developer/tutorial)
+- Consult [The Anatomy of a Project](https://www.aem.live/developer/anatomy-of-a-project)
+- Consider the rules in [David's Model](https://www.aem.live/docs/davidsmodel)
+- Search the web with `site:www.aem.live`
+- Search the full text of the documentation with `curl -s https://www.aem.live/docpages-index.json | jq -r '.data[] | select(.content | test("KEYWORD"; "i")) | "\(.path): \(.title)"'`
 
 ## Security Considerations
 
 - Never commit sensitive information (API keys, passwords)
-- consider that everything you do is clients-side code served on the public web
+- Consider that everything you do is client-side code served on the public web
 - Follow Adobe security guidelines
 - Regularly update dependencies
-- Use the .hlxignore file to prevent filed from being served
+- Use the .hlxignore file to prevent files from being served (same format as .gitignore)
 
 ## Contributing
 
-- Follow the existing code style and patterns (see Code Style Guidelines above)
-- Ensure all linting passes: `npm run lint`
+- Follow the existing code style and patterns
+- Test changes locally before committing
+- Follow the Publishing Process documented above
 - Update documentation for significant changes
 
 ## If all else fails
