@@ -556,7 +556,7 @@ body.json2html-simulator main .workspace > .default-content-wrapper {
 }
 
 /* Line numbers gutter - positioned absolutely on the left, synced to textarea scroll via JS */
-.line-numbers {
+body.json2html-simulator .line-numbers {
   position: absolute;
   top: 0;
   left: 0;
@@ -600,7 +600,7 @@ body.json2html-simulator main .workspace > .default-content-wrapper {
 }
 
 /* Error line highlight — semi-transparent band behind the error line, positioned via JS */
-.error-line-highlight {
+body.json2html-simulator .error-line-highlight {
   position: absolute;
   left: 0;
   right: 0;
