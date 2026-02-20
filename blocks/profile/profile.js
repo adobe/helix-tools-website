@@ -475,7 +475,7 @@ export async function ensureLogin(org, site) {
     if (orgItem && siteItem) {
       // select site and place focus on login button
       siteItem.querySelector('input[type="radio"]').checked = true;
-      orgItem.querySelector('.button.login').focus();
+      orgItem.querySelector('.button.login')?.focus();
     } else if (orgItem && !site) {
       // org exists but no site specified: select first site in org and prompt user to log in
       orgItem.querySelector('li > input[type="radio"]').checked = true;
