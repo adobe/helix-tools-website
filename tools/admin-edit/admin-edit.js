@@ -16,12 +16,19 @@ const methodDropdown = document.querySelector('.picker-field ul');
 const methodOptions = methodDropdown.querySelectorAll('li');
 const consoleBlock = document.querySelector('.console');
 
+let prismReady;
+
 // load Prism.js libraries (and remove event listeners to prevent reloading)
 async function loadPrism() {
   adminForm.removeEventListener('submit', loadPrism);
   body.removeEventListener('focus', loadPrism);
-  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js');
-  await loadScript('../admin-edit/line-highlight.js');
+  if (!prismReady) {
+    prismReady = (async () => {
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js');
+      await loadScript('../admin-edit/line-highlight.js');
+    })();
+  }
+  await prismReady;
 
   /**
    * Tracks the mouse position to check if hovering over a `.line-highlight` element.
@@ -108,7 +115,7 @@ function validateJSON(code) {
  * @param {HTMLElement} code - Code element to update
  * @param {string} text - Text content to insert into code element
  */
-function formatCode(code, text) {
+async function formatCode(code, text) {
   // check if last character in text is newline
   if (text[text.length - 1] === '\n') {
     // add space to avoid formatting/code rendering issues with trailing newlines
@@ -121,8 +128,11 @@ function formatCode(code, text) {
 
   validateJSON(code.textContent);
 
-  // eslint-disable-next-line no-undef
-  Prism.highlightElement(code);
+  if (prismReady) {
+    await prismReady;
+    // eslint-disable-next-line no-undef
+    Prism.highlightElement(code);
+  }
 }
 
 /**
