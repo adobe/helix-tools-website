@@ -226,8 +226,8 @@ window.addEventListener('sites-refresh', (e) => {
       const isFav = favorites.includes(siteName);
       const insertBefore = [...grid.querySelectorAll('.site-card')].find((c) => {
         const cFav = favorites.includes(c.dataset.site);
-        if (isFav && !cFav) return false;
-        if (!isFav && cFav) return true;
+        if (isFav && !cFav) return true;
+        if (!isFav && cFav) return false;
         return c.dataset.site.localeCompare(siteName) > 0;
       });
       if (insertBefore) grid.insertBefore(card, insertBefore);
