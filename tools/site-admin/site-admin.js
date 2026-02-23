@@ -21,6 +21,90 @@ const sitesElem = document.querySelector('div#sites');
 // Logging wrapper for API calls
 const logFn = (status, details) => logResponse(consoleBlock, status, details);
 
+const populateCardDetails = (card, orgValue) => {
+  const siteName = card.dataset.site;
+  fetchSiteDetails(orgValue, siteName).then((details) => {
+    if (!details) return;
+
+    const contentUrl = details.content?.source?.url || '';
+    const contentSourceType = details.content?.source?.type || '';
+    const codeUrl = details.code?.source?.url || '';
+    const sourceType = getContentSourceType(contentUrl, contentSourceType);
+
+    const badge = card.querySelector('.source-badge');
+    if (badge) {
+      badge.textContent = sourceType.label;
+      badge.className = `source-badge source-${sourceType.type}`;
+      badge.title = sourceType.type.toUpperCase();
+    }
+
+    const codeSource = card.querySelector('.site-card-source[data-type="code"]');
+    const contentSource = card.querySelector('.site-card-source[data-type="content"]');
+    const contentEditorUrl = getDAEditorURL(contentUrl);
+
+    if (codeSource) {
+      codeSource.title = codeUrl || 'Not configured';
+      if (codeUrl) codeSource.href = codeUrl;
+      else codeSource.removeAttribute('href');
+    }
+    if (contentSource) {
+      contentSource.title = contentUrl || 'Not configured';
+      if (contentEditorUrl) contentSource.href = contentEditorUrl;
+      else contentSource.removeAttribute('href');
+    }
+
+    card.dataset.codeUrl = codeUrl;
+    card.dataset.contentUrl = contentUrl;
+
+    const hasPreviewAuth = details.access?.site || details.access?.preview;
+    const hasLiveAuth = details.access?.site || details.access?.live;
+    const hasAnyAuth = hasPreviewAuth || hasLiveAuth;
+
+    const lighthouseBtn = card.querySelector('.menu-item[data-action="lighthouse"]');
+    if (hasAnyAuth) {
+      card.dataset.hasAuth = 'true';
+      if (lighthouseBtn) {
+        lighthouseBtn.disabled = true;
+        lighthouseBtn.title = 'Lighthouse unavailable for authenticated sites';
+      }
+      if (hasPreviewAuth) {
+        card.querySelector('.auth-icon.auth-preview').removeAttribute('aria-hidden');
+      }
+      if (hasLiveAuth) {
+        card.querySelector('.auth-icon.auth-live').removeAttribute('aria-hidden');
+      }
+    } else {
+      delete card.dataset.hasAuth;
+      if (lighthouseBtn) {
+        lighthouseBtn.disabled = false;
+        lighthouseBtn.title = '';
+      }
+      card.querySelector('.auth-icon.auth-preview')?.setAttribute('aria-hidden', 'true');
+      card.querySelector('.auth-icon.auth-live')?.setAttribute('aria-hidden', 'true');
+    }
+
+    const cdnHost = details.cdn?.prod?.host || details.cdn?.host;
+    const cdnEl = card.querySelector('.site-card-cdn');
+    if (cdnHost && cdnEl) {
+      cdnEl.querySelector('span').textContent = cdnHost;
+      cdnEl.href = `https://${cdnHost}`;
+      cdnEl.classList.add('visible');
+    } else if (cdnEl) {
+      cdnEl.classList.remove('visible');
+    }
+  });
+};
+
+const findCardBySite = (name) => sitesElem.querySelector(`.site-card[data-site="${CSS.escape(name)}"]`);
+
+const updateSiteCount = () => {
+  const countEl = sitesElem.querySelector('.sites-count');
+  const total = sitesElem.querySelectorAll('.site-card').length;
+  if (countEl) countEl.textContent = `${total} site${total !== 1 ? 's' : ''}`;
+};
+
+let detailsObserver;
+
 const displaySites = (sites) => {
   sitesElem.ariaHidden = false;
   sitesElem.textContent = '';
@@ -82,69 +166,20 @@ const displaySites = (sites) => {
     return a.name.localeCompare(b.name);
   });
 
+  if (detailsObserver) detailsObserver.disconnect();
+  detailsObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        populateCardDetails(entry.target, org.value);
+        detailsObserver.unobserve(entry.target);
+      }
+    });
+  }, { rootMargin: '200px' });
+
   sortedSites.forEach((site) => {
     const card = createSiteCard(site, org.value);
     grid.appendChild(card);
-
-    fetchSiteDetails(org.value, site.name).then((details) => {
-      if (details) {
-        const contentUrl = details.content?.source?.url || '';
-        const contentSourceType = details.content?.source?.type || '';
-        const codeUrl = details.code?.source?.url || '';
-        const sourceType = getContentSourceType(contentUrl, contentSourceType);
-
-        const badge = card.querySelector('.source-badge');
-        if (badge) {
-          badge.textContent = sourceType.label;
-          badge.className = `source-badge source-${sourceType.type}`;
-          badge.title = sourceType.type.toUpperCase();
-        }
-
-        const codeSource = card.querySelector('.site-card-source[data-type="code"]');
-        const contentSource = card.querySelector('.site-card-source[data-type="content"]');
-        const contentEditorUrl = getDAEditorURL(contentUrl);
-
-        if (codeSource) {
-          codeSource.title = codeUrl || 'Not configured';
-          if (codeUrl) codeSource.href = codeUrl;
-          else codeSource.removeAttribute('href');
-        }
-        if (contentSource) {
-          contentSource.title = contentUrl || 'Not configured';
-          if (contentEditorUrl) contentSource.href = contentEditorUrl;
-          else contentSource.removeAttribute('href');
-        }
-
-        card.dataset.codeUrl = codeUrl;
-        card.dataset.contentUrl = contentUrl;
-
-        const hasPreviewAuth = details.access?.site || details.access?.preview;
-        const hasLiveAuth = details.access?.site || details.access?.live;
-        const hasAnyAuth = hasPreviewAuth || hasLiveAuth;
-
-        if (hasAnyAuth) {
-          card.dataset.hasAuth = 'true';
-          const lighthouseBtn = card.querySelector('.menu-item[data-action="lighthouse"]');
-          lighthouseBtn.disabled = true;
-          lighthouseBtn.title = 'Lighthouse unavailable for authenticated sites';
-
-          if (hasPreviewAuth) {
-            card.querySelector('.auth-icon.auth-preview').removeAttribute('aria-hidden');
-          }
-          if (hasLiveAuth) {
-            card.querySelector('.auth-icon.auth-live').removeAttribute('aria-hidden');
-          }
-        }
-
-        const cdnHost = details.cdn?.prod?.host || details.cdn?.host;
-        if (cdnHost) {
-          const cdnEl = card.querySelector('.site-card-cdn');
-          cdnEl.querySelector('span').textContent = cdnHost;
-          cdnEl.href = `https://${cdnHost}`;
-          cdnEl.classList.add('visible');
-        }
-      }
-    });
+    detailsObserver.observe(card);
   });
 
   sitesElem.appendChild(grid);
@@ -168,7 +203,42 @@ const displaySitesForOrg = async (orgValue) => {
 };
 
 window.addEventListener('sites-refresh', (e) => {
-  displaySitesForOrg(e.detail.orgValue);
+  const { orgValue, action, siteName } = e.detail;
+
+  if (action === 'delete' && siteName) {
+    const card = findCardBySite(siteName);
+    if (card) card.remove();
+    updateSiteCount();
+    return;
+  }
+
+  if (action === 'update' && siteName) {
+    const card = findCardBySite(siteName);
+    if (card) populateCardDetails(card, orgValue);
+    return;
+  }
+
+  if (action === 'add' && siteName) {
+    const grid = sitesElem.querySelector('.sites-grid');
+    if (grid) {
+      const card = createSiteCard({ name: siteName }, orgValue);
+      const favorites = getFavorites(orgValue);
+      const isFav = favorites.includes(siteName);
+      const insertBefore = [...grid.querySelectorAll('.site-card')].find((c) => {
+        const cFav = favorites.includes(c.dataset.site);
+        if (isFav && !cFav) return false;
+        if (!isFav && cFav) return true;
+        return c.dataset.site.localeCompare(siteName) > 0;
+      });
+      if (insertBefore) grid.insertBefore(card, insertBefore);
+      else grid.appendChild(card);
+      populateCardDetails(card, orgValue);
+      updateSiteCount();
+    }
+    return;
+  }
+
+  displaySitesForOrg(orgValue);
 });
 
 const initSiteAdmin = async () => {
