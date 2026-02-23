@@ -256,17 +256,11 @@ html[data-theme="dark"] body.optel-oversight fieldset {
 
 html[data-theme="dark"] body.optel-explorer list-facet[facet="userAgent"] fieldset,
 html[data-theme="dark"] body.optel-oversight list-facet[facet="userAgent"] fieldset {
-  --background-color: #1a1a2a;
-
-  color: white;
   border-color: #4a2a5a;
 }
 
 html[data-theme="dark"] body.optel-explorer list-facet[facet="url"] fieldset,
 html[data-theme="dark"] body.optel-oversight list-facet[facet="url"] fieldset {
-  --background-color: #1a1a2a;
-
-  color: white;
   border-color: #3a2a5a;
 }
 

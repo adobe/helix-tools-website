@@ -297,14 +297,10 @@ html[data-theme="dark"] .report-sections fieldset {
 }
 
 html[data-theme="dark"] .report-sections fieldset:nth-child(3n+2) {
-  --section-bg: #1a1a2a;
-
   border-color: #4a2a5a;
 }
 
 html[data-theme="dark"] .report-sections fieldset:nth-child(3n+3) {
-  --section-bg: #1a1a2a;
-
   border-color: #3a2a5a;
 }
 

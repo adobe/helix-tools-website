@@ -218,14 +218,8 @@ export default class IncognitoCheckbox extends HTMLElement {
     }
 
     /* Dark mode support */
-    :host-context(html[data-theme="dark"]) .eye__base {
-      border-color: white;
-    }
-
-    :host-context(html[data-theme="dark"]) .eye__base__view__iris {
-      border-color: white;
-    }
-
+    :host-context(html[data-theme="dark"]) .eye__base,
+    :host-context(html[data-theme="dark"]) .eye__base__view__iris,
     :host-context(html[data-theme="dark"]) .eye__base__view__pupil {
       border-color: white;
     }
@@ -239,19 +233,12 @@ export default class IncognitoCheckbox extends HTMLElement {
     }
 
     :host-context(html[data-theme="dark"]) .eye__lid__lashes__line {
-      border-bottom-color: white;
-      border-right-color: white;
+      border-color: white;
     }
 
-    :host-context(html[data-theme="dark"]) .eye__lid__lashes__hair {
-      background: white;
-    }
-
-    :host-context(html[data-theme="dark"]) .eye__lid__lashes__hair:before {
-      background: white;
-    }
-
-    :host-context(html[data-theme="dark"]) .eye__lid__lashes__hair:after {
+    :host-context(html[data-theme="dark"]) .eye__lid__lashes__hair,
+    :host-context(html[data-theme="dark"]) .eye__lid__lashes__hair::before,
+    :host-context(html[data-theme="dark"]) .eye__lid__lashes__hair::after {
       background: white;
     }
     `;
