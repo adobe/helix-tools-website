@@ -286,3 +286,43 @@ facet-sidebar fieldset.highlight-checked {
     --font-size-xl: 20px;
   }
 }
+
+/* Dark mode styles */
+html[data-theme="dark"] .report-sections fieldset {
+  --section-bg: #1a1a2a;
+
+  color: white;
+  background-color: var(--section-bg);
+  border-color: #2a3a5a;
+}
+
+html[data-theme="dark"] .report-sections fieldset:nth-child(3n+2) {
+  --section-bg: #1a1a2a;
+
+  border-color: #4a2a5a;
+}
+
+html[data-theme="dark"] .report-sections fieldset:nth-child(3n+3) {
+  --section-bg: #1a1a2a;
+
+  border-color: #3a2a5a;
+}
+
+html[data-theme="dark"] .report-sections legend {
+  background-color: var(--section-bg);
+}
+
+html[data-theme="dark"] .report-sections .content-item strong {
+  color: inherit;
+}
+
+html[data-theme="dark"] .report-sections .content-item code {
+  background-color: #2a3a4a;
+  border-color: #4a5a6a;
+  color: #b4d4f4;
+}
+
+html[data-theme="dark"] .report-loading,
+html[data-theme="dark"] .report-error {
+  color: var(--spectrum-gray-300, #ccc);
+}

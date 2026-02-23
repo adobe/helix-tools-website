@@ -247,24 +247,27 @@ html[data-theme="dark"] body.optel-oversight {
 
 html[data-theme="dark"] body.optel-explorer fieldset,
 html[data-theme="dark"] body.optel-oversight fieldset {
-  --background-color: #2a2a3a;
+  --background-color: #1a1a2a;
 
   background-color: var(--background-color);
-  color: var(--spectrum-gray-200);
+  color: white;
+  border-color: #2a3a5a;
 }
 
 html[data-theme="dark"] body.optel-explorer list-facet[facet="userAgent"] fieldset,
 html[data-theme="dark"] body.optel-oversight list-facet[facet="userAgent"] fieldset {
-  --background-color: #3a2a3a;
+  --background-color: #1a1a2a;
 
-  color: #e8b4e8;
+  color: white;
+  border-color: #4a2a5a;
 }
 
 html[data-theme="dark"] body.optel-explorer list-facet[facet="url"] fieldset,
 html[data-theme="dark"] body.optel-oversight list-facet[facet="url"] fieldset {
-  --background-color: #2a2a4a;
+  --background-color: #1a1a2a;
 
-  color: #b4b4e8;
+  color: white;
+  border-color: #3a2a5a;
 }
 
 html[data-theme="dark"] body.optel-explorer fieldset > div:hover,
