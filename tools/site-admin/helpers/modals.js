@@ -19,8 +19,8 @@ import {
 
 /* eslint-disable no-alert, no-restricted-globals */
 
-const refreshSites = (orgValue) => {
-  window.dispatchEvent(new CustomEvent('sites-refresh', { detail: { orgValue } }));
+const refreshSites = (orgValue, action, siteName) => {
+  window.dispatchEvent(new CustomEvent('sites-refresh', { detail: { orgValue, action, siteName } }));
 };
 
 const setupModal = async (className, headerHtml) => {
@@ -64,13 +64,14 @@ export const saveSiteAndRefresh = async (
   existingConfig,
   dialogCloseCallback,
   logFn = null,
+  action = 'update',
 ) => {
   const siteConfig = buildSiteConfig(existingConfig, codeSrc, contentSrc);
   const success = await saveSiteConfig(orgValue, siteName, siteConfig, logFn);
 
   if (success && dialogCloseCallback) {
     dialogCloseCallback();
-    refreshSites(orgValue);
+    refreshSites(orgValue, action, siteName);
   }
   return success;
 };
@@ -83,9 +84,9 @@ export const deleteSiteAndRefresh = async (
 ) => {
   const success = await deleteSiteConfig(orgValue, siteName, logFn);
 
-  if (success && dialogCloseCallback) {
-    dialogCloseCallback();
-    refreshSites(orgValue);
+  if (success) {
+    if (dialogCloseCallback) dialogCloseCallback();
+    refreshSites(orgValue, 'delete', siteName);
   }
   return success;
 };
@@ -284,7 +285,7 @@ export const openAuthModal = async (siteName, orgValue) => {
     if (success) {
       setTimeout(() => {
         dialog.close();
-        refreshSites(orgValue);
+        refreshSites(orgValue, 'update', siteName);
       }, 1000);
     }
   });
@@ -517,6 +518,7 @@ export const openAddSiteModal = async (orgValue, defaultCode = '', defaultConten
       {},
       () => dialog.close(),
       logFn,
+      'add',
     );
 
     if (!success) {
