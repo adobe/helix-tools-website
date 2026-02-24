@@ -871,6 +871,10 @@
   border-top: 1px solid var(--color-border);
 }
 
+.manage-modal .add-new-section .create-form {
+  margin-bottom: var(--spacing-s);
+}
+
 .manage-modal .add-new-section .section-actions {
   display: flex;
   gap: var(--spacing-s);
