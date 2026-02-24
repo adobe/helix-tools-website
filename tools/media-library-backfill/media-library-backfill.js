@@ -9,6 +9,8 @@ const CONCURRENCY = 5;
 const POLL_INTERVAL = 2000;
 const ADMIN_API_RATE_LIMIT = 10;
 const REQ_INTERVAL = 1000 / ADMIN_API_RATE_LIMIT;
+const LOG_WINDOW_SIZE = 1000;
+const TERMINAL_JOB_STATES = new Set(['completed', 'stopped', 'failed']);
 
 const VIDEO_EXTENSIONS = /\.(mp4|mov|webm|avi|m4v|mkv)$/i;
 
@@ -37,6 +39,10 @@ let abortController = null;
 const stats = {
   pages: 0, media: 0, sent: 0, errors: 0, dupes: 0,
 };
+const consoleState = {
+  entries: [],
+  showAll: false,
+};
 
 function initDOM() {
   const form = document.getElementById('backfill-form');
@@ -55,6 +61,9 @@ function initDOM() {
   DOM.statSent = document.getElementById('stat-sent');
   DOM.statErrors = document.getElementById('stat-errors');
   DOM.statDupes = document.getElementById('stat-dupes');
+  DOM.consoleControls = document.getElementById('console-controls');
+  DOM.consoleMeta = document.getElementById('console-meta');
+  DOM.showAllLogs = document.getElementById('show-all-logs');
   DOM.console = document.getElementById('console-output');
 }
 
@@ -82,13 +91,74 @@ function setPhase(label, progress) {
   }
 }
 
-function log(message, level = 'info') {
+function buildLogLine({ text, level }) {
   const line = document.createElement('p');
   line.className = `log-line ${level}`;
-  const ts = new Date().toLocaleTimeString();
-  line.textContent = `[${ts}] ${message}`;
-  DOM.console.appendChild(line);
+  line.textContent = text;
+  return line;
+}
+
+function updateConsoleControls() {
+  const total = consoleState.entries.length;
+  const hasOverflow = total > LOG_WINDOW_SIZE;
+  DOM.consoleControls.setAttribute('aria-hidden', String(!hasOverflow));
+  if (!hasOverflow) {
+    DOM.showAllLogs.hidden = true;
+    return;
+  }
+
+  const visible = consoleState.showAll ? total : LOG_WINDOW_SIZE;
+  DOM.consoleMeta.textContent = consoleState.showAll
+    ? `Showing all ${visible} log entries`
+    : `Showing latest ${visible} of ${total} log entries`;
+  DOM.showAllLogs.hidden = !hasOverflow;
+  DOM.showAllLogs.textContent = consoleState.showAll
+    ? `Show recent (${LOG_WINDOW_SIZE})`
+    : `Show all (${total})`;
+  DOM.showAllLogs.setAttribute('aria-pressed', String(consoleState.showAll));
+}
+
+function renderConsole() {
+  const total = consoleState.entries.length;
+  const start = consoleState.showAll ? 0 : Math.max(0, total - LOG_WINDOW_SIZE);
+  const fragment = document.createDocumentFragment();
+  for (let i = start; i < total; i += 1) {
+    fragment.appendChild(buildLogLine(consoleState.entries[i]));
+  }
+  DOM.console.replaceChildren(fragment);
+  updateConsoleControls();
   DOM.console.scrollTop = DOM.console.scrollHeight;
+}
+
+function resetConsole() {
+  consoleState.entries = [];
+  consoleState.showAll = false;
+  DOM.console.replaceChildren();
+  updateConsoleControls();
+}
+
+function log(message, level = 'info') {
+  const ts = new Date().toLocaleTimeString();
+  const entry = {
+    level,
+    text: `[${ts}] ${message}`,
+  };
+  const keepBottom = (DOM.console.scrollTop + DOM.console.clientHeight)
+    >= (DOM.console.scrollHeight - 8);
+  consoleState.entries.push(entry);
+
+  if (consoleState.showAll || consoleState.entries.length <= LOG_WINDOW_SIZE) {
+    DOM.console.appendChild(buildLogLine(entry));
+  } else {
+    if (DOM.console.firstChild) {
+      DOM.console.removeChild(DOM.console.firstChild);
+    }
+    DOM.console.appendChild(buildLogLine(entry));
+  }
+  updateConsoleControls();
+  if (keepBottom || consoleState.showAll) {
+    DOM.console.scrollTop = DOM.console.scrollHeight;
+  }
 }
 
 function showLoadingButton(button) {
@@ -202,7 +272,8 @@ async function discoverPages(org, site) {
 
   // Poll until complete
   let { state } = job;
-  while (state !== 'completed' && state !== 'stopped') {
+  let failureReason = job.error || job.message || '';
+  while (!TERMINAL_JOB_STATES.has(state)) {
     if (isAborted()) throw new DOMException('Aborted', 'AbortError');
     // eslint-disable-next-line no-await-in-loop
     await new Promise((resolve) => { setTimeout(resolve, POLL_INTERVAL); });
@@ -211,8 +282,13 @@ async function discoverPages(org, site) {
     // eslint-disable-next-line no-await-in-loop
     const pollData = await pollRes.json();
     state = pollData.state;
+    failureReason = pollData.error || pollData.message || failureReason;
     const progress = pollData.progress ? Math.round(pollData.progress * 100) : 0;
     setPhase(`Phase 1: Discovering pages... (${state} ${progress}%)`, Math.min(progress * 0.2, 20));
+  }
+
+  if (state === 'failed') {
+    throw new Error(`Status job failed${failureReason ? `: ${failureReason}` : ''}`);
   }
 
   // Get details
@@ -301,7 +377,25 @@ function extractDimensions(url) {
   return {};
 }
 
-function parseMediaFromMarkdown(markdown) {
+function normalizeMediaUrl(rawUrl, pageBaseUrl) {
+  if (!rawUrl) return null;
+  try {
+    const normalizedInput = rawUrl.startsWith('//') ? `https:${rawUrl}` : rawUrl;
+    const url = new URL(normalizedInput, pageBaseUrl);
+    if (!['http:', 'https:'].includes(url.protocol)) return null;
+    if (url.hostname.includes('.hlx.page')) {
+      url.hostname = url.hostname.replace('.hlx.page', '.aem.page');
+    }
+    if (url.hostname.includes('.hlx.live')) {
+      url.hostname = url.hostname.replace('.hlx.live', '.aem.live');
+    }
+    return url.toString();
+  } catch (err) {
+    return null;
+  }
+}
+
+function parseMediaFromMarkdown(markdown, pageBaseUrl) {
   const mediaUrls = [];
 
   // Inline images: ![alt](url) or ![alt](url "title")
@@ -317,7 +411,8 @@ function parseMediaFromMarkdown(markdown) {
   const refDefRegex = /^\[([^\]]+)]:\s*(.+)$/gm;
   match = refDefRegex.exec(markdown);
   while (match) {
-    refDefs[match[1].toLowerCase()] = match[2].trim();
+    const [refUrl] = match[2].trim().split(/\s+/);
+    refDefs[match[1].toLowerCase()] = refUrl;
     match = refDefRegex.exec(markdown);
   }
   const refImageRegex = /!\[[^\]]*]\[([^\]]+)]/g;
@@ -339,8 +434,8 @@ function parseMediaFromMarkdown(markdown) {
   }
 
   return mediaUrls
-    .filter((url) => url.startsWith('https'))
-    .map((url) => url.replace(/\.hlx\.(page|live)/, '.aem.$1'));
+    .map((url) => normalizeMediaUrl(url, pageBaseUrl))
+    .filter(Boolean);
 }
 
 // Phase 3: Fetch and parse markdown for each page
@@ -399,7 +494,8 @@ async function processPages(org, site, pages) {
     }
 
     if (markdown) {
-      const urls = parseMediaFromMarkdown(markdown);
+      const pageBaseUrl = `https://${REF}--${site}--${org}.aem.page${page.path}`;
+      const urls = parseMediaFromMarkdown(markdown, pageBaseUrl);
       urls.forEach((url) => {
         const operation = seenMedia.has(url) ? 'reuse' : 'ingest';
         if (operation === 'reuse') {
@@ -531,7 +627,7 @@ async function runBackfill() {
   abortController = new AbortController();
   disableForm();
   resetStats();
-  DOM.console.innerHTML = '';
+  resetConsole();
   DOM.console.setAttribute('aria-hidden', 'false');
   DOM.progressSection.setAttribute('aria-hidden', 'false');
 
@@ -547,8 +643,14 @@ async function runBackfill() {
     const entries = await processPages(org, site, pages);
     if (isAborted()) return;
 
+    const existingMediaPaths = new Set(entries.map(({ entry }) => entry.path));
     standaloneMedia.forEach((media) => {
       const mediaUrl = `https://${REF}--${site}--${org}.aem.page${media.path}`;
+      if (existingMediaPaths.has(mediaUrl)) {
+        stats.dupes += 1;
+        return;
+      }
+      existingMediaPaths.add(mediaUrl);
       entries.push({
         entry: {
           operation: 'ingest',
@@ -594,6 +696,11 @@ function registerListeners() {
       abortController.abort();
       DOM.cancelBtn.disabled = true;
     }
+  });
+
+  DOM.showAllLogs.addEventListener('click', () => {
+    consoleState.showAll = !consoleState.showAll;
+    renderConsole();
   });
 }
 

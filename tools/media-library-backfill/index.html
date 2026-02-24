@@ -46,7 +46,7 @@
         <div class="options-field">
           <label class="dry-run-label">
             <input type="checkbox" name="dry-run" id="dry-run" />
-            <span>Dry run (preview entries without sending)</span>
+            <span>Dry run (preview entries without updating media log)</span>
           </label>
           <div class="form-field fallback-user-field">
             <label for="fallback-user">Fallback user email</label>
@@ -78,6 +78,10 @@
 
     <!-- CONSOLE -->
     <div>
+      <div id="console-controls" aria-hidden="true">
+        <p id="console-meta">No logs yet.</p>
+        <button type="button" class="button outline" id="show-all-logs" hidden>Show all</button>
+      </div>
       <div id="console-output" aria-hidden="true"></div>
     </div>
 

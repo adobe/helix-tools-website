@@ -71,6 +71,28 @@
   font-weight: 600;
 }
 
+.media-library-backfill #console-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-s);
+  margin-bottom: var(--spacing-xs);
+}
+
+.media-library-backfill #console-controls[aria-hidden="true"] {
+  display: none;
+}
+
+.media-library-backfill #console-meta {
+  margin: 0;
+  font-size: var(--body-size-xs);
+}
+
+.media-library-backfill #show-all-logs {
+  margin: 0;
+  white-space: nowrap;
+}
+
 .media-library-backfill #console-output {
   max-height: 400px;
   overflow-y: auto;
