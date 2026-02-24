@@ -19,8 +19,8 @@ import {
 
 /* eslint-disable no-alert, no-restricted-globals */
 
-const refreshSites = (orgValue) => {
-  window.dispatchEvent(new CustomEvent('sites-refresh', { detail: { orgValue } }));
+const refreshSites = (orgValue, action, siteName) => {
+  window.dispatchEvent(new CustomEvent('sites-refresh', { detail: { orgValue, action, siteName } }));
 };
 
 const setupModal = async (className, headerHtml) => {
@@ -64,13 +64,14 @@ export const saveSiteAndRefresh = async (
   existingConfig,
   dialogCloseCallback,
   logFn = null,
+  action = 'update',
 ) => {
   const siteConfig = buildSiteConfig(existingConfig, codeSrc, contentSrc);
   const success = await saveSiteConfig(orgValue, siteName, siteConfig, logFn);
 
   if (success && dialogCloseCallback) {
     dialogCloseCallback();
-    refreshSites(orgValue);
+    refreshSites(orgValue, action, siteName);
   }
   return success;
 };
@@ -83,9 +84,9 @@ export const deleteSiteAndRefresh = async (
 ) => {
   const success = await deleteSiteConfig(orgValue, siteName, logFn);
 
-  if (success && dialogCloseCallback) {
-    dialogCloseCallback();
-    refreshSites(orgValue);
+  if (success) {
+    if (dialogCloseCallback) dialogCloseCallback();
+    refreshSites(orgValue, 'delete', siteName);
   }
   return success;
 };
@@ -284,7 +285,7 @@ export const openAuthModal = async (siteName, orgValue) => {
     if (success) {
       setTimeout(() => {
         dialog.close();
-        refreshSites(orgValue);
+        refreshSites(orgValue, 'update', siteName);
       }, 1000);
     }
   });
@@ -295,6 +296,7 @@ export const openAuthModal = async (siteName, orgValue) => {
 const openManageItemsModal = async (siteName, orgValue, config) => {
   const {
     title, itemName, itemNamePlural, iconName, fetchFn, createFn, deleteFn, showExpiration,
+    formHtml, onFormInit, getCreateBody,
   } = config;
 
   const { dialog, container, showModal } = await setupModal('manage-modal', `
@@ -308,6 +310,7 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
     </div>
     <div class="add-new-section">
       <h4>Add New ${itemName}</h4>
+      ${formHtml ? `<div class="create-form">${formHtml}</div>` : ''}
       <div class="section-actions">
         <button type="button" class="button outline cancel-btn">Cancel</button>
         <button type="button" class="button create-btn">Create ${itemName}</button>
@@ -383,12 +386,15 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
 
   container.querySelector('.cancel-btn').addEventListener('click', () => dialog.close());
 
+  if (onFormInit) onFormInit(container);
+
   container.querySelector('.create-btn').addEventListener('click', async (e) => {
     const btn = e.target;
     btn.disabled = true;
     btn.textContent = 'Creating...';
 
-    const result = await createFn(orgValue, siteName);
+    const body = getCreateBody ? getCreateBody(container) : undefined;
+    const result = await createFn(orgValue, siteName, body);
     if (result?.value) {
       container.querySelector('.item-value').value = result.value;
       container.querySelector('.new-item-result').classList.add('visible');
@@ -419,6 +425,12 @@ export const openSecretModal = (siteName, orgValue) => openManageItemsModal(site
   showExpiration: false,
 });
 
+const API_KEY_ROLES = [
+  { id: 'author', label: 'Author', description: 'Read/write content' },
+  { id: 'publish', label: 'Publish', description: 'Preview, publish, and unpublish content' },
+  { id: 'admin', label: 'Admin', description: 'Full access' },
+];
+
 export const openApiKeyModal = (siteName, orgValue) => openManageItemsModal(siteName, orgValue, {
   title: 'Manage API Keys',
   itemName: 'API Key',
@@ -428,6 +440,33 @@ export const openApiKeyModal = (siteName, orgValue) => openManageItemsModal(site
   createFn: createApiKey,
   deleteFn: deleteApiKey,
   showExpiration: true,
+  formHtml: `
+    <div class="form-field">
+      <label for="apikey-description">Description (optional)</label>
+      <input type="text" id="apikey-description" placeholder="e.g. CI/CD pipeline key" />
+    </div>
+    <div class="form-field">
+      <label for="apikey-role">Role</label>
+      <select id="apikey-role">
+        ${API_KEY_ROLES.map((r) => `<option value="${r.id}"${r.id === 'admin' ? ' selected' : ''}>${r.label}</option>`).join('')}
+      </select>
+      <p class="field-hint role-hint">${API_KEY_ROLES.find((r) => r.id === 'admin').description}</p>
+    </div>
+  `,
+  onFormInit: (el) => {
+    const roleSelect = el.querySelector('#apikey-role');
+    const roleHint = el.querySelector('.role-hint');
+    roleSelect.addEventListener('change', () => {
+      const role = API_KEY_ROLES.find((r) => r.id === roleSelect.value);
+      roleHint.textContent = role?.description ?? '';
+    });
+  },
+  getCreateBody: (el) => {
+    const body = { roles: [el.querySelector('#apikey-role').value] };
+    const desc = el.querySelector('#apikey-description').value.trim();
+    if (desc) body.description = desc;
+    return body;
+  },
 });
 
 export const openAddSiteModal = async (orgValue, defaultCode = '', defaultContent = '', logFn = null) => {
@@ -479,6 +518,7 @@ export const openAddSiteModal = async (orgValue, defaultCode = '', defaultConten
       {},
       () => dialog.close(),
       logFn,
+      'add',
     );
 
     if (!success) {
