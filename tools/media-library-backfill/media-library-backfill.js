@@ -7,8 +7,7 @@ const REF = 'main';
 const BATCH_SIZE = 10;
 const CONCURRENCY = 5;
 const POLL_INTERVAL = 2000;
-const ADMIN_API_RATE_LIMIT = 10;
-const REQ_INTERVAL = 1000 / ADMIN_API_RATE_LIMIT;
+const ADMIN_API_RATE = 10;
 const LOG_WINDOW_SIZE = 1000;
 const TERMINAL_JOB_STATES = new Set(['completed', 'stopped', 'failed']);
 
@@ -195,24 +194,77 @@ function isAborted() {
   return abortController && abortController.signal.aborted;
 }
 
+function createRateLimiter(initialRate) {
+  let interval = Math.ceil(1000 / initialRate);
+  let queue = Promise.resolve();
+
+  return {
+    acquire() {
+      const gate = queue;
+      queue = queue.then(
+        () => new Promise((resolve) => { setTimeout(resolve, interval); }),
+      );
+      return gate;
+    },
+    handleResponse(res) {
+      const rate = parseFloat(res.headers.get('x-ratelimit-rate'));
+      if (rate > 0) {
+        interval = Math.ceil(1000 / rate);
+      }
+    },
+    backoff(seconds) {
+      queue = queue.then(
+        () => new Promise((resolve) => { setTimeout(resolve, seconds * 1000); }),
+      );
+    },
+    reset() {
+      queue = Promise.resolve();
+    },
+  };
+}
+
+const adminLimiter = createRateLimiter(ADMIN_API_RATE);
+
 async function fetchWithRetry(url, options = {}, maxRetries = 3) {
   const signal = abortController ? abortController.signal : undefined;
   const fetchOptions = { ...options, signal };
+  const isAdminApi = url.startsWith(ADMIN_BASE);
 
   for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
     if (isAborted()) throw new DOMException('Aborted', 'AbortError');
     try {
+      if (isAdminApi) {
+        // eslint-disable-next-line no-await-in-loop
+        await adminLimiter.acquire();
+        if (isAborted()) throw new DOMException('Aborted', 'AbortError');
+      }
       // eslint-disable-next-line no-await-in-loop
       const res = await fetch(url, fetchOptions);
-      if (res.status === 429 || res.status === 503) {
-        if (attempt < maxRetries) {
-          const delay = (2 ** attempt) * 1000;
-          log(`Rate limited (${res.status}), retrying in ${delay / 1000}s...`, 'warn');
+      if (isAdminApi) {
+        adminLimiter.handleResponse(res);
+      }
+      if (res.status === 429 && attempt < maxRetries) {
+        const retryAfter = parseInt(
+          res.headers.get('x-retry-after') || res.headers.get('retry-after'),
+          10,
+        ) || (2 ** attempt);
+        log(`Rate limited (429), pausing ${retryAfter}s before retry (${attempt + 1}/${maxRetries})...`, 'warn');
+        if (isAdminApi) {
+          adminLimiter.backoff(retryAfter);
+        } else {
           // eslint-disable-next-line no-await-in-loop
-          await new Promise((resolve) => { setTimeout(resolve, delay); });
-          // eslint-disable-next-line no-continue
-          continue;
+          await new Promise((resolve) => { setTimeout(resolve, retryAfter * 1000); });
         }
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+      if (res.status === 503 && attempt < maxRetries) {
+        const delay = (2 ** attempt) * 1000;
+        log(`Service unavailable (503), retrying in ${delay / 1000}s...`, 'warn');
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => { setTimeout(resolve, delay); });
+        // eslint-disable-next-line no-continue
+        continue;
       }
       return res;
     } catch (err) {
@@ -447,18 +499,6 @@ async function processPages(org, site, pages) {
   const seenMedia = new Set();
   let processed = 0;
   let useAdminApi = false;
-  let lastAdminRequest = 0;
-
-  async function throttledAdminFetch(url, options) {
-    const now = Date.now();
-    const wait = REQ_INTERVAL - (now - lastAdminRequest);
-    if (wait > 0) {
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise((resolve) => { setTimeout(resolve, wait); });
-    }
-    lastAdminRequest = Date.now();
-    return fetchWithRetry(url, options, 1);
-  }
 
   async function fetchMarkdown(page) {
     if (!useAdminApi) {
@@ -476,7 +516,7 @@ async function processPages(org, site, pages) {
     }
 
     const adminUrl = `${ADMIN_BASE}/preview/${org}/${site}/${REF}${page.path}.md`;
-    const adminRes = await throttledAdminFetch(adminUrl);
+    const adminRes = await fetchWithRetry(adminUrl, {}, 1);
     if (adminRes.ok) return adminRes.text();
     return null;
   }
@@ -581,12 +621,6 @@ async function ingestEntries(org, site, entries, userMap, fallbackUser, dryRun) 
     updateStatsDisplay();
     const pct = 70 + Math.round(((i + batch.length) / enrichedEntries.length) * 25);
     setPhase(`Phase 4: Ingesting... (${batchNum}/${totalBatches})`, pct);
-
-    // Rate limit delay between batches
-    if (i + BATCH_SIZE < enrichedEntries.length) {
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise((resolve) => { setTimeout(resolve, REQ_INTERVAL); });
-    }
   }
 }
 
@@ -625,6 +659,7 @@ async function runBackfill() {
   }
 
   abortController = new AbortController();
+  adminLimiter.reset();
   disableForm();
   resetStats();
   resetConsole();
