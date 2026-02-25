@@ -625,9 +625,22 @@ async function ingestEntries(org, site, entries, userMap, fallbackUser, dryRun) 
 }
 
 // Phase 5: Report
-function showReport(dryRun) {
+function formatDuration(ms) {
+  const secs = Math.floor(ms / 1000);
+  if (secs < 60) return `${secs}s`;
+  const mins = Math.floor(secs / 60);
+  const remSecs = secs % 60;
+  if (mins < 60) return `${mins}m ${remSecs}s`;
+  const hrs = Math.floor(mins / 60);
+  const remMins = mins % 60;
+  return `${hrs}h ${remMins}m ${remSecs}s`;
+}
+
+function showReport(dryRun, startTime) {
+  const duration = formatDuration(Date.now() - startTime);
   setPhase('Complete', 100);
   log('--- Backfill Summary ---', 'success');
+  log(`  Duration: ${duration}`);
   log(`  Pages crawled: ${stats.pages}`);
   log(`  Media entries: ${stats.media}`);
   log(`  Unique (ingest): ${stats.media - stats.dupes}`);
@@ -666,6 +679,7 @@ async function runBackfill() {
   DOM.console.setAttribute('aria-hidden', 'false');
   DOM.progressSection.setAttribute('aria-hidden', 'false');
 
+  const startTime = Date.now();
   try {
     log(`Starting backfill for ${org}/${site}${dryRun ? ' (dry run)' : ''}...`);
 
@@ -702,7 +716,7 @@ async function runBackfill() {
     await ingestEntries(org, site, entries, userMap, fallbackUser, dryRun);
     if (isAborted()) return;
 
-    showReport(dryRun);
+    showReport(dryRun, startTime);
     updateConfig();
   } catch (err) {
     if (err.name === 'AbortError') {
