@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scheduler Registration</title>
+  <meta name="description" content="Register an org/site with the Helix snapshot scheduler">
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/scheduling/scheduling.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/scheduling/scheduling.css" />
+</head>
+<body class="scheduling appear">
+  <header></header>
+  <main>
+
+    <!-- TITLE -->
+    <div>
+      <h1>Scheduler Registration</h1>
+      <p>
+        Register an org/site with the Helix snapshot scheduler.
+        This is a one-time setup that creates a publish API key and registers it
+        with the scheduler so it can automatically publish scheduled pages and snapshots.
+      </p>
+    </div>
+
+    <!-- REGISTRATION FORM -->
+    <div>
+      <form id="register-form">
+        <section class="form-field config-field">
+          <div class="form-field org-field">
+            <label for="org">Organization</label>
+            <input name="org" id="org" list="org-list" autocomplete="off" required />
+            <datalist id="org-list"></datalist>
+          </div>
+          <div class="form-field site-field">
+            <label for="site">Site</label>
+            <input name="site" id="site" list="site-list" autocomplete="off" disabled />
+            <datalist id="site-list"></datalist>
+          </div>
+        </section>
+        <p class="button-wrapper">
+          <button type="submit" class="button">Register</button>
+          <button type="reset" class="button outline">Reset</button>
+        </p>
+      </form>
+    </div>
+
+    <!-- RESULT -->
+    <div>
+      <div id="register-result" hidden>
+        <p id="register-result-message"></p>
+        <div class="api-key-box" hidden>
+          <code id="api-key-display" class="api-key-value"></code>
+          <button id="copy-api-key" class="button outline small" type="button">Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONSOLE -->
+    <div>
+      <div class="console"></div>
+    </div>
+
+  </main>
+  <footer></footer>
+</body>
+</html>

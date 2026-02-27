@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scheduling</title>
+  <meta name="description" content="View and manage pages and snapshots scheduled for publish">
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/scheduling/scheduling.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/scheduling/scheduling.css" />
+</head>
+<body class="scheduling appear">
+  <header></header>
+  <main>
+
+    <!-- TITLE -->
+    <div>
+      <h1>Scheduling</h1>
+      <p>
+        View pages and snapshots scheduled for publish for an org/site.
+        Use <a href="register.html">Scheduler Registration</a> to register a new site.
+      </p>
+    </div>
+
+    <!-- ADMIN FORM -->
+    <div>
+      <form id="admin-form">
+        <section class="form-field config-field">
+          <div class="form-field org-field">
+            <label for="org">Organization</label>
+            <input name="org" id="org" list="org-list" autocomplete="off" required />
+            <datalist id="org-list"></datalist>
+          </div>
+          <div class="form-field site-field">
+            <label for="site">Site</label>
+            <input name="site" id="site" list="site-list" autocomplete="off" disabled />
+            <datalist id="site-list"></datalist>
+          </div>
+        </section>
+        <p class="button-wrapper">
+          <button type="submit" class="button">Fetch Schedule</button>
+          <button type="reset" class="button outline">Reset</button>
+        </p>
+      </form>
+    </div>
+
+    <!-- RESULTS -->
+    <div>
+      <h2 id="results-title"></h2>
+      <p id="no-token-message" hidden>
+        No auth token available. Make sure the AEM Sidekick is installed and you are signed in to this org/site.
+      </p>
+      <p id="empty-message" hidden></p>
+      <div id="schedule-results" hidden>
+        <div class="schedule-list"></div>
+      </div>
+    </div>
+
+    <!-- CONSOLE -->
+    <div>
+      <div class="console"></div>
+    </div>
+
+  </main>
+  <footer></footer>
+</body>
+</html>
