@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'lit';
 import { navigate } from '../../utils/router.js';
 import { AuthStore } from '../../controllers/auth-controller.js';
-import { getProjects, getLocalSites } from '../../services/storage.js';
+import { getProjects, getLocalSites, addProject } from '../../services/storage.js';
 import { fetchOrgSites } from '../../services/adminApi.js';
 import { edsIcon } from '../../utils/icons.js';
 import getSheet from '../../utils/sheet.js';
@@ -103,6 +103,26 @@ export class AppHeader extends LitElement {
     }
   }
 
+  async _handleAddOrg(e) {
+    const org = e.detail?.value?.trim();
+    if (!org) return;
+    const site = prompt(`Enter a site name within "${org}" (needed for authentication):`);
+    if (!site?.trim()) return;
+    addProject(org, site.trim());
+    const auth = this._getAuth();
+    const success = await auth?.login(org, site.trim());
+    if (success) {
+      navigate(`/${org}/${site.trim()}`);
+    }
+  }
+
+  _handleAddSite(e) {
+    const site = e.detail?.value?.trim();
+    if (!site || !this.currentOrg) return;
+    addProject(this.currentOrg, site);
+    navigate(`/${this.currentOrg}/${site}`);
+  }
+
   _toggleTheme() {
     const next = this._effectiveTheme === 'dark' ? 'light' : 'dark';
     this._effectiveTheme = next;
@@ -143,23 +163,25 @@ export class AppHeader extends LitElement {
           <span class="title">EDS Admin Console</span>
         </div>
 
-        ${this._orgs.length > 0 ? html`
-          <eds-picker
-            .value=${this.currentOrg || ''}
-            .options=${orgOptions}
-            placeholder="Organization…"
-            size="m"
-            @change=${this._handleOrgChange}
-          ></eds-picker>
-        ` : nothing}
+        <eds-picker
+          editable
+          .value=${this.currentOrg || ''}
+          .options=${orgOptions}
+          placeholder="Organization…"
+          size="m"
+          @change=${this._handleOrgChange}
+          @add=${this._handleAddOrg}
+        ></eds-picker>
 
         ${this.currentOrg ? html`
           <eds-picker
+            editable
             .value=${this.currentSite || ''}
             .options=${siteOptions}
             .placeholder=${this._sitesLoading ? 'Loading sites...' : 'Go to site…'}
             size="m"
             @change=${this._handleSiteChange}
+            @add=${this._handleAddSite}
           ></eds-picker>
         ` : nothing}
 

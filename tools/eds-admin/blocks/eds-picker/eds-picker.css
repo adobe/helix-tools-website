@@ -37,7 +37,8 @@ label {
 }
 
 .trigger:hover { border-color: var(--spectrum-gray-500); }
-.trigger:focus-visible { border-color: var(--spectrum-focus-indicator-color); }
+.trigger:focus-visible,
+.trigger:focus { border-color: var(--spectrum-focus-indicator-color); }
 .trigger.s { font-size: 12px; padding: 4px 8px; min-height: 24px; }
 .trigger.m { min-height: 32px; }
 
@@ -63,6 +64,37 @@ label {
   flex-shrink: 0;
 }
 .trigger-icon svg {
+  width: 10px;
+  height: 10px;
+  fill: currentColor;
+}
+
+/* Combobox input mode */
+.combo-wrap {
+  position: relative;
+  display: flex;
+  width: 100%;
+}
+
+.combo-input {
+  padding-right: 28px;
+  cursor: text;
+}
+.combo-input::placeholder {
+  color: var(--spectrum-gray-600);
+}
+
+.combo-chevron {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  color: var(--spectrum-gray-700);
+}
+.combo-chevron svg {
   width: 10px;
   height: 10px;
   fill: currentColor;
@@ -107,6 +139,18 @@ label {
   background: var(--spectrum-blue-100);
   color: var(--spectrum-blue-800);
   font-weight: 600;
+}
+
+.listbox li.add-option {
+  color: var(--spectrum-accent-background-color-default);
+  font-weight: 600;
+  border-top: 1px solid var(--spectrum-gray-200);
+}
+
+.listbox li.no-results {
+  color: var(--spectrum-gray-600);
+  font-style: italic;
+  cursor: default;
 }
 
 @keyframes pickerFade {
