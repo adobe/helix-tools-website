@@ -1,0 +1,39 @@
+:host {
+  display: block;
+}
+
+pre.diff {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-family: 'Source Code Pro', monospace;
+  border-radius: 6px;
+  overflow: auto;
+  line-height: 1.35;
+  background: var(--spectrum-alias-background-color-default);
+}
+
+.line {
+  padding: 0 8px;
+  margin: 0 -12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.35;
+  min-height: 0;
+}
+
+.prefix {
+  opacity: 0.5;
+  user-select: none;
+  margin-right: 8px;
+}
+
+.added {
+  background: var(--spectrum-green-100);
+  color: var(--spectrum-green-900);
+}
+
+.removed {
+  background: var(--spectrum-red-100);
+  color: var(--spectrum-red-900);
+}

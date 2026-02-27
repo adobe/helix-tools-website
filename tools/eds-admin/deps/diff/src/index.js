@@ -1,0 +1,1 @@
+export { diffJson } from 'diff';

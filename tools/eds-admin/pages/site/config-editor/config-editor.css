@@ -1,0 +1,139 @@
+:host { display: block; }
+
+.page { max-width: 1200px; }
+
+.header-row { display: flex; justify-content: space-between; align-items: flex-start; }
+h1 { margin: 0; }
+
+
+
+/* --- Two-column layout: editor + versions --- */
+.two-col { display: grid; grid-template-columns: 1.75fr 1fr; gap: 24px; align-items: stretch; }
+.col-main { min-width: 0; }
+.col-side {
+  min-width: 0;
+  overflow-y: auto;
+  border: 1px solid var(--spectrum-alias-border-color);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--spectrum-global-color-gray-50);
+  max-height: 490px;
+  margin-top: 36px;
+}
+.col-side h2 { margin: 0 0 12px; font-size: 0.95rem; }
+@media (max-width: 960px) {
+  .two-col { grid-template-columns: 1fr; }
+  .col-side { max-height: none; }
+}
+
+sp-button {
+  max-width: fit-content;
+}
+
+/* --- Raw JSON editor --- */
+.raw-section { display: flex; flex-direction: column; gap: 12px; }
+
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.editor-status {
+  font-size: 0.75rem;
+  margin-left: auto;
+}
+
+.editor-status--valid {
+  color: var(--spectrum-global-color-green-600);
+}
+
+.editor-status--error {
+  color: var(--spectrum-global-color-red-600);
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cm-container {
+  border: 1px solid var(--spectrum-alias-border-color);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.cm-container .cm-editor {
+  max-height: 520px;
+}
+
+.cm-container .cm-editor.cm-focused {
+  outline: none;
+}
+
+/* --- Version list --- */
+.versions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.version-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--spectrum-alias-border-color-muted);
+}
+.version-row:last-child { border-bottom: none; }
+.version-row.current { font-weight: 500; }
+.version-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.version-id {
+  font-family: 'Source Code Pro', monospace;
+  font-size: 12px;
+  font-weight: 600;
+}
+.version-label {
+  font-size: 11px;
+  color: var(--spectrum-global-color-gray-700);
+}
+.version-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--spectrum-global-color-gray-200);
+  color: var(--spectrum-global-color-gray-700);
+  width: fit-content;
+}
+.version-date {
+  font-size: 11px;
+  color: var(--spectrum-global-color-gray-600);
+}
+.version-author {
+  font-size: 11px;
+  color: var(--spectrum-global-color-gray-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.version-actions {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.json-raw {
+  background: var(--spectrum-global-color-gray-75);
+  line-height: 1.4;
+  max-height: none;
+}

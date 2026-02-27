@@ -1,0 +1,118 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  background: var(--spectrum-gray-25);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  transition: box-shadow 150ms ease;
+  position: relative;
+  min-height: 180px;
+}
+
+:host(:hover) {
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.16);
+}
+
+:host([horizontal]) {
+  flex-direction: row;
+  align-items: center;
+  min-height: 56px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 16px 16px 8px;
+}
+
+:host([horizontal]) .header {
+  flex: 1;
+  padding: 12px 16px;
+  align-items: center;
+  min-width: 0;
+}
+
+.heading-group {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subheading {
+  font-size: 0.8125rem;
+  color: var(--spectrum-global-color-gray-600);
+}
+
+.body {
+  display: none;
+}
+
+.body.has-content {
+  display: block;
+  padding: 0 16px 16px;
+}
+
+:host([horizontal]) .body {
+  display: none !important;
+}
+
+.footer {
+  display: none;
+}
+
+.footer.has-content {
+  display: block;
+  border-top: 1px solid var(--spectrum-gray-200);
+  padding: 8px 12px;
+  margin-top: auto;
+}
+
+:host([horizontal]) .footer {
+  display: none !important;
+}
+
+/* Loading: full-card shimmer */
+:host([loading]) {
+  pointer-events: none;
+  background: linear-gradient(90deg,
+    var(--spectrum-gray-75) 25%,
+    var(--spectrum-gray-100) 50%,
+    var(--spectrum-gray-75) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+:host([loading]:hover) {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Fade in content when loaded */
+.header, .body, .footer {
+  animation: cardFadeIn 200ms ease;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes cardFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

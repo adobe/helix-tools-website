@@ -1,0 +1,12 @@
+:host { display: block; max-width: 1200px; }
+h1 { margin: 0; }
+
+.center { display: flex; align-items: center; justify-content: center; min-height: 200px; }
+.add-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+table { width: 100%; border-collapse: collapse; }
+thead tr { border-bottom: 2px solid var(--spectrum-alias-border-color); }
+th { text-align: left; padding: 8px 12px; font-size: 13px; }
+td { padding: 8px 12px; border-bottom: 1px solid var(--spectrum-alias-border-color); vertical-align: top; }
+.path-cell { font-family: monospace; font-size: 13px; }
+.ts { font-size: 11px; opacity: 0.6; margin-top: 2px; }
+.action-row { display: flex; gap: 4px; flex-wrap: wrap; }

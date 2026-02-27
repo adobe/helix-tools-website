@@ -1,0 +1,69 @@
+/* Spectrum CSS Tokens — dark theme override */
+/* Applied via <html class="spectrum-dark"> */
+
+.spectrum-dark {
+  --spectrum-gray-25: #1a1a1a;
+  --spectrum-gray-50: #1e1e1e;
+  --spectrum-gray-75: #252525;
+  --spectrum-gray-100: #2c2c2c;
+  --spectrum-gray-200: #3a3a3a;
+  --spectrum-gray-300: #4a4a4a;
+  --spectrum-gray-400: #5c5c5c;
+  --spectrum-gray-500: #7a7a7a;
+  --spectrum-gray-600: #999;
+  --spectrum-gray-700: #b3b3b3;
+  --spectrum-gray-800: #d0d0d0;
+  --spectrum-gray-900: #ebebeb;
+
+  --spectrum-blue-100: #0d2240;
+  --spectrum-blue-200: #0f3366;
+  --spectrum-blue-600: #4b9cf5;
+  --spectrum-blue-700: #5ec1ff;
+  --spectrum-blue-800: #378ef0;
+  --spectrum-blue-900: #5aa9fa;
+
+  --spectrum-green-100: #0a3222;
+  --spectrum-green-200: #0a3222;
+  --spectrum-green-800: #2d9d78;
+  --spectrum-green-900: #33ab84;
+
+  --spectrum-red-100: #3b1111;
+  --spectrum-red-800: #e34850;
+  --spectrum-red-900: #ec5b62;
+
+  --spectrum-overlay-opacity: 0.6;
+
+  --spectrum-accent-background-color-default: var(--spectrum-blue-800);
+  --spectrum-accent-background-color-hover: var(--spectrum-blue-700);
+  --spectrum-neutral-background-color-default: var(--spectrum-gray-500);
+  --spectrum-neutral-background-color-hover: var(--spectrum-gray-400);
+  --spectrum-neutral-content-color-default: var(--spectrum-gray-800);
+  --spectrum-neutral-subdued-content-color-default: var(--spectrum-gray-700);
+  --spectrum-negative-background-color-default: var(--spectrum-red-800);
+  --spectrum-positive-background-color-default: var(--spectrum-green-800);
+  --spectrum-informative-background-color-default: var(--spectrum-blue-800);
+  --spectrum-focus-indicator-color: var(--spectrum-blue-800);
+
+  --spectrum-alias-border-color: var(--spectrum-gray-300);
+  --spectrum-alias-border-color-muted: var(--spectrum-gray-200);
+  --spectrum-alias-border-color-focus: var(--spectrum-blue-800);
+  --spectrum-alias-background-color-default: var(--spectrum-gray-50);
+  --spectrum-alias-background-color-quiet: var(--spectrum-gray-75);
+  --spectrum-alias-text-color-muted: var(--spectrum-gray-600);
+  --spectrum-notice-background-color-default: #da7b11;
+  --spectrum-semantic-positive-color-default: var(--spectrum-green-800);
+  --spectrum-semantic-negative-color-default: var(--spectrum-red-800);
+  --spectrum-semantic-informative-color-default: var(--spectrum-blue-800);
+  --spectrum-semantic-notice-color-default: #da7b11;
+
+  /* Hover overlay */
+  --spectrum-hover-overlay: rgba(255, 255, 255, 0.07);
+  --spectrum-hover-overlay-strong: rgba(255, 255, 255, 0.12);
+
+  /* CodeMirror syntax highlighting */
+  --cm-color-property: #c4b5fd;
+  --cm-color-string: #93c5fd;
+  --cm-color-number: #5eead4;
+  --cm-color-keyword: #fdba74;
+  --cm-color-punctuation: #a1a1a1;
+}

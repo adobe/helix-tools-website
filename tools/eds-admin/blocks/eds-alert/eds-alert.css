@@ -1,0 +1,39 @@
+:host {
+  display: block;
+}
+
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.alert.info {
+  background: var(--spectrum-informative-background-color-default);
+  color: white;
+}
+
+.alert.negative {
+  background: var(--spectrum-negative-background-color-default);
+  color: white;
+}
+
+.alert.positive {
+  background: var(--spectrum-positive-background-color-default);
+  color: white;
+}
+
+.alert.notice {
+  background: var(--spectrum-notice-background-color-default);
+  color: white;
+}
+
+.alert-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}

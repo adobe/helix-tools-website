@@ -1,0 +1,109 @@
+:host {
+  display: inline-flex;
+}
+
+button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 2px solid transparent;
+  border-radius: 16px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  transition: background 130ms ease, border-color 130ms ease;
+  white-space: nowrap;
+  position: relative;
+}
+
+/* Sizes */
+button.s { padding: 4px 12px; font-size: 12px; border-radius: 12px; height: 24px; }
+button.m { padding: 7px 16px; font-size: 14px; height: 32px; }
+button.l { padding: 10px 20px; font-size: 16px; height: 40px; }
+
+/* Accent */
+button.accent {
+  background: var(--spectrum-accent-background-color-default);
+  color: white;
+  border-color: transparent;
+}
+button.accent:hover { background: var(--spectrum-accent-background-color-hover); }
+button.accent:active { background: var(--spectrum-accent-background-color-down); }
+
+/* Primary */
+button.primary {
+  background: var(--spectrum-neutral-background-color-default);
+  color: white;
+  border-color: transparent;
+}
+button.primary:hover { background: var(--spectrum-neutral-background-color-hover); }
+
+/* Secondary / outline */
+button.secondary {
+  background: transparent;
+  color: var(--spectrum-gray-800);
+  border-color: var(--spectrum-gray-800);
+}
+button.secondary:hover {
+  background: var(--spectrum-gray-900);
+  border-color: var(--spectrum-gray-900);
+  color: var(--spectrum-gray-50);
+}
+
+/* Negative */
+button.negative {
+  background: var(--spectrum-negative-background-color-default);
+  color: white;
+  border-color: transparent;
+}
+button.negative:hover { background: var(--spectrum-negative-background-color-hover); }
+
+/* Quiet / action-button style */
+button.quiet {
+  background: transparent;
+  border-color: transparent;
+  color: var(--spectrum-neutral-content-color-default);
+  padding: 4px 8px;
+  font-weight: 400;
+}
+button.quiet:hover {
+  background: var(--spectrum-hover-overlay);
+}
+
+/* Outline treatment */
+button.outline {
+  background: transparent;
+}
+
+/* Disabled */
+button:disabled {
+  opacity: var(--spectrum-opacity-disabled);
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Focus */
+button:focus-visible {
+  outline: 2px solid var(--spectrum-focus-indicator-color);
+  outline-offset: 2px;
+}
+
+/* Link variant */
+:host([href]) button {
+  cursor: pointer;
+}
+
+/* Icon slot */
+::slotted([slot="icon"]),
+.btn-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+button.s ::slotted([slot="icon"]),
+button.s .btn-icon {
+  width: 14px;
+  height: 14px;
+}

@@ -1,0 +1,37 @@
+:host { display: block; }
+
+
+.paths-section { display: flex; flex-direction: column; gap: 12px; }
+
+sp-textfield { width: 100%; }
+
+.checkbox-row { margin-top: 4px; }
+
+.buttons-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.log-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.log-title { margin: 0; font-size: 0.875rem; }
+
+.log-output {
+  background: var(--spectrum-alias-background-color-quiet);
+  color: var(--spectrum-global-color-gray-100);
+  padding: 12px;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 12px;
+  overflow-x: auto;
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+}

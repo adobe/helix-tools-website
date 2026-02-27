@@ -1,0 +1,28 @@
+:host {
+  display: block;
+}
+
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+sp-alert-banner {
+  --mod-alertbanner-min-block-size: auto;
+}
+
+.scope-picker {
+  width: 100%;
+}
+
+sp-textfield {
+  width: 100%;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}

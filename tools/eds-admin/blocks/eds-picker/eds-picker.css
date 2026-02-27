@@ -1,0 +1,115 @@
+:host {
+  display: inline-block;
+  position: relative;
+}
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--spectrum-neutral-subdued-content-color-default);
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  padding: 7px 12px;
+  border: 1px solid var(--spectrum-gray-400);
+  border-radius: 4px;
+  background: var(--spectrum-gray-25);
+  color: var(--spectrum-gray-900);
+  cursor: pointer;
+  outline: none;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  transition: border-color 130ms ease;
+}
+
+.trigger:hover { border-color: var(--spectrum-gray-500); }
+.trigger:focus-visible { border-color: var(--spectrum-focus-indicator-color); }
+.trigger.s { font-size: 12px; padding: 4px 8px; min-height: 24px; }
+.trigger.m { min-height: 32px; }
+
+.trigger:disabled {
+  opacity: var(--spectrum-opacity-disabled);
+  cursor: default;
+}
+
+.trigger-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trigger-label.placeholder {
+  color: var(--spectrum-gray-600);
+}
+
+.trigger-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.trigger-icon svg {
+  width: 10px;
+  height: 10px;
+  fill: currentColor;
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+
+.listbox {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 100;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  background: var(--spectrum-gray-25);
+  border: 1px solid var(--spectrum-gray-200);
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  max-height: 240px;
+  overflow-y: auto;
+  animation: pickerFade 100ms ease;
+  width: max-content;
+  min-width: 100%;
+}
+
+.listbox li {
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--spectrum-gray-900);
+  white-space: nowrap;
+}
+.listbox li:hover {
+  background: var(--spectrum-hover-overlay);
+}
+.listbox li.selected {
+  background: var(--spectrum-blue-100);
+  color: var(--spectrum-blue-800);
+  font-weight: 600;
+}
+
+@keyframes pickerFade {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}

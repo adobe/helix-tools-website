@@ -1,0 +1,15 @@
+:host { display: block; }
+
+
+.editor-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+sp-textfield { width: 100%; }
+
+.actions {
+  display: flex;
+  gap: 8px;
+}

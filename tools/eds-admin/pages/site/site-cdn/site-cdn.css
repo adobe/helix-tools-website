@@ -1,0 +1,246 @@
+:host {
+  display: block;
+}
+
+sp-tabs {
+  margin-top: 8px;
+}
+
+.setup-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 900px;
+}
+
+.setup-intro {
+  color: var(--spectrum-global-color-gray-700);
+  font-size: 14px;
+}
+
+.setup-intro p {
+  margin: 0;
+}
+
+.setup-intro a {
+  color: var(--spectrum-global-color-blue-600);
+  text-decoration: none;
+}
+
+.setup-intro a:hover {
+  text-decoration: underline;
+}
+
+.section-heading {
+  margin: 0;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--spectrum-global-color-gray-600);
+}
+
+.provider-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.provider-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 20px;
+  border: 2px solid var(--spectrum-global-color-gray-200);
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+  text-align: center;
+  min-width: 120px;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.provider-card:hover:not(:disabled) {
+  border-color: var(--spectrum-global-color-gray-400);
+  background: var(--spectrum-global-color-gray-50);
+}
+
+.provider-card.selected {
+  border-color: var(--spectrum-semantic-informative-color-default);
+  background: rgba(38, 128, 235, 0.05);
+  box-shadow: 0 0 0 1px var(--spectrum-semantic-informative-color-default);
+}
+
+.provider-card:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.provider-logo {
+  display: block;
+  height: 40px;
+  width: auto;
+  max-width: 100px;
+  object-fit: contain;
+}
+
+.provider-name {
+  font-size: 12px;
+  color: var(--spectrum-global-color-gray-600);
+}
+
+.docs-link {
+  margin: 0;
+}
+
+.docs-link a {
+  color: var(--spectrum-global-color-blue-600);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.docs-link a:hover {
+  text-decoration: underline;
+}
+
+/* ── Form Fields ───────────────────────────── */
+
+.form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-field sp-textfield {
+  width: 100%;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── Validation Results ────────────────────── */
+
+.validation-results {
+  border: 1px solid var(--spectrum-global-color-gray-200);
+  border-radius: 8px;
+  padding: 20px 24px;
+}
+
+.validation-heading {
+  margin: 0 0 16px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.validation-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 0;
+}
+
+.validation-item + .validation-item {
+  border-top: 1px solid var(--spectrum-global-color-gray-200);
+}
+
+.validation-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  border-radius: 50%;
+  color: #fff;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.validation-item-icon.pass {
+  background: var(--spectrum-semantic-positive-color-default);
+}
+
+.validation-item-icon.fail {
+  background: var(--spectrum-semantic-negative-color-default);
+}
+
+.validation-item-icon sp-icon-checkmark,
+.validation-item-icon sp-icon-close {
+  --spectrum-icon-size-s: 14px;
+}
+
+.validation-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.validation-item-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--spectrum-global-color-gray-900);
+}
+
+.validation-item-message {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.validation-item-message.pass {
+  color: var(--spectrum-semantic-positive-color-default);
+}
+
+.validation-item-message.fail {
+  color: var(--spectrum-semantic-negative-color-default);
+}
+
+.validation-item-details {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.validation-item-details summary {
+  cursor: pointer;
+  color: var(--spectrum-global-color-gray-700);
+  user-select: none;
+}
+
+.validation-item-details pre {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  background: var(--spectrum-global-color-gray-75);
+  border: 1px solid var(--spectrum-global-color-gray-200);
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: 'Source Code Pro', monospace;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  color: var(--spectrum-global-color-gray-800);
+}
+
+/* ── General ───────────────────────────────── */
+
+
+.config-link {
+  color: var(--spectrum-global-color-blue-600);
+  text-decoration: none;
+}
+
+.config-link:hover {
+  text-decoration: underline;
+}
+
+.health-tab {
+  padding-top: 8px;
+}

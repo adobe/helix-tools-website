@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EDS Admin Console</title>
+    <link rel="icon" type="image/png" href="./assets/aem-logo.png" />
+    <link rel="stylesheet" href="./styles/spectrum-tokens.css" />
+    <style>
+      :root {
+        font-family: adobe-clean-spectrum-vf, adobe-clean-spectrum-srf-vf, 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        color: var(--spectrum-gray-900, CanvasText);
+      }
+      body { margin: 0; padding: 0; }
+    </style>
+    <script type="importmap">
+    {
+      "imports": {
+        "lit": "./deps/lit/dist/index.js",
+        "codemirror": "./deps/codemirror/dist/index.js",
+        "diff": "./deps/diff/dist/index.js",
+        "yaml": "./deps/yaml/dist/index.js"
+      }
+    }
+    </script>
+  </head>
+  <body>
+    <admin-app></admin-app>
+    <script type="module" src="./admin-app.js"></script>
+  </body>
+</html>

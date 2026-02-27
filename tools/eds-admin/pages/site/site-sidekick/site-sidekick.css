@@ -1,0 +1,185 @@
+:host { display: block; }
+
+/* ── General Settings ─────────────────────── */
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-field sp-textfield { width: 100%; }
+
+.form-field.full-width {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 700px) {
+  .form-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Section headings ─────────────────────── */
+
+.section-heading {
+  margin: 0;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--spectrum-global-color-gray-600);
+}
+
+.section-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── Plugin & View cards ──────────────────── */
+
+.item-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--spectrum-global-color-gray-200);
+  border-radius: 8px;
+  background: var(--spectrum-global-color-gray-50);
+}
+
+.item-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-card-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin: 0;
+  word-break: break-all;
+}
+
+.item-card-meta {
+  font-size: 12px;
+  color: var(--spectrum-global-color-gray-600);
+  margin: 2px 0 0;
+  word-break: break-all;
+}
+
+.item-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.tag {
+  display: inline-block;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 10px;
+  background: var(--spectrum-global-color-gray-200);
+  color: var(--spectrum-global-color-gray-800);
+}
+
+.item-card-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* ── Trusted hosts chips ──────────────────── */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 2px 10px;
+  font-size: 13px;
+  border-radius: 14px;
+  background: var(--spectrum-global-color-gray-200);
+  color: var(--spectrum-global-color-gray-800);
+}
+
+.chip sp-action-button {
+  --spectrum-actionbutton-min-width: 0;
+}
+
+/* ── Add inline input ─────────────────────── */
+
+.inline-add {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.inline-add sp-textfield { flex: 1; }
+
+/* ── Dialog ───────────────────────────────── */
+
+.dialog-section-label {
+  font-weight: 600;
+  font-size: 13px;
+  margin: 12px 0 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--spectrum-global-color-gray-200);
+}
+
+.dialog-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dialog-row {
+  display: flex;
+  gap: 12px;
+}
+
+.dialog-row > * { flex: 1; }
+
+.dialog-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+}
+
+.env-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+
+sp-textfield { width: 100%; }
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}

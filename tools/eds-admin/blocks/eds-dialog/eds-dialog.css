@@ -1,0 +1,62 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, var(--spectrum-overlay-opacity));
+  animation: fadeIn 130ms ease;
+}
+
+dialog {
+  position: relative;
+  border: none;
+  border-radius: 8px;
+  background: var(--spectrum-gray-25);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.15);
+  padding: 0;
+  max-height: 90vh;
+  overflow: auto;
+  animation: slideUp 200ms ease;
+}
+
+dialog.s { width: 400px; }
+dialog.m { width: 560px; }
+dialog.l { width: 720px; }
+dialog.fullscreen { width: 95vw; height: 90vh; }
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 12px;
+  border-bottom: 1px solid var(--spectrum-gray-200);
+}
+
+.dialog-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--spectrum-gray-900);
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--spectrum-gray-700);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.close-btn:hover { background: var(--spectrum-gray-200); }
+
+.dialog-body {
+  padding: 16px 24px 24px;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }

@@ -1,0 +1,13 @@
+:host { display: block; }
+
+.card-grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+
+.user-roles {
+  font-size: 0.75rem;
+  color: var(--spectrum-global-color-gray-600);
+}
+
+.roles-label { font-weight: 600; margin: 8px 0 4px; }
+.roles-list { display: flex; flex-direction: column; gap: 8px; }
+.role-row { display: flex; flex-direction: column; gap: 2px; }
+.role-desc { font-size: 0.75rem; color: var(--spectrum-global-color-gray-600); margin: 0 0 0 28px; }

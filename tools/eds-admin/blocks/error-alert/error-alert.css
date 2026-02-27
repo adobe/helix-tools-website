@@ -1,0 +1,23 @@
+.access-denied {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--spectrum-global-color-gray-700);
+}
+
+.access-denied h2 {
+  margin: 8px 0 0;
+  font-size: 1.25rem;
+  color: var(--spectrum-global-color-gray-900);
+}
+
+.access-denied p {
+  margin: 0;
+  max-width: 500px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}

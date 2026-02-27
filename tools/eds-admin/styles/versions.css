@@ -1,0 +1,24 @@
+:host { display: block; }
+
+.versions-section { display: flex; flex-direction: column; gap: 8px; }
+
+.versions-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.versions-table th,
+.versions-table td {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--spectrum-alias-border-color-muted);
+}
+
+.versions-table thead tr {
+  border-bottom: 2px solid var(--spectrum-alias-border-color);
+}
+
+.text-muted { font-size: 0.75rem; margin-left: 8px; }
+.nowrap { white-space: nowrap; }
+.actions-cell { text-align: right; }
+.row-actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }

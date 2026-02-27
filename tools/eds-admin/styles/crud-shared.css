@@ -1,0 +1,44 @@
+:host { display: block; }
+
+.new-item-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 8px;
+  min-width: 0;
+}
+
+.item-value {
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  color: inherit;
+  font-family: 'Source Code Pro', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  word-break: break-all;
+  overflow-wrap: break-word;
+  flex: 1;
+  min-width: 0;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.tile-id {
+  font-family: 'Source Code Pro', monospace;
+  font-weight: 400;
+  font-size: 14px;
+}
+
+.tile-meta {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--spectrum-global-color-gray-600);
+}
+
+.role-desc {
+  font-size: 0.875rem;
+  color: var(--spectrum-global-color-gray-600);
+  margin: 4px 0 0;
+}

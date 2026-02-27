@@ -1,0 +1,115 @@
+/* Spectrum CSS Tokens — minimal set used by eds-admin */
+/* Light theme, medium scale */
+
+:root {
+  /* Gray palette */
+  --spectrum-gray-25: #fff;
+  --spectrum-gray-50: #f8f8f8;
+  --spectrum-gray-75: #f3f3f3;
+  --spectrum-gray-100: #e8e8e8;
+  --spectrum-gray-200: #e0e0e0;
+  --spectrum-gray-300: #d0d0d0;
+  --spectrum-gray-400: #b0b0b0;
+  --spectrum-gray-500: #929292;
+  --spectrum-gray-600: #6b6b6b;
+  --spectrum-gray-700: #464646;
+  --spectrum-gray-800: #323232;
+  --spectrum-gray-900: #1d1d1d;
+
+  /* Blue palette */
+  --spectrum-blue-100: #f0f7ff;
+  --spectrum-blue-200: #e0f0ff;
+  --spectrum-blue-600: #5ea5f8;
+  --spectrum-blue-700: #1473e6;
+  --spectrum-blue-800: #0265dc;
+  --spectrum-blue-900: #0054b6;
+
+  /* Green palette */
+  --spectrum-green-100: #dcfce7;
+  --spectrum-green-200: #e0f8e0;
+  --spectrum-green-600-rgb: 18, 128, 92;
+  --spectrum-green-800: #12805c;
+  --spectrum-green-900: #107c10;
+
+  /* Red palette */
+  --spectrum-red-100: #fee2e2;
+  --spectrum-red-600-rgb: 227, 72, 80;
+  --spectrum-red-800: #d7373f;
+  --spectrum-red-900: #b41b23;
+
+  /* Orange palette */
+  --spectrum-orange-600-rgb: 218, 123, 17;
+  --spectrum-orange-900: #a15900;
+
+  /* Semantic colors */
+  --spectrum-accent-background-color-default: var(--spectrum-blue-800);
+  --spectrum-accent-background-color-hover: #024eaa;
+  --spectrum-accent-background-color-down: #024eaa;
+  --spectrum-neutral-background-color-default: var(--spectrum-gray-800);
+  --spectrum-neutral-background-color-hover: var(--spectrum-gray-900);
+  --spectrum-neutral-content-color-default: var(--spectrum-gray-800);
+  --spectrum-neutral-subdued-content-color-default: var(--spectrum-gray-700);
+  --spectrum-negative-background-color-default: var(--spectrum-red-800);
+  --spectrum-negative-background-color-hover: var(--spectrum-red-900);
+  --spectrum-positive-background-color-default: var(--spectrum-green-800);
+  --spectrum-informative-background-color-default: var(--spectrum-blue-800);
+  --spectrum-notice-background-color-default: #e68619;
+  --spectrum-focus-indicator-color: var(--spectrum-blue-800);
+  --spectrum-overlay-opacity: 0.4;
+  --spectrum-opacity-disabled: 0.3;
+
+  /* Spectrum 1 compat — maps old names used in page CSS to new values */
+  --spectrum-global-color-gray-50: var(--spectrum-gray-50);
+  --spectrum-global-color-gray-75: var(--spectrum-gray-75);
+  --spectrum-global-color-gray-100: var(--spectrum-gray-100);
+  --spectrum-global-color-gray-200: var(--spectrum-gray-200);
+  --spectrum-global-color-gray-300: var(--spectrum-gray-300);
+  --spectrum-global-color-gray-400: var(--spectrum-gray-400);
+  --spectrum-global-color-gray-500: var(--spectrum-gray-500);
+  --spectrum-global-color-gray-600: var(--spectrum-gray-600);
+  --spectrum-global-color-gray-700: var(--spectrum-gray-700);
+  --spectrum-global-color-gray-800: var(--spectrum-gray-800);
+  --spectrum-global-color-gray-900: var(--spectrum-gray-900);
+  --spectrum-global-color-blue-50: var(--spectrum-blue-100);
+  --spectrum-global-color-blue-100: var(--spectrum-blue-200);
+  --spectrum-global-color-blue-400: var(--spectrum-blue-600);
+  --spectrum-global-color-blue-500: var(--spectrum-blue-700);
+  --spectrum-global-color-blue-600: var(--spectrum-blue-800);
+  --spectrum-global-color-blue-700: var(--spectrum-blue-900);
+  --spectrum-global-color-green-100: var(--spectrum-green-200);
+  --spectrum-global-color-green-400-rgb: var(--spectrum-green-600-rgb);
+  --spectrum-global-color-green-600: var(--spectrum-green-800);
+  --spectrum-global-color-green-700: var(--spectrum-green-900);
+  --spectrum-global-color-red-400-rgb: var(--spectrum-red-600-rgb);
+  --spectrum-global-color-red-600: var(--spectrum-red-800);
+  --spectrum-global-color-red-700: var(--spectrum-red-900);
+  --spectrum-global-color-orange-400-rgb: var(--spectrum-orange-600-rgb);
+  --spectrum-global-color-orange-700: var(--spectrum-orange-900);
+  --spectrum-alias-border-color: var(--spectrum-gray-300);
+  --spectrum-alias-border-color-muted: var(--spectrum-gray-200);
+  --spectrum-alias-border-color-focus: var(--spectrum-blue-800);
+  --spectrum-alias-background-color-default: var(--spectrum-gray-25);
+  --spectrum-alias-background-color-quiet: var(--spectrum-gray-50);
+  --spectrum-alias-text-color-muted: var(--spectrum-gray-600);
+  --spectrum-global-color-blue-200: #cce5ff;
+  --spectrum-global-dimension-size-100: 8px;
+  --spectrum-global-dimension-size-150: 12px;
+  --spectrum-global-dimension-size-200: 16px;
+  --spectrum-global-dimension-size-300: 24px;
+  --spectrum-global-dimension-size-400: 32px;
+  --spectrum-semantic-positive-color-default: var(--spectrum-green-800);
+  --spectrum-semantic-negative-color-default: var(--spectrum-red-800);
+  --spectrum-semantic-informative-color-default: var(--spectrum-blue-800);
+  --spectrum-semantic-notice-color-default: #e68619;
+
+  /* Hover overlay */
+  --spectrum-hover-overlay: rgba(0, 0, 0, 0.05);
+  --spectrum-hover-overlay-strong: rgba(0, 0, 0, 0.08);
+
+  /* CodeMirror syntax highlighting */
+  --cm-color-property: #7c3aed;
+  --cm-color-string: #0954a5;
+  --cm-color-number: #0e7c6b;
+  --cm-color-keyword: #b35900;
+  --cm-color-punctuation: #464646;
+}

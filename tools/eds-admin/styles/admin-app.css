@@ -1,0 +1,8 @@
+:host {
+  display: block;
+  height: 100vh;
+}
+
+#app-root {
+  height: 100%;
+}

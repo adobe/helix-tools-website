@@ -1,0 +1,78 @@
+:host { display: block; }
+
+
+/* --- Card grid override --- */
+.card-grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+
+.sm-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: 'Source Code Pro', monospace;
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--spectrum-global-color-gray-700);
+}
+
+.sm-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* --- Type selection step --- */
+.type-choices {
+  display: flex;
+  gap: 16px;
+}
+.type-choice {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px;
+  border: 2px solid var(--spectrum-global-color-gray-300);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+  background: var(--spectrum-alias-background-color-default);
+}
+.type-choice:hover {
+  border-color: var(--spectrum-global-color-blue-500);
+  background: var(--spectrum-global-color-blue-50);
+}
+.type-choice h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+.type-choice p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--spectrum-global-color-gray-600);
+  text-align: center;
+}
+
+/* --- Language cards --- */
+.languages { display: flex; flex-direction: column; gap: 12px; }
+.lang-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--spectrum-global-color-gray-200);
+  border-radius: 6px;
+  background: var(--spectrum-global-color-gray-50);
+}
+.lang-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  font-size: 13px;
+}
+.lang-card-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
