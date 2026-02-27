@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from 'lit';
 import { AuthStore } from '../../controllers/auth-controller.js';
 import { navigate } from '../../utils/router.js';
-import { addProject, getLastOrg, getProjects, getLocalSites, getThemePreference } from '../../services/storage.js';
+import { addProject, getLastOrg, getProjects, getLocalSites } from '../../services/storage.js';
 import { edsIcon } from '../../utils/icons.js';
 import getSheet from '../../utils/sheet.js';
 import { pageSheet, sharedSheet } from '../../styles/page-sheets.js';
@@ -26,12 +26,13 @@ export class LandingPage extends LitElement {
     this._site = '';
     this._signingIn = false;
     this._error = null;
-    this._theme = getThemePreference() || 'light';
+    this._theme = 'light';
   }
 
   connectedCallback() {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [pageSheet, sheet, sharedSheet];
+    this._theme = document.documentElement.style.colorScheme || 'light';
   }
 
   _toggleTheme() {

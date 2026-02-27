@@ -14,6 +14,17 @@
   position: absolute;
   top: 16px;
   right: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  color: var(--spectrum-gray-800);
+  display: inline-flex;
+  align-items: center;
+}
+.theme-toggle:hover {
+  background: var(--spectrum-hover-overlay);
 }
 
 .landing.loading {
