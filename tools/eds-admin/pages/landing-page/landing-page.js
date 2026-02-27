@@ -33,6 +33,13 @@ export class LandingPage extends LitElement {
     super.connectedCallback();
     this.shadowRoot.adoptedStyleSheets = [pageSheet, sheet, sharedSheet];
     this._theme = document.documentElement.style.colorScheme || 'light';
+    this._onAuthChange = () => this.requestUpdate();
+    AuthStore.instance?.addEventListener('change', this._onAuthChange);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    AuthStore.instance?.removeEventListener('change', this._onAuthChange);
   }
 
   _toggleTheme() {
