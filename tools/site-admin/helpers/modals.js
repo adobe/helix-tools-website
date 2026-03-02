@@ -16,7 +16,7 @@ import {
   deleteApiKey,
 } from './api-helper.js';
 import {
-  icon, showToast, formatDate, isExpired,
+  icon, showToast, formatDate, isExpired, escapeHtml,
 } from './utils.js';
 
 /* eslint-disable no-alert, no-restricted-globals */
@@ -136,8 +136,8 @@ export const openEditSourceModal = async (
   byogitDefaults = null,
 ) => {
   const isByogit = !!byogitDefaults;
-  const byogitOwner = byogitDefaults?.owner || '';
-  const byogitRepo = byogitDefaults?.repo || '';
+  const byogitOwner = escapeHtml(byogitDefaults?.owner || '');
+  const byogitRepo = escapeHtml(byogitDefaults?.repo || '');
 
   const { dialog, container, showModal } = await setupModal('', `
     <div class="site-modal-header">
@@ -568,8 +568,8 @@ export const openAddSiteModal = async (
   byogitDefaults = null,
 ) => {
   const isByogit = !!byogitDefaults;
-  const byogitOwner = byogitDefaults?.owner || '';
-  const byogitRepo = byogitDefaults?.repo || '';
+  const byogitOwner = escapeHtml(byogitDefaults?.owner || '');
+  const byogitRepo = escapeHtml(byogitDefaults?.repo || '');
 
   const { dialog, container, showModal } = await setupModal('add-site-modal', `
     <div class="site-modal-header">

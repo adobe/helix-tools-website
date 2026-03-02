@@ -3,6 +3,11 @@ import { PSI_STORAGE_KEY, FAVORITES_STORAGE_KEY } from './constants.js';
 // Re-export shared utilities from card-ui
 export { loadIcon, icon, showToast } from '../../../utils/card-ui/card-ui.js';
 
+const HTML_ESCAPE_MAP = {
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+};
+export const escapeHtml = (str) => str.replace(/[&<>"']/g, (c) => HTML_ESCAPE_MAP[c]);
+
 export const getFavorites = (orgValue) => {
   const stored = localStorage.getItem(`${FAVORITES_STORAGE_KEY}-${orgValue}`);
   return stored ? JSON.parse(stored) : [];
