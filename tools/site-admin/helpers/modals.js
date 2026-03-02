@@ -626,6 +626,7 @@ export const openAddSiteModal = async (
       <div class="form-field">
         <label for="byogit-secret-value">Cloud Manager Secret (cm-byog)</label>
         <input type="password" id="byogit-secret-value" placeholder="Secret from Cloud Manager" />
+      </div>
       <div class="form-actions">
         <button type="button" class="button outline skip-secret-btn">Skip</button>
         <button type="button" class="button save-secret-btn">Save Secret</button>
