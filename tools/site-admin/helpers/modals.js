@@ -625,7 +625,6 @@ export const openAddSiteModal = async (
         <a href="https://www.aem.live/developer/byo-git#configure-your-aem-site-to-use-cloud-manager" target="_blank" rel="noopener noreferrer">Learn more</a></p>
       <div class="form-field">
         <label for="byogit-secret-value">Cloud Manager Secret (cm-byog)</label>
-        <input type="text" id="byogit-secret-value" placeholder="Secret from Cloud Manager" />
         <input type="password" id="byogit-secret-value" placeholder="Secret from Cloud Manager" />
       <div class="form-actions">
         <button type="button" class="button outline skip-secret-btn">Skip</button>
