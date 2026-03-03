@@ -52,7 +52,7 @@ gh pr diff <PR-number>
 ## Review Criteria
 
 **PR Structure (PR mode only):**
-- Preview URL: `https://{branch}--helix-tools-website--adobe.aem.page/{path}`
+- Preview URL: `https://{branch}--helix-tools-website--adobe.aem.page/{path}` or `https://{branch}--helix-tools-website--adobe.aem.live/{path}` (both `.aem.page` and `.aem.live` are accepted)
 - Clear description of what changed and why
 
 **JavaScript:**
