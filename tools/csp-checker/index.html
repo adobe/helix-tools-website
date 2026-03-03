@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>CSP Checker | AEM Tools</title>
+  <meta name="description" content="Check if your Content-Security-Policy allows loading the OpTel script.">
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/csp-checker/csp-checker.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/csp-checker/csp-checker.css" />
+</head>
+
+<body class="csp-checker">
+  <header></header>
+  <main>
+    <div>
+      <h1>CSP Checker - Operational Telemetry Compatibility</h1>
+      <p>
+        Operational Telemetry (OpTel) collected from one of the third-party hosts used by Adobe
+        can be blocked by websites with a restrictive
+        <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP">Content Security Policy</a>
+        (CSP).  To check if this is an issue,
+        paste the site’s <strong>Content-Security-Policy</strong> header below. The tool checks whether
+        the selected host is allowed by <strong>script-src</strong>.
+        If <strong>script-src</strong> is omitted, <strong>default-src</strong> is used as fallback.
+      </p>
+    </div>
+
+    <div class="csp-checker-form">
+      <div class="form-field">
+        <label for="rum-host">OpTel host used in the &lt;script&gt; tag.
+          <a target="_blank" href="https://www.aem.live/developer/operational-telemetry#how-to-add-operational-telemetry-instrumentation-to-your-site">
+            Example
+          </a></label>
+        <select id="rum-host" class="rum-host">
+          <option value="rum.hlx.page" selected>rum.hlx.page</option>
+          <option value="ot.aem.live">ot.aem.live</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label for="csp-input">Content-Security-Policy header value</label>
+        <textarea
+          id="csp-input"
+          class="csp-input"
+          rows="12"
+          cols="80"
+          placeholder="e.g. default-src 'self'; script-src 'self' https://rum.hlx.page"
+          spellcheck="false"
+        ></textarea>
+      </div>
+      <p class="button-wrapper">
+        <button type="button" id="check-csp" class="button primary">Check OpTel compatibility</button>
+      </p>
+    </div>
+
+    <div id="csp-result" class="csp-result" aria-live="polite" hidden>
+      <h2 id="csp-result-heading">Result for <code id="csp-result-url"></code></h2>
+      <div id="csp-result-body"></div>
+    </div>
+  </main>
+  <footer></footer>
+</body>
+
+</html>

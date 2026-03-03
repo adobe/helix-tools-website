@@ -1,0 +1,183 @@
+/* Mobile-first base styles */
+.csp-checker main {
+  max-width: 2400px;
+  margin-left: var(--spacing-s);
+  margin-right: var(--spacing-s);
+}
+
+@media (width >= 900px) {
+  .csp-checker main {
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+.csp-checker .csp-checker-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-m);
+  margin-bottom: var(--spacing-l);
+}
+
+.csp-checker .rum-host {
+  display: block;
+  width: 100%;
+  padding: var(--spacing-xs) var(--spacing-s);
+  border: var(--border-s) solid var(--color-border);
+  border-radius: var(--rounding-s);
+  font-size: var(--body-size-m);
+  background: var(--layer-elevated);
+}
+
+.csp-checker .rum-host:focus {
+  outline: none;
+  border-color: var(--blue-500);
+  box-shadow: 0 0 0 2px light-dark(var(--blue-100), var(--blue-900));
+}
+
+.csp-checker .csp-input {
+  width: 100%;
+  max-width: 100%;
+  min-height: 240px;
+  padding: var(--spacing-s);
+  border: var(--border-s) solid var(--color-border);
+  border-radius: var(--rounding-m);
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.csp-checker .csp-input::placeholder {
+  color: var(--color-font-grey);
+}
+
+.csp-checker .csp-input:focus {
+  outline: none;
+  border-color: var(--blue-500);
+  box-shadow: 0 0 0 2px light-dark(var(--blue-100), var(--blue-900));
+}
+
+.csp-checker .csp-result {
+  margin-top: var(--spacing-l);
+  padding: var(--spacing-m);
+  background: var(--layer-elevated);
+  border: var(--border-s) solid var(--color-border);
+  border-radius: var(--rounding-m);
+}
+
+.csp-checker .csp-result h2 {
+  margin: 0 0 var(--spacing-m) 0;
+  font-size: var(--heading-size-s);
+}
+
+.csp-checker .csp-summary {
+  font-weight: 600;
+  margin: 0 0 var(--spacing-m) 0;
+}
+
+.csp-checker .csp-summary-allowed {
+  color: light-dark(var(--green-700), var(--green-400));
+}
+
+.csp-checker .csp-summary-blocked {
+  color: light-dark(var(--red-700), var(--red-400));
+}
+
+.csp-checker .csp-result-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--spacing-m);
+}
+
+.csp-checker .csp-result-table th,
+.csp-checker .csp-result-table td {
+  padding: var(--spacing-xs) var(--spacing-s);
+  text-align: left;
+  border-bottom: var(--border-s) solid var(--color-border);
+  vertical-align: top;
+}
+
+.csp-checker .csp-result-table th {
+  font-weight: 600;
+  background: light-dark(var(--gray-100), var(--gray-800));
+}
+
+.csp-checker .csp-cell-sources code {
+  display: block;
+  max-height: 12em;
+  overflow-y: auto;
+}
+
+.csp-checker .csp-result-table td code {
+  font-size: var(--body-size-xs);
+  word-break: break-all;
+}
+
+.csp-checker .csp-allowed {
+  color: light-dark(var(--green-700), var(--green-400));
+  font-weight: 500;
+}
+
+.csp-checker .csp-blocked {
+  color: light-dark(var(--red-700), var(--red-400));
+  font-weight: 500;
+}
+
+.csp-checker .csp-recommendation-hr {
+  margin: var(--spacing-s) 0;
+  border: 0;
+  border-top: var(--border-s) solid var(--color-border);
+}
+
+.csp-checker .csp-recommendation-inline {
+  margin-top: 0;
+  font-size: var(--body-size-s);
+  font-family: var(--code-font-family);
+  color: var(--color-font);
+}
+
+.csp-checker .csp-recommendation-inline .csp-recommendation-label {
+  display: block;
+  margin-bottom: var(--spacing-xs);
+  font-family: var(--code-font-family);
+}
+
+.csp-checker .csp-recommendation-inline .csp-add-source {
+  font-weight: 700;
+  color: light-dark(var(--blue-700), var(--blue-400));
+}
+
+.csp-checker .csp-hint {
+  margin: 0;
+  font-size: var(--body-size-s);
+  color: var(--color-font);
+}
+
+/* Tablet and up (600px+) */
+@media (width >= 600px) {
+  .csp-checker .csp-input {
+    min-height: 280px;
+    font-size: var(--body-size-m);
+  }
+
+  .csp-checker .csp-result-table th,
+  .csp-checker .csp-result-table td {
+    padding: var(--spacing-s) var(--spacing-m);
+  }
+
+  .csp-checker .csp-result-table td code {
+    font-size: var(--body-size-s);
+  }
+}
+
+/* Desktop and up (900px+) */
+@media (width >= 900px) {
+  .csp-checker .csp-result {
+    padding: var(--spacing-l);
+  }
+
+  .csp-checker .csp-cell-sources code {
+    max-height: 18em;
+  }
+}
