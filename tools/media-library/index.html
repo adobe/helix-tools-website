@@ -9,23 +9,25 @@
   >
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Media Log Viewer</title>
+  <title>Media Library</title>
   <script nonce="aem" src="/scripts/aem.js" type="module"></script>
   <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/utils/config/config.css" />
   <link rel="stylesheet" href="/styles/styles.css" />
   <script nonce="aem" src="/tools/media-library/media-library.js" type="module"></script>
   <link rel="stylesheet" href="/tools/media-library/media-library.css" />
+  <link rel="stylesheet" href="/tools/media-library/views/mediainfo/mediainfo.css" />
 </head>
 
 <body class="media-library">
   <header></header>
   <main>
-    <div>
+    <div class="media-library-title">
       <h1>Media Library</h1>
-      <p>View and analyze media activity logs for your AEM site. Track when media was added, by whom, and where it's used.</p>
+      <p>Track and analyze media usage across your AEM Edge Delivery site</p>
     </div>
 
-    <div>
+    <div class="media-library-config">
       <form id="media-library-form">
         <section class="form-field config-field">
           <div class="form-field org-field">
@@ -39,115 +41,20 @@
             <datalist id="site-list"></datalist>
           </div>
         </section>
-
-        <section class="form-field timeframe-field">
-          <label for="timeframe">Timeframe</label>
-          <select name="timeframe" id="timeframe" required>
-            <option value="7d">Last 7 days</option>
-            <option value="30d">Last 30 days</option>
-            <option value="90d" selected>Last 90 days</option>
-          </select>
-        </section>
-
         <p class="button-wrapper">
-          <button type="submit" class="button">Load Media</button>
-          <button type="reset" id="form-reset" class="button outline">Reset</button>
+          <button type="submit" id="load-media" class="button">Load Media</button>
+          <button type="reset" class="button outline">Reset</button>
         </p>
       </form>
     </div>
 
-    <div class="filters-section" aria-hidden="true">
-      <div>
-        <div class="filters-container">
-          <div class="form-field">
-            <label for="media-search">Search</label>
-            <input name="media-search" id="media-search" type="search" placeholder="Filter by filename, path, or user..." />
-          </div>
-          
-          <div class="form-field">
-            <label for="type-filter">Type</label>
-            <select name="type-filter" id="type-filter">
-              <option value="all">All Media</option>
-              <option value="image">Images</option>
-              <option value="svg">SVGs</option>
-              <option value="icon">Icons</option>
-              <option value="video">Videos</option>
-              <option value="pdf">PDFs</option>
-              <option value="fragment">Fragments</option>
-            </select>
-          </div>
-
-          <div class="form-field">
-            <label for="usage-filter">Usage</label>
-            <select name="usage-filter" id="usage-filter">
-              <option value="all">All Media</option>
-              <option value="referenced">Referenced</option>
-              <option value="unreferenced">Unreferenced</option>
-            </select>
-          </div>
-
-          <div class="form-field media-count-field">
-            <label>Results</label>
-            <div class="media-count">
-              <span id="media-count-text">0 items</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="filters-actions">
-          <button type="button" id="export-unreferenced" class="button outline">
-            <span class="icon icon-download"></span>
-            Export Unreferenced
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div class="results-container" aria-hidden="true">
-      <div>
-        <div id="media-grid"></div>
-      </div>
-    </div>
-
-    <div class="no-results" aria-hidden="false">
-      <div>
-        <div>
-          <span class="icon icon-search"></span>
-          <div>
-            <p><strong>No media loaded</strong></p>
-            <p>Submit the form above to load media logs.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="loading-state" aria-hidden="true">
-      <div>
-        <div>
-          <i class="symbol symbol-loading"></i>
-          <p>Loading media logs...</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="error-state" aria-hidden="true">
-      <div>
-        <div>
-          <span class="icon icon-notice"></span>
-          <div>
-            <p><strong>Error</strong></p>
-            <p id="error-message">Unable to load media logs.</p>
-          </div>
-        </div>
-      </div>
+    <div class="workspace">
+      <div class="sidebar"></div>
+      <div class="topbar"></div>
+      <div class="grid"></div>
     </div>
   </main>
   <footer></footer>
-
-  <dialog id="media-modal">
-    <button class="close-modal" aria-label="Close">×</button>
-    <div class="modal-body"></div>
-  </dialog>
 </body>
 
 </html>
