@@ -146,7 +146,7 @@ export const openEditSourceModal = async (
     </div>
     <form class="edit-source-form">
       <div class="form-field code-url-field"${isByogit ? ' aria-hidden="true"' : ''}>
-        <label for="edit-code">GitHub Repository URL</label>
+        <label for="edit-code">Git Repository URL</label>
         <input type="url" id="edit-code" ${isByogit ? '' : 'required '}value="${codeUrl}" placeholder="https://github.com/owner/repo" />
       </div>
       <div class="form-field byogit-toggle">
