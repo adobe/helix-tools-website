@@ -56,6 +56,13 @@ const populateCardDetails = (card, orgValue) => {
     card.dataset.codeUrl = codeUrl;
     card.dataset.contentUrl = contentUrl;
 
+    const isByogit = details.code?.source?.type === 'byogit'
+      || codeUrl.includes('cm-repo.adobe.io');
+    if (isByogit) {
+      card.dataset.byogitOwner = details.code?.source?.owner || details.code?.owner || '';
+      card.dataset.byogitRepo = details.code?.source?.repo || details.code?.repo || '';
+    }
+
     const hasPreviewAuth = details.access?.site || details.access?.preview;
     const hasLiveAuth = details.access?.site || details.access?.live;
     const hasAnyAuth = hasPreviewAuth || hasLiveAuth;
