@@ -35,7 +35,8 @@ function extractOrgSite(url) {
  * @param {Array<{original: string, sanitized: string, changes: string[]}>} changes.modified
  *   URLs that were sanitized
  * @param {string[]} changes.deduplicated - Duplicate URLs that will be removed
- * @returns {Promise<boolean|'sanitized'|'unsanitized'>} true or 'sanitized' to proceed with sanitized URLs, 'unsanitized' to use originals, false if cancelled
+ * @returns {Promise<boolean|'sanitized'|'unsanitized'>} true or 'sanitized' to proceed with
+ *   sanitized URLs, 'unsanitized' to use originals, false if cancelled
  */
 const showSanitizationWarning = (changes) => {
   const { rejected, modified, deduplicated } = changes;
