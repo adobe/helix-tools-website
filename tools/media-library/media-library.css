@@ -52,6 +52,10 @@ body.media-library .media-library-config {
   padding: 0 var(--horizontal-spacing);
 }
 
+body.media-library .media-library-title {
+  padding-top: var(--spacing-200);
+}
+
 body.media-library main > .workspace {
   flex: 1;
   min-height: 0;
