@@ -298,6 +298,14 @@ async function init() {
           validationError: t('AUTH_REQUIRED'),
           sitePathValid: false,
         });
+        const onProfileUpdate = async () => {
+          window.removeEventListener('profile-update', onProfileUpdate);
+          if (await ensureLogin(orgKey, siteKey)) {
+            updateAppState({ validationError: null });
+            loadMediaData(orgKey, siteKey, pathKey);
+          }
+        };
+        window.addEventListener('profile-update', onProfileUpdate);
         return;
       }
       updateAppState({ sitePathValid: true, validationError: null });
