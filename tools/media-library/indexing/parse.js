@@ -236,22 +236,17 @@ export async function buildUsageMap(pageEntries, org, repo, ref = 'main', onProg
     externalMedia: new Map(),
   };
 
-  const pagesByPath = new Map();
+  const latestTimestampByPath = new Map();
   pageEntries.forEach((e) => {
     const p = normalizePath(e.path);
-    if (!pagesByPath.has(p)) pagesByPath.set(p, []);
-    pagesByPath.get(p).push(e);
-  });
-  pagesByPath.forEach((events) => {
-    events.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    const ts = e.timestamp || 0;
+    const current = latestTimestampByPath.get(p) ?? 0;
+    latestTimestampByPath.set(p, Math.max(current, ts));
   });
 
-  const getLatestPageTimestamp = (path) => {
-    const events = pagesByPath.get(path);
-    return events?.[0]?.timestamp ?? 0;
-  };
+  const getLatestPageTimestamp = (path) => latestTimestampByPath.get(path) ?? 0;
 
-  const uniquePages = [...pagesByPath.keys()].filter((p) => !isHiddenPath(p));
+  const uniquePages = [...latestTimestampByPath.keys()].filter((p) => !isHiddenPath(p));
 
   const results = await processConcurrently(
     uniquePages,
@@ -267,19 +262,20 @@ export async function buildUsageMap(pageEntries, org, repo, ref = 'main', onProg
     if (!md) return;
 
     const addToMap = (map, path) => {
-      if (!map.has(path)) map.set(path, []);
-      if (!map.get(path).includes(normalizedPath)) {
-        map.get(path).push(normalizedPath);
-      }
+      if (!map.has(path)) map.set(path, new Set());
+      map.get(path).add(normalizedPath);
     };
 
     const addToExternalMedia = (url) => {
       const pageTs = getLatestPageTimestamp(normalizedPath);
       const existing = usageMap.externalMedia.get(url);
       if (!existing) {
-        usageMap.externalMedia.set(url, { pages: [normalizedPath], latestTimestamp: pageTs });
-      } else if (!existing.pages.includes(normalizedPath)) {
-        existing.pages.push(normalizedPath);
+        usageMap.externalMedia.set(url, {
+          pages: new Set([normalizedPath]),
+          latestTimestamp: pageTs,
+        });
+      } else {
+        existing.pages.add(normalizedPath);
         existing.latestTimestamp = Math.max(existing.latestTimestamp, pageTs);
       }
     };
@@ -295,6 +291,16 @@ export async function buildUsageMap(pageEntries, org, repo, ref = 'main', onProg
     svgs.forEach((s) => addToMap(usageMap.svgs, s));
     icons.forEach((s) => addToMap(usageMap.svgs, s));
     externalUrls.forEach((u) => addToExternalMedia(u));
+  });
+
+  // Convert Sets to arrays for consumers
+  ['fragments', 'pdfs', 'svgs'].forEach((key) => {
+    usageMap[key].forEach((set, path) => {
+      usageMap[key].set(path, [...set]);
+    });
+  });
+  usageMap.externalMedia.forEach((data, url) => {
+    usageMap.externalMedia.set(url, { ...data, pages: [...data.pages] });
   });
 
   return usageMap;

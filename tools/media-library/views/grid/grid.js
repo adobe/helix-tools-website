@@ -37,6 +37,7 @@ function escapeHtml(str) {
 }
 
 const virtualCleanupMap = new WeakMap();
+const virtualRangeMap = new WeakMap();
 let renderGridRef;
 
 const VIRTUAL_THRESHOLD = 100;
@@ -182,10 +183,11 @@ function cleanupVirtual(block) {
     cleanup.resizeObserver?.disconnect();
     virtualCleanupMap.delete(block);
   }
+  virtualRangeMap.delete(block);
 }
 
 function getScrollContainer(block) {
-  let el = block.parentElement;
+  let el = block;
   while (el) {
     const style = getComputedStyle(el);
     if (style.overflowY === 'auto' || style.overflowY === 'scroll' || style.overflow === 'auto') {
@@ -222,6 +224,13 @@ function renderVirtualGrid(block, filtered, state, handlers) {
     const grid = existing.querySelector('.media-grid');
     const spacer = existing.querySelector('.virtual-spacer');
     if (viewport && grid && spacer) {
+      const lastRange = virtualRangeMap.get(block);
+      const rangeKey = `${startIdx}-${endIdx}`;
+      if (lastRange?.rangeKey === rangeKey && lastRange?.cols === cols) {
+        viewport.style.transform = `translateY(${offsetY}px)`;
+        return;
+      }
+      virtualRangeMap.set(block, { rangeKey, cols });
       const newTotalHeight = totalRows * ROW_HEIGHT + (PADDING * 2);
       if (spacer.style.height !== `${newTotalHeight}px`) spacer.style.height = `${newTotalHeight}px`;
       viewport.style.transform = `translateY(${offsetY}px)`;
@@ -271,10 +280,15 @@ function renderVirtualGrid(block, filtered, state, handlers) {
   block.appendChild(root);
 
   let scrollRaf = null;
+  let lastThrottle = 0;
+  const throttleMs = 32;
   const onScroll = () => {
     if (scrollRaf) return;
     scrollRaf = requestAnimationFrame(() => {
       scrollRaf = null;
+      const now = Date.now();
+      if (now - lastThrottle < throttleMs) return;
+      lastThrottle = now;
       renderGridRef(block, getAppState());
     });
   };

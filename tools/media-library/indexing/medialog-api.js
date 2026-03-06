@@ -2,6 +2,8 @@
  * Medialog API client - fetches and transforms medialog data
  */
 import { getDedupeKey } from '../core/urls.js';
+import { MediaLibraryError, ErrorCodes, logMediaLibraryError } from '../core/errors.js';
+import t from '../core/messages.js';
 
 const CONFIG = {
   API_URL: 'https://admin.hlx.page/medialog',
@@ -20,8 +22,6 @@ export async function fetchMediaLog(org, site, timeParams, nextToken) {
   if (timeParams.from && timeParams.to) {
     url.searchParams.set('from', timeParams.from);
     url.searchParams.set('to', timeParams.to);
-  } else if (timeParams.since) {
-    url.searchParams.set('since', timeParams.since);
   }
   if (nextToken) url.searchParams.set('nextToken', nextToken);
   url.searchParams.set('limit', CONFIG.DEFAULT_LIMIT);
@@ -29,8 +29,14 @@ export async function fetchMediaLog(org, site, timeParams, nextToken) {
   const response = await fetch(url.toString(), { credentials: 'include' });
 
   if (!response.ok) {
+    const endpoint = url.toString();
     if (response.status === 401) {
-      throw new Error('Authentication required');
+      logMediaLibraryError(ErrorCodes.EDS_AUTH_EXPIRED, { status: 401, endpoint });
+      throw new MediaLibraryError(ErrorCodes.EDS_AUTH_EXPIRED, t('EDS_AUTH_EXPIRED'), { status: 401 });
+    }
+    if (response.status === 403) {
+      logMediaLibraryError(ErrorCodes.EDS_LOG_DENIED, { status: 403, endpoint });
+      throw new MediaLibraryError(ErrorCodes.EDS_LOG_DENIED, t('EDS_LOG_DENIED'), { status: 403 });
     }
     throw new Error(`Failed to fetch medialog: ${response.status}`);
   }
@@ -52,20 +58,17 @@ export async function fetchMediaLog(org, site, timeParams, nextToken) {
 export async function fetchAllMediaLog(org, site, timeParams, onChunk = null) {
   const allEntries = [];
   let nextToken = null;
+  let done = false;
 
-  const fetchPage = async () => {
+  while (!done) {
+    // eslint-disable-next-line no-await-in-loop -- pagination must be sequential
     const { entries, nextToken: token } = await fetchMediaLog(org, site, timeParams, nextToken);
     allEntries.push(...entries);
-    if (entries.length > 0 && onChunk) {
-      onChunk(entries);
-    }
+    if (entries.length > 0 && onChunk) onChunk(entries);
     nextToken = token;
-    if (nextToken) {
-      await fetchPage();
-    }
-  };
+    done = !nextToken;
+  }
 
-  await fetchPage();
   return allEntries;
 }
 
@@ -140,6 +143,14 @@ function toMediaItem(media) {
 }
 
 /**
+ * Extract media items array from an existing media map (no merge).
+ * Use after mergeEntriesIntoMediaMap to avoid redundant full-map rebuild.
+ */
+export function getMediaItemsFromMap(mediaMap) {
+  return Array.from(mediaMap.values()).map(toMediaItem);
+}
+
+/**
  * Merge new medialog/auditlog entries into existing media map (incremental, no full recompute).
  * @param {Array} entries - New entries to merge
  * @param {Map} mediaMap - Mutable map (key -> media), reused across chunks
@@ -187,7 +198,7 @@ export function mergeEntriesIntoMediaMap(entries, mediaMap) {
     }
   });
 
-  return Array.from(mediaMap.values()).map(toMediaItem);
+  return getMediaItemsFromMap(mediaMap);
 }
 
 /**

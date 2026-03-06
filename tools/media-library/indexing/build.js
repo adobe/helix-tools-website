@@ -1,5 +1,12 @@
-import { toCanonicalMediaKey } from '../core/urls.js';
-import { fetchAllMediaLog, transformToMediaData, mergeEntriesIntoMediaMap } from './medialog-api.js';
+import { toCanonicalMediaKey, pathUnder } from '../core/urls.js';
+import { MediaLibraryError, ErrorCodes, logMediaLibraryError } from '../core/errors.js';
+import t from '../core/messages.js';
+import {
+  fetchAllMediaLog,
+  transformToMediaData,
+  mergeEntriesIntoMediaMap,
+  getMediaItemsFromMap,
+} from './medialog-api.js';
 import { fetchAllAuditLog, processAuditLog } from './auditlog-api.js';
 import {
   createBulkStatusJob,
@@ -14,9 +21,16 @@ import {
 } from './reconcile.js';
 import { toAbsoluteFilePath } from './parse.js';
 import { IndexConfig } from '../core/constants.js';
-import { DEFAULT_FULL_SINCE, getIncrementalTimeBounds } from '../core/storage.js';
+import { incrementalTimeParams, initialTimeParams } from '../core/storage.js';
 
 const PROGRESSIVE_DISPLAY_CAP = 3000;
+
+function normalizePathForFilter(p) {
+  if (!p || typeof p !== 'string') return '';
+  const trimmed = p.trim().replace(/\/+$/, '');
+  if (!trimmed || trimmed === '/') return '';
+  return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+}
 
 export async function buildMediaDataFromEntries(
   medialogEntries,
@@ -25,29 +39,46 @@ export async function buildMediaDataFromEntries(
   site,
   onProgress = null,
   onProgressiveData = null,
+  path = '',
 ) {
+  const pathNorm = normalizePathForFilter(path);
+  let medialogScoped = medialogEntries;
+  if (pathNorm) {
+    medialogScoped = medialogEntries.filter(
+      (m) => m.resourcePath && pathUnder(m.resourcePath, pathNorm),
+    );
+  }
+
   const { linkedEntries } = await processLinkedContent(
     auditlogEntries,
-    medialogEntries,
+    medialogScoped,
     org,
     site,
     'main',
     onProgress,
+    path,
   );
 
   const referencedHashes = new Set();
-  [...medialogEntries, ...linkedEntries].forEach((e) => {
+  [...medialogScoped, ...linkedEntries].forEach((e) => {
     if (e.resourcePath) {
       const k = toCanonicalMediaKey(e.path || e.mediaHash);
       if (k) referencedHashes.add(k);
     }
   });
 
-  const standalone = processStandaloneUploads(medialogEntries, referencedHashes);
+  const standalone = processStandaloneUploads(medialogScoped, referencedHashes);
   const processedAuditlog = processAuditLog(auditlogEntries, org, site);
-  const allMedialog = [...medialogEntries, ...standalone];
+  const allMedialog = [...medialogScoped, ...standalone];
   const allAudit = [...processedAuditlog, ...linkedEntries];
-  const mediaData = transformToMediaData(allMedialog, allAudit);
+  let mediaData = transformToMediaData(allMedialog, allAudit);
+
+  if (pathNorm) {
+    mediaData = mediaData.filter((item) => {
+      const sources = item.uniqueSources || [];
+      return sources.some((doc) => pathUnder(doc, pathNorm));
+    });
+  }
 
   if (onProgressiveData && mediaData.length > 0) {
     const toEmit = mediaData.length > PROGRESSIVE_DISPLAY_CAP
@@ -59,12 +90,49 @@ export async function buildMediaDataFromEntries(
   return mediaData;
 }
 
+/**
+ * Validates path exists via status API. Throws if path has no resources.
+ * Returns { statusResources, filteredResources }.
+ */
+export async function validatePathWithStatus(org, site, path, onProgress = () => {}) {
+  onProgress({ stage: 'fetching', message: 'Validating path...' });
+  const { jobUrl } = await createBulkStatusJob(org, site, 'main');
+  onProgress({ stage: 'fetching', message: 'Checking path...' });
+  await pollStatusJob(
+    jobUrl,
+    IndexConfig.STATUS_POLL_INTERVAL_MS,
+    (progress) => {
+      const msg = `Status: ${progress?.processed ?? 0}/${progress?.total ?? 0}...`;
+      onProgress({ stage: 'fetching', message: msg });
+    },
+    IndexConfig.STATUS_POLL_MAX_DURATION_MS,
+  );
+  const statusResources = await getStatusJobDetails(jobUrl);
+  const filteredResources = path
+    ? statusResources.filter((r) => pathUnder(r.path, path))
+    : statusResources;
+
+  if (path && filteredResources.length === 0) {
+    const displayPath = path.trim() || '/';
+    logMediaLibraryError(ErrorCodes.VALIDATION_PATH_NOT_FOUND, { path: displayPath });
+    throw new MediaLibraryError(
+      ErrorCodes.VALIDATION_PATH_NOT_FOUND,
+      t('VALIDATION_PATH_NOT_FOUND', { path: displayPath }),
+      { path: displayPath },
+    );
+  }
+
+  return { statusResources, filteredResources };
+}
+
 export async function fetchAndBuildMediaData(org, site, options = {}) {
   const {
     incremental,
     metadata,
     onProgress = () => {},
     onProgressiveData = () => {},
+    path = '',
+    statusResources: preValidatedStatusResources = null,
   } = options;
 
   const buildMode = incremental ? 'incremental' : 'full';
@@ -77,7 +145,7 @@ export async function fetchAndBuildMediaData(org, site, options = {}) {
   let newAuditlog;
 
   if (incremental) {
-    const timeParams = getIncrementalTimeBounds(metadata?.lastFetchTime);
+    const timeParams = incrementalTimeParams(metadata?.lastFetchTime);
 
     const onAuditChunk = (entries) => {
       applyAuditChunkToMaps(entries, pagesByPath, filesByPath, deletedPaths);
@@ -88,7 +156,7 @@ export async function fetchAndBuildMediaData(org, site, options = {}) {
 
     const onMedialogChunk = (entries) => {
       mergeEntriesIntoMediaMap(entries, mediaMap);
-      const fromMedialog = mergeEntriesIntoMediaMap([], mediaMap);
+      const fromMedialog = getMediaItemsFromMap(mediaMap);
       if (fromMedialog.length > 0) onProgressiveData(fromMedialog);
     };
 
@@ -97,15 +165,15 @@ export async function fetchAndBuildMediaData(org, site, options = {}) {
       fetchAllAuditLog(org, site, timeParams, onAuditChunk),
     ]);
   } else {
-    const timeParams = { since: DEFAULT_FULL_SINCE };
+    const timeParams = initialTimeParams();
 
     const onMedialogChunk = (entries) => {
       mergeEntriesIntoMediaMap(entries, mediaMap);
-      const fromMedialog = mergeEntriesIntoMediaMap([], mediaMap);
+      const fromMedialog = getMediaItemsFromMap(mediaMap);
       if (fromMedialog.length > 0) onProgressiveData(fromMedialog);
     };
 
-    const statusTask = (async () => {
+    const runStatusJob = async () => {
       onProgress({ stage: 'fetching', message: 'Creating status job...' });
       const { jobUrl } = await createBulkStatusJob(org, site, 'main');
       onProgress({ stage: 'fetching', message: 'Polling status job for site discovery...' });
@@ -119,17 +187,47 @@ export async function fetchAndBuildMediaData(org, site, options = {}) {
         IndexConfig.STATUS_POLL_MAX_DURATION_MS,
       );
       return getStatusJobDetails(jobUrl);
-    })();
+    };
 
-    const [statusResources, medialogResult] = await Promise.all([
-      statusTask,
-      fetchAllMediaLog(org, site, timeParams, onMedialogChunk),
-    ]);
+    let statusPromise = null;
+    if (preValidatedStatusResources != null) {
+      statusPromise = typeof preValidatedStatusResources.then === 'function'
+        ? preValidatedStatusResources
+        : Promise.resolve(preValidatedStatusResources);
+    }
 
-    const syntheticAudit = statusResources.map((r) => {
-      const path = toAbsoluteFilePath(r.path);
+    let statusResources;
+    let medialogResult;
+    if (statusPromise) {
+      [statusResources, medialogResult] = await Promise.all([
+        statusPromise,
+        fetchAllMediaLog(org, site, timeParams, onMedialogChunk),
+      ]);
+    } else {
+      [statusResources, medialogResult] = await Promise.all([
+        runStatusJob(),
+        fetchAllMediaLog(org, site, timeParams, onMedialogChunk),
+      ]);
+    }
+
+    const filteredResources = path
+      ? statusResources.filter((r) => pathUnder(r.path, path))
+      : statusResources;
+
+    if (path && filteredResources.length === 0) {
+      const displayPath = path.trim() || '/';
+      logMediaLibraryError(ErrorCodes.VALIDATION_PATH_NOT_FOUND, { path: displayPath });
+      throw new MediaLibraryError(
+        ErrorCodes.VALIDATION_PATH_NOT_FOUND,
+        t('VALIDATION_PATH_NOT_FOUND', { path: displayPath }),
+        { path: displayPath },
+      );
+    }
+
+    const syntheticAudit = filteredResources.map((r) => {
+      const entryPath = toAbsoluteFilePath(r.path);
       return {
-        path,
+        path: entryPath,
         route: 'preview',
         method: 'UPDATE',
         timestamp: Date.now(),
@@ -152,6 +250,7 @@ export async function fetchAndBuildMediaData(org, site, options = {}) {
     site,
     onProgress,
     onProgressiveData,
+    path,
   );
 
   return { mediaData, buildMode };

@@ -7,10 +7,9 @@ import {
   onStateChange,
   showNotification,
 } from '../../core/state.js';
-import { filterMedia, initializeProcessedData } from '../../features/filters.js';
+import { filterMedia } from '../../features/filters.js';
 import { exportToCsv } from '../../core/export.js';
 import { getMediaLibraryContext } from '../../core/context.js';
-import { clearCache } from '../../core/storage.js';
 
 const FILTER_STRUCTURE = [
   { key: 'all', label: 'All Media' },
@@ -36,16 +35,6 @@ function getFilteredMedia(state) {
 }
 
 function render(block, state) {
-  let indexMsg = 'Ready to discover';
-  if (state.indexLockedByOther) indexMsg = 'Discovery in progress (another session)';
-  else if (state.isIndexing) indexMsg = 'Discovering...';
-  else if (state.indexProgress?.stage === 'complete') {
-    const count = state.indexProgress?.mediaReferences ?? state.mediaData?.length ?? 0;
-    indexMsg = count > 0
-      ? `${count} items`
-      : 'Ready to discover';
-  }
-
   const filterListHtml = FILTER_STRUCTURE.map(
     (f) => `<li><button type="button" data-filter="${f.key}" class="${state.selectedFilterType === f.key ? 'active' : ''}">${f.label}</button></li>`,
   ).join('');
@@ -83,10 +72,6 @@ function render(block, state) {
       </div>
       <div class="data-panel">
         <button type="button" class="export-btn" title="Export as CSV" ${!state.mediaData?.length ? 'disabled' : ''}>Export</button>
-        <button type="button" class="clear-cache-btn" title="Clear cached media data for this site" ${state.isClearingCache ? 'disabled' : ''}>${state.isClearingCache ? 'Clearing...' : 'Clear cache'}</button>
-        <div class="index-panel data-index-status">
-          <div class="index-message ${!state.indexProgress?.stage ? 'empty' : ''}">${indexMsg}</div>
-        </div>
       </div>
     </aside>`;
 
@@ -117,33 +102,6 @@ function render(block, state) {
     const unreferenced = filtered.filter((item) => item.usageCount === 0);
     exportToCsv(unreferenced, { org: ctx.getOrg?.(), repo: ctx.getSite?.(), filterName: 'unreferenced' });
     showNotification('Export complete', `Exported ${unreferenced.length} unreferenced media items`);
-  });
-
-  block.querySelector('.clear-cache-btn')?.addEventListener('click', async () => {
-    const org = ctx.getOrg?.();
-    const site = ctx.getSite?.();
-    if (!org || !site) {
-      showNotification('Error', 'Select an organization and site first', 'error');
-      return;
-    }
-    updateAppState({ isClearingCache: true });
-    try {
-      await clearCache(org, site);
-      updateAppState({
-        rawMediaData: [],
-        mediaData: [],
-        usageIndex: new Map(),
-        folderPathsCache: new Set(),
-        processedData: initializeProcessedData(),
-        indexProgress: { stage: 'complete', hasChanges: false, mediaReferences: 0 },
-        validationError: null,
-        isClearingCache: false,
-      });
-      showNotification('Cache cleared', 'Reload the page to re-discover media');
-    } catch (err) {
-      showNotification('Error', err?.message || 'Failed to clear cache', 'error');
-      updateAppState({ isClearingCache: false });
-    }
   });
 }
 

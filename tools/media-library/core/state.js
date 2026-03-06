@@ -42,6 +42,7 @@ let appState = {
   sitePath: null,
   org: null,
   repo: null,
+  path: null,
 
   mediaData: [],
   rawMediaData: [],
@@ -65,6 +66,7 @@ let appState = {
   sitePathValid: false,
   validationError: null,
   validationSuggestion: null,
+  persistentError: null,
 
   notification: null,
   isClearingCache: false,
@@ -122,6 +124,14 @@ export function showNotification(heading, message, type = 'success') {
     updateAppState({ notification: null });
     notificationTimeout = null;
   }, 3000);
+}
+
+export function dismissNotification() {
+  if (notificationTimeout) {
+    clearTimeout(notificationTimeout);
+    notificationTimeout = null;
+  }
+  updateAppState({ notification: null });
 }
 
 export function onStateChange(keysOrCallback, callback) {

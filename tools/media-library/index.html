@@ -40,15 +40,31 @@
             <input name="site" id="site" list="site-list" autocomplete="off" disabled required />
             <datalist id="site-list"></datalist>
           </div>
+          <div class="form-field path-field">
+            <label for="path">Path (optional)</label>
+            <input name="path" id="path" type="text" placeholder="e.g. /docs" autocomplete="off" />
+          </div>
         </section>
         <p class="button-wrapper">
-          <button type="submit" id="load-media" class="button">Load Media</button>
+          <button type="submit" id="load-media" class="button">
+            <span class="load-btn-text">Load Media</span>
+            <span class="load-btn-loading" hidden>
+              <span class="load-btn-spinner" aria-hidden="true"></span>
+              Loading…
+            </span>
+          </button>
           <button type="reset" class="button outline">Reset</button>
         </p>
+        <p class="form-validation-error" id="form-validation-error" role="alert" hidden></p>
       </form>
+      <div class="media-library-config-bar" id="config-bar" hidden>
+        <span class="config-bar-label" id="config-bar-label"></span>
+        <button type="button" class="button outline" id="config-bar-change">Change site</button>
+      </div>
     </div>
 
-    <div class="workspace">
+    <div class="workspace" id="workspace" hidden>
+      <div class="workspace-banner" id="media-persistent-banner" role="alert" aria-live="assertive" hidden></div>
       <div class="sidebar"></div>
       <div class="topbar"></div>
       <div class="grid"></div>

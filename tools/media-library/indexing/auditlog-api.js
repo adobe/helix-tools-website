@@ -1,4 +1,6 @@
 import { ensureLogin } from '../../../blocks/profile/profile.js';
+import { MediaLibraryError, ErrorCodes, logMediaLibraryError } from '../core/errors.js';
+import t from '../core/messages.js';
 
 const CONFIG = {
   API_URL: 'https://admin.hlx.page/log',
@@ -18,8 +20,6 @@ export async function fetchAuditLog(org, site, timeParams, nextToken = null) {
   if (timeParams.from && timeParams.to) {
     params.set('from', timeParams.from);
     params.set('to', timeParams.to);
-  } else {
-    params.set('since', timeParams.since || '730d');
   }
   params.set('limit', CONFIG.DEFAULT_LIMIT);
 
@@ -32,8 +32,14 @@ export async function fetchAuditLog(org, site, timeParams, nextToken = null) {
   const response = await fetch(url, { credentials: 'include' });
 
   if (!response.ok) {
+    const endpoint = `${CONFIG.API_URL}/${org}/${site}/main`;
     if (response.status === 401) {
-      throw new Error('Authentication required. Please sign in to the project in Sidekick.');
+      logMediaLibraryError(ErrorCodes.EDS_AUTH_EXPIRED, { status: 401, endpoint });
+      throw new MediaLibraryError(ErrorCodes.EDS_AUTH_EXPIRED, t('EDS_AUTH_EXPIRED'), { status: 401 });
+    }
+    if (response.status === 403) {
+      logMediaLibraryError(ErrorCodes.EDS_LOG_DENIED, { status: 403, endpoint });
+      throw new MediaLibraryError(ErrorCodes.EDS_LOG_DENIED, t('EDS_LOG_DENIED'), { status: 403 });
     }
     if (response.status === 404) {
       throw new Error('Audit log not found for this site.');
@@ -60,31 +66,25 @@ export async function fetchAuditLog(org, site, timeParams, nextToken = null) {
 export async function fetchAllAuditLog(org, site, timeParams, onChunk = null) {
   await ensureLogin(org, site);
 
-  let allEntries = [];
+  const allEntries = [];
   let nextToken = null;
+  let done = false;
 
-  const fetchPage = async () => {
+  while (!done) {
+    // eslint-disable-next-line no-await-in-loop -- pagination must be sequential
     const result = await fetchAuditLog(org, site, timeParams, nextToken);
-
     if (!result.entries || result.entries.length === 0) {
-      return;
+      done = true;
+      break;
     }
 
-    const entriesCount = result.entries.length;
-    allEntries = allEntries.concat(result.entries);
+    allEntries.push(...result.entries);
     nextToken = result.nextToken;
+    if (result.entries.length > 0 && onChunk) onChunk(result.entries);
 
-    if (entriesCount > 0 && onChunk) {
-      onChunk(result.entries);
-    }
+    if (result.entries.length < CONFIG.DEFAULT_LIMIT || !nextToken) done = true;
+  }
 
-    if (entriesCount < CONFIG.DEFAULT_LIMIT || !nextToken) {
-      return;
-    }
-    await fetchPage();
-  };
-
-  await fetchPage();
   return allEntries;
 }
 

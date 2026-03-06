@@ -5,12 +5,16 @@ import {
   getAppState,
   updateAppState,
   onStateChange,
+  showNotification,
 } from '../../core/state.js';
 import {
   parseColonSyntax,
   getSearchSuggestions,
   createSearchSuggestion,
+  initializeProcessedData,
 } from '../../features/filters.js';
+import { getMediaLibraryContext } from '../../core/context.js';
+import { clearCache } from '../../core/storage.js';
 
 function escapeAttribute(str) {
   if (!str) return '';
@@ -57,16 +61,24 @@ function createInitialMarkup(state) {
   const displayTerm = getDisplaySearchTerm(state);
   const hasSearch = !!(displayTerm || state.selectedDocument || state.selectedFolder);
   const clearBtnAttrs = hasSearch ? '' : 'hidden';
+  const clearCacheLabel = state.isClearingCache ? 'Clearing...' : 'Clear data';
   return `
     <div class="top-bar">
-      <div class="search-container">
-        <div class="search-wrapper">
-          <input type="text" id="media-search-input" role="combobox" aria-autocomplete="list" placeholder="Enter search" value="${escapeAttribute(displayTerm)}" autocomplete="off">
-          <button type="button" class="clear-search-btn" title="Clear search" ${clearBtnAttrs}>✕</button>
-          <div class="suggestions-dropdown hidden" role="listbox" id="suggestions-listbox"></div>
+      <div class="topbar-spacer"></div>
+      <div class="topbar-center">
+        <div class="search-container">
+          <div class="search-wrapper">
+            <input type="text" id="media-search-input" role="combobox" aria-autocomplete="list" placeholder="Enter search" value="${escapeAttribute(displayTerm)}" autocomplete="off">
+            <button type="button" class="clear-search-btn" title="Clear search" ${clearBtnAttrs}>✕</button>
+            <div class="suggestions-dropdown hidden" role="listbox" id="suggestions-listbox"></div>
+          </div>
         </div>
+        <div class="result-count"></div>
       </div>
-      <div class="result-count"></div>
+      <div class="topbar-actions">
+        <button type="button" class="topbar-action-btn clear-cache-btn" title="Clear existing data" ${state.isClearingCache ? 'disabled' : ''}>${clearCacheLabel}</button>
+        <button type="button" class="topbar-action-btn change-site-btn" title="Change organization, site, or path">Change site</button>
+      </div>
     </div>`;
 }
 
@@ -113,6 +125,13 @@ function updateResultCount(block, state) {
       ? '<span class="result-count-spinner"></span>'
       : (state.resultSummary || '');
   }
+}
+
+function updateClearCacheButton(block, state) {
+  const btn = block.querySelector('.clear-cache-btn');
+  if (!btn) return;
+  btn.disabled = !!state.isClearingCache;
+  btn.textContent = state.isClearingCache ? 'Clearing...' : 'Clear data';
 }
 
 function updateClearButton(block, state) {
@@ -255,11 +274,46 @@ export default async function decorate(block) {
     clearSuggestions();
   });
 
+  block.querySelector('.change-site-btn')?.addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('media-library:change-site'));
+  });
+
+  block.querySelector('.clear-cache-btn')?.addEventListener('click', async () => {
+    const ctx = getMediaLibraryContext();
+    const org = ctx.getOrg?.();
+    const site = ctx.getSite?.();
+    const path = ctx.getPath?.() ?? '';
+    if (!org || !site) {
+      showNotification('Error', 'Select an organization and site first', 'error');
+      return;
+    }
+    updateAppState({ isClearingCache: true });
+    try {
+      await clearCache(org, site, path);
+      updateAppState({
+        rawMediaData: [],
+        mediaData: [],
+        usageIndex: new Map(),
+        folderPathsCache: new Set(),
+        processedData: initializeProcessedData(),
+        indexProgress: { stage: 'complete', hasChanges: false, mediaReferences: 0 },
+        validationError: null,
+        isClearingCache: false,
+      });
+      showNotification('Data cleared', 'Reload the page to re-discover media');
+    } catch (err) {
+      showNotification('Error', err?.message || 'Failed to clear data', 'error');
+      updateAppState({ isClearingCache: false });
+    }
+  });
+
   updateResultCount(block, state);
+  updateClearCacheButton(block, state);
   updateClearButton(block, state);
 
   onStateChange((newState) => {
     updateResultCount(block, newState);
     updateClearButton(block, newState);
+    updateClearCacheButton(block, newState);
   });
 }

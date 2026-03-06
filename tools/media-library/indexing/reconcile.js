@@ -14,7 +14,7 @@ import {
   getLinkedContentType,
 } from './parse.js';
 import { Operation, Paths } from '../core/constants.js';
-import { getDedupeKey } from '../core/urls.js';
+import { getDedupeKey, pathUnder } from '../core/urls.js';
 
 function toCanonicalPath(path) {
   if (!path) return '';
@@ -178,10 +178,7 @@ export function processStandaloneUploads(medialogEntries, referencedHashes) {
   return added;
 }
 
-/**
- * Process linked content (PDFs, SVGs, fragments) from page markdown.
- * Fetches pages, parses markdown. Pages from audit log (route=preview).
- */
+// Processes linked content from pages; optional path restricts to pages under that path.
 export async function processLinkedContent(
   auditlogEntries,
   medialogEntries,
@@ -189,10 +186,14 @@ export async function processLinkedContent(
   repo,
   ref = 'main',
   onProgress = null,
+  path = '',
 ) {
   const aud = auditlogEntries || [];
   const med = medialogEntries || [];
-  const pageEntries = aud.filter((e) => isPage(e.path) && e.route === 'preview');
+  let pageEntries = aud.filter((e) => isPage(e.path) && e.route === 'preview');
+  if (path) {
+    pageEntries = pageEntries.filter((e) => pathUnder(e.path, path));
+  }
   const allFiles = [...aud, ...med].filter((e) => !isPage(e.path));
 
   const filesByPath = new Map();
@@ -204,8 +205,8 @@ export async function processLinkedContent(
   });
 
   const deletedPaths = new Set();
-  filesByPath.forEach((event, path) => {
-    if (event.method === 'DELETE' || event.operation === 'delete') deletedPaths.add(path);
+  filesByPath.forEach((event, filePath) => {
+    if (event.method === 'DELETE' || event.operation === 'delete') deletedPaths.add(filePath);
   });
 
   if (pageEntries.length === 0) {
@@ -217,7 +218,7 @@ export async function processLinkedContent(
 
   const allLinkedPaths = new Set(filesByPath.keys());
   ['pdfs', 'svgs', 'fragments'].forEach((key) => {
-    usageMap[key]?.forEach((_, path) => allLinkedPaths.add(path));
+    usageMap[key]?.forEach((_, fp) => allLinkedPaths.add(fp));
   });
 
   const linkedEntries = [];

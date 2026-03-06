@@ -105,6 +105,28 @@ export function toCanonicalMediaKey(path) {
   }
 }
 
+export function pathUnder(entryPath, basePath) {
+  if (!basePath || typeof basePath !== 'string') return true;
+  const trimmed = basePath.trim().replace(/\/+$/, '');
+  if (!trimmed || trimmed === '/') return true;
+  const base = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  let canonical = '';
+  try {
+    if (!entryPath) {
+      canonical = '';
+    } else if (entryPath.startsWith('http')) {
+      const { pathname } = new URL(entryPath);
+      [canonical] = pathname.split('?')[0].split('#');
+    } else {
+      const p = entryPath.startsWith('/') ? entryPath : `/${entryPath}`;
+      [canonical] = p.split('?')[0].split('#');
+    }
+  } catch {
+    [canonical] = (entryPath || '').split('?')[0].split('#');
+  }
+  return canonical === base || canonical.startsWith(`${base}/`);
+}
+
 export function getDedupeKey(url) {
   if (!url) return '';
 

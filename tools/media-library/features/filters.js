@@ -478,8 +478,9 @@ export function getSearchSuggestions(
     const { field, value } = colonSyntax;
 
     if (field === 'folder') {
-      const docFolderPaths = getFolderPathsFromDocs(mediaData);
-      const folderPaths = docFolderPaths.size > 0 ? docFolderPaths : folderPathsCache;
+      const folderPaths = (folderPathsCache?.size > 0)
+        ? folderPathsCache
+        : getFolderPathsFromDocs(mediaData);
       return getFolderSuggestions(folderPaths, value).slice(0, 10);
     }
 
@@ -515,7 +516,9 @@ export function getSearchSuggestions(
 
   if (q.startsWith('/')) {
     const docFolderPaths = getFolderPathsFromDocs(mediaData);
-    const folderPaths = docFolderPaths.size > 0 ? docFolderPaths : folderPathsCache;
+    const folderPaths = docFolderPaths.size > 0
+      ? docFolderPaths
+      : (folderPathsCache || new Set());
     const folderSuggestions = getFolderSuggestions(folderPaths, q);
     const docSuggestions = getDocSuggestions(mediaData, q);
 
