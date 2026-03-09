@@ -402,9 +402,10 @@ async function updateAllEditorHighlights() {
  * @returns {Object|null} Parsed JSON or null if invalid
  */
 function validateJson() {
-  const value = jsonInput?.value?.trim();
-  if (!value) {
+  const value = jsonInput?.value ?? '';
+  if (!value.trim()) {
     updateStatus(jsonStatus, 'warning', 'Empty JSON');
+    setErrorHighlight(jsonInput, jsonErrorHighlight);
     return null;
   }
 
@@ -421,6 +422,7 @@ function validateJson() {
       setErrorHighlight(jsonInput, jsonErrorHighlight, line);
     } else {
       updateStatus(jsonStatus, 'error', 'Invalid JSON');
+      setErrorHighlight(jsonInput, jsonErrorHighlight);
     }
     return null;
   }
@@ -434,6 +436,7 @@ function formatJson() {
   if (parsed && jsonInput) {
     jsonInput.value = JSON.stringify(parsed, null, 2);
     updateEditorHighlight(jsonInput, jsonHighlight, 'json');
+    updateLineNumbers(jsonInput, jsonLineNumbers);
     updateStatus(jsonStatus, 'ok', 'Formatted');
   }
 }
@@ -782,6 +785,7 @@ async function render() {
     if (e.message === 'Failed to fetch') {
       updatePreview('');
       updateStatus(templateStatus, 'error', 'Connection failed');
+      setErrorHighlight(templateInput, templateErrorHighlight);
     } else {
       const errorMessage = humanizeRenderError(e.message, templateInput?.value ?? '');
       updatePreview('');
