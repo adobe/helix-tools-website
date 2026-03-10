@@ -8,6 +8,7 @@ import {
   showNotification,
 } from '../../core/state.js';
 import { getMediaLibraryContext, setMediaLibraryContext } from '../../core/context.js';
+import { sortMediaData } from '../../core/utils.js';
 import { filterMedia } from '../../features/filters.js';
 import { copyMediaToClipboard } from '../../core/export.js';
 import {
@@ -63,8 +64,8 @@ function getFilteredMedia(state) {
 
 function getDisplayData(state) {
   const hasProgressive = state.isIndexing && state.progressiveMediaData?.length > 0;
-  if (hasProgressive) return state.progressiveMediaData;
-  return getFilteredMedia(state);
+  const data = hasProgressive ? state.progressiveMediaData : getFilteredMedia(state);
+  return sortMediaData(data);
 }
 
 function renderMediaPreview(media, org, site) {
