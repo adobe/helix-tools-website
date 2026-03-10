@@ -9,6 +9,7 @@ import {
   filterMedia,
   initializeProcessedData,
 } from './features/filters.js';
+import { sortMediaData } from './core/utils.js';
 import {
   getAppState,
   updateAppState,
@@ -201,9 +202,10 @@ async function init() {
     });
 
     const processedData = await processMediaData(rawData);
+    const sortedData = sortMediaData(rawData);
     updateAppState({
-      rawMediaData: rawData,
-      mediaData: rawData,
+      rawMediaData: sortedData,
+      mediaData: sortedData,
       usageIndex,
       folderPathsCache: folderPaths,
       processedData,
@@ -392,7 +394,8 @@ async function init() {
         })()
         : mediaData;
 
-      const savedData = await saveMediaData(orgKey, siteKey, finalMediaData, pathKey);
+      const sortedData = sortMediaData(finalMediaData);
+      const savedData = await saveMediaData(orgKey, siteKey, sortedData, pathKey);
       await saveMetadata(orgKey, siteKey, {
         lastFetchTime: Date.now(),
         lastBuildMode: buildMode,
@@ -400,7 +403,7 @@ async function init() {
       }, pathKey);
       removeIndexLock(orgKey, siteKey, pathKey);
       cancelProgressiveThrottle();
-      await doSetMediaData(savedData);
+      await doSetMediaData(sortedData);
       updateAppState({ isIndexing: false, progressiveMediaData: [] });
     } catch (error) {
       removeIndexLock(orgKey, siteKey, pathKey);

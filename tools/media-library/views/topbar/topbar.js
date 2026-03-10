@@ -68,7 +68,7 @@ function createInitialMarkup(state) {
       <div class="topbar-center">
         <div class="search-container">
           <div class="search-wrapper">
-            <input type="text" id="media-search-input" role="combobox" aria-autocomplete="list" placeholder="Enter search" value="${escapeAttribute(displayTerm)}" autocomplete="off">
+            <input type="text" id="media-search-input" role="combobox" aria-autocomplete="list" placeholder="Enter search term or / to filter by hierarchy" value="${escapeAttribute(displayTerm)}" autocomplete="off">
             <button type="button" class="clear-search-btn" title="Clear search" ${clearBtnAttrs}>✕</button>
             <div class="suggestions-dropdown hidden" role="listbox" id="suggestions-listbox"></div>
           </div>

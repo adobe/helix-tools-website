@@ -453,6 +453,13 @@ dialog.modal-overlay::backdrop {
   font-weight: 500;
 }
 
+.pdf-error-message {
+  display: block;
+  color: light-dark(var(--red-600, #dc2626), var(--red-400, #f87171));
+  font-size: 14px;
+  margin-top: 8px;
+}
+
 .document-icon {
   width: 64px;
   height: 64px;

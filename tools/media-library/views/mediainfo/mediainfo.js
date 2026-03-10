@@ -54,6 +54,7 @@ export default function createMediaInfoModal() {
   let activeTab = 'usage';
   const metadataCache = new Map();
   const pdfBlobUrls = new Map();
+  const pdfLoadFailed = new Set();
   let fetchAbortController = null;
   let renderFn = null;
 
@@ -90,12 +91,18 @@ export default function createMediaInfoModal() {
           metadataCache.set(cacheKey, result);
           return result;
         }
-        return isExternal ? 'External resource' : `Unable to fetch (HTTP ${getResponse.status})`;
+        const fallback = isExternal ? 'External resource' : `Unable to fetch (HTTP ${getResponse.status})`;
+        metadataCache.set(cacheKey, fallback);
+        return fallback;
       }
-      return isExternal ? 'External resource' : `Unable to fetch (HTTP ${response.status})`;
+      const fallback = isExternal ? 'External resource' : `Unable to fetch (HTTP ${response.status})`;
+      metadataCache.set(cacheKey, fallback);
+      return fallback;
     } catch (error) {
       if (error.name === 'AbortError') return null;
-      return isExternal ? 'External resource' : `Unable to fetch (${error.message})`;
+      const fallback = isExternal ? 'External resource' : `Unable to fetch (${error.message})`;
+      metadataCache.set(cacheKey, fallback);
+      return fallback;
     }
   }
 
@@ -110,10 +117,13 @@ export default function createMediaInfoModal() {
         const blob = await response.blob();
         const blobUrl = URL.createObjectURL(blob);
         pdfBlobUrls.set(fullUrl, blobUrl);
-        if (renderFn) renderFn();
+      } else {
+        pdfLoadFailed.add(fullUrl);
       }
+      if (renderFn) renderFn();
     } catch (err) {
-      // PDF load failed; modal will keep showing Loading...
+      pdfLoadFailed.add(fullUrl);
+      if (renderFn) renderFn();
     }
   }
 
@@ -184,6 +194,22 @@ export default function createMediaInfoModal() {
     if (isPdfUrl(media.url)) {
       const fullUrl = resolveMediaUrl(media.url, org, repo);
       const blobUrl = pdfBlobUrls.get(fullUrl);
+      const loadFailed = pdfLoadFailed.has(fullUrl);
+
+      if (loadFailed) {
+        return `
+        <div class="pdf-preview-container">
+          <div class="subtype-label">PDF</div>
+          <div class="document-placeholder pdf-load-failed">
+            <img src="/icons/S2_Icon_PDF_20_N.svg" class="icon" width="64" height="64" alt="">
+            <div class="pdf-info">
+              <span class="pdf-name">${escapeHtml(getFileName(media.url))}</span>
+              <span class="pdf-type">PDF Document</span>
+              <span class="pdf-error-message">Preview unavailable. The file may be restricted or inaccessible.</span>
+            </div>
+          </div>
+        </div>`;
+      }
 
       if (blobUrl) {
         return `
@@ -434,6 +460,7 @@ export default function createMediaInfoModal() {
     }
     pdfBlobUrls.forEach((url) => URL.revokeObjectURL(url));
     pdfBlobUrls.clear();
+    pdfLoadFailed.clear();
   });
 
   renderFn = doRender;
