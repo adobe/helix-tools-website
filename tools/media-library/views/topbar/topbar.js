@@ -134,22 +134,27 @@ function updateClearCacheButton(block, state) {
   btn.textContent = state.isClearingCache ? 'Clearing...' : 'Clear data';
 }
 
-function updateClearButton(block, state) {
+function updateClearButton(block, state, skipInputSync = false) {
   const input = block.querySelector('#media-search-input');
   const clearBtn = block.querySelector('.clear-search-btn');
   if (!input || !clearBtn) return;
 
-  const hasActiveSearch = !!(
-    (input.value && input.value.trim())
-    || state.selectedDocument
-    || state.selectedFolder
-  );
+  const expectedDisplay = getDisplaySearchTerm(state);
+  const hasActiveSearch = !!(expectedDisplay || (input.value && input.value.trim()));
+
+  const inputHasFocus = document.activeElement === input;
+  if (!skipInputSync && !inputHasFocus) {
+    if (!state.selectedDocument && !state.selectedFolder) {
+      if (!expectedDisplay && input.value.trim() !== '') {
+        input.value = '';
+      }
+    } else if (input.value.trim() !== '' && input.value !== expectedDisplay) {
+      input.value = expectedDisplay;
+    }
+  }
+
   clearBtn.hidden = !hasActiveSearch;
   clearBtn.setAttribute('aria-hidden', hasActiveSearch ? 'false' : 'true');
-
-  if (state.selectedDocument || state.selectedFolder) {
-    input.value = getDisplaySearchTerm(state);
-  }
 }
 
 export default async function decorate(block) {
@@ -195,24 +200,44 @@ export default async function decorate(block) {
     if (debounceTimer) clearTimeout(debounceTimer);
     if (suggestionsTimer) clearTimeout(suggestionsTimer);
 
-    debounceTimer = setTimeout(() => applySearch(query), 150);
+    if (!query.trim()) {
+      applySearch('');
+    } else {
+      debounceTimer = setTimeout(() => applySearch(query), 150);
+    }
 
     if (!query?.trim()) {
       clearSuggestions();
     } else {
-      suggestionsTimer = setTimeout(() => {
-        const s = getAppState();
-        suggestions = getSearchSuggestions(
-          s.rawMediaData || s.mediaData || s.progressiveMediaData || [],
-          query,
-          createSearchSuggestion,
-          s.folderPathsCache,
-        );
-        activeIndex = -1;
-        updateSuggestionsDropdown(block, suggestions, activeIndex);
-      }, 100);
+      const s = getAppState();
+      const displayTerm = getDisplaySearchTerm(s);
+      const isBackspacing = displayTerm
+        && query.length < displayTerm.length
+        && displayTerm.startsWith(query);
+      if (!isBackspacing) {
+        const fetchAndShow = () => {
+          const currentState = getAppState();
+          const data = currentState.rawMediaData || currentState.mediaData
+            || currentState.progressiveMediaData || [];
+          suggestions = getSearchSuggestions(
+            data,
+            query,
+            createSearchSuggestion,
+            currentState.folderPathsCache,
+          );
+          activeIndex = -1;
+          updateSuggestionsDropdown(block, suggestions, activeIndex);
+        };
+        if (query === '/' || query.startsWith('/')) {
+          fetchAndShow();
+        } else {
+          suggestionsTimer = setTimeout(fetchAndShow, 100);
+        }
+      } else {
+        clearSuggestions();
+      }
     }
-    updateClearButton(block, getAppState());
+    updateClearButton(block, getAppState(), true);
   });
 
   input?.addEventListener('keydown', (e) => {
@@ -269,9 +294,15 @@ export default async function decorate(block) {
   });
 
   clearBtn?.addEventListener('click', () => {
+    programmaticInput = false;
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = null;
+    if (suggestionsTimer) clearTimeout(suggestionsTimer);
+    suggestionsTimer = null;
     input.value = '';
     updateAppState({ searchQuery: '', selectedDocument: null, selectedFolder: null });
     clearSuggestions();
+    input.focus();
   });
 
   block.querySelector('.change-site-btn')?.addEventListener('click', () => {
