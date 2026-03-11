@@ -195,7 +195,6 @@ export default async function decorate(block) {
   input?.addEventListener('input', () => {
     if (programmaticInput) {
       programmaticInput = false;
-      return;
     }
 
     const query = input.value;

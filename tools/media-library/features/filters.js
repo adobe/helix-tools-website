@@ -228,20 +228,23 @@ export async function processMediaData(mediaData, onProgress = null) {
   return processedData;
 }
 
+const SUPPORTED_COLON_FIELDS = ['doc', 'name', 'url', 'folder'];
+
 export function parseColonSyntax(query) {
   if (!query) return null;
 
   const colonMatch = query.match(/^([a-zA-Z]+):(.*)$/);
-  if (colonMatch) {
-    const [, field, value] = colonMatch;
-    return {
-      field: field.toLowerCase(),
-      value: value.trim().toLowerCase(),
-      originalQuery: query,
-    };
-  }
+  if (!colonMatch) return null;
 
-  return null;
+  const [, rawField, rawValue] = colonMatch;
+  const field = rawField.toLowerCase();
+  if (!SUPPORTED_COLON_FIELDS.includes(field)) return null;
+
+  return {
+    field,
+    value: rawValue.trim().toLowerCase(),
+    originalQuery: query,
+  };
 }
 
 function filterByColonSyntax(mediaData, colonSyntax) {

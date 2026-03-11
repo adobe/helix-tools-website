@@ -398,7 +398,7 @@ renderGridRef = renderGrid;
 
 export default async function decorate(block) {
   block.classList.add('content');
-  let lastRenderKey = '';
+  let lastRenderSnapshot = null;
 
   const doRender = (progressiveDataOverride = null) => {
     const state = getAppState();
@@ -406,13 +406,38 @@ export default async function decorate(block) {
       ? { ...state, progressiveMediaData: progressiveDataOverride }
       : state;
 
-    // Prevent unnecessary renders by checking if relevant state changed
-    const renderKey = `${state.org}:${state.site}:${state.isValidating}:${state.sitePathValid}:${state.validationError}:${state.isIndexing}:${state.progressiveMediaData?.length || 0}:${state.mediaData?.length || 0}:${state.selectedFilterType}:${state.searchQuery}:${state.selectedDocument}:${state.selectedFolder}`;
-    if (renderKey === lastRenderKey && !progressiveDataOverride) {
+    const snapshot = {
+      org: state.org,
+      site: state.site,
+      isValidating: state.isValidating,
+      sitePathValid: state.sitePathValid,
+      validationError: state.validationError,
+      isIndexing: state.isIndexing,
+      selectedFilterType: state.selectedFilterType,
+      searchQuery: state.searchQuery,
+      selectedDocument: state.selectedDocument,
+      selectedFolder: state.selectedFolder,
+      mediaDataRef: state.mediaData,
+      progressiveRef: state.progressiveMediaData,
+    };
+    const isSameSnapshot = lastRenderSnapshot
+      && snapshot.org === lastRenderSnapshot.org
+      && snapshot.site === lastRenderSnapshot.site
+      && snapshot.isValidating === lastRenderSnapshot.isValidating
+      && snapshot.sitePathValid === lastRenderSnapshot.sitePathValid
+      && snapshot.validationError === lastRenderSnapshot.validationError
+      && snapshot.isIndexing === lastRenderSnapshot.isIndexing
+      && snapshot.selectedFilterType === lastRenderSnapshot.selectedFilterType
+      && snapshot.searchQuery === lastRenderSnapshot.searchQuery
+      && snapshot.selectedDocument === lastRenderSnapshot.selectedDocument
+      && snapshot.selectedFolder === lastRenderSnapshot.selectedFolder
+      && snapshot.mediaDataRef === lastRenderSnapshot.mediaDataRef
+      && snapshot.progressiveRef === lastRenderSnapshot.progressiveRef;
+    if (isSameSnapshot && !progressiveDataOverride) {
       return;
     }
 
-    lastRenderKey = renderKey;
+    lastRenderSnapshot = snapshot;
     renderGrid(block, stateWithProgressive);
   };
 
