@@ -119,7 +119,7 @@ Each block should be self-contained and re-useable, with CSS and JS files follow
 
 ### Auto-Blocking
 
-Auto-blocking is the process of creating blocks that aren't explicitly authored into the page based on patterns in the content. See the `buildAutoBlocks` function in `scripts.js`.
+Auto-blocking is the process of creating blocks that aren't explicitly authored into the page based on patterns in the content. See https://www.aem.live/developer/markup-sections-blocks for the general pattern. Many AEM projects implement this with a `buildAutoBlocks()` helper called from `decorateMain()`. This repository does not currently use auto-blocking or define that helper, though it could be added if needed.
 
 ### Tools vs CMS Content Pages
 
