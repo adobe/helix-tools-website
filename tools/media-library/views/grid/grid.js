@@ -239,7 +239,12 @@ function renderVirtualGrid(block, filtered, state, handlers) {
         viewport.style.transform = `translateY(${offsetY}px)`;
         return;
       }
-      virtualRangeMap.set(block, { rangeKey, cols, filteredLength: filtered.length, sliceContentKey });
+      virtualRangeMap.set(block, {
+        rangeKey,
+        cols,
+        filteredLength: filtered.length,
+        sliceContentKey,
+      });
       const newTotalHeight = totalRows * ROW_HEIGHT + (PADDING * 2);
       if (spacer.style.height !== `${newTotalHeight}px`) spacer.style.height = `${newTotalHeight}px`;
       viewport.style.transform = `translateY(${offsetY}px)`;
