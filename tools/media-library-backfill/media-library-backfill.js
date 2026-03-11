@@ -100,8 +100,9 @@ function buildLogLine({ text, level }) {
 function updateConsoleControls() {
   const total = consoleState.entries.length;
   const hasOverflow = total > LOG_WINDOW_SIZE;
-  DOM.consoleControls.setAttribute('aria-hidden', String(!hasOverflow));
+  DOM.consoleControls.setAttribute('aria-hidden', String(total === 0));
   if (!hasOverflow) {
+    DOM.consoleMeta.textContent = `${total} log entries`;
     DOM.showAllLogs.hidden = true;
     return;
   }
@@ -110,7 +111,7 @@ function updateConsoleControls() {
   DOM.consoleMeta.textContent = consoleState.showAll
     ? `Showing all ${visible} log entries`
     : `Showing latest ${visible} of ${total} log entries`;
-  DOM.showAllLogs.hidden = !hasOverflow;
+  DOM.showAllLogs.hidden = false;
   DOM.showAllLogs.textContent = consoleState.showAll
     ? `Show recent (${LOG_WINDOW_SIZE})`
     : `Show all (${total})`;
@@ -695,6 +696,7 @@ async function runBackfill() {
     const existingMediaPaths = new Set(entries.map(({ entry }) => entry.path));
     standaloneMedia.forEach((media) => {
       const mediaUrl = `https://${REF}--${site}--${org}.aem.page${media.path}`;
+      stats.media += 1;
       if (existingMediaPaths.has(mediaUrl)) {
         stats.dupes += 1;
         return;
@@ -709,7 +711,6 @@ async function runBackfill() {
         },
         page: media,
       });
-      stats.media += 1;
     });
     updateStatsDisplay();
 
