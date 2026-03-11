@@ -8,7 +8,7 @@ import {
   showNotification,
 } from '../../core/state.js';
 import { getMediaLibraryContext, setMediaLibraryContext } from '../../core/context.js';
-import { sortMediaData } from '../../core/utils.js';
+import { sortMediaData, escapeAttr, safeUrlForAttr } from '../../core/utils.js';
 import { filterMedia } from '../../features/filters.js';
 import { copyMediaToClipboard } from '../../core/export.js';
 import {
@@ -75,8 +75,9 @@ function renderMediaPreview(media, org, site) {
     const thumbnailUrl = getVideoThumbnail(resolvedUrl || media.url);
     const div = document.createElement('div');
     div.className = 'video-preview-container';
-    div.innerHTML = thumbnailUrl
-      ? `<img src="${thumbnailUrl}" alt="Video thumbnail" class="video-thumbnail" loading="lazy">
+    const safeThumb = safeUrlForAttr(thumbnailUrl);
+    div.innerHTML = thumbnailUrl && safeThumb
+      ? `<img src="${safeThumb}" alt="Video thumbnail" class="video-thumbnail" loading="lazy">
          <div class="video-overlay">
            <img src="/icons/S2_Icon_Play_20_N.svg" class="play-icon" width="32" height="32" alt="" role="presentation">
          </div>`
@@ -102,8 +103,8 @@ function renderMediaPreview(media, org, site) {
     if (optimized) {
       const picture = document.createElement('picture');
       picture.innerHTML = `
-        <source type="image/webp" srcset="${optimized.webpSrcset}" sizes="${CARD_IMAGE_SIZES}">
-        <img src="${optimized.fallbackUrl}" srcset="${optimized.fallbackSrcset}" sizes="${CARD_IMAGE_SIZES}" alt="${media.alt || ''}" loading="lazy">`;
+        <source type="image/webp" srcset="${safeUrlForAttr(optimized.webpSrcset)}" sizes="${CARD_IMAGE_SIZES}">
+        <img src="${safeUrlForAttr(optimized.fallbackUrl)}" srcset="${safeUrlForAttr(optimized.fallbackSrcset)}" sizes="${CARD_IMAGE_SIZES}" alt="${escapeAttr(media.alt || '')}" loading="lazy">`;
       return picture;
     }
     const img = document.createElement('img');
@@ -115,10 +116,11 @@ function renderMediaPreview(media, org, site) {
 
   if (isVideo(media.url)) {
     const videoUrl = resolvedUrl || media.url;
+    const safeVideoUrl = safeUrlForAttr(videoUrl);
     const div = document.createElement('div');
     div.className = 'video-preview-container';
     div.innerHTML = `
-      <video src="${videoUrl}" muted playsinline preload="metadata" loading="lazy" class="video-thumbnail"><source src="${videoUrl}" type="video/mp4"></video>
+      <video src="${safeVideoUrl}" muted playsinline preload="metadata" loading="lazy" class="video-thumbnail"><source src="${safeVideoUrl}" type="video/mp4"></video>
       <div class="video-overlay">
         <img src="/icons/S2_Icon_Play_20_N.svg" class="play-icon" width="32" height="32" alt="" role="presentation">
       </div>`;

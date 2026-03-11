@@ -121,9 +121,11 @@ function updateResultCount(block, state) {
   if (!countEl) return;
   countEl.hidden = !state.org || !state.site;
   if (state.org && state.site) {
-    countEl.innerHTML = state.isValidating || state.isIndexing
-      ? '<span class="result-count-spinner"></span>'
-      : (state.resultSummary || '');
+    if (state.isValidating || state.isIndexing) {
+      countEl.innerHTML = '<span class="result-count-spinner"></span>';
+    } else {
+      countEl.textContent = state.resultSummary || '';
+    }
   }
 }
 

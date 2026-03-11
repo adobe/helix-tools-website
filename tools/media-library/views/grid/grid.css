@@ -1,11 +1,11 @@
 /* Media Library Grid view */
-.grid {
+body.media-library .grid {
   position: relative;
   width: 100%;
   min-width: 0;
 }
 
-.grid .media-grid {
+body.media-library .grid .media-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 350px));
   gap: 24px;
@@ -15,23 +15,23 @@
   min-width: 0;
 }
 
-.grid .virtual-grid-root {
+body.media-library .grid .virtual-grid-root {
   position: relative;
 }
 
-.grid .virtual-spacer {
+body.media-library .grid .virtual-spacer {
   pointer-events: none;
 }
 
-.grid .virtual-viewport {
+body.media-library .grid .virtual-viewport {
   will-change: transform;
 }
 
-.grid .virtual-viewport .media-grid {
+body.media-library .grid .virtual-viewport .media-grid {
   padding: 0 24px;
 }
 
-.grid .media-card {
+body.media-library .grid .media-card {
   background: light-dark(var(--s2-gray-50, #f8f8f8), var(--gray-800));
   border-radius: var(--rounding-xl);
   border: 1px solid light-dark(var(--s2-gray-200, #e1e1e1), var(--gray-700));
@@ -43,7 +43,7 @@
   min-width: 0; /* allow grid item to shrink below content size */
 }
 
-.grid .media-info {
+body.media-library .grid .media-info {
   opacity: 0;
   visibility: hidden;
   position: absolute;
@@ -57,23 +57,23 @@
   pointer-events: none;
 }
 
-.grid .media-card:hover {
+body.media-library .grid .media-card:hover {
   box-shadow: light-dark(rgb(0 0 0 / 10%), rgb(0 0 0 / 30%)) 0 4px 8px 0;
   transition: box-shadow 0.4s ease;
 }
 
-.grid .media-card:hover .media-info {
+body.media-library .grid .media-card:hover .media-info {
   opacity: 1;
   visibility: visible;
   transition: opacity 0.2s ease, visibility 0.2s ease;
 }
 
-.grid .media-info.clickable,
-.grid .media-preview.clickable {
+body.media-library .grid .media-info.clickable,
+body.media-library .grid .media-preview.clickable {
   cursor: pointer;
 }
 
-.grid .media-preview {
+body.media-library .grid .media-preview {
   height: 300px;
   background: light-dark(var(--s2-gray-75, #f3f3f3), var(--gray-700));
   display: flex;
@@ -84,7 +84,7 @@
   position: relative;
 }
 
-.grid .media-preview picture {
+body.media-library .grid .media-preview picture {
   width: 100%;
   height: 100%;
   display: block;
@@ -94,16 +94,16 @@
   z-index: 2;
 }
 
-.grid .media-preview video,
-.grid .media-preview iframe,
-.grid .media-preview img {
+body.media-library .grid .media-preview video,
+body.media-library .grid .media-preview iframe,
+body.media-library .grid .media-preview img {
   object-fit: cover;
   z-index: 2;
   width: 100%;
   height: 100%;
 }
 
-.grid .media-meta {
+body.media-library .grid .media-meta {
   display: flex;
   gap: var(--spacing-100);
   margin-bottom: var(--spacing-100);
@@ -114,7 +114,7 @@
   pointer-events: auto;
 }
 
-.grid .media-label {
+body.media-library .grid .media-label {
   color: white;
   padding: 4px 12px;
   border-radius: var(--rounding-m);
@@ -124,15 +124,15 @@
   white-space: nowrap;
 }
 
-.grid .media-type {
+body.media-library .grid .media-type {
   background: var(--s2-orange, #ff6b35);
 }
 
-.grid .media-used {
+body.media-library .grid .media-used {
   background: var(--s2-cyan, #3fa9f5);
 }
 
-.grid .media-actions {
+body.media-library .grid .media-actions {
   position: absolute;
   bottom: 0;
   left: 0;
@@ -144,12 +144,12 @@
   z-index: 10;
 }
 
-.grid .media-actions button,
-.grid .media-actions .filled-alt-indicator {
+body.media-library .grid .media-actions button,
+body.media-library .grid .media-actions .filled-alt-indicator {
   pointer-events: auto;
 }
 
-.grid .share-button {
+body.media-library .grid .share-button {
   margin-inline-start: auto;
   background: none;
   border: none;
@@ -159,22 +159,22 @@
   border-radius: var(--rounding-m);
 }
 
-.grid .share-button img.icon,
-.grid .share-button svg.icon {
+body.media-library .grid .share-button img.icon,
+body.media-library .grid .share-button svg.icon {
   width: 20px;
   height: 20px;
 }
 
-.grid .media-card:hover .share-button img.icon,
-.grid .media-card:hover .share-button svg.icon {
+body.media-library .grid .media-card:hover .share-button img.icon,
+body.media-library .grid .media-card:hover .share-button svg.icon {
   filter: brightness(0) invert(1);
 }
 
-.grid .share-button:hover {
+body.media-library .grid .share-button:hover {
   background-color: light-dark(var(--s2-gray-50, #f8f8f8), var(--gray-600));
 }
 
-.grid .video-preview-container {
+body.media-library .grid .video-preview-container {
   width: 100%;
   height: 100%;
   min-width: 0;
@@ -191,14 +191,14 @@
   );
 }
 
-.grid .video-preview-container .video-thumbnail {
+body.media-library .grid .video-preview-container .video-thumbnail {
   position: absolute;
   top: 0;
   left: 0;
   z-index: 1;
 }
 
-.grid .placeholder-full {
+body.media-library .grid .placeholder-full {
   width: 100%;
   height: 100%;
   min-width: 0;
@@ -216,22 +216,22 @@
   );
 }
 
-.grid .fragment-placeholder {
+body.media-library .grid .fragment-placeholder {
   background: light-dark(var(--s2-cyan-light, #b5ebfb), var(--cyan-900));
 }
 
-.grid .pdf-placeholder {
+body.media-library .grid .pdf-placeholder {
   background: light-dark(var(--s2-red-light, #fbb5b5), var(--red-900));
 }
 
-.grid .video-placeholder {
+body.media-library .grid .video-placeholder {
   background: light-dark(
     linear-gradient(135deg, var(--s2-gray-50, #f8f8f8) 0%, var(--s2-gray-200, #e1e1e1) 100%),
     linear-gradient(135deg, var(--gray-700) 0%, var(--gray-600) 100%)
   );
 }
 
-.grid .unknown-placeholder {
+body.media-library .grid .unknown-placeholder {
   width: 100%;
   height: 100%;
   display: flex;
@@ -248,7 +248,7 @@
   );
 }
 
-.grid .unknown-placeholder .unknown-icon {
+body.media-library .grid .unknown-placeholder .unknown-icon {
   width: 40px;
   height: 40px;
   margin-bottom: 8px;
@@ -256,23 +256,23 @@
   color: light-dark(var(--s2-gray-700, #4b5563), var(--gray-300));
 }
 
-.grid .placeholder-icon {
+body.media-library .grid .placeholder-icon {
   width: 48px;
   height: 48px;
   margin-bottom: 8px;
 }
 
-.grid .fragment-placeholder .placeholder-icon {
+body.media-library .grid .fragment-placeholder .placeholder-icon {
   width: 40px;
   height: 40px;
 }
 
-.grid .placeholder-icon.fragment-icon,
-.grid .pdf-placeholder .placeholder-icon {
+body.media-library .grid .placeholder-icon.fragment-icon,
+body.media-library .grid .pdf-placeholder .placeholder-icon {
   opacity: 0.6;
 }
 
-.grid .placeholder-label {
+body.media-library .grid .placeholder-label {
   font-size: 14px;
   font-weight: 600;
   font-style: italic;
@@ -286,12 +286,12 @@
   padding: 0 8px;
 }
 
-.grid .pdf-placeholder .placeholder-icon {
+body.media-library .grid .pdf-placeholder .placeholder-icon {
   width: 40px;
   height: 40px;
 }
 
-.grid .pdf-placeholder .placeholder-label {
+body.media-library .grid .pdf-placeholder .placeholder-label {
   font-size: 13px;
   font-weight: 600;
   max-width: 90%;
@@ -300,11 +300,11 @@
   text-overflow: ellipsis;
 }
 
-.grid .fragment-placeholder .placeholder-label {
+body.media-library .grid .fragment-placeholder .placeholder-label {
   color: light-dark(var(--s2-gray-800, #292929), var(--gray-100));
 }
 
-.grid .video-overlay {
+body.media-library .grid .video-overlay {
   z-index: 3;
   display: flex;
   align-items: center;
@@ -314,15 +314,15 @@
   pointer-events: none;
 }
 
-.grid .video-overlay .play-icon {
+body.media-library .grid .video-overlay .play-icon {
   width: 2rem;
   height: 2rem;
   filter: brightness(0) invert(1) drop-shadow(0 1px 2px rgb(0 0 0 / 50%));
 }
 
-.grid .empty-state,
-.grid .validation-state,
-.grid .error-state {
+body.media-library .grid .empty-state,
+body.media-library .grid .validation-state,
+body.media-library .grid .error-state {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -333,13 +333,13 @@
   color: light-dark(var(--gray-700), var(--gray-300));
 }
 
-.grid .discovering-state {
+body.media-library .grid .discovering-state {
   flex-direction: row;
   gap: 10px;
   justify-content: center;
 }
 
-.grid .discovering-state .inline-spinner {
+body.media-library .grid .discovering-state .inline-spinner {
   flex-shrink: 0;
   width: 14px;
   height: 14px;
@@ -349,11 +349,11 @@
   animation: media-lib-grid-spin 1s linear infinite;
 }
 
-.grid .discovering-state .indexing-message {
+body.media-library .grid .discovering-state .indexing-message {
   margin: 0;
 }
 
-.grid .indexing-spinner {
+body.media-library .grid .indexing-spinner {
   width: 24px;
   height: 24px;
   border: 2px solid light-dark(var(--gray-200), var(--gray-600));

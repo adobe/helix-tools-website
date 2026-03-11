@@ -15,6 +15,18 @@ export function escapeAttr(str) {
     .replace(/>/g, '&gt;');
 }
 
+/**
+ * Returns a string safe for use in HTML attribute (e.g. src/href): validates scheme and escapes.
+ */
+export function safeUrlForAttr(url) {
+  if (!url || typeof url !== 'string') return '';
+  const t = url.trim();
+  if (t.startsWith('https://') || t.startsWith('http://') || (t.startsWith('/') && !t.startsWith('//'))) {
+    return escapeAttr(t);
+  }
+  return '';
+}
+
 export function formatDateTime(isoString) {
   if (!isoString) return 'Unknown';
 

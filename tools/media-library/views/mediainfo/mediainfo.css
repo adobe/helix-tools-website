@@ -1,4 +1,4 @@
-.modal-content {
+body.media-library .modal-content {
   --row-spacing: 12px;
   --action-row-multiplier: 1;
 
@@ -9,7 +9,7 @@
   width: 100%;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 0.5fr 1fr;
+  grid-template-columns: 1fr 0.5fr;
 
   .modal-header {
     display: flex;
@@ -64,37 +64,76 @@
   }
 }
 
+body.media-library .usage-section {
+  display: grid;
+  align-items: start;
+  padding: 24px 0;
+  box-sizing: border-box;
+  position: relative;
+  transition: background 0.25s ease;
+
+  > * {
+    padding: 0 24px;
+  }
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: -1px;
+    left: 0;
+    display: block;
+    width: 100%;
+    height: 1px;
+    background: transparent;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 24px;
+    right: 24px;
+    display: block;
+    height: 1px;
+    background: light-dark(rgb(209 209 209), var(--gray-600));
+  }
+
+  &:hover {
+    background: light-dark(var(--gray-100), var(--gray-700));
+  }
+}
+
 /* Override global dialog > div rule - no horizontal padding for this modal */
-.mediainfo-dialog > .modal-content {
+body.media-library .mediainfo-dialog > .modal-content {
   padding: 0;
   max-height: none;
   overflow-y: visible;
 }
 
-.mediainfo-dialog {
+body.media-library .mediainfo-dialog {
   display: block;
 }
 
-.mediainfo-dialog img.icon,
-.mediainfo-dialog svg.icon {
+body.media-library .mediainfo-dialog img.icon,
+body.media-library .mediainfo-dialog svg.icon {
   width: 20px;
   height: 20px;
   flex-shrink: 0;
   color: light-dark(var(--gray-800), var(--gray-100));
 }
 
-.mediainfo-dialog img.fragment-icon,
-.mediainfo-dialog svg.fragment-icon {
+body.media-library .mediainfo-dialog img.fragment-icon,
+body.media-library .mediainfo-dialog svg.fragment-icon {
   opacity: 0.5;
   width: 60px;
   height: 60px;
 }
 
-button {
+body.media-library button {
   font-family: var(--ml-font-family, var(--font-family, inherit));
 }
 
-.icon-button {
+body.media-library .icon-button {
   background: none;
   border: none;
   outline: none;
@@ -106,7 +145,7 @@ button {
   padding: 0;
 }
 
-.icon-button:focus-visible {
+body.media-library .icon-button:focus-visible {
   outline: 2px solid light-dark(var(--gray-600), var(--gray-400));
   outline-offset: 2px;
   border-radius: 4px;
@@ -129,12 +168,12 @@ button {
   }
 }
 
-.open .icon-button.toggle-actions img.icon,
-.open .icon-button.toggle-actions .chevron {
+body.media-library .open .icon-button.toggle-actions img.icon,
+body.media-library .open .icon-button.toggle-actions .chevron {
   transform: rotate(90deg);
 }
 
-dialog.modal-overlay {
+body.media-library dialog.modal-overlay {
   border: none;
   background: transparent;
   padding: 20px;
@@ -146,21 +185,21 @@ dialog.modal-overlay {
   box-sizing: border-box;
 }
 
-dialog.modal-overlay:not([open]) {
+body.media-library dialog.modal-overlay:not([open]) {
   display: none;
 }
 
-dialog.modal-overlay[open] {
+body.media-library dialog.modal-overlay[open] {
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-dialog.modal-overlay::backdrop {
+body.media-library dialog.modal-overlay::backdrop {
   background: rgb(0 0 0 / 50%);
 }
 
-.modal-header::after {
+body.media-library .modal-header::after {
   content: "";
   display: block;
   width: 200px;
@@ -173,7 +212,7 @@ dialog.modal-overlay::backdrop {
   z-index: 1;
 }
 
-.modal-tabs {
+body.media-library .modal-tabs {
   display: flex;
   gap: 18px;
   margin: 0 24px;
@@ -231,8 +270,18 @@ dialog.modal-overlay::backdrop {
   }
 }
 
+/* No focus outline on modal controls (tabs, buttons, icons) */
+body.media-library .modal-content .icon-button:focus,
+body.media-library .modal-content .icon-button:focus-visible,
+body.media-library .modal-content .tab-button:focus,
+body.media-library .modal-content .tab-button:focus-visible,
+body.media-library .modal-content button:focus,
+body.media-library .modal-content button:focus-visible {
+  outline: none;
+}
+
 /* Media Preview Section */
-.media-preview-section {
+body.media-library .media-preview-section {
   background: light-dark(var(--gray-200), var(--gray-700));
   padding-right: 1px;
   box-sizing: border-box;
@@ -244,12 +293,12 @@ dialog.modal-overlay::backdrop {
   justify-content: center;
 }
 
-.modal-details {
+body.media-library .modal-details {
   overflow: hidden;
   background: light-dark(white, var(--gray-800));
 }
 
-.image-preview-container {
+body.media-library .image-preview-container {
   display: flex;
   position: relative;
   width: 100%;
@@ -260,7 +309,7 @@ dialog.modal-overlay::backdrop {
   justify-content: center;
 }
 
-.image-preview-container picture {
+body.media-library .image-preview-container picture {
   width: 100%;
   height: 100%;
   display: flex;
@@ -268,14 +317,14 @@ dialog.modal-overlay::backdrop {
   justify-content: center;
 }
 
-.preview-image {
+body.media-library .preview-image {
   width: 100%;
   height: 100%;
   object-fit: contain;
   display: block;
 }
 
-.subtype-label {
+body.media-library .subtype-label {
   position: absolute;
   top: 18px;
   right: 38px;
@@ -291,7 +340,7 @@ dialog.modal-overlay::backdrop {
   white-space: nowrap;
 }
 
-.preview-placeholder-container {
+body.media-library .preview-placeholder-container {
   position: relative;
   width: 100%;
   height: 100%;
@@ -301,12 +350,12 @@ dialog.modal-overlay::backdrop {
   justify-content: center;
 }
 
-.preview-placeholder-container .subtype-label {
+body.media-library .preview-placeholder-container .subtype-label {
   top: 18px;
   right: 38px;
 }
 
-.preview-placeholder {
+body.media-library .preview-placeholder {
   width: 150px;
   height: 150px;
   background: light-dark(var(--gray-200), var(--gray-700));
@@ -318,7 +367,7 @@ dialog.modal-overlay::backdrop {
   box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
 }
 
-.preview-placeholder .placeholder-center {
+body.media-library .preview-placeholder .placeholder-center {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -326,7 +375,7 @@ dialog.modal-overlay::backdrop {
   gap: 12px;
 }
 
-.preview-placeholder .placeholder-label {
+body.media-library .preview-placeholder .placeholder-label {
   font-size: 14px;
   font-weight: 500;
   font-style: italic;
@@ -334,14 +383,14 @@ dialog.modal-overlay::backdrop {
   text-align: center;
 }
 
-.video-preview-container {
+body.media-library .video-preview-container {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
   max-height: 60vh;
 }
 
-.video-preview-container .placeholder-full.video-placeholder {
+body.media-library .video-preview-container .placeholder-full.video-placeholder {
   width: 100%;
   height: 100%;
   display: flex;
@@ -354,18 +403,18 @@ dialog.modal-overlay::backdrop {
   color: light-dark(var(--gray-500), var(--gray-400));
 }
 
-.video-preview-container .placeholder-full .placeholder-icon {
+body.media-library .video-preview-container .placeholder-full .placeholder-icon {
   width: 48px;
   height: 48px;
   opacity: 0.6;
 }
 
-.video-preview-container .placeholder-full .placeholder-label {
+body.media-library .video-preview-container .placeholder-full .placeholder-label {
   font-size: 14px;
   font-weight: 500;
 }
 
-.preview-video-iframe {
+body.media-library .preview-video-iframe {
   width: 100%;
   height: 100%;
   border: none;
@@ -373,7 +422,7 @@ dialog.modal-overlay::backdrop {
   box-shadow: 0 4px 16px rgb(0 0 0 / 15%);
 }
 
-.preview-video {
+body.media-library .preview-video {
   max-width: calc(100% - 40px);
   max-height: calc(100% - 40px);
   width: auto;
@@ -382,7 +431,7 @@ dialog.modal-overlay::backdrop {
   box-shadow: 0 4px 16px rgb(0 0 0 / 15%);
 }
 
-.pdf-preview {
+body.media-library .pdf-preview {
   width: 100%;
   height: 600px;
   border: 1px solid var(--gray-200);
@@ -390,7 +439,7 @@ dialog.modal-overlay::backdrop {
   box-shadow: 0 4px 16px rgb(0 0 0 / 15%);
 }
 
-.pdf-preview-container {
+body.media-library .pdf-preview-container {
   width: 100%;
   height: 600px;
   background: light-dark(var(--gray-50), var(--gray-800));
@@ -402,7 +451,7 @@ dialog.modal-overlay::backdrop {
   position: relative;
 }
 
-.pdf-preview-container .pdf-preview {
+body.media-library .pdf-preview-container .pdf-preview {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -411,13 +460,13 @@ dialog.modal-overlay::backdrop {
   border-radius: var(--rounding-m);
 }
 
-.pdf-preview-container .document-placeholder.pdf-fallback {
+body.media-library .pdf-preview-container .document-placeholder.pdf-fallback {
   position: absolute;
   inset: 0;
   background: light-dark(var(--gray-50), var(--gray-800));
 }
 
-.document-placeholder {
+body.media-library .document-placeholder {
   display: flex;
   position: relative;
   flex-direction: column;
@@ -427,54 +476,54 @@ dialog.modal-overlay::backdrop {
   padding: 40px;
 }
 
-.pdf-info {
+body.media-library .pdf-info {
   margin-top: 16px;
   text-align: center;
 }
 
-.pdf-name {
+body.media-library .pdf-name {
   display: block;
   font-weight: 600;
   color: light-dark(var(--gray-800), var(--gray-100));
   margin-bottom: 4px;
 }
 
-.pdf-type {
+body.media-library .pdf-type {
   display: block;
   color: light-dark(var(--gray-600), var(--gray-400));
   font-size: 14px;
   margin-bottom: 8px;
 }
 
-.pdf-loading {
+body.media-library .pdf-loading {
   display: block;
   color: light-dark(var(--gray-600), var(--gray-400));
   font-size: 14px;
   font-weight: 500;
 }
 
-.pdf-error-message {
+body.media-library .pdf-error-message {
   display: block;
   color: light-dark(var(--red-600, #dc2626), var(--red-400, #f87171));
   font-size: 14px;
   margin-top: 8px;
 }
 
-.document-icon {
+body.media-library .document-icon {
   width: 64px;
   height: 64px;
   color: var(--gray-500);
 }
 
 /* Metadata Section */
-.metadata-section h3 {
+body.media-library .metadata-section h3 {
   margin: 0 0 16px;
   font-size: 16px;
   font-weight: 600;
   color: light-dark(var(--gray-800), var(--gray-100));
 }
 
-.metadata-grid-container {
+body.media-library .metadata-grid-container {
   overflow-x: auto;
   padding: 24px;
 
@@ -493,7 +542,7 @@ dialog.modal-overlay::backdrop {
   }
 }
 
-.usage-row {
+body.media-library .usage-row {
   margin-top: 8px;
   padding: 0;
   list-style: none;
@@ -507,23 +556,23 @@ dialog.modal-overlay::backdrop {
   }
 }
 
-.metadata-table .metadata-row:last-child td {
+body.media-library .metadata-table .metadata-row:last-child td {
   border-bottom: none;
 }
 
-.metadata-label {
+body.media-library .metadata-label {
   font-weight: 500;
   color: var(--gray-700);
   width: 120px;
 }
 
-.metadata-value {
+body.media-library .metadata-value {
   color: var(--gray-600);
   word-break: break-all;
 }
 
 /* EXIF Section */
-.exif-section {
+body.media-library .exif-section {
   padding: 0 24px 24px;
 
   h4 {
@@ -534,52 +583,52 @@ dialog.modal-overlay::backdrop {
   }
 }
 
-.exif-table {
+body.media-library .exif-table {
   background: light-dark(var(--gray-50), var(--gray-800));
   border-radius: 6px;
   max-height: 200px;
   overflow-y: auto;
 }
 
-.exif-row {
+body.media-library .exif-row {
   display: flex;
   padding: 4px 0;
   font-size: 12px;
 }
 
-.exif-label {
+body.media-library .exif-label {
   font-weight: 500;
   color: var(--gray-700);
   width: 120px;
   flex-shrink: 0;
 }
 
-.exif-value {
+body.media-library .exif-value {
   color: var(--gray-600);
   flex: 1;
 }
 
-.exif-row.no-data {
+body.media-library .exif-row.no-data {
   justify-content: center;
   color: var(--gray-500);
   font-style: italic;
 }
 
 /* Usage Tab Styles */
-.usage-summary {
+body.media-library .usage-summary {
   margin-bottom: 20px;
   padding-bottom: 16px;
   border-bottom: 1px solid light-dark(var(--gray-200), var(--gray-600));
 }
 
-.usage-count {
+body.media-library .usage-count {
   margin: 0;
   font-size: 16px;
   font-weight: 500;
   color: light-dark(var(--gray-700), var(--gray-300));
 }
 
-.loading-state {
+body.media-library .loading-state {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -590,7 +639,7 @@ dialog.modal-overlay::backdrop {
   font-size: 14px;
 }
 
-.spinner {
+body.media-library .spinner {
   width: 16px;
   height: 16px;
   border: 2px solid var(--gray-200);
@@ -605,13 +654,13 @@ dialog.modal-overlay::backdrop {
   100% { transform: rotate(360deg); }
 }
 
-.no-usage {
+body.media-library .no-usage {
   text-align: center;
   padding: 40px 20px;
   color: var(--gray-600);
 }
 
-.usage-sections {
+body.media-library .usage-sections {
   display: flex;
   flex-direction: column;
 
@@ -675,46 +724,7 @@ dialog.modal-overlay::backdrop {
   }
 }
 
-.usage-section {
-  display: grid;
-  align-items: start;
-  padding: 24px 0;
-  box-sizing: border-box;
-  position: relative;
-  transition: background 0.25s ease;
-
-  > * {
-    padding: 0 24px;
-  }
-
-  &::before {
-    content: "";
-    position: absolute;
-    top: -1px;
-    left: 0;
-    display: block;
-    width: 100%;
-    height: 1px;
-    background: transparent;
-  }
-
-  &::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 24px;
-    right: 24px;
-    display: block;
-    height: 1px;
-    background: light-dark(rgb(209 209 209), var(--gray-600));
-  }
-
-  &:hover {
-    background: light-dark(var(--gray-100), var(--gray-700));
-  }
-}
-
-.document-heading {
+body.media-library .document-heading {
   grid-column: 1 / 3;
   position: relative;
 
@@ -727,17 +737,17 @@ dialog.modal-overlay::backdrop {
   }
 }
 
-.usage-container {
+body.media-library .usage-container {
   padding-top: 24px;
 }
 
-.usage-table {
+body.media-library .usage-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }
 
-.usage-table th {
+body.media-library .usage-table th {
   background: light-dark(var(--gray-200), var(--gray-700));
   padding: 8px 12px;
   text-align: left;
@@ -749,11 +759,11 @@ dialog.modal-overlay::backdrop {
   letter-spacing: 0.5px;
 }
 
-.usage-table tr:hover {
+body.media-library .usage-table tr:hover {
   background: light-dark(var(--gray-50), var(--gray-700));
 }
 
-.type-badge {
+body.media-library .type-badge {
   background: light-dark(var(--gray-600), var(--gray-500));
   color: white;
   padding: 4px 8px;
@@ -764,24 +774,24 @@ dialog.modal-overlay::backdrop {
   margin-inline-end: 8px;
 }
 
-.type-cell {
+body.media-library .type-cell {
   width: 120px;
 }
 
-.document-cell {
+body.media-library .document-cell {
   width: 250px;
 }
 
-.context-cell {
+body.media-library .context-cell {
   flex: 1;
 }
 
-.usage-actions {
+body.media-library .usage-actions {
   width: 120px;
   text-align: center;
 }
 
-.actions-container {
+body.media-library .actions-container {
   position: relative;
   display: none;
   padding: var(--row-spacing) 0 0;
@@ -808,22 +818,22 @@ dialog.modal-overlay::backdrop {
   }
 }
 
-.open .actions-container {
+body.media-library .open .actions-container {
   display: block;
 }
 
-.metadata-link {
+body.media-library .metadata-link {
   color: light-dark(var(--gray-800), var(--gray-100));
   text-decoration: none;
   word-break: break-all;
 }
 
-.metadata-link:hover {
+body.media-library .metadata-link:hover {
   text-decoration: underline;
 }
 
-.save-icon,
-.cancel-icon {
+body.media-library .save-icon,
+body.media-library .cancel-icon {
   width: 25px;
   height: 25px;
   color: #000;
@@ -834,17 +844,17 @@ dialog.modal-overlay::backdrop {
   }
 }
 
-.open .icon-button.toggle-actions img.icon {
+body.media-library .open .icon-button.toggle-actions img.icon {
   transform: rotate(90deg);
 }
 
-.context-none,
-.no-actions {
+body.media-library .context-none,
+body.media-library .no-actions {
   color: var(--gray-500);
   font-style: italic;
 }
 
-.context-text {
+body.media-library .context-text {
   color: light-dark(var(--gray-700), var(--gray-300));
   background: light-dark(var(--gray-50), var(--gray-800));
   padding: 4px 8px;
@@ -858,7 +868,7 @@ dialog.modal-overlay::backdrop {
 }
 
 /* Date Details Row Styles */
-.usage-date {
+body.media-library .usage-date {
   display: inline-flex;
   margin: 0;
   padding: 3px 5px;
@@ -868,7 +878,7 @@ dialog.modal-overlay::backdrop {
   background: rgb(225 225 225 / 95%);
 }
 
-.date-details {
+body.media-library .date-details {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -876,52 +886,52 @@ dialog.modal-overlay::backdrop {
   flex-wrap: wrap;
 }
 
-.date-item {
+body.media-library .date-item {
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
-.date-label {
+body.media-library .date-label {
   font-weight: 600;
   color: var(--gray-700);
   font-size: 13px;
 }
 
-.date-value {
+body.media-library .date-value {
   color: light-dark(var(--gray-700), var(--gray-300));
   font-weight: 500;
   font-size: 13px;
 }
 
-.date-separator {
+body.media-library .date-separator {
   color: var(--gray-300);
   font-weight: 300;
 }
 
 @media (width > 600px) {
-  .modal-content {
-    grid-template-columns: 1.5fr 1fr;
+  body.media-library .modal-content {
+    grid-template-columns: 1fr 0.5fr;
   }
 
-  .document-heading {
+  body.media-library .document-heading {
     grid-column: initial;
   }
 }
 
 @media (width > 900px) {
-  .modal-content {
-    grid-template-columns: 2fr 1fr;
+  body.media-library .modal-content {
+    grid-template-columns: 1fr 0.5fr;
   }
 }
 
 /* Responsive adjustments */
 @media (width <= 768px) {
-  dialog.modal-overlay {
+  body.media-library dialog.modal-overlay {
     padding: 10px;
   }
 
-  .modal-header {
+  body.media-library .modal-header {
     padding: 16px 20px;
   }
 

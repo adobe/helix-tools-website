@@ -15,7 +15,9 @@ import { getFileName, optimizeImageUrls, formatFileSize } from '../../core/files
 import {
   resolveMediaUrl, isExternalUrl, parseMediaUrl, normalizeUrl,
 } from '../../core/urls.js';
-import { formatDateTime, escapeHtml, escapeAttr } from '../../core/utils.js';
+import {
+  formatDateTime, escapeHtml, escapeAttr, safeUrlForAttr,
+} from '../../core/utils.js';
 import { MediaType } from '../../core/constants.js';
 import fetchWithCorsProxy from '../../core/fetch.js';
 import { getMediaName } from '../../features/templates.js';
@@ -29,15 +31,6 @@ const getLiveUrl = (org, repo, path) => `https://main--${repo}--${org}.aem.live$
 
 function iconImg(name, className = 'icon') {
   return `<img src="/icons/${name}.svg" class="${escapeAttr(className)}" width="20" height="20" alt="" role="presentation">`;
-}
-
-function safeUrlForAttr(url) {
-  if (!url || typeof url !== 'string') return '';
-  const t = url.trim();
-  if (t.startsWith('https://') || t.startsWith('http://') || (t.startsWith('/') && !t.startsWith('//'))) {
-    return escapeAttr(t);
-  }
-  return '';
 }
 
 export default function createMediaInfoModal() {
@@ -56,7 +49,8 @@ export default function createMediaInfoModal() {
   const pdfBlobUrls = new Map();
   const pdfLoadFailed = new Set();
   let fetchAbortController = null;
-  let renderFn = null;
+  let updatePreviewOnlyFn = null;
+  let updateTabContentOnlyFn = null;
 
   async function fetchFileSize(fullUrl) {
     const cacheKey = `fileSize_${fullUrl}`;
@@ -117,13 +111,14 @@ export default function createMediaInfoModal() {
         const blob = await response.blob();
         const blobUrl = URL.createObjectURL(blob);
         pdfBlobUrls.set(fullUrl, blobUrl);
+        if (updatePreviewOnlyFn) updatePreviewOnlyFn();
       } else {
         pdfLoadFailed.add(fullUrl);
+        if (updatePreviewOnlyFn) updatePreviewOnlyFn();
       }
-      if (renderFn) renderFn();
     } catch (err) {
       pdfLoadFailed.add(fullUrl);
-      if (renderFn) renderFn();
+      if (updatePreviewOnlyFn) updatePreviewOnlyFn();
     }
   }
 
@@ -339,7 +334,7 @@ export default function createMediaInfoModal() {
     const fileSizeDisplay = getFileSizeDisplay();
     if (fileSizeDisplay === null) {
       rows.push(['File Size', { trustedHtml: LOADING_PLACEHOLDER }]);
-      fetchFileSize(fullUrl).then(() => renderFn?.());
+      fetchFileSize(fullUrl).then(() => updateTabContentOnlyFn?.());
     } else {
       rows.push(['File Size', fileSizeDisplay]);
     }
@@ -375,6 +370,49 @@ export default function createMediaInfoModal() {
           </div>
         </div>
       </div>`;
+  }
+
+  function attachTabContentListeners() {
+    dialog.querySelectorAll('[data-usage-toggle]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const heading = btn.closest('.document-heading');
+        if (heading) {
+          const isOpen = heading.classList.toggle('open');
+          btn.setAttribute('aria-expanded', isOpen);
+        }
+      });
+    });
+    dialog.querySelectorAll('.action-items button[data-url]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const { url } = btn.dataset;
+        if (url) window.open(url, '_blank');
+      });
+    });
+  }
+
+  function updateTabContentOnly() {
+    const body = dialog.querySelector('.modal-body');
+    if (!body) return;
+    body.innerHTML = activeTab === 'usage' ? renderUsageContent() : renderMetadataContent();
+    attachTabContentListeners();
+  }
+
+  function updatePreviewOnly() {
+    const section = dialog.querySelector('.media-preview-section');
+    if (!section) return;
+    section.innerHTML = renderPreview();
+    const pdfIframe = dialog.querySelector('.pdf-preview');
+    if (pdfIframe) {
+      pdfIframe.addEventListener('load', () => {
+        const fallback = pdfIframe.nextElementSibling;
+        if (fallback?.classList.contains('pdf-fallback')) fallback.style.display = 'none';
+      });
+      pdfIframe.addEventListener('error', () => {
+        pdfIframe.style.display = 'none';
+        const fallback = pdfIframe.nextElementSibling;
+        if (fallback?.classList.contains('pdf-fallback')) fallback.style.display = 'flex';
+      });
+    }
   }
 
   function doRender() {
@@ -415,25 +453,14 @@ export default function createMediaInfoModal() {
     dialog.querySelectorAll('[data-tab]').forEach((btn) => {
       btn.addEventListener('click', () => {
         activeTab = btn.dataset.tab;
-        dialog.querySelectorAll('[data-tab]').forEach((b) => b.setAttribute('aria-selected', b.dataset.tab === activeTab));
-        doRender();
+        dialog.querySelectorAll('[data-tab]').forEach((b) => {
+          b.setAttribute('aria-selected', b.dataset.tab === activeTab);
+          b.classList.toggle('active', b.dataset.tab === activeTab);
+        });
+        updateTabContentOnly();
       });
     });
-    dialog.querySelectorAll('[data-usage-toggle]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const heading = btn.closest('.document-heading');
-        if (heading) {
-          const isOpen = heading.classList.toggle('open');
-          btn.setAttribute('aria-expanded', isOpen);
-        }
-      });
-    });
-    dialog.querySelectorAll('.action-items button[data-url]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const { url } = btn.dataset;
-        if (url) window.open(url, '_blank');
-      });
-    });
+    attachTabContentListeners();
 
     const pdfIframe = dialog.querySelector('.pdf-preview');
     if (pdfIframe) {
@@ -463,7 +490,8 @@ export default function createMediaInfoModal() {
     pdfLoadFailed.clear();
   });
 
-  renderFn = doRender;
+  updatePreviewOnlyFn = updatePreviewOnly;
+  updateTabContentOnlyFn = updateTabContentOnly;
 
   return {
     show(data) {
