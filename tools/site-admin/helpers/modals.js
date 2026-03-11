@@ -5,16 +5,18 @@ import {
   fetchSiteAccess,
   updateSiteAccess,
   saveSiteConfig,
+  saveSiteCodeConfig,
   deleteSiteConfig,
   fetchSecrets,
   createSecret,
+  createNamedSecret,
   deleteSecret,
   fetchApiKeys,
   createApiKey,
   deleteApiKey,
 } from './api-helper.js';
 import {
-  icon, showToast, formatDate, isExpired,
+  icon, showToast, formatDate, isExpired, escapeHtml,
 } from './utils.js';
 
 /* eslint-disable no-alert, no-restricted-globals */
@@ -36,10 +38,26 @@ const setupModal = async (className, headerHtml) => {
   return { dialog, container, showModal };
 };
 
-const buildSiteConfig = (site, codeSrc, contentSrc) => {
-  const codeURL = new URL(codeSrc);
-  const [, owner, repo] = codeURL.pathname.split('/');
-  const code = { owner, repo, source: { type: 'github', url: codeSrc } };
+const buildSiteConfig = (site, codeSrc, contentSrc, byogit = null) => {
+  let code;
+  if (byogit) {
+    code = {
+      owner: byogit.owner,
+      repo: byogit.repo,
+      source: {
+        type: 'byogit',
+        url: 'https://cm-repo.adobe.io/api',
+        raw_url: 'https://cm-repo.adobe.io/api/raw',
+        owner: byogit.owner,
+        repo: byogit.repo,
+        secretId: 'cm-byog',
+      },
+    };
+  } else {
+    const codeURL = new URL(codeSrc);
+    const [, owner, repo] = codeURL.pathname.split('/');
+    code = { owner, repo, source: { type: 'github', url: codeSrc } };
+  }
   const content = { source: { type: 'markup', url: contentSrc } };
 
   const contentURL = new URL(contentSrc);
@@ -65,9 +83,23 @@ export const saveSiteAndRefresh = async (
   dialogCloseCallback,
   logFn = null,
   action = 'update',
+  byogit = null,
 ) => {
-  const siteConfig = buildSiteConfig(existingConfig, codeSrc, contentSrc);
-  const success = await saveSiteConfig(orgValue, siteName, siteConfig, logFn);
+  const siteConfig = buildSiteConfig(existingConfig, codeSrc, contentSrc, byogit);
+  let success = await saveSiteConfig(orgValue, siteName, siteConfig, logFn);
+
+  if (success && byogit) {
+    success = await saveSiteCodeConfig(orgValue, siteName, {
+      source: {
+        type: 'byogit',
+        url: 'https://cm-repo.adobe.io/api',
+        raw_url: 'https://cm-repo.adobe.io/api/raw',
+        owner: byogit.owner,
+        repo: byogit.repo,
+        secretId: 'cm-byog',
+      },
+    }, logFn);
+  }
 
   if (success && dialogCloseCallback) {
     dialogCloseCallback();
@@ -101,29 +133,78 @@ export const openEditSourceModal = async (
   codeUrl,
   contentUrl,
   logFn = null,
+  byogitDefaults = null,
 ) => {
+  const isByogit = !!byogitDefaults;
+  const byogitOwner = escapeHtml(byogitDefaults?.owner || '');
+  const byogitRepo = escapeHtml(byogitDefaults?.repo || '');
+
   const { dialog, container, showModal } = await setupModal('', `
     <div class="site-modal-header">
       <h2>Edit Source Config</h2>
       <p class="site-name">${siteName}</p>
-          </div>
+    </div>
     <form class="edit-source-form">
-      <div class="form-field">
-        <label for="edit-code">GitHub Repository URL</label>
-        <input type="url" id="edit-code" required value="${codeUrl}" placeholder="https://github.com/owner/repo" />
+      <div class="form-field code-url-field"${isByogit ? ' aria-hidden="true"' : ''}>
+        <label for="edit-code">Git Repository URL</label>
+        <input type="url" id="edit-code" ${isByogit ? '' : 'required '}value="${codeUrl}" placeholder="https://github.com/owner/repo" />
+      </div>
+      <div class="form-field byogit-toggle">
+        <label class="checkbox-label">
+          <input type="checkbox" id="edit-byogit"${isByogit ? ' checked' : ''} />
+          Bring Your Own Git
+        </label>
+        <p class="field-hint">Use an external repository via Cloud Manager.
+          <a href="https://www.aem.live/developer/byo-git" target="_blank" rel="noopener noreferrer">Learn more</a></p>
+      </div>
+      <div class="byogit-fields"${isByogit ? '' : ' aria-hidden="true"'}>
+        <div class="form-field">
+          <label for="edit-byogit-owner">Owner</label>
+          <input type="text" id="edit-byogit-owner" placeholder="program ID"
+                 ${isByogit ? 'required ' : ''}value="${byogitOwner}" />
         </div>
+        <div class="form-field">
+          <label for="edit-byogit-repo">Repo</label>
+          <input type="text" id="edit-byogit-repo" placeholder="repository-id"
+                 ${isByogit ? 'required ' : ''}value="${byogitRepo}" />
+        </div>
+      </div>
       <div class="form-field">
         <label for="edit-content">Content Source URL</label>
         <input type="url" id="edit-content" required value="${contentUrl}" placeholder="DA, SharePoint or Google Drive URL" />
-          </div>
+      </div>
       <div class="form-actions">
         <button type="button" class="button outline cancel-btn">Cancel</button>
         <button type="submit" class="button save-btn">Save Changes</button>
-        </div>
+      </div>
     </form>
   `);
 
   container.querySelector('.cancel-btn').addEventListener('click', () => dialog.close());
+
+  const byogitCheckbox = container.querySelector('#edit-byogit');
+  const codeUrlField = container.querySelector('.code-url-field');
+  const byogitFieldsEl = container.querySelector('.byogit-fields');
+  const codeInput = container.querySelector('#edit-code');
+  const byogitOwnerInput = container.querySelector('#edit-byogit-owner');
+  const byogitRepoInput = container.querySelector('#edit-byogit-repo');
+
+  byogitCheckbox.addEventListener('change', () => {
+    const { checked } = byogitCheckbox;
+    if (checked) {
+      codeUrlField.setAttribute('aria-hidden', 'true');
+      byogitFieldsEl.removeAttribute('aria-hidden');
+      codeInput.removeAttribute('required');
+      byogitOwnerInput.setAttribute('required', '');
+      byogitRepoInput.setAttribute('required', '');
+    } else {
+      codeUrlField.removeAttribute('aria-hidden');
+      byogitFieldsEl.setAttribute('aria-hidden', 'true');
+      codeInput.setAttribute('required', '');
+      byogitOwnerInput.removeAttribute('required');
+      byogitRepoInput.removeAttribute('required');
+    }
+  });
 
   container.querySelector('.edit-source-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -131,8 +212,16 @@ export const openEditSourceModal = async (
     saveBtn.disabled = true;
     saveBtn.textContent = 'Saving...';
 
-    const newCodeUrl = container.querySelector('#edit-code').value.trim();
+    const newCodeUrl = codeInput.value.trim();
     const newContentUrl = container.querySelector('#edit-content').value.trim();
+
+    let byogit = null;
+    if (byogitCheckbox.checked) {
+      byogit = {
+        owner: byogitOwnerInput.value.trim(),
+        repo: byogitRepoInput.value.trim(),
+      };
+    }
 
     const siteDetails = await fetchSiteDetails(orgValue, siteName) || {};
     const closeDialog = () => dialog.close();
@@ -144,6 +233,8 @@ export const openEditSourceModal = async (
       siteDetails,
       closeDialog,
       logFn,
+      'update',
+      byogit,
     );
 
     if (!success) {
@@ -469,7 +560,17 @@ export const openApiKeyModal = (siteName, orgValue) => openManageItemsModal(site
   },
 });
 
-export const openAddSiteModal = async (orgValue, defaultCode = '', defaultContent = '', logFn = null) => {
+export const openAddSiteModal = async (
+  orgValue,
+  defaultCode = '',
+  defaultContent = '',
+  logFn = null,
+  byogitDefaults = null,
+) => {
+  const isByogit = !!byogitDefaults;
+  const byogitOwner = escapeHtml(byogitDefaults?.owner || '');
+  const byogitRepo = escapeHtml(byogitDefaults?.repo || '');
+
   const { dialog, container, showModal } = await setupModal('add-site-modal', `
     <div class="site-modal-header">
       <h2>Add New Site</h2>
@@ -480,10 +581,30 @@ export const openAddSiteModal = async (orgValue, defaultCode = '', defaultConten
         <input type="text" id="new-site-name" required placeholder="my-site" pattern="[a-z0-9-]+" />
         <p class="field-hint">Lowercase letters, numbers, and hyphens only</p>
       </div>
-      <div class="form-field">
+      <div class="form-field code-url-field"${isByogit ? ' aria-hidden="true"' : ''}>
         <label for="new-site-code">GitHub Repository URL</label>
-        <input type="url" id="new-site-code" required value="${defaultCode}"
+        <input type="url" id="new-site-code" ${isByogit ? '' : 'required '}value="${defaultCode}"
                placeholder="https://github.com/owner/repo" />
+      </div>
+      <div class="form-field byogit-toggle">
+        <label class="checkbox-label">
+          <input type="checkbox" id="new-site-byogit"${isByogit ? ' checked' : ''} />
+          Bring Your Own Git
+        </label>
+        <p class="field-hint">Use an external repository via Cloud Manager.
+          <a href="https://www.aem.live/developer/byo-git" target="_blank" rel="noopener noreferrer">Learn more</a></p>
+      </div>
+      <div class="byogit-fields"${isByogit ? '' : ' aria-hidden="true"'}>
+        <div class="form-field">
+          <label for="new-site-byogit-owner">Owner</label>
+          <input type="text" id="new-site-byogit-owner" placeholder="program ID"
+                 ${isByogit ? 'required ' : ''}value="${byogitOwner}" />
+        </div>
+        <div class="form-field">
+          <label for="new-site-byogit-repo">Repo</label>
+          <input type="text" id="new-site-byogit-repo" placeholder="repository-id"
+                 ${isByogit ? 'required ' : ''}value="${byogitRepo}" />
+        </div>
       </div>
       <div class="form-field">
         <label for="new-site-content">Content Source URL</label>
@@ -495,33 +616,110 @@ export const openAddSiteModal = async (orgValue, defaultCode = '', defaultConten
         <button type="submit" class="button create-btn">Create Site</button>
       </div>
     </form>
+    <div class="byogit-secret-step" aria-hidden="true">
+      <div class="site-modal-header">
+        <h2>Complete BYO Git Setup</h2>
+        <p class="site-name"></p>
+      </div>
+      <p class="field-hint byogit-secret-hint">Enter the secret provided by Cloud Manager to complete the setup.
+        <a href="https://www.aem.live/developer/byo-git#configure-your-aem-site-to-use-cloud-manager" target="_blank" rel="noopener noreferrer">Learn more</a></p>
+      <div class="form-field">
+        <label for="byogit-secret-value">Cloud Manager Secret (cm-byog)</label>
+        <input type="password" id="byogit-secret-value" placeholder="Secret from Cloud Manager" />
+      </div>
+      <div class="form-actions">
+        <button type="button" class="button outline skip-secret-btn">Skip</button>
+        <button type="button" class="button save-secret-btn">Save Secret</button>
+      </div>
+    </div>
   `);
 
   container.querySelector('.cancel-btn').addEventListener('click', () => dialog.close());
+
+  const byogitCheckbox = container.querySelector('#new-site-byogit');
+  const codeUrlField = container.querySelector('.code-url-field');
+  const byogitFieldsEl = container.querySelector('.byogit-fields');
+  const codeInput = container.querySelector('#new-site-code');
+  const byogitOwnerInput = container.querySelector('#new-site-byogit-owner');
+  const byogitRepoInput = container.querySelector('#new-site-byogit-repo');
+
+  byogitCheckbox.addEventListener('change', () => {
+    const { checked } = byogitCheckbox;
+    if (checked) {
+      codeUrlField.setAttribute('aria-hidden', 'true');
+      byogitFieldsEl.removeAttribute('aria-hidden');
+      codeInput.removeAttribute('required');
+      byogitOwnerInput.setAttribute('required', '');
+      byogitRepoInput.setAttribute('required', '');
+    } else {
+      codeUrlField.removeAttribute('aria-hidden');
+      byogitFieldsEl.setAttribute('aria-hidden', 'true');
+      codeInput.setAttribute('required', '');
+      byogitOwnerInput.removeAttribute('required');
+      byogitRepoInput.removeAttribute('required');
+    }
+  });
+
+  const secretStep = container.querySelector('.byogit-secret-step');
+  let createdSiteName = '';
+
+  secretStep.querySelector('.skip-secret-btn').addEventListener('click', () => dialog.close());
+  secretStep.querySelector('.save-secret-btn').addEventListener('click', async () => {
+    const secretValue = secretStep.querySelector('#byogit-secret-value').value.trim();
+    if (!secretValue) return;
+    const btn = secretStep.querySelector('.save-secret-btn');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    const saved = await createNamedSecret(orgValue, createdSiteName, 'cm-byog', secretValue, logFn);
+    if (saved) {
+      btn.textContent = 'Saved!';
+      showToast('Cloud Manager secret saved', 'success');
+      setTimeout(() => dialog.close(), 1000);
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Failed - Try Again';
+    }
+  });
 
   container.querySelector('.add-site-form').addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const siteName = container.querySelector('#new-site-name').value.trim();
-    const codeUrl = container.querySelector('#new-site-code').value.trim();
+    const codeUrl = codeInput.value.trim();
     const contentUrl = container.querySelector('#new-site-content').value.trim();
+
+    let byogit = null;
+    if (byogitCheckbox.checked) {
+      byogit = {
+        owner: byogitOwnerInput.value.trim(),
+        repo: byogitRepoInput.value.trim(),
+      };
+    }
 
     const createBtn = container.querySelector('.create-btn');
     createBtn.disabled = true;
     createBtn.innerHTML = 'Creating... <i class="symbol symbol-loading"></i>';
 
+    const onCreated = byogit ? () => {} : () => dialog.close();
     const success = await saveSiteAndRefresh(
       orgValue,
       siteName,
       codeUrl,
       contentUrl,
       {},
-      () => dialog.close(),
+      onCreated,
       logFn,
       'add',
+      byogit,
     );
 
-    if (!success) {
+    if (success && byogit) {
+      createdSiteName = siteName;
+      container.querySelector(':scope > .site-modal-header').setAttribute('aria-hidden', 'true');
+      container.querySelector('.add-site-form').setAttribute('aria-hidden', 'true');
+      secretStep.querySelector('.site-name').textContent = siteName;
+      secretStep.removeAttribute('aria-hidden');
+    } else if (!success) {
       createBtn.disabled = false;
       createBtn.textContent = 'Create Site';
     }

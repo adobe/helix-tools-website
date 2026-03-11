@@ -1,6 +1,6 @@
 // Record tool visits for recent tools on landing page
 const path = window.location.pathname;
-if (path.startsWith('/tools/')) {
+if (path.startsWith('/tools/') && !window.isErrorPage) {
   try {
     const visits = JSON.parse(localStorage.getItem('aem-tool-visits') || '[]');
     const filtered = visits.filter((v) => v.path !== path);
