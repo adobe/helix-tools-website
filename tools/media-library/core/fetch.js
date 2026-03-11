@@ -20,9 +20,6 @@ export default async function fetchWithCorsProxy(url, options = {}) {
 
   try {
     const response = await fetch(url, fetchOpts);
-    if (!response.ok) {
-      return doProxyFetch();
-    }
     return response;
   } catch (directError) {
     if (directError.name === 'TypeError'

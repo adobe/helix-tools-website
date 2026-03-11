@@ -36,9 +36,14 @@ export async function createBulkStatusJob(org, repo, ref = 'main') {
     throw new Error('Bulk status job creation failed or returned unexpected state');
   }
 
+  const jobUrl = data.links?.self;
+  if (!jobUrl || typeof jobUrl !== 'string') {
+    throw new Error('Bulk status job response missing links.self URL');
+  }
+
   return {
     jobId: data.job.name,
-    jobUrl: data.links?.self,
+    jobUrl,
   };
 }
 

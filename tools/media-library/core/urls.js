@@ -88,7 +88,10 @@ export function parseOrgRepoFromUrl(siteUrl) {
 
     throw new Error(`Unable to parse AEM URL format from: ${siteUrl}`);
   } catch (error) {
-    throw new Error(`Invalid URL format: ${siteUrl}. Expected format: https://main--site--org.aem.page`);
+    if (error instanceof TypeError) {
+      throw new Error(`Invalid URL format: ${siteUrl}. Expected format: https://main--site--org.aem.page`);
+    }
+    throw error;
   }
 }
 
