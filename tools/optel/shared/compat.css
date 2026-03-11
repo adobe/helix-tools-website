@@ -138,6 +138,14 @@ body.optel-oversight main dl {
   margin-bottom: 0;
 }
 
+/* Fieldset text color reset - inherit from fieldset parent */
+body.optel-explorer main fieldset legend,
+body.optel-explorer main fieldset label,
+body.optel-oversight main fieldset legend,
+body.optel-oversight main fieldset label {
+  color: inherit;
+}
+
 /* Button reset */
 body.optel-explorer main .button,
 body.optel-explorer main button,
@@ -148,11 +156,26 @@ body.optel-oversight main button {
   font-weight: inherit;
 }
 
+/* Preserve circular back-to-report button */
+body.optel-oversight main .back-to-report-btn {
+  border-radius: 50%;
+  padding: 0;
+}
+
 /* URL-selector input reset */
 body.optel-explorer main url-selector input,
 body.optel-oversight main url-selector input {
   padding: 0;
   background-color: transparent;
+}
+
+body.optel-oversight facet-sidebar {
+  padding-top: 20px;
+}
+
+/* Reduce font-weight of URL input field */
+body.optel-oversight main .title url-selector input {
+  font-weight: 600;
 }
 
 body.optel-explorer main url-selector input:not(:disabled),
@@ -207,6 +230,12 @@ body.optel-oversight figure {
   }
 }
 
+/* Allow background scrolling when AI report modal is open */
+body.optel-oversight:has(.report-modal-overlay) {
+  overflow: auto;
+  height: auto;
+}
+
 /* ============================================
    PART 3: DARK MODE OVERRIDES
    ============================================ */
@@ -218,24 +247,21 @@ html[data-theme="dark"] body.optel-oversight {
 
 html[data-theme="dark"] body.optel-explorer fieldset,
 html[data-theme="dark"] body.optel-oversight fieldset {
-  --background-color: #2a2a3a;
+  --background-color: #1a1a2a;
 
   background-color: var(--background-color);
-  color: var(--spectrum-gray-200);
+  color: white;
+  border-color: #2a3a5a;
 }
 
 html[data-theme="dark"] body.optel-explorer list-facet[facet="userAgent"] fieldset,
 html[data-theme="dark"] body.optel-oversight list-facet[facet="userAgent"] fieldset {
-  --background-color: #3a2a3a;
-
-  color: #e8b4e8;
+  border-color: #4a2a5a;
 }
 
 html[data-theme="dark"] body.optel-explorer list-facet[facet="url"] fieldset,
 html[data-theme="dark"] body.optel-oversight list-facet[facet="url"] fieldset {
-  --background-color: #2a2a4a;
-
-  color: #b4b4e8;
+  border-color: #3a2a5a;
 }
 
 html[data-theme="dark"] body.optel-explorer fieldset > div:hover,
