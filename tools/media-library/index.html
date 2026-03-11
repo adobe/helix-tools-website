@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta
     http-equiv="Content-Security-Policy"
@@ -8,82 +9,68 @@
   >
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Media Library - AEM Tools</title>
-  <meta name="description" content="Scan and manage media files across your AEM site">
-  
-  <!-- Conditional loading based on environment -->
+  <title>Media Library</title>
   <script nonce="aem" src="/scripts/aem.js" type="module"></script>
   <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/utils/config/config.css" />
   <link rel="stylesheet" href="/styles/styles.css" />
-  
-  <!-- Media library web component (lazy loaded for performance) -->
-  <link rel="stylesheet" href="styles.css" />
+  <script nonce="aem" src="/tools/media-library/media-library.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/media-library/media-library.css" />
+  <link rel="stylesheet" href="/tools/media-library/views/mediainfo/mediainfo.css" />
 </head>
-<body class="media-library appear">
+
+<body class="media-library">
   <header></header>
   <main>
-    <div>
+    <div class="media-library-title">
       <h1>Media Library</h1>
+      <p>Track and analyze media usage across your AEM Edge Delivery site</p>
     </div>
 
-    <div>
-      <form id="media-config-form">
-        <div class="form-field site-url-field" id="site-url-field">
-          <label for="site-url">Website URL</label>
-          <input name="site-url" id="site-url" type="url" placeholder="https://example.com" />
-        </div>
-        
-        <div class="form-separator">(or)</div>
-        
-        <div class="form-field sitemap-field" id="sitemap-field">
-          <label for="sitemap-url">Sitemap URL</label>
-          <input name="sitemap-url" id="sitemap-url" type="url" placeholder="https://example.com/sitemap.xml" />
-        </div>
-        
-        <button type="button" id="start-new-scan" class="button">Scan</button>
-        
-        <div class="form-divider"></div>
-        
-        <div class="form-field saved-sites-field">
-          <label for="saved-sites">Load Previous</label>
-          <select name="saved-sites" id="saved-sites" disabled>
-            <option value="">Select a site...</option>
-          </select>
-        </div>
-        
-        <button type="button" id="load-previous-button" class="button">Load</button>
-        <button type="button" id="clear-site-data" class="button danger">Clear Data</button>
-      </form>
-    </div>
-    
-    <!-- MEDIA LIBRARY COMPONENT -->
-    <div class="media-library-container section">
-      <div>
-        <!-- Placeholder shown until component is loaded -->
-        <div id="media-library-placeholder" class="media-library-placeholder">
-          <div class="placeholder-content">
-            <p class="placeholder-message">Please scan or load previously scanned data</p>
+    <div class="media-library-config">
+      <form id="media-library-form">
+        <section class="form-field config-field">
+          <div class="form-field org-field">
+            <label for="org">Organization</label>
+            <input name="org" id="org" list="org-list" autocomplete="off" required />
+            <datalist id="org-list"></datalist>
           </div>
-        </div>
-        
-        <!-- Web component (lazy loaded) -->
-        <media-library 
-          id="media-library"
-          storage="indexeddb"
-          site-key=""
-          cors-proxy="https://little-forest-58aa.david8603.workers.dev/"
-          style="display: none;">
-        </media-library>
+          <div class="form-field site-field">
+            <label for="site">Site</label>
+            <input name="site" id="site" list="site-list" autocomplete="off" disabled required />
+            <datalist id="site-list"></datalist>
+          </div>
+          <div class="form-field path-field">
+            <label for="path">Path (optional)</label>
+            <input name="path" id="path" type="text" placeholder="e.g. /docs" autocomplete="off" />
+          </div>
+        </section>
+        <p class="button-wrapper">
+          <button type="submit" id="load-media" class="button">
+            <span class="load-btn-text">Load Media</span>
+            <span class="load-btn-loading" hidden>
+              <span class="load-btn-spinner" aria-hidden="true"></span>
+              Loading…
+            </span>
+          </button>
+          <button type="reset" class="button outline">Reset</button>
+        </p>
+        <p class="form-validation-error" id="form-validation-error" role="alert" hidden></p>
+      </form>
+      <div class="media-library-config-bar" id="config-bar" hidden>
+        <span class="config-bar-label" id="config-bar-label"></span>
+        <button type="button" class="button outline" id="config-bar-change">Change site</button>
       </div>
+    </div>
+
+    <div class="workspace" id="workspace" hidden>
+      <div class="workspace-banner" id="media-persistent-banner" role="alert" aria-live="assertive" hidden></div>
+      <div class="sidebar"></div>
+      <div class="topbar"></div>
+      <div class="grid"></div>
     </div>
   </main>
   <footer></footer>
-  
-  <script nonce="aem" type="module">
-    import { initialize } from './scripts.js';
-    
-    // Initialize the Media Library with AEM functionality
-    await initialize();
-  </script>
 </body>
+
 </html>
