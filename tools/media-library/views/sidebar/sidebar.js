@@ -92,10 +92,6 @@ function render(block, state) {
     }
   });
 
-  block.querySelectorAll('[data-filter]').forEach((btn) => {
-    btn.addEventListener('click', () => updateAppState({ selectedFilterType: btn.dataset.filter }));
-  });
-
   const ctx = getMediaLibraryContext();
   block.querySelector('.export-btn')?.addEventListener('click', () => {
     const appState = getAppState();
@@ -117,6 +113,13 @@ function render(block, state) {
 
 export default async function decorate(block) {
   block.classList.add('sidebar');
+
+  block.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-filter]');
+    if (!btn?.dataset.filter) return;
+    updateAppState({ selectedFilterType: btn.dataset.filter });
+  });
+
   render(block, getAppState());
   onStateChange(() => render(block, getAppState()));
 }

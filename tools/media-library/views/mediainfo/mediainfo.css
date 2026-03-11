@@ -925,8 +925,7 @@ body.media-library .date-separator {
   }
 }
 
-/* Responsive adjustments */
-@media (width <= 768px) {
+@media (width < 900px) {
   body.media-library dialog.modal-overlay {
     padding: 10px;
   }
@@ -935,16 +934,16 @@ body.media-library .date-separator {
     padding: 16px 20px;
   }
 
-  .usage-section {
+  body.media-library .usage-section {
     padding: 20px;
   }
 
-  .tab-button {
+  body.media-library .tab-button {
     border-right: 2px solid transparent;
     text-align: start;
   }
 
-  .date-separator {
+  body.media-library .date-separator {
     display: none;
   }
 }

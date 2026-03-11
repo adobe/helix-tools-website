@@ -322,6 +322,12 @@ export default function createMediaInfoModal() {
     return metadataCache.get(cacheKey) ?? null;
   }
 
+  function getPreviewNaturalDimensions() {
+    const img = dialog.querySelector('.media-preview-section img.preview-image');
+    if (!img || !img.naturalWidth || !img.naturalHeight) return null;
+    return { width: img.naturalWidth, height: img.naturalHeight };
+  }
+
   function renderMetadataContent() {
     const fullUrl = resolveMediaUrl(media.url, org, repo);
     const parsed = parseMediaUrl(fullUrl);
@@ -338,10 +344,18 @@ export default function createMediaInfoModal() {
     } else {
       rows.push(['File Size', fileSizeDisplay]);
     }
-    if (media.width || media.height) {
-      rows.push(['Width', media.width ? `${media.width}px` : '—']);
-      rows.push(['Height', media.height ? `${media.height}px` : '—']);
-      rows.push(['Orientation', (media.width && media.height) ? getImageOrientation(media.width, media.height) : '—']);
+    const natural = isImage(media?.url ?? '') ? getPreviewNaturalDimensions() : null;
+    const displayW = natural?.width ?? media.width;
+    const displayH = natural?.height ?? media.height;
+    if (displayW || displayH) {
+      rows.push(['Width', displayW ? `${displayW}px` : '—']);
+      rows.push(['Height', displayH ? `${displayH}px` : '—']);
+    }
+    if (isImage(media?.url ?? '')) {
+      const orientation = (displayW && displayH)
+        ? getImageOrientation(displayW, displayH)
+        : '—';
+      rows.push(['Orientation', orientation]);
     }
     rows.push(['Origin', escapeHtml(origin)]);
     rows.push(['Path', escapeHtml(path)]);
@@ -413,6 +427,10 @@ export default function createMediaInfoModal() {
         if (fallback?.classList.contains('pdf-fallback')) fallback.style.display = 'flex';
       });
     }
+    const previewImg = dialog.querySelector('.media-preview-section img.preview-image');
+    if (previewImg) {
+      previewImg.addEventListener('load', () => updateTabContentOnlyFn?.());
+    }
   }
 
   function doRender() {
@@ -473,6 +491,11 @@ export default function createMediaInfoModal() {
         const fallback = pdfIframe.nextElementSibling;
         if (fallback?.classList.contains('pdf-fallback')) fallback.style.display = 'flex';
       });
+    }
+
+    const previewImg = dialog.querySelector('.media-preview-section img.preview-image');
+    if (previewImg) {
+      previewImg.addEventListener('load', () => updateTabContentOnlyFn?.());
     }
   }
 

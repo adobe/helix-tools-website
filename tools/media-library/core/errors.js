@@ -31,6 +31,6 @@ export function logMediaLibraryError(code, details = {}) {
     .map(([k, v]) => `${k}=${String(v).slice(0, 200)}`)
     .join(' ');
   if (safe) parts.push(safe);
-  // eslint-disable-next-line no-console
+  // eslint-disable-next-line no-console -- structured diagnostic logging for Media Library
   console.error(parts.join(' '));
 }

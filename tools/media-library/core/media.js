@@ -13,8 +13,9 @@ const ALLOWED_SUBTYPE_EXTENSIONS = new Set([
 ]);
 
 export function extractFileExtension(filePath) {
-  if (!filePath) return '';
-  const cleanPath = filePath.split(/[#?]/)[0];
+  const path = typeof filePath === 'string' ? filePath : '';
+  if (!path) return '';
+  const cleanPath = path.split(/[#?]/)[0];
   return cleanPath.split('.').pop()?.toLowerCase() || '';
 }
 

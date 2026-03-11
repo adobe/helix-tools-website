@@ -104,7 +104,7 @@ export async function copyMediaToClipboard(media) {
     await navigator.clipboard.writeText(mediaUrl);
     return { heading: 'Copied', message: 'Resource URL Copied.' };
   } catch (error) {
-    // eslint-disable-next-line no-console
+    // eslint-disable-next-line no-console -- report copy failure to user
     console.error('Failed to copy to clipboard:', error);
     return { heading: 'Error', message: 'Failed to copy Resource.' };
   }

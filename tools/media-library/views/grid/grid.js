@@ -221,6 +221,10 @@ function renderVirtualGrid(block, filtered, state, handlers) {
   const slice = filtered.slice(startIdx, endIdx);
   const offsetY = startRow * ROW_HEIGHT + PADDING;
 
+  const sliceContentKey = slice.length === 0
+    ? '0'
+    : `${slice.length}-${slice[0]?.hash ?? slice[0]?.url ?? ''}-${slice[slice.length - 1]?.hash ?? slice[slice.length - 1]?.url ?? ''}`;
+
   const existing = block.querySelector('.virtual-grid-root');
   if (existing) {
     const viewport = existing.querySelector('.virtual-viewport');
@@ -229,11 +233,13 @@ function renderVirtualGrid(block, filtered, state, handlers) {
     if (viewport && grid && spacer) {
       const lastRange = virtualRangeMap.get(block);
       const rangeKey = `${startIdx}-${endIdx}`;
-      if (lastRange?.rangeKey === rangeKey && lastRange?.cols === cols) {
+      const sameData = lastRange?.filteredLength === filtered.length
+        && lastRange?.sliceContentKey === sliceContentKey;
+      if (lastRange?.rangeKey === rangeKey && lastRange?.cols === cols && sameData) {
         viewport.style.transform = `translateY(${offsetY}px)`;
         return;
       }
-      virtualRangeMap.set(block, { rangeKey, cols });
+      virtualRangeMap.set(block, { rangeKey, cols, filteredLength: filtered.length, sliceContentKey });
       const newTotalHeight = totalRows * ROW_HEIGHT + (PADDING * 2);
       if (spacer.style.height !== `${newTotalHeight}px`) spacer.style.height = `${newTotalHeight}px`;
       viewport.style.transform = `translateY(${offsetY}px)`;

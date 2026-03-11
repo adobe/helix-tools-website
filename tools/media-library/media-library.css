@@ -158,7 +158,7 @@ body.media-library #media-library-form .config-field {
   width: 100%;
 }
 
-@media (width <= 599px) {
+@media (width < 600px) {
   body.media-library #media-library-form .config-field {
     grid-template-columns: 1fr;
   }
@@ -497,8 +497,7 @@ body.media-library .media-content {
   overflow: hidden;
 }
 
-/* Responsive layout */
-@media (width <= 768px) {
+@media (width < 900px) {
   body.media-library .workspace {
     grid-template:
       "topbar" auto
