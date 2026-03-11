@@ -343,6 +343,9 @@ async function discoverPages(org, site) {
   if (state === 'failed') {
     throw new Error(`Status job failed${failureReason ? `: ${failureReason}` : ''}`);
   }
+  if (state === 'stopped') {
+    log('Status job was stopped before completion — page list may be incomplete. Proceeding with partial results.', 'warn');
+  }
 
   // Get details
   const detailsUrl = `${selfUrl}/details`;
