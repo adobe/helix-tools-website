@@ -17,9 +17,18 @@ Detailed checklist for reviewing Edge Delivery Services pull requests. Use this 
 
 ### Preview URL Format
 
+Both `.aem.page` and `.aem.live` domains are accepted:
+
 ```
 Before: https://main--{repo}--{owner}.aem.page/{path-to-test-content}
 After: https://{branch}--{repo}--{owner}.aem.page/{path-to-test-content}
+```
+
+or
+
+```
+Before: https://main--{repo}--{owner}.aem.live/{path-to-test-content}
+After: https://{branch}--{repo}--{owner}.aem.live/{path-to-test-content}
 ```
 
 ### PR Description Template
@@ -32,8 +41,8 @@ After: https://{branch}--{repo}--{owner}.aem.page/{path-to-test-content}
 Fix #<issue-number>
 
 ## Test URLs
-- Before: https://main--{repo}--{owner}.aem.page/{path}
-- After: https://{branch}--{repo}--{owner}.aem.page/{path}
+- Before: https://main--{repo}--{owner}.aem.live/{path}
+- After: https://{branch}--{repo}--{owner}.aem.live/{path}
 
 ## Types of Changes
 - [ ] Bug fix
