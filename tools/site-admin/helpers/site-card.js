@@ -137,12 +137,12 @@ export default function createSiteCard(site, orgValue) {
     }
   });
 
-  const openEditConfig = () => openEditSourceModal(
-    orgValue,
-    site.name,
-    card.dataset.codeUrl || '',
-    card.dataset.contentUrl || '',
-  );
+  const openEditConfig = () => {
+    const byogitDefaults = card.dataset.byogitOwner
+      ? { owner: card.dataset.byogitOwner, repo: card.dataset.byogitRepo }
+      : null;
+    openEditSourceModal(orgValue, site.name, card.dataset.codeUrl || '', card.dataset.contentUrl || '', null, byogitDefaults);
+  };
 
   const openLogs = () => {
     const url = `/tools/log-viewer/index.html?org=${encodeURIComponent(orgValue)}&site=${encodeURIComponent(site.name)}`;
@@ -150,7 +150,12 @@ export default function createSiteCard(site, orgValue) {
   };
 
   const menuActions = {
-    clone: () => openAddSiteModal(orgValue, card.dataset.codeUrl || '', card.dataset.contentUrl || ''),
+    clone: () => {
+      const byogitDefaults = card.dataset.byogitOwner
+        ? { owner: card.dataset.byogitOwner, repo: card.dataset.byogitRepo }
+        : null;
+      openAddSiteModal(orgValue, card.dataset.codeUrl || '', card.dataset.contentUrl || '', null, byogitDefaults);
+    },
     sitemap: () => {
       const url = `/tools/sitemap-admin/index.html?org=${encodeURIComponent(orgValue)}&site=${encodeURIComponent(site.name)}`;
       window.open(url, '_blank');
