@@ -1,8 +1,3 @@
-/**
- * Media Library - Main controller.
- * Config, data loading, context, and view initialization.
- */
-
 import {
   processMediaData,
   computeResultSummary,
@@ -49,6 +44,10 @@ import { loadView } from './core/views.js';
 const PROGRESSIVE_DISPLAY_CAP = 3000;
 const PROGRESSIVE_UPDATE_THROTTLE_MS = 100;
 
+const FILTER_KEYS = new Set(['all', 'documents', 'fragments', 'images', 'icons', 'links', 'videos', 'noReferences']);
+const URL_FILTER_TO_KEY = { 'no-references': 'noReferences' };
+const FILTER_KEY_TO_URL = { noReferences: 'no-references' };
+
 let mediaInfoModal = null;
 
 function getFilteredMediaData() {
@@ -78,6 +77,17 @@ function getPathFromInput() {
   return raw ? `/${raw}` : '';
 }
 
+function syncFilterToUrl() {
+  const url = new URL(window.location.href);
+  const filter = getAppState().selectedFilterType;
+  if (filter && filter !== 'all') {
+    url.searchParams.set('filter', FILTER_KEY_TO_URL[filter] ?? filter);
+  } else {
+    url.searchParams.delete('filter');
+  }
+  window.history.replaceState({}, document.title, url.href);
+}
+
 async function init() {
   const orgInput = document.getElementById('org');
   const siteInput = document.getElementById('site');
@@ -88,19 +98,28 @@ async function init() {
   const configBarChange = document.getElementById('config-bar-change');
   if (!orgInput || !siteInput) return;
 
-  // Prefill path from URL
-  const pathParam = new URLSearchParams(window.location.search).get('path');
+  const searchParams = new URLSearchParams(window.location.search);
+  const pathParam = searchParams.get('path');
+  const filterParam = searchParams.get('filter');
   if (pathParam && pathInput) pathInput.value = pathParam;
 
   await initConfigField();
   mediaInfoModal = createMediaInfoModal();
 
-  // Load views
   await Promise.all([
     loadView('sidebar', document.querySelector('.sidebar')),
     loadView('topbar', document.querySelector('.topbar')),
     loadView('grid', document.querySelector('.grid')),
   ]);
+
+  const filterKey = filterParam
+    ? (URL_FILTER_TO_KEY[filterParam] ?? (FILTER_KEYS.has(filterParam) ? filterParam : null))
+    : null;
+  if (filterKey) {
+    updateAppState({ selectedFilterType: filterKey });
+  }
+
+  onStateChange(['selectedFilterType'], syncFilterToUrl);
 
   onStateChange(['persistentError'], (state) => {
     const banner = document.getElementById('media-persistent-banner');
@@ -275,8 +294,8 @@ async function init() {
       }, pathKey);
 
       await doSetMediaData(savedData);
-    } catch (err) {
-      // console.warn('[MEDIA-LIB:refreshIncremental]', err);
+    } catch {
+      // ignore
     }
   }
 
@@ -450,6 +469,9 @@ async function init() {
     const url = new URL(window.location.href);
     if (path) url.searchParams.set('path', path);
     else url.searchParams.delete('path');
+    const filter = getAppState().selectedFilterType;
+    if (filter && filter !== 'all') url.searchParams.set('filter', FILTER_KEY_TO_URL[filter] ?? filter);
+    else url.searchParams.delete('filter');
     window.history.replaceState({}, document.title, url.href);
     loadMediaData(org, site, path);
   });

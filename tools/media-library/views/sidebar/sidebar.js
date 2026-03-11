@@ -98,10 +98,20 @@ function render(block, state) {
 
   const ctx = getMediaLibraryContext();
   block.querySelector('.export-btn')?.addEventListener('click', () => {
-    const filtered = getFilteredMedia(getAppState());
-    const unreferenced = filtered.filter((item) => item.usageCount === 0);
-    exportToCsv(unreferenced, { org: ctx.getOrg?.(), repo: ctx.getSite?.(), filterName: 'unreferenced' });
-    showNotification('Export complete', `Exported ${unreferenced.length} unreferenced media items`);
+    const appState = getAppState();
+    const filtered = getFilteredMedia(appState);
+    if (filtered.length === 0) {
+      showNotification('Export', 'No items to export for the current filter.', 'info');
+      return;
+    }
+    const filterLabel = FILTER_STRUCTURE.find((f) => f.key === appState.selectedFilterType)?.label || 'media';
+    exportToCsv(filtered, {
+      org: ctx.getOrg?.(),
+      repo: ctx.getSite?.(),
+      filterName: appState.selectedFilterType || 'all',
+    });
+    const count = filtered.length;
+    showNotification('Export complete', `Exported ${count} ${filterLabel.toLowerCase()} item${count !== 1 ? 's' : ''}`);
   });
 }
 
