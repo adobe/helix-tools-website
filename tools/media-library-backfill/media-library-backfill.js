@@ -7,6 +7,7 @@ const REF = 'main';
 const BATCH_SIZE = 10;
 const CONCURRENCY = 5;
 const POLL_INTERVAL = 2000;
+const JOB_COUNTER_LOG_INTERVAL = 10000;
 const ADMIN_API_RATE = 10;
 const LOG_WINDOW_SIZE = 1000;
 const TERMINAL_JOB_STATES = new Set(['completed', 'stopped', 'failed']);
@@ -325,60 +326,290 @@ async function runWithConcurrency(items, fn, limit) {
   return results;
 }
 
-// Phase 1: Discover all pages via bulk status job
-async function discoverPages(org, site) {
-  setPhase('Phase 1: Discovering pages...', 0);
-  log('Starting page discovery via bulk status job...');
+function toCounterValue(value) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
 
-  const jobUrl = `${ADMIN_BASE}/status/${org}/${site}/${REF}/*`;
-  const res = await fetchWithRetry(jobUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ paths: ['/*'], select: ['preview'] }),
+function extractJobCounters(payload = {}) {
+  const sources = [
+    payload,
+    payload.data,
+    payload.job,
+    payload.stats,
+    payload.summary,
+    payload.meta,
+    payload.data?.job,
+    payload.data?.stats,
+  ];
+  const counters = {
+    total: null,
+    processed: null,
+    failed: null,
+  };
+
+  sources.forEach((source) => {
+    if (!source || typeof source !== 'object') return;
+    if (counters.total === null) {
+      counters.total = toCounterValue(source.total);
+    }
+    if (counters.processed === null) {
+      counters.processed = toCounterValue(source.processed ?? source.completed ?? source.done);
+    }
+    if (counters.failed === null) {
+      counters.failed = toCounterValue(source.failed ?? source.errors);
+    }
   });
 
-  if (!res.ok) {
-    throw new Error(`Failed to create status job: ${res.status}`);
+  return counters;
+}
+
+function mergeJobCounters(base, incoming) {
+  const merged = { ...base };
+  ['total', 'processed', 'failed'].forEach((key) => {
+    if (Number.isFinite(incoming[key])) {
+      merged[key] = incoming[key];
+    }
+  });
+  return merged;
+}
+
+function formatJobCounters(counters) {
+  const value = (num) => (Number.isFinite(num) ? num : '?');
+  return `total=${value(counters.total)}, processed=${value(counters.processed)}, failed=${value(counters.failed)}`;
+}
+
+function extractJobResources(payload = {}) {
+  const resources = payload.data?.resources || payload.resources || [];
+  return Array.isArray(resources) ? resources : [];
+}
+
+function mergeResourceRecords(existing, incoming) {
+  return {
+    ...existing,
+    ...incoming,
+    previewLastModified: existing.previewLastModified || incoming.previewLastModified || '',
+    previewLastModifiedBy: existing.previewLastModifiedBy || incoming.previewLastModifiedBy || '',
+  };
+}
+
+function mergeResourcesByPath(...resourceLists) {
+  const byPath = new Map();
+  resourceLists.forEach((resources) => {
+    resources.forEach((resource) => {
+      if (!resource?.path) return;
+      const existing = byPath.get(resource.path);
+      if (!existing) {
+        byPath.set(resource.path, resource);
+      } else {
+        byPath.set(resource.path, mergeResourceRecords(existing, resource));
+      }
+    });
+  });
+  return Array.from(byPath.values());
+}
+
+function buildTopLevelPathPartitions(resources) {
+  const topLevelPaths = new Set();
+
+  resources.forEach((resource) => {
+    const path = resource?.path;
+    if (typeof path !== 'string' || !path.startsWith('/')) return;
+    const segments = path.split('/').filter(Boolean);
+    if (segments.length === 0) return;
+    const [topLevel] = segments;
+
+    // Keep root-level files out of partition expansion.
+    if (segments.length === 1 && topLevel.includes('.')) {
+      return;
+    }
+    topLevelPaths.add(`/${topLevel}/*`);
+  });
+
+  return Array.from(topLevelPaths)
+    .sort((a, b) => a.localeCompare(b))
+    .map((path) => [path]);
+}
+
+function sumJobCounters(counterList) {
+  const keys = ['total', 'processed', 'failed'];
+  const totals = {};
+
+  keys.forEach((key) => {
+    let sum = 0;
+    let found = false;
+    counterList.forEach((counter) => {
+      if (Number.isFinite(counter?.[key])) {
+        sum += counter[key];
+        found = true;
+      }
+    });
+    totals[key] = found ? sum : null;
+  });
+
+  return totals;
+}
+
+async function runStatusJob(org, site, paths, {
+  jobLabel,
+  onPoll,
+} = {}) {
+  const normalizedPaths = Array.isArray(paths) ? paths : [paths];
+  const label = jobLabel || `status job (${normalizedPaths.join(', ')})`;
+  const statusUrl = `${ADMIN_BASE}/status/${org}/${site}/${REF}/*`;
+
+  const createRes = await fetchWithRetry(statusUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paths: normalizedPaths, select: ['preview'] }),
+  });
+
+  if (!createRes.ok) {
+    throw new Error(`Failed to create ${label}: ${createRes.status}`);
   }
 
-  const job = await res.json();
-  const { links } = job;
-  const selfUrl = links?.self;
-  if (!selfUrl) throw new Error('No job URL returned from status API');
+  const job = await createRes.json();
+  const selfUrl = job.links?.self;
+  if (!selfUrl) throw new Error(`No job URL returned for ${label}`);
 
-  log(`Status job created: ${selfUrl}`);
+  log(`${label} created: ${selfUrl}`);
 
-  // Poll until complete
   let { state } = job;
   let failureReason = job.error || job.message || '';
+  let counters = extractJobCounters(job);
+  let lastCounterLogAt = 0;
+  let lastLoggedCounters = {
+    total: null,
+    processed: null,
+    failed: null,
+  };
+
+  const maybeLogCounters = (force = false) => {
+    const now = Date.now();
+    const countersChanged = (
+      counters.total !== lastLoggedCounters.total
+      || counters.processed !== lastLoggedCounters.processed
+      || counters.failed !== lastLoggedCounters.failed
+    );
+    const failedChanged = counters.failed !== lastLoggedCounters.failed;
+    if (
+      !force
+      && !failedChanged
+      && (now - lastCounterLogAt) < JOB_COUNTER_LOG_INTERVAL
+      && !TERMINAL_JOB_STATES.has(state)
+    ) {
+      return;
+    }
+    if (!force && !countersChanged && (now - lastCounterLogAt) < JOB_COUNTER_LOG_INTERVAL) {
+      return;
+    }
+
+    log(`${label}: state=${state} (${formatJobCounters(counters)})`);
+    lastCounterLogAt = now;
+    lastLoggedCounters = { ...counters };
+  };
+
+  maybeLogCounters(true);
+
   while (!TERMINAL_JOB_STATES.has(state)) {
     if (isAborted()) throw new DOMException('Aborted', 'AbortError');
     // eslint-disable-next-line no-await-in-loop
-    await new Promise((resolve) => { setTimeout(resolve, POLL_INTERVAL); });
+    await waitForDelay(POLL_INTERVAL, abortController?.signal);
     // eslint-disable-next-line no-await-in-loop
     const pollRes = await fetchWithRetry(selfUrl);
+    if (!pollRes.ok) {
+      throw new Error(`Failed to poll ${label}: ${pollRes.status}`);
+    }
     // eslint-disable-next-line no-await-in-loop
     const pollData = await pollRes.json();
     state = pollData.state;
     failureReason = pollData.error || pollData.message || failureReason;
+    counters = mergeJobCounters(counters, extractJobCounters(pollData));
     const progress = pollData.progress ? Math.round(pollData.progress * 100) : 0;
-    setPhase(`Phase 1: Discovering pages... (${state} ${progress}%)`, Math.min(progress * 0.2, 20));
+    if (onPoll) {
+      onPoll({ state, progress, counters });
+    }
+    maybeLogCounters(false);
   }
 
-  if (state === 'failed') {
-    throw new Error(`Status job failed${failureReason ? `: ${failureReason}` : ''}`);
-  }
-  if (state === 'stopped') {
-    log('Status job was stopped before completion — page list may be incomplete. Proceeding with partial results.', 'warn');
-  }
-
-  // Get details
   const detailsUrl = `${selfUrl}/details`;
   const detailsRes = await fetchWithRetry(detailsUrl);
-  if (!detailsRes.ok) throw new Error(`Failed to fetch job details: ${detailsRes.status}`);
+  if (!detailsRes.ok) throw new Error(`Failed to fetch job details for ${label}: ${detailsRes.status}`);
 
   const details = await detailsRes.json();
-  const resources = details.data?.resources || details.resources || [];
+  counters = mergeJobCounters(counters, extractJobCounters(details));
+  const resources = extractJobResources(details);
+  log(`${label} details: ${formatJobCounters(counters)} (resources=${resources.length})`);
+
+  if (state === 'failed') {
+    throw new Error(`${label} failed${failureReason ? `: ${failureReason}` : ''}`);
+  }
+
+  return {
+    state,
+    counters,
+    resources,
+  };
+}
+
+// Phase 1: Discover all pages via bulk status job
+async function discoverPages(org, site) {
+  setPhase('Phase 1: Discovering pages...', 0);
+  log('Starting page discovery via bulk status job...');
+  const primaryStatusJob = await runStatusJob(org, site, ['/*'], {
+    jobLabel: 'Primary status job',
+    onPoll: ({ state, progress }) => {
+      setPhase(`Phase 1: Discovering pages... (${state} ${progress}%)`, Math.min(progress * 0.2, 20));
+    },
+  });
+
+  let { resources } = primaryStatusJob;
+  if (primaryStatusJob.state === 'stopped') {
+    log(`Primary status job stopped (${formatJobCounters(primaryStatusJob.counters)}). Retrying by top-level folders...`, 'warn');
+    const pathPartitions = buildTopLevelPathPartitions(resources);
+    if (!pathPartitions.length) {
+      log('Unable to infer top-level folders from stopped job details. Proceeding with partial results.', 'warn');
+    } else {
+      const fallbackCounters = [];
+      let stoppedFallbackCount = 0;
+      log(`Running ${pathPartitions.length} fallback status job(s) by folder path`);
+      for (let i = 0; i < pathPartitions.length; i += 1) {
+        if (isAborted()) throw new DOMException('Aborted', 'AbortError');
+        const partition = pathPartitions[i];
+        const partitionLabel = `Fallback status job ${i + 1}/${pathPartitions.length} (${partition.join(', ')})`;
+        const baseProgress = Math.floor((i / pathPartitions.length) * 20);
+        const progressSpan = Math.max(1, Math.ceil(20 / pathPartitions.length));
+
+        // eslint-disable-next-line no-await-in-loop
+        const fallbackJob = await runStatusJob(org, site, partition, {
+          jobLabel: partitionLabel,
+          onPoll: ({ state, progress }) => {
+            const phaseProgress = Math.min(
+              20,
+              baseProgress + Math.round((progress / 100) * progressSpan),
+            );
+            setPhase(
+              `Phase 1: Discovering pages... (fallback ${i + 1}/${pathPartitions.length}, ${state} ${progress}%)`,
+              phaseProgress,
+            );
+          },
+        });
+
+        fallbackCounters.push(fallbackJob.counters);
+        if (fallbackJob.state === 'stopped') {
+          stoppedFallbackCount += 1;
+          log(`${partitionLabel} stopped (${formatJobCounters(fallbackJob.counters)})`, 'warn');
+        }
+        resources = mergeResourcesByPath(resources, fallbackJob.resources);
+      }
+
+      log(`Fallback status jobs summary: ${formatJobCounters(sumJobCounters(fallbackCounters))}`);
+      if (stoppedFallbackCount > 0) {
+        log(`${stoppedFallbackCount} fallback status job(s) stopped before completion. Results may still be incomplete.`, 'warn');
+      }
+    }
+  }
+  resources = mergeResourcesByPath(resources);
 
   const pages = [];
   const standaloneMedia = [];
