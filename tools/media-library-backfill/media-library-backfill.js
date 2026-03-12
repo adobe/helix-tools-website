@@ -11,8 +11,10 @@ const JOB_COUNTER_LOG_INTERVAL = 10000;
 const ADMIN_API_RATE = 10;
 const LOG_WINDOW_SIZE = 1000;
 const TERMINAL_JOB_STATE = 'stopped';
-const LARGE_SITE_PATH_THRESHOLD = 10000;
-const ROOT_PATH_BATCH_SIZE = 250;
+const LARGE_SITE_PATH_THRESHOLD = 20000;
+const TARGET_PARTITION_RESOURCE_COUNT = 20000;
+const MAX_PARTITION_PATHS = 250;
+const PARTITION_LABEL_PATH_LIMIT = 3;
 
 const VIDEO_EXTENSIONS = /\.(mp4|mov|webm|avi|m4v|mkv)$/i;
 
@@ -355,6 +357,14 @@ function extractJobCounters(rawJobData) {
   };
 }
 
+function extractJobState(rawJobData) {
+  const jobData = getJobStateData(rawJobData);
+  if (typeof jobData.state === 'string' && jobData.state) {
+    return jobData.state;
+  }
+  return '';
+}
+
 function mergeJobCounters(base, incoming) {
   const merged = { ...base };
   ['total', 'processed', 'failed'].forEach((key) => {
@@ -440,46 +450,132 @@ function mergeResourcesByPath(...resourceLists) {
   return Array.from(byPath.values());
 }
 
-function chunkArray(items, chunkSize) {
-  const chunks = [];
-  for (let i = 0; i < items.length; i += chunkSize) {
-    chunks.push(items.slice(i, i + chunkSize));
-  }
-  return chunks;
+function packPathBuckets(buckets) {
+  const partitions = [];
+  const sortedBuckets = [...buckets].sort((a, b) => (
+    b.estimatedCount - a.estimatedCount
+    || a.paths[0].localeCompare(b.paths[0])
+  ));
+
+  sortedBuckets.forEach((bucket) => {
+    const targetPartition = partitions.find((partition) => (
+      partition.estimatedCount + bucket.estimatedCount <= TARGET_PARTITION_RESOURCE_COUNT
+      && partition.paths.length + bucket.paths.length <= MAX_PARTITION_PATHS
+    ));
+
+    if (targetPartition) {
+      targetPartition.paths.push(...bucket.paths);
+      targetPartition.estimatedCount += bucket.estimatedCount;
+      return;
+    }
+
+    partitions.push({
+      paths: [...bucket.paths],
+      estimatedCount: bucket.estimatedCount,
+    });
+  });
+
+  return partitions.map((partition) => ({
+    ...partition,
+    paths: partition.paths.slice().sort((a, b) => a.localeCompare(b)),
+  }));
 }
 
 function buildPathPartitions(paths) {
-  const topLevelPaths = new Set();
+  const topLevelBuckets = new Map();
   const rootPaths = new Set();
 
   paths.forEach((path) => {
     if (typeof path !== 'string' || !path.startsWith('/')) return;
     const segments = path.split('/').filter(Boolean);
-    if (segments.length <= 1) {
+
+    if (!segments.length) {
       rootPaths.add(path);
+      return;
     }
-    if (segments.length >= 1) {
-      topLevelPaths.add(`/${segments[0]}/*`);
+
+    const exactPath = `/${segments[0]}`;
+    const bucket = topLevelBuckets.get(exactPath) || {
+      exactPath,
+      wildcardPath: `${exactPath}/*`,
+      hasExactRoot: false,
+      hasWildcardContent: false,
+      estimatedCount: 0,
+    };
+
+    if (segments.length === 1) {
+      if (path.endsWith('/')) {
+        bucket.hasWildcardContent = true;
+        bucket.estimatedCount += 1;
+      } else {
+        bucket.hasExactRoot = true;
+      }
+    } else {
+      bucket.hasWildcardContent = true;
+      bucket.estimatedCount += 1;
+    }
+
+    topLevelBuckets.set(exactPath, bucket);
+  });
+
+  const folderBuckets = [];
+  topLevelBuckets.forEach((bucket) => {
+    if (bucket.hasWildcardContent) {
+      folderBuckets.push({
+        paths: bucket.hasExactRoot
+          ? [bucket.exactPath, bucket.wildcardPath]
+          : [bucket.wildcardPath],
+        estimatedCount: bucket.estimatedCount + (bucket.hasExactRoot ? 1 : 0),
+      });
+      return;
+    }
+
+    if (bucket.hasExactRoot) {
+      rootPaths.add(bucket.exactPath);
     }
   });
 
-  const rootBatches = chunkArray(
-    Array.from(rootPaths).sort((a, b) => a.localeCompare(b)),
-    ROOT_PATH_BATCH_SIZE,
-  );
-  const folderPartitions = Array.from(topLevelPaths)
+  const rootBuckets = Array.from(rootPaths)
     .sort((a, b) => a.localeCompare(b))
-    .map((path) => [path]);
+    .map((path) => ({
+      paths: [path],
+      estimatedCount: 1,
+    }));
+  const partitions = packPathBuckets([...folderBuckets, ...rootBuckets]).sort((a, b) => (
+    b.estimatedCount - a.estimatedCount
+    || a.paths[0].localeCompare(b.paths[0])
+  ));
 
   return {
-    rootBatches,
-    folderPartitions,
-    partitions: [...folderPartitions, ...rootBatches],
+    folderBucketCount: folderBuckets.length,
+    rootPathCount: rootBuckets.length,
+    partitions,
   };
 }
 
+function describePartitionPaths(paths) {
+  if (paths.length <= PARTITION_LABEL_PATH_LIMIT) {
+    return paths.join(', ');
+  }
+  return `${paths.slice(0, PARTITION_LABEL_PATH_LIMIT).join(', ')}, +${paths.length - PARTITION_LABEL_PATH_LIMIT} more`;
+}
+
 function describePartitionPlan(partitionPlan) {
-  return `${partitionPlan.folderPartitions.length} top-level folder partition(s) and ${partitionPlan.rootBatches.length} root path batch(es)`;
+  return `${partitionPlan.partitions.length} packed partition(s) from ${partitionPlan.folderBucketCount} top-level bucket(s) and ${partitionPlan.rootPathCount} root path(s), targeting about ${TARGET_PARTITION_RESOURCE_COUNT} preview path(s)/job`;
+}
+
+function formatPartitionLabel(partition, index, total) {
+  const estimateInfo = Number.isFinite(partition.estimatedCount)
+    ? `; ~${partition.estimatedCount} path(s)`
+    : '';
+  return `Detailed status job ${index + 1}/${total} (${describePartitionPaths(partition.paths)}${estimateInfo})`;
+}
+
+function normalizePartitionPaths(partition) {
+  if (Array.isArray(partition)) {
+    return partition;
+  }
+  return Array.isArray(partition?.paths) ? partition.paths : [];
 }
 
 function sumJobCounters(counterList) {
@@ -530,45 +626,41 @@ async function runStatusJob(org, site, paths, {
 
   log(`${label} created: ${selfUrl}`);
 
-  let { state } = job;
+  let state = extractJobState(job);
   let counters = extractJobCounters(job);
   let phase = extractJobPhase(job);
-  let lastCounterLogAt = 0;
-  let lastLoggedCounters = {
-    total: null,
-    processed: null,
-    failed: null,
-  };
+  const isInlineResult = createRes.status === 200 && state === TERMINAL_JOB_STATE;
+  let lastStatusLogAt = 0;
+  let lastLoggedState = '';
+  let lastLoggedPhase = '';
 
-  const maybeLogCounters = (force = false) => {
+  const maybeLogJobStatus = (force = false) => {
     const now = Date.now();
-    const countersChanged = (
-      counters.total !== lastLoggedCounters.total
-      || counters.processed !== lastLoggedCounters.processed
-      || counters.failed !== lastLoggedCounters.failed
-    );
-    const failedChanged = counters.failed !== lastLoggedCounters.failed;
+    const statusChanged = state !== lastLoggedState || phase !== lastLoggedPhase;
     if (
       !force
-      && !failedChanged
-      && (now - lastCounterLogAt) < JOB_COUNTER_LOG_INTERVAL
+      && !statusChanged
+      && (now - lastStatusLogAt) < JOB_COUNTER_LOG_INTERVAL
       && state !== TERMINAL_JOB_STATE
     ) {
       return;
     }
-    if (!force && !countersChanged && (now - lastCounterLogAt) < JOB_COUNTER_LOG_INTERVAL) {
+    if (!force && !statusChanged && (now - lastStatusLogAt) < JOB_COUNTER_LOG_INTERVAL) {
       return;
     }
 
     const phaseInfo = phase ? `, phase=${phase}` : '';
-    log(`${label}: state=${state}${phaseInfo} (${formatJobCounters(counters)})`);
-    lastCounterLogAt = now;
-    lastLoggedCounters = { ...counters };
+    log(`${label}: state=${state || 'unknown'}${phaseInfo}`);
+    lastStatusLogAt = now;
+    lastLoggedState = state;
+    lastLoggedPhase = phase;
   };
 
-  maybeLogCounters(true);
+  if (!isInlineResult) {
+    maybeLogJobStatus(true);
+  }
 
-  while (state !== TERMINAL_JOB_STATE) {
+  while (!isInlineResult && state !== TERMINAL_JOB_STATE) {
     if (isAborted()) throw new DOMException('Aborted', 'AbortError');
     // eslint-disable-next-line no-await-in-loop
     await waitForDelay(POLL_INTERVAL, abortController?.signal);
@@ -579,14 +671,30 @@ async function runStatusJob(org, site, paths, {
     }
     // eslint-disable-next-line no-await-in-loop
     const pollData = await pollRes.json();
-    state = pollData.state;
+    state = extractJobState(pollData) || state;
     counters = mergeJobCounters(counters, extractJobCounters(pollData));
     phase = extractJobPhase(pollData) || phase;
     const progress = toJobProgressPercent(counters);
     if (onPoll) {
       onPoll({ state, progress, counters });
     }
-    maybeLogCounters(false);
+    maybeLogJobStatus(false);
+  }
+
+  if (isInlineResult) {
+    const resources = pathsOnly ? [] : extractJobResources(job);
+    const discoveredPaths = pathsOnly ? extractJobPaths(job) : [];
+    const detailMetric = pathsOnly ? `paths=${discoveredPaths.length}` : `resources=${resources.length}`;
+    log(`${label} completed inline: phase=${phase || 'unknown'}, ${formatJobCounters(counters)} (${detailMetric})`);
+
+    return {
+      state,
+      phase,
+      isComplete: phase === 'completed',
+      counters,
+      paths: discoveredPaths,
+      resources,
+    };
   }
 
   const detailsUrl = `${selfUrl}/details`;
@@ -628,17 +736,18 @@ async function runPartitionedStatusJobs(org, site, partitions, {
   const partitionCounters = [];
   let incompleteCount = 0;
   let resources = [];
-  log(`Running ${partitions.length} detailed status job(s) by partition`);
+  log(`Running ${partitions.length} packed detailed status job(s) targeting about ${TARGET_PARTITION_RESOURCE_COUNT} preview path(s) each`);
 
   for (let i = 0; i < partitions.length; i += 1) {
     if (isAborted()) throw new DOMException('Aborted', 'AbortError');
     const partition = partitions[i];
-    const partitionLabel = `Detailed status job ${i + 1}/${partitions.length} (${partition.join(', ')})`;
+    const partitionPaths = normalizePartitionPaths(partition);
+    const partitionLabel = formatPartitionLabel(partition, i, partitions.length);
     const baseProgress = phaseOffset + Math.floor((i / partitions.length) * phaseSpan);
     const progressSpan = Math.max(1, Math.ceil(phaseSpan / partitions.length));
 
     // eslint-disable-next-line no-await-in-loop
-    const partitionJob = await runStatusJob(org, site, partition, {
+    const partitionJob = await runStatusJob(org, site, partitionPaths, {
       jobLabel: partitionLabel,
       onPoll: ({ state, progress }) => {
         const phaseProgress = Math.min(
@@ -768,47 +877,6 @@ async function discoverPages(org, site) {
   return { pages, standaloneMedia };
 }
 
-// Phase 2: Enrich with user info from audit logs
-async function enrichWithUsers(org, site) {
-  setPhase('Phase 2: Loading user data from logs...', 20);
-  log('Fetching audit logs for user data...');
-
-  const userMap = new Map();
-
-  try {
-    let nextUrl = `${ADMIN_BASE}/log/${org}/${site}/${REF}?since=30d&limit=1000`;
-    while (nextUrl) {
-      if (isAborted()) throw new DOMException('Aborted', 'AbortError');
-      // eslint-disable-next-line no-await-in-loop
-      const res = await fetchWithRetry(nextUrl);
-      if (!res.ok) {
-        if (res.status === 403) {
-          log('No log:read permission — user enrichment skipped', 'warn');
-          return userMap;
-        }
-        throw new Error(`Log API returned ${res.status}`);
-      }
-      // eslint-disable-next-line no-await-in-loop
-      const data = await res.json();
-      const entries = data.entries || [];
-      entries.forEach((entry) => {
-        if (entry.route === 'preview' && entry.path && entry.user) {
-          if (!userMap.has(entry.path)) {
-            userMap.set(entry.path, entry.user);
-          }
-        }
-      });
-      nextUrl = data.links?.next || null;
-    }
-    log(`Found user data for ${userMap.size} paths`);
-  } catch (err) {
-    if (err.name === 'AbortError') throw err;
-    log(`User enrichment failed: ${err.message}`, 'warn');
-  }
-
-  return userMap;
-}
-
 function getContentType(url) {
   const ext = url.split('.').pop().split(/[?#]/)[0].toLowerCase();
   return CONTENT_TYPE_MAP[ext] || 'application/octet-stream';
@@ -921,9 +989,9 @@ function createDeterministicEntries(mediaCandidates) {
   return { entries, dupes };
 }
 
-// Phase 3: Fetch and parse markdown for each page
+// Phase 2: Fetch and parse markdown for each page
 async function processPages(org, site, pages) {
-  setPhase('Phase 3: Processing page content...', 30);
+  setPhase('Phase 2: Processing page content...', 25);
   log(`Processing ${pages.length} pages for media references...`);
 
   const mediaCandidates = [];
@@ -978,8 +1046,8 @@ async function processPages(org, site, pages) {
     }
 
     processed += 1;
-    const pct = 30 + Math.round((processed / pages.length) * 40);
-    setPhase(`Phase 3: Processing pages... (${processed}/${pages.length})`, pct);
+    const pct = 25 + Math.round((processed / pages.length) * 45);
+    setPhase(`Phase 2: Processing pages... (${processed}/${pages.length})`, pct);
     stats.media = mediaCandidates.length;
     updateStatsDisplay();
   }, CONCURRENCY);
@@ -993,12 +1061,12 @@ async function processPages(org, site, pages) {
   return entries;
 }
 
-// Phase 4: Post entries to medialog
-async function ingestEntries(org, site, entries, userMap, fallbackUser, dryRun) {
-  setPhase('Phase 4: Ingesting entries...', 70);
+// Phase 3: Post entries to medialog
+async function ingestEntries(org, site, entries, fallbackUser, dryRun) {
+  setPhase('Phase 3: Ingesting entries...', 70);
 
   const enrichedEntries = entries.map(({ entry, page }) => {
-    const user = userMap.get(page.path) || page.user || fallbackUser || '';
+    const user = page.user || fallbackUser || '';
     return {
       ...entry,
       user,
@@ -1048,7 +1116,7 @@ async function ingestEntries(org, site, entries, userMap, fallbackUser, dryRun) 
 
     updateStatsDisplay();
     const pct = 70 + Math.round(((i + batch.length) / enrichedEntries.length) * 25);
-    setPhase(`Phase 4: Ingesting... (${batchNum}/${totalBatches})`, pct);
+    setPhase(`Phase 3: Ingesting... (${batchNum}/${totalBatches})`, pct);
   }
 }
 
@@ -1114,9 +1182,6 @@ async function runBackfill() {
     const { pages, standaloneMedia } = await discoverPages(org, site);
     if (isAborted()) return;
 
-    const userMap = await enrichWithUsers(org, site);
-    if (isAborted()) return;
-
     const entries = await processPages(org, site, pages);
     if (isAborted()) return;
 
@@ -1141,7 +1206,7 @@ async function runBackfill() {
     });
     updateStatsDisplay();
 
-    await ingestEntries(org, site, entries, userMap, fallbackUser, dryRun);
+    await ingestEntries(org, site, entries, fallbackUser, dryRun);
     if (isAborted()) return;
 
     showReport(dryRun, startTime);
