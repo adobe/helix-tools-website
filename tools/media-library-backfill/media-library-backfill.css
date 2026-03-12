@@ -58,6 +58,13 @@
   border-radius: 4px;
 }
 
+.media-library-backfill .progress-meta {
+  margin: var(--spacing-xs) 0 0;
+  font-size: var(--body-size-xs);
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
 .media-library-backfill .stats-row {
   display: flex;
   flex-wrap: wrap;

@@ -47,6 +47,12 @@ const consoleState = {
   entries: [],
   showAll: false,
 };
+const progressState = {
+  startedAt: 0,
+  currentProgress: 0,
+  timerId: 0,
+  status: 'idle',
+};
 
 function initDOM() {
   const form = document.getElementById('backfill-form');
@@ -60,6 +66,7 @@ function initDOM() {
   DOM.progressSection = document.getElementById('progress-section');
   DOM.phaseLabel = document.getElementById('phase-label');
   DOM.progressBar = document.getElementById('progress-bar');
+  DOM.progressMeta = document.getElementById('progress-meta');
   DOM.statPages = document.getElementById('stat-pages');
   DOM.statMedia = document.getElementById('stat-media');
   DOM.statSent = document.getElementById('stat-sent');
@@ -88,11 +95,86 @@ function resetStats() {
   updateStatsDisplay();
 }
 
+function formatDuration(ms) {
+  const secs = Math.floor(ms / 1000);
+  if (secs < 60) return `${secs}s`;
+  const mins = Math.floor(secs / 60);
+  const remSecs = secs % 60;
+  if (mins < 60) return `${mins}m ${remSecs}s`;
+  const hrs = Math.floor(mins / 60);
+  const remMins = mins % 60;
+  return `${hrs}h ${remMins}m ${remSecs}s`;
+}
+
+function updateProgressMeta() {
+  if (!DOM.progressMeta) return;
+  if (!progressState.startedAt) {
+    DOM.progressMeta.textContent = 'Elapsed: 0s | ETA: estimating...';
+    return;
+  }
+
+  const elapsed = Math.max(0, Date.now() - progressState.startedAt);
+  let etaLabel = 'estimating...';
+
+  if (progressState.status === 'complete') {
+    etaLabel = 'done';
+  } else if (progressState.status === 'cancelled') {
+    etaLabel = 'cancelled';
+  } else if (progressState.status === 'error') {
+    etaLabel = 'unavailable';
+  } else if (progressState.currentProgress >= 1 && elapsed >= 5000) {
+    const estimatedTotal = (elapsed * 100) / progressState.currentProgress;
+    const remaining = Math.max(0, estimatedTotal - elapsed);
+    etaLabel = `~${formatDuration(remaining)}`;
+  }
+
+  DOM.progressMeta.textContent = `Elapsed: ${formatDuration(elapsed)} | ETA: ${etaLabel}`;
+}
+
+function resetProgressTracking() {
+  if (progressState.timerId) {
+    window.clearInterval(progressState.timerId);
+  }
+  progressState.startedAt = 0;
+  progressState.currentProgress = 0;
+  progressState.timerId = 0;
+  progressState.status = 'idle';
+  updateProgressMeta();
+}
+
+function startProgressTracking() {
+  resetProgressTracking();
+  progressState.startedAt = Date.now();
+  progressState.status = 'running';
+  updateProgressMeta();
+  progressState.timerId = window.setInterval(updateProgressMeta, 1000);
+}
+
+function stopProgressTracking() {
+  if (progressState.timerId) {
+    window.clearInterval(progressState.timerId);
+    progressState.timerId = 0;
+  }
+  updateProgressMeta();
+}
+
 function setPhase(label, progress) {
   DOM.phaseLabel.textContent = label;
+  if (label === 'Complete') {
+    progressState.status = 'complete';
+    progressState.currentProgress = 100;
+  } else if (label === 'Cancelled') {
+    progressState.status = 'cancelled';
+  } else if (label === 'Error') {
+    progressState.status = 'error';
+  } else if (progressState.startedAt) {
+    progressState.status = 'running';
+  }
   if (progress !== undefined) {
     DOM.progressBar.value = progress;
+    progressState.currentProgress = progress;
   }
+  updateProgressMeta();
 }
 
 function buildLogLine({ text, level }) {
@@ -373,11 +455,6 @@ function mergeJobCounters(base, incoming) {
     }
   });
   return merged;
-}
-
-function formatJobCounters(counters) {
-  const value = (num) => (Number.isFinite(num) ? num : '?');
-  return `total=${value(counters.total)}, processed=${value(counters.processed)}, failed=${value(counters.failed)}`;
 }
 
 function extractJobResources(rawJobData) {
@@ -685,7 +762,7 @@ async function runStatusJob(org, site, paths, {
     const resources = pathsOnly ? [] : extractJobResources(job);
     const discoveredPaths = pathsOnly ? extractJobPaths(job) : [];
     const detailMetric = pathsOnly ? `paths=${discoveredPaths.length}` : `resources=${resources.length}`;
-    log(`${label} completed inline: phase=${phase || 'unknown'}, ${formatJobCounters(counters)} (${detailMetric})`);
+    log(`${label} completed inline: phase=${phase || 'unknown'} (${detailMetric})`);
 
     return {
       state,
@@ -707,7 +784,7 @@ async function runStatusJob(org, site, paths, {
   const resources = pathsOnly ? [] : extractJobResources(details);
   const discoveredPaths = pathsOnly ? extractJobPaths(details) : [];
   const detailMetric = pathsOnly ? `paths=${discoveredPaths.length}` : `resources=${resources.length}`;
-  log(`${label} details: phase=${phase || 'unknown'}, ${formatJobCounters(counters)} (${detailMetric})`);
+  log(`${label} details: phase=${phase || 'unknown'} (${detailMetric})`);
 
   const isComplete = state === TERMINAL_JOB_STATE && phase === 'completed';
 
@@ -764,13 +841,13 @@ async function runPartitionedStatusJobs(org, site, partitions, {
     partitionCounters.push(partitionJob.counters);
     if (!partitionJob.isComplete) {
       incompleteCount += 1;
-      log(`${partitionLabel} stopped before completion (phase=${partitionJob.phase || 'unknown'}, ${formatJobCounters(partitionJob.counters)})`, 'warn');
+      log(`${partitionLabel} stopped before completion (phase=${partitionJob.phase || 'unknown'}, resources=${partitionJob.resources.length})`, 'warn');
     }
     resources = mergeResourcesByPath(resources, partitionJob.resources);
   }
 
   const counters = sumJobCounters(partitionCounters);
-  log(`Detailed partition summary: ${formatJobCounters(counters)}`);
+  log(`Detailed partition summary: resources=${resources.length}`);
   if (incompleteCount > 0) {
     log(`${incompleteCount} detailed status partition job(s) stopped before completion. Results may still be incomplete.`, 'warn');
   }
@@ -801,9 +878,9 @@ async function discoverPages(org, site) {
   if (pathDiscoveryJob.isComplete) {
     log(`Path discovery completed with ${pathCount} preview path(s).`);
   } else if (pathCount > 0) {
-    log(`Path discovery stopped before completion (phase=${pathDiscoveryJob.phase || 'unknown'}, ${formatJobCounters(pathDiscoveryJob.counters)}). Using ${pathCount} returned path(s) as a best-effort partition plan.`, 'warn');
+    log(`Path discovery stopped before completion (phase=${pathDiscoveryJob.phase || 'unknown'}). Using ${pathCount} returned path(s) as a best-effort partition plan.`, 'warn');
   } else {
-    log(`Path discovery stopped before completion (phase=${pathDiscoveryJob.phase || 'unknown'}, ${formatJobCounters(pathDiscoveryJob.counters)}), and returned no paths.`, 'warn');
+    log(`Path discovery stopped before completion (phase=${pathDiscoveryJob.phase || 'unknown'}), and returned no paths.`, 'warn');
   }
 
   let resources = [];
@@ -832,7 +909,7 @@ async function discoverPages(org, site) {
       log(`Primary detailed status job completed with phase=${primaryStatusJob.phase}.`);
     } else if (partitionPlan) {
       log(
-        `Primary detailed status job stopped before completion (phase=${primaryStatusJob.phase || 'unknown'}, ${formatJobCounters(primaryStatusJob.counters)}). Retrying with ${describePartitionPlan(partitionPlan)} from path discovery.`,
+        `Primary detailed status job stopped before completion (phase=${primaryStatusJob.phase || 'unknown'}). Retrying with ${describePartitionPlan(partitionPlan)} from path discovery.`,
         'warn',
       );
       const partitionedDiscovery = await runPartitionedStatusJobs(
@@ -843,7 +920,7 @@ async function discoverPages(org, site) {
       resources = mergeResourcesByPath(resources, partitionedDiscovery.resources);
     } else {
       log(
-        `Primary detailed status job stopped before completion (phase=${primaryStatusJob.phase || 'unknown'}, ${formatJobCounters(primaryStatusJob.counters)}). Proceeding with partial results.`,
+        `Primary detailed status job stopped before completion (phase=${primaryStatusJob.phase || 'unknown'}). Proceeding with partial results.`,
         'warn',
       );
     }
@@ -904,6 +981,16 @@ function normalizeMediaUrl(rawUrl, pageBaseUrl) {
   } catch (err) {
     return null;
   }
+}
+
+function toMarkdownPath(pagePath) {
+  if (!pagePath || pagePath === '/') {
+    return '/index.md';
+  }
+  if (pagePath.endsWith('/')) {
+    return `${pagePath}index.md`;
+  }
+  return `${pagePath}.md`;
 }
 
 function parseMediaFromMarkdown(markdown, pageBaseUrl) {
@@ -1000,9 +1087,10 @@ async function processPages(org, site, pages) {
   let useAdminApi = false;
 
   async function fetchMarkdown(page) {
+    const markdownPath = toMarkdownPath(page.path);
     if (!useAdminApi) {
       try {
-        const cdnUrl = `https://${REF}--${site}--${org}.aem.page${page.path}.md`;
+        const cdnUrl = `https://${REF}--${site}--${org}.aem.page${markdownPath}`;
         const res = await fetchWithRetry(cdnUrl, {}, 1);
         if (res.ok) return res.text();
       } catch (err) {
@@ -1014,7 +1102,7 @@ async function processPages(org, site, pages) {
       }
     }
 
-    const adminUrl = `${ADMIN_BASE}/preview/${org}/${site}/${REF}${page.path}.md`;
+    const adminUrl = `${ADMIN_BASE}/preview/${org}/${site}/${REF}${markdownPath}`;
     const adminRes = await fetchWithRetry(adminUrl, {}, 1);
     if (adminRes.ok) return adminRes.text();
     return null;
@@ -1120,18 +1208,6 @@ async function ingestEntries(org, site, entries, fallbackUser, dryRun) {
   }
 }
 
-// Phase 5: Report
-function formatDuration(ms) {
-  const secs = Math.floor(ms / 1000);
-  if (secs < 60) return `${secs}s`;
-  const mins = Math.floor(secs / 60);
-  const remSecs = secs % 60;
-  if (mins < 60) return `${mins}m ${remSecs}s`;
-  const hrs = Math.floor(mins / 60);
-  const remMins = mins % 60;
-  return `${hrs}h ${remMins}m ${remSecs}s`;
-}
-
 function showReport(dryRun, startTime) {
   const duration = formatDuration(Date.now() - startTime);
   setPhase('Complete', 100);
@@ -1172,6 +1248,7 @@ async function runBackfill() {
   disableForm();
   resetStats();
   resetConsole();
+  startProgressTracking();
   DOM.console.setAttribute('aria-hidden', 'false');
   DOM.progressSection.setAttribute('aria-hidden', 'false');
 
@@ -1222,6 +1299,7 @@ async function runBackfill() {
       updateStatsDisplay();
     }
   } finally {
+    stopProgressTracking();
     enableForm();
     abortController = null;
   }
@@ -1248,6 +1326,7 @@ function registerListeners() {
 
 async function init() {
   initDOM();
+  resetProgressTracking();
   await initConfigField();
   registerListeners();
 }

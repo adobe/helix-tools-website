@@ -108,11 +108,17 @@ Each page is fetched as Markdown with concurrency `5`.
 The tool tries:
 
 1. CDN first:
-   - `https://main--{site}--{org}.aem.page{page.path}.md`
+   - `https://main--{site}--{org}.aem.page{markdownPath}`
 2. Admin preview fallback:
-   - `GET /preview/{org}/{site}/main{page.path}.md`
+   - `GET /preview/{org}/{site}/main{markdownPath}`
 
 If CDN access fails once, the run switches permanently to the admin preview API for the remaining pages.
+
+`markdownPath` is derived from the web path:
+
+- `/foo` -> `/foo.md`
+- `/foo/` -> `/foo/index.md`
+- `/` -> `/index.md`
 
 ### Supported Markdown patterns
 
@@ -211,7 +217,7 @@ Current logging behavior:
 
 - Job creation logs show the job URL.
 - In-flight status polling logs show only `state` and optional `phase`.
-- Final job logs show `total`, `processed`, and `failed`.
+- Final status-job logs show `phase` plus `paths` or `resources`, depending on the job type.
 - Packed partitions log only a short preview of request paths, not the full list.
 
 Progress phases:
@@ -220,6 +226,13 @@ Progress phases:
 2. Processing page content
 3. Ingesting entries
 4. Final summary
+
+The progress card also shows:
+
+- `Elapsed`: time since the current run started
+- `ETA`: an approximate remaining time derived from elapsed time and overall progress percentage
+
+The ETA is intentionally approximate and becomes more stable after the run has made visible progress through the weighted phases.
 
 Visible counters:
 
