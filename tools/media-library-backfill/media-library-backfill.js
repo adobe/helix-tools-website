@@ -15,6 +15,10 @@ const LARGE_SITE_PATH_THRESHOLD = 20000;
 const TARGET_PARTITION_RESOURCE_COUNT = 20000;
 const MAX_PARTITION_PATHS = 250;
 const PARTITION_LABEL_PATH_LIMIT = 3;
+const MIN_ETA_SAMPLE_MS = 10000;
+const MIN_PROCESSING_ETA_SAMPLE_COUNT = 50;
+const MIN_INGEST_ETA_SAMPLE_COUNT = 3;
+const DEFAULT_INGEST_BATCH_DURATION_MS = 150;
 
 const VIDEO_EXTENSIONS = /\.(mp4|mov|webm|avi|m4v|mkv)$/i;
 
@@ -40,6 +44,7 @@ const CONTENT_TYPE_MAP = {
 const DOM = {};
 
 let abortController = null;
+let adminLimiter;
 const stats = {
   pages: 0, media: 0, sent: 0, errors: 0, dupes: 0,
 };
@@ -52,6 +57,17 @@ const progressState = {
   currentProgress: 0,
   timerId: 0,
   status: 'idle',
+  phase: 'idle',
+  phaseStartedAt: 0,
+  dryRun: false,
+  discoveryTotalJobs: 0,
+  discoveryCompletedJobs: 0,
+  totalPages: 0,
+  processedPages: 0,
+  standaloneMediaCount: 0,
+  totalEntries: 0,
+  totalBatches: 0,
+  processedBatches: 0,
 };
 
 function initDOM() {
@@ -106,6 +122,91 @@ function formatDuration(ms) {
   return `${hrs}h ${remMins}m ${remSecs}s`;
 }
 
+function estimateIngestBatchDurationMs() {
+  return Math.max(DEFAULT_INGEST_BATCH_DURATION_MS, adminLimiter.getInterval());
+}
+
+function estimateTotalEntriesForEta() {
+  if (progressState.totalEntries > 0) {
+    return progressState.totalEntries;
+  }
+
+  if (progressState.processedPages <= 0 || progressState.totalPages <= 0) {
+    return progressState.standaloneMediaCount;
+  }
+
+  const estimatedPageEntries = Math.round(
+    (stats.media / progressState.processedPages) * progressState.totalPages,
+  );
+
+  return Math.max(stats.media, estimatedPageEntries) + progressState.standaloneMediaCount;
+}
+
+function estimateRemainingMs() {
+  if (!progressState.phaseStartedAt) {
+    return null;
+  }
+
+  const phaseElapsed = Math.max(0, Date.now() - progressState.phaseStartedAt);
+
+  switch (progressState.phase) {
+    case 'discovery': {
+      if (progressState.discoveryTotalJobs > 0 && progressState.discoveryCompletedJobs > 0) {
+        const remainingJobs = Math.max(
+          0,
+          progressState.discoveryTotalJobs - progressState.discoveryCompletedJobs,
+        );
+        return (phaseElapsed / progressState.discoveryCompletedJobs) * remainingJobs;
+      }
+      return null;
+    }
+    case 'processing': {
+      if (
+        progressState.totalPages <= 0
+        || progressState.processedPages < MIN_PROCESSING_ETA_SAMPLE_COUNT
+        || phaseElapsed < MIN_ETA_SAMPLE_MS
+      ) {
+        return null;
+      }
+
+      const remainingPages = Math.max(0, progressState.totalPages - progressState.processedPages);
+      const msPerPage = phaseElapsed / progressState.processedPages;
+      let remaining = remainingPages * msPerPage;
+
+      if (!progressState.dryRun) {
+        const estimatedTotalEntries = estimateTotalEntriesForEta();
+        if (estimatedTotalEntries > 0) {
+          const estimatedBatches = Math.ceil(estimatedTotalEntries / BATCH_SIZE);
+          remaining += estimatedBatches * estimateIngestBatchDurationMs();
+        }
+      }
+
+      return remaining;
+    }
+    case 'ingest': {
+      const remainingBatches = Math.max(
+        0,
+        progressState.totalBatches - progressState.processedBatches,
+      );
+      if (remainingBatches === 0) {
+        return 0;
+      }
+
+      if (
+        progressState.processedBatches >= MIN_INGEST_ETA_SAMPLE_COUNT
+        && phaseElapsed >= MIN_ETA_SAMPLE_MS
+      ) {
+        const msPerBatch = phaseElapsed / progressState.processedBatches;
+        return remainingBatches * msPerBatch;
+      }
+
+      return remainingBatches * estimateIngestBatchDurationMs();
+    }
+    default:
+      return null;
+  }
+}
+
 function updateProgressMeta() {
   if (!DOM.progressMeta) return;
   if (!progressState.startedAt) {
@@ -122,13 +223,26 @@ function updateProgressMeta() {
     etaLabel = 'cancelled';
   } else if (progressState.status === 'error') {
     etaLabel = 'unavailable';
-  } else if (progressState.currentProgress >= 1 && elapsed >= 5000) {
-    const estimatedTotal = (elapsed * 100) / progressState.currentProgress;
-    const remaining = Math.max(0, estimatedTotal - elapsed);
-    etaLabel = `~${formatDuration(remaining)}`;
+  } else {
+    const remaining = estimateRemainingMs();
+    if (Number.isFinite(remaining)) {
+      etaLabel = `~${formatDuration(remaining)}`;
+    }
   }
 
   DOM.progressMeta.textContent = `Elapsed: ${formatDuration(elapsed)} | ETA: ${etaLabel}`;
+}
+
+function beginProgressPhase(phase, metrics = {}) {
+  progressState.phase = phase;
+  progressState.phaseStartedAt = Date.now();
+  Object.assign(progressState, metrics);
+  updateProgressMeta();
+}
+
+function updateProgressMetrics(metrics = {}) {
+  Object.assign(progressState, metrics);
+  updateProgressMeta();
 }
 
 function resetProgressTracking() {
@@ -139,13 +253,25 @@ function resetProgressTracking() {
   progressState.currentProgress = 0;
   progressState.timerId = 0;
   progressState.status = 'idle';
+  progressState.phase = 'idle';
+  progressState.phaseStartedAt = 0;
+  progressState.dryRun = false;
+  progressState.discoveryTotalJobs = 0;
+  progressState.discoveryCompletedJobs = 0;
+  progressState.totalPages = 0;
+  progressState.processedPages = 0;
+  progressState.standaloneMediaCount = 0;
+  progressState.totalEntries = 0;
+  progressState.totalBatches = 0;
+  progressState.processedBatches = 0;
   updateProgressMeta();
 }
 
-function startProgressTracking() {
+function startProgressTracking(dryRun = false) {
   resetProgressTracking();
   progressState.startedAt = Date.now();
   progressState.status = 'running';
+  progressState.dryRun = dryRun;
   updateProgressMeta();
   progressState.timerId = window.setInterval(updateProgressMeta, 1000);
 }
@@ -330,13 +456,17 @@ function createRateLimiter(initialRate, getSignal = () => null) {
         () => waitForDelay(seconds * 1000, getSignal()),
       );
     },
+    getInterval() {
+      return interval;
+    },
     reset() {
       queue = Promise.resolve();
+      interval = Math.ceil(1000 / initialRate);
     },
   };
 }
 
-const adminLimiter = createRateLimiter(ADMIN_API_RATE, () => abortController?.signal);
+adminLimiter = createRateLimiter(ADMIN_API_RATE, () => abortController?.signal);
 
 async function fetchWithRetry(url, options = {}, maxRetries = 3) {
   const signal = abortController ? abortController.signal : undefined;
@@ -813,6 +943,10 @@ async function runPartitionedStatusJobs(org, site, partitions, {
   const partitionCounters = [];
   let incompleteCount = 0;
   let resources = [];
+  updateProgressMetrics({
+    discoveryTotalJobs: partitions.length,
+    discoveryCompletedJobs: 0,
+  });
   log(`Running ${partitions.length} packed detailed status job(s) targeting about ${TARGET_PARTITION_RESOURCE_COUNT} preview path(s) each`);
 
   for (let i = 0; i < partitions.length; i += 1) {
@@ -844,6 +978,7 @@ async function runPartitionedStatusJobs(org, site, partitions, {
       log(`${partitionLabel} stopped before completion (phase=${partitionJob.phase || 'unknown'}, resources=${partitionJob.resources.length})`, 'warn');
     }
     resources = mergeResourcesByPath(resources, partitionJob.resources);
+    updateProgressMetrics({ discoveryCompletedJobs: i + 1 });
   }
 
   const counters = sumJobCounters(partitionCounters);
@@ -861,6 +996,16 @@ async function runPartitionedStatusJobs(org, site, partitions, {
 
 // Phase 1: Discover all pages via bulk status job
 async function discoverPages(org, site) {
+  beginProgressPhase('discovery', {
+    discoveryTotalJobs: 0,
+    discoveryCompletedJobs: 0,
+    totalPages: 0,
+    processedPages: 0,
+    standaloneMediaCount: 0,
+    totalEntries: 0,
+    totalBatches: 0,
+    processedBatches: 0,
+  });
   setPhase('Phase 1: Planning page discovery...', 0);
   log('Starting lightweight path discovery via bulk status job...');
   const pathDiscoveryJob = await runStatusJob(org, site, ['/*'], {
@@ -949,6 +1094,10 @@ async function discoverPages(org, site) {
   });
 
   stats.pages = pages.length;
+  updateProgressMetrics({
+    totalPages: pages.length,
+    standaloneMediaCount: standaloneMedia.length,
+  });
   updateStatsDisplay();
   log(`Discovered ${pages.length} pages and ${standaloneMedia.length} standalone media files`);
   return { pages, standaloneMedia };
@@ -1031,9 +1180,18 @@ function parseMediaFromMarkdown(markdown, pageBaseUrl) {
     match = linkRegex.exec(markdown);
   }
 
+  const seenPageMedia = new Set();
+
   return mediaUrls
     .map((url) => normalizeMediaUrl(url, pageBaseUrl))
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((url) => {
+      if (seenPageMedia.has(url)) {
+        return false;
+      }
+      seenPageMedia.add(url);
+      return true;
+    });
 }
 
 function toComparableTimestamp(lastModified) {
@@ -1078,6 +1236,13 @@ function createDeterministicEntries(mediaCandidates) {
 
 // Phase 2: Fetch and parse markdown for each page
 async function processPages(org, site, pages) {
+  beginProgressPhase('processing', {
+    totalPages: pages.length,
+    processedPages: 0,
+    totalEntries: 0,
+    totalBatches: 0,
+    processedBatches: 0,
+  });
   setPhase('Phase 2: Processing page content...', 25);
   log(`Processing ${pages.length} pages for media references...`);
 
@@ -1134,6 +1299,7 @@ async function processPages(org, site, pages) {
     }
 
     processed += 1;
+    updateProgressMetrics({ processedPages: processed });
     const pct = 25 + Math.round((processed / pages.length) * 45);
     setPhase(`Phase 2: Processing pages... (${processed}/${pages.length})`, pct);
     stats.media = mediaCandidates.length;
@@ -1151,6 +1317,11 @@ async function processPages(org, site, pages) {
 
 // Phase 3: Post entries to medialog
 async function ingestEntries(org, site, entries, fallbackUser, dryRun) {
+  beginProgressPhase('ingest', {
+    totalEntries: entries.length,
+    totalBatches: Math.ceil(entries.length / BATCH_SIZE),
+    processedBatches: 0,
+  });
   setPhase('Phase 3: Ingesting entries...', 70);
 
   const enrichedEntries = entries.map(({ entry, page }) => {
@@ -1168,6 +1339,7 @@ async function ingestEntries(org, site, entries, fallbackUser, dryRun) {
       log(`  ${e.operation} ${e.contentType} ${e.path} (from ${e.resourcePath}, user: ${e.user || 'unknown'})`);
     });
     stats.sent = enrichedEntries.length;
+    updateProgressMetrics({ processedBatches: progressState.totalBatches });
     updateStatsDisplay();
     return;
   }
@@ -1203,6 +1375,7 @@ async function ingestEntries(org, site, entries, fallbackUser, dryRun) {
     }
 
     updateStatsDisplay();
+    updateProgressMetrics({ processedBatches: batchNum });
     const pct = 70 + Math.round(((i + batch.length) / enrichedEntries.length) * 25);
     setPhase(`Phase 3: Ingesting... (${batchNum}/${totalBatches})`, pct);
   }
@@ -1248,7 +1421,7 @@ async function runBackfill() {
   disableForm();
   resetStats();
   resetConsole();
-  startProgressTracking();
+  startProgressTracking(dryRun);
   DOM.console.setAttribute('aria-hidden', 'false');
   DOM.progressSection.setAttribute('aria-hidden', 'false');
 
@@ -1280,6 +1453,10 @@ async function runBackfill() {
         },
         page: media,
       });
+    });
+    updateProgressMetrics({
+      totalEntries: entries.length,
+      totalBatches: Math.ceil(entries.length / BATCH_SIZE),
     });
     updateStatsDisplay();
 

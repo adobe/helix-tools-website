@@ -144,6 +144,8 @@ Every extracted URL is normalized against the page URL:
 
 The medialog entry path uses the normalized absolute URL.
 
+Repeated references to the same normalized media URL on a single page are collapsed to one candidate before `ingest`/`reuse` assignment.
+
 ## Deterministic `ingest` vs `reuse`
 
 Extracted media candidates are sorted deterministically before operations are assigned.
@@ -159,6 +161,8 @@ After sorting:
 
 - The first occurrence of a media URL is emitted as `ingest`.
 - Later occurrences of the same media URL are emitted as `reuse`.
+
+Because per-page duplicates are removed first, repeated use of the same image on the same page does not create extra medialog entries.
 
 This guarantees stable classification even though page fetching runs concurrently.
 
@@ -230,9 +234,15 @@ Progress phases:
 The progress card also shows:
 
 - `Elapsed`: time since the current run started
-- `ETA`: an approximate remaining time derived from elapsed time and overall progress percentage
+- `ETA`: an approximate remaining time derived from actual phase throughput when enough work has been observed
 
-The ETA is intentionally approximate and becomes more stable after the run has made visible progress through the weighted phases.
+ETA behavior by phase:
+
+- Discovery: estimated from completed detailed-status partitions when the run is using packed partition jobs.
+- Page processing: estimated from observed pages-per-second, plus a rough future ingest allowance for non-dry-run jobs.
+- Ingest: estimated from observed batches-per-second once enough batches have completed.
+
+The progress bar still uses coarse weighted phases for display, but the ETA is no longer derived from that weighted percentage.
 
 Visible counters:
 
