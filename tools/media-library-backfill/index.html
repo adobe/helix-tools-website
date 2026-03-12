@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Media Library Backfill</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/media-library-backfill/media-library-backfill.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/media-library-backfill/media-library-backfill.css" />
+</head>
+
+<body class="media-library-backfill">
+  <header></header>
+  <main>
+    <!-- TITLE -->
+    <div>
+      <h1>Media Library Backfill</h1>
+      <p>The <strong>Media Library Backfill</strong> tool retroactively populates the AEM media log by crawling all pages on a site, parsing their content for media references, and posting entries to the medialog API.</p>
+      <p>To use this tool, you must first log in to the relevant site in your user profile on the top right in the header of this page.</p>
+    </div>
+
+    <!-- FORM -->
+    <div>
+      <form id="backfill-form">
+        <section class="form-field config-field">
+          <div class="form-field org-field">
+            <label for="org">Organization</label>
+            <input name="org" id="org" list="org-list" autocomplete="off" required />
+            <datalist id="org-list"></datalist>
+          </div>
+          <div class="form-field site-field">
+            <label for="site">Site</label>
+            <input name="site" id="site" list="site-list" autocomplete="off" disabled required />
+            <datalist id="site-list"></datalist>
+          </div>
+        </section>
+
+        <div class="options-field">
+          <label class="dry-run-label">
+            <input type="checkbox" name="dry-run" id="dry-run" />
+            <span>Dry run (preview entries without updating media log)</span>
+          </label>
+          <div class="form-field fallback-user-field">
+            <label for="fallback-user">Fallback user email</label>
+            <input name="fallback-user" id="fallback-user" type="email" placeholder="user@example.com" />
+          </div>
+        </div>
+
+        <p class="button-wrapper">
+          <button type="submit" class="button" id="run-btn">Run Backfill</button>
+          <button type="button" class="button outline" id="cancel-btn" hidden>Cancel</button>
+        </p>
+      </form>
+    </div>
+
+    <!-- PROGRESS -->
+    <div>
+      <div id="progress-section" aria-hidden="true">
+        <p class="phase-label" id="phase-label">Initializing...</p>
+        <progress id="progress-bar" max="100" value="0"></progress>
+        <p class="progress-meta" id="progress-meta">Elapsed: 0s | ETA: estimating...</p>
+        <div class="stats-row">
+          <span class="stat">Pages: <strong id="stat-pages">0</strong></span>
+          <span class="stat">Media: <strong id="stat-media">0</strong></span>
+          <span class="stat">Sent: <strong id="stat-sent">0</strong></span>
+          <span class="stat">Errors: <strong id="stat-errors">0</strong></span>
+          <span class="stat">Dupes: <strong id="stat-dupes">0</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONSOLE -->
+    <div>
+      <div id="console-controls" aria-hidden="true">
+        <p id="console-meta">No logs yet.</p>
+        <button type="button" class="button outline" id="show-all-logs" hidden>Show all</button>
+      </div>
+      <div id="console-output" aria-hidden="true"></div>
+    </div>
+
+  </main>
+  <footer></footer>
+</body>
+
+</html>
