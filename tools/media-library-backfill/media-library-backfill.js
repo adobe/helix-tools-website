@@ -10,7 +10,9 @@ const POLL_INTERVAL = 2000;
 const JOB_COUNTER_LOG_INTERVAL = 10000;
 const ADMIN_API_RATE = 10;
 const LOG_WINDOW_SIZE = 1000;
-const TERMINAL_JOB_STATES = new Set(['completed', 'stopped', 'failed']);
+const TERMINAL_JOB_STATE = 'stopped';
+const LARGE_SITE_PATH_THRESHOLD = 10000;
+const ROOT_PATH_BATCH_SIZE = 250;
 
 const VIDEO_EXTENSIONS = /\.(mp4|mov|webm|avi|m4v|mkv)$/i;
 
@@ -331,37 +333,26 @@ function toCounterValue(value) {
   return Number.isFinite(num) ? num : null;
 }
 
-function extractJobCounters(payload = {}) {
-  const sources = [
-    payload,
-    payload.data,
-    payload.job,
-    payload.stats,
-    payload.summary,
-    payload.meta,
-    payload.data?.job,
-    payload.data?.stats,
-  ];
-  const counters = {
-    total: null,
-    processed: null,
-    failed: null,
+function asObject(value) {
+  return value && typeof value === 'object' ? value : {};
+}
+
+function getJobStateData(rawJobData) {
+  const jobData = asObject(rawJobData);
+  const nestedJobData = asObject(jobData.job);
+  return Object.keys(nestedJobData).length ? nestedJobData : jobData;
+}
+
+function extractJobCounters(rawJobData) {
+  const jobData = getJobStateData(rawJobData);
+  const progress = asObject(jobData.progress);
+  const readCounter = (key) => toCounterValue(progress[key]);
+
+  return {
+    total: readCounter('total'),
+    processed: readCounter('processed'),
+    failed: readCounter('failed'),
   };
-
-  sources.forEach((source) => {
-    if (!source || typeof source !== 'object') return;
-    if (counters.total === null) {
-      counters.total = toCounterValue(source.total);
-    }
-    if (counters.processed === null) {
-      counters.processed = toCounterValue(source.processed ?? source.completed ?? source.done);
-    }
-    if (counters.failed === null) {
-      counters.failed = toCounterValue(source.failed ?? source.errors);
-    }
-  });
-
-  return counters;
 }
 
 function mergeJobCounters(base, incoming) {
@@ -379,9 +370,49 @@ function formatJobCounters(counters) {
   return `total=${value(counters.total)}, processed=${value(counters.processed)}, failed=${value(counters.failed)}`;
 }
 
-function extractJobResources(payload = {}) {
-  const resources = payload.data?.resources || payload.resources || [];
-  return Array.isArray(resources) ? resources : [];
+function extractJobResources(rawJobData) {
+  const jobData = getJobStateData(rawJobData);
+  const jobDataRoot = asObject(jobData.data);
+  if (Array.isArray(jobDataRoot.resources)) {
+    return jobDataRoot.resources;
+  }
+  return [];
+}
+
+function extractJobPhase(rawJobData) {
+  const jobData = getJobStateData(rawJobData);
+  const jobDataRoot = asObject(jobData.data);
+  if (typeof jobDataRoot.phase === 'string' && jobDataRoot.phase) {
+    return jobDataRoot.phase;
+  }
+  return '';
+}
+
+function extractJobPaths(rawJobData) {
+  const jobData = getJobStateData(rawJobData);
+  const resources = asObject(asObject(jobData.data).resources);
+  const paths = new Set();
+
+  Object.values(resources).forEach((partitionPaths) => {
+    if (!Array.isArray(partitionPaths)) return;
+    partitionPaths.forEach((path) => {
+      if (typeof path === 'string' && path.startsWith('/')) {
+        paths.add(path);
+      }
+    });
+  });
+
+  return Array.from(paths);
+}
+
+function toJobProgressPercent(counters) {
+  if (!Number.isFinite(counters.total) || counters.total <= 0) {
+    return 0;
+  }
+  if (!Number.isFinite(counters.processed)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(100, Math.round((counters.processed / counters.total) * 100)));
 }
 
 function mergeResourceRecords(existing, incoming) {
@@ -409,26 +440,46 @@ function mergeResourcesByPath(...resourceLists) {
   return Array.from(byPath.values());
 }
 
-function buildTopLevelPathPartitions(resources) {
-  const topLevelPaths = new Set();
+function chunkArray(items, chunkSize) {
+  const chunks = [];
+  for (let i = 0; i < items.length; i += chunkSize) {
+    chunks.push(items.slice(i, i + chunkSize));
+  }
+  return chunks;
+}
 
-  resources.forEach((resource) => {
-    const path = resource?.path;
+function buildPathPartitions(paths) {
+  const topLevelPaths = new Set();
+  const rootPaths = new Set();
+
+  paths.forEach((path) => {
     if (typeof path !== 'string' || !path.startsWith('/')) return;
     const segments = path.split('/').filter(Boolean);
-    if (segments.length === 0) return;
-    const [topLevel] = segments;
-
-    // Keep root-level files out of partition expansion.
-    if (segments.length === 1 && topLevel.includes('.')) {
-      return;
+    if (segments.length <= 1) {
+      rootPaths.add(path);
     }
-    topLevelPaths.add(`/${topLevel}/*`);
+    if (segments.length >= 1) {
+      topLevelPaths.add(`/${segments[0]}/*`);
+    }
   });
 
-  return Array.from(topLevelPaths)
+  const rootBatches = chunkArray(
+    Array.from(rootPaths).sort((a, b) => a.localeCompare(b)),
+    ROOT_PATH_BATCH_SIZE,
+  );
+  const folderPartitions = Array.from(topLevelPaths)
     .sort((a, b) => a.localeCompare(b))
     .map((path) => [path]);
+
+  return {
+    rootBatches,
+    folderPartitions,
+    partitions: [...folderPartitions, ...rootBatches],
+  };
+}
+
+function describePartitionPlan(partitionPlan) {
+  return `${partitionPlan.folderPartitions.length} top-level folder partition(s) and ${partitionPlan.rootBatches.length} root path batch(es)`;
 }
 
 function sumJobCounters(counterList) {
@@ -453,6 +504,7 @@ function sumJobCounters(counterList) {
 async function runStatusJob(org, site, paths, {
   jobLabel,
   onPoll,
+  pathsOnly = false,
 } = {}) {
   const normalizedPaths = Array.isArray(paths) ? paths : [paths];
   const label = jobLabel || `status job (${normalizedPaths.join(', ')})`;
@@ -461,7 +513,11 @@ async function runStatusJob(org, site, paths, {
   const createRes = await fetchWithRetry(statusUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ paths: normalizedPaths, select: ['preview'] }),
+    body: JSON.stringify({
+      paths: normalizedPaths,
+      pathsOnly,
+      select: ['preview'],
+    }),
   });
 
   if (!createRes.ok) {
@@ -475,8 +531,8 @@ async function runStatusJob(org, site, paths, {
   log(`${label} created: ${selfUrl}`);
 
   let { state } = job;
-  let failureReason = job.error || job.message || '';
   let counters = extractJobCounters(job);
+  let phase = extractJobPhase(job);
   let lastCounterLogAt = 0;
   let lastLoggedCounters = {
     total: null,
@@ -496,7 +552,7 @@ async function runStatusJob(org, site, paths, {
       !force
       && !failedChanged
       && (now - lastCounterLogAt) < JOB_COUNTER_LOG_INTERVAL
-      && !TERMINAL_JOB_STATES.has(state)
+      && state !== TERMINAL_JOB_STATE
     ) {
       return;
     }
@@ -504,14 +560,15 @@ async function runStatusJob(org, site, paths, {
       return;
     }
 
-    log(`${label}: state=${state} (${formatJobCounters(counters)})`);
+    const phaseInfo = phase ? `, phase=${phase}` : '';
+    log(`${label}: state=${state}${phaseInfo} (${formatJobCounters(counters)})`);
     lastCounterLogAt = now;
     lastLoggedCounters = { ...counters };
   };
 
   maybeLogCounters(true);
 
-  while (!TERMINAL_JOB_STATES.has(state)) {
+  while (state !== TERMINAL_JOB_STATE) {
     if (isAborted()) throw new DOMException('Aborted', 'AbortError');
     // eslint-disable-next-line no-await-in-loop
     await waitForDelay(POLL_INTERVAL, abortController?.signal);
@@ -523,9 +580,9 @@ async function runStatusJob(org, site, paths, {
     // eslint-disable-next-line no-await-in-loop
     const pollData = await pollRes.json();
     state = pollData.state;
-    failureReason = pollData.error || pollData.message || failureReason;
     counters = mergeJobCounters(counters, extractJobCounters(pollData));
-    const progress = pollData.progress ? Math.round(pollData.progress * 100) : 0;
+    phase = extractJobPhase(pollData) || phase;
+    const progress = toJobProgressPercent(counters);
     if (onPoll) {
       onPoll({ state, progress, counters });
     }
@@ -538,77 +595,151 @@ async function runStatusJob(org, site, paths, {
 
   const details = await detailsRes.json();
   counters = mergeJobCounters(counters, extractJobCounters(details));
-  const resources = extractJobResources(details);
-  log(`${label} details: ${formatJobCounters(counters)} (resources=${resources.length})`);
+  phase = extractJobPhase(details) || phase;
+  const resources = pathsOnly ? [] : extractJobResources(details);
+  const discoveredPaths = pathsOnly ? extractJobPaths(details) : [];
+  const detailMetric = pathsOnly ? `paths=${discoveredPaths.length}` : `resources=${resources.length}`;
+  log(`${label} details: phase=${phase || 'unknown'}, ${formatJobCounters(counters)} (${detailMetric})`);
 
-  if (state === 'failed') {
-    throw new Error(`${label} failed${failureReason ? `: ${failureReason}` : ''}`);
-  }
+  const isComplete = state === TERMINAL_JOB_STATE && phase === 'completed';
 
   return {
     state,
+    phase,
+    isComplete,
     counters,
+    paths: discoveredPaths,
     resources,
+  };
+}
+
+async function runPartitionedStatusJobs(org, site, partitions, {
+  phaseOffset = 10,
+  phaseSpan = 10,
+} = {}) {
+  if (!partitions.length) {
+    return {
+      resources: [],
+      counters: { total: null, processed: null, failed: null },
+      incompleteCount: 0,
+    };
+  }
+
+  const partitionCounters = [];
+  let incompleteCount = 0;
+  let resources = [];
+  log(`Running ${partitions.length} detailed status job(s) by partition`);
+
+  for (let i = 0; i < partitions.length; i += 1) {
+    if (isAborted()) throw new DOMException('Aborted', 'AbortError');
+    const partition = partitions[i];
+    const partitionLabel = `Detailed status job ${i + 1}/${partitions.length} (${partition.join(', ')})`;
+    const baseProgress = phaseOffset + Math.floor((i / partitions.length) * phaseSpan);
+    const progressSpan = Math.max(1, Math.ceil(phaseSpan / partitions.length));
+
+    // eslint-disable-next-line no-await-in-loop
+    const partitionJob = await runStatusJob(org, site, partition, {
+      jobLabel: partitionLabel,
+      onPoll: ({ state, progress }) => {
+        const phaseProgress = Math.min(
+          phaseOffset + phaseSpan,
+          baseProgress + Math.round((progress / 100) * progressSpan),
+        );
+        setPhase(
+          `Phase 1: Discovering pages... (partition ${i + 1}/${partitions.length}, ${state} ${progress}%)`,
+          phaseProgress,
+        );
+      },
+    });
+
+    partitionCounters.push(partitionJob.counters);
+    if (!partitionJob.isComplete) {
+      incompleteCount += 1;
+      log(`${partitionLabel} stopped before completion (phase=${partitionJob.phase || 'unknown'}, ${formatJobCounters(partitionJob.counters)})`, 'warn');
+    }
+    resources = mergeResourcesByPath(resources, partitionJob.resources);
+  }
+
+  const counters = sumJobCounters(partitionCounters);
+  log(`Detailed partition summary: ${formatJobCounters(counters)}`);
+  if (incompleteCount > 0) {
+    log(`${incompleteCount} detailed status partition job(s) stopped before completion. Results may still be incomplete.`, 'warn');
+  }
+
+  return {
+    resources,
+    counters,
+    incompleteCount,
   };
 }
 
 // Phase 1: Discover all pages via bulk status job
 async function discoverPages(org, site) {
-  setPhase('Phase 1: Discovering pages...', 0);
-  log('Starting page discovery via bulk status job...');
-  const primaryStatusJob = await runStatusJob(org, site, ['/*'], {
-    jobLabel: 'Primary status job',
+  setPhase('Phase 1: Planning page discovery...', 0);
+  log('Starting lightweight path discovery via bulk status job...');
+  const pathDiscoveryJob = await runStatusJob(org, site, ['/*'], {
+    jobLabel: 'Path discovery job',
+    pathsOnly: true,
     onPoll: ({ state, progress }) => {
-      setPhase(`Phase 1: Discovering pages... (${state} ${progress}%)`, Math.min(progress * 0.2, 20));
+      setPhase(`Phase 1: Planning page discovery... (${state} ${progress}%)`, Math.min(progress * 0.1, 10));
     },
   });
 
-  let { resources } = primaryStatusJob;
-  if (primaryStatusJob.state === 'stopped') {
-    log(`Primary status job stopped (${formatJobCounters(primaryStatusJob.counters)}). Retrying by top-level folders...`, 'warn');
-    const pathPartitions = buildTopLevelPathPartitions(resources);
-    if (!pathPartitions.length) {
-      log('Unable to infer top-level folders from stopped job details. Proceeding with partial results.', 'warn');
+  const discoveredPaths = pathDiscoveryJob.paths;
+  const pathCount = discoveredPaths.length;
+  const partitionPlan = pathCount > 0 ? buildPathPartitions(discoveredPaths) : null;
+
+  if (pathDiscoveryJob.isComplete) {
+    log(`Path discovery completed with ${pathCount} preview path(s).`);
+  } else if (pathCount > 0) {
+    log(`Path discovery stopped before completion (phase=${pathDiscoveryJob.phase || 'unknown'}, ${formatJobCounters(pathDiscoveryJob.counters)}). Using ${pathCount} returned path(s) as a best-effort partition plan.`, 'warn');
+  } else {
+    log(`Path discovery stopped before completion (phase=${pathDiscoveryJob.phase || 'unknown'}, ${formatJobCounters(pathDiscoveryJob.counters)}), and returned no paths.`, 'warn');
+  }
+
+  let resources = [];
+  if (pathCount === 0 && pathDiscoveryJob.isComplete) {
+    log('No preview paths found for this site.');
+  } else if (!pathDiscoveryJob.isComplete && partitionPlan) {
+    log(`Running detailed status with ${describePartitionPlan(partitionPlan)} from partial path discovery. Coverage may still be incomplete.`, 'warn');
+    ({ resources } = await runPartitionedStatusJobs(org, site, partitionPlan.partitions));
+  } else if (pathDiscoveryJob.isComplete && pathCount > LARGE_SITE_PATH_THRESHOLD) {
+    log(`Path discovery found ${pathCount} preview path(s), above threshold ${LARGE_SITE_PATH_THRESHOLD}. Running detailed status with ${describePartitionPlan(partitionPlan)}.`);
+    ({ resources } = await runPartitionedStatusJobs(org, site, partitionPlan.partitions));
+  } else {
+    log('Starting detailed status job for full site...');
+    const primaryStatusJob = await runStatusJob(org, site, ['/*'], {
+      jobLabel: 'Primary detailed status job',
+      onPoll: ({ state, progress }) => {
+        setPhase(
+          `Phase 1: Discovering pages... (${state} ${progress}%)`,
+          10 + Math.min(progress * 0.1, 10),
+        );
+      },
+    });
+
+    resources = primaryStatusJob.resources;
+    if (primaryStatusJob.isComplete) {
+      log(`Primary detailed status job completed with phase=${primaryStatusJob.phase}.`);
+    } else if (partitionPlan) {
+      log(
+        `Primary detailed status job stopped before completion (phase=${primaryStatusJob.phase || 'unknown'}, ${formatJobCounters(primaryStatusJob.counters)}). Retrying with ${describePartitionPlan(partitionPlan)} from path discovery.`,
+        'warn',
+      );
+      const partitionedDiscovery = await runPartitionedStatusJobs(
+        org,
+        site,
+        partitionPlan.partitions,
+      );
+      resources = mergeResourcesByPath(resources, partitionedDiscovery.resources);
     } else {
-      const fallbackCounters = [];
-      let stoppedFallbackCount = 0;
-      log(`Running ${pathPartitions.length} fallback status job(s) by folder path`);
-      for (let i = 0; i < pathPartitions.length; i += 1) {
-        if (isAborted()) throw new DOMException('Aborted', 'AbortError');
-        const partition = pathPartitions[i];
-        const partitionLabel = `Fallback status job ${i + 1}/${pathPartitions.length} (${partition.join(', ')})`;
-        const baseProgress = Math.floor((i / pathPartitions.length) * 20);
-        const progressSpan = Math.max(1, Math.ceil(20 / pathPartitions.length));
-
-        // eslint-disable-next-line no-await-in-loop
-        const fallbackJob = await runStatusJob(org, site, partition, {
-          jobLabel: partitionLabel,
-          onPoll: ({ state, progress }) => {
-            const phaseProgress = Math.min(
-              20,
-              baseProgress + Math.round((progress / 100) * progressSpan),
-            );
-            setPhase(
-              `Phase 1: Discovering pages... (fallback ${i + 1}/${pathPartitions.length}, ${state} ${progress}%)`,
-              phaseProgress,
-            );
-          },
-        });
-
-        fallbackCounters.push(fallbackJob.counters);
-        if (fallbackJob.state === 'stopped') {
-          stoppedFallbackCount += 1;
-          log(`${partitionLabel} stopped (${formatJobCounters(fallbackJob.counters)})`, 'warn');
-        }
-        resources = mergeResourcesByPath(resources, fallbackJob.resources);
-      }
-
-      log(`Fallback status jobs summary: ${formatJobCounters(sumJobCounters(fallbackCounters))}`);
-      if (stoppedFallbackCount > 0) {
-        log(`${stoppedFallbackCount} fallback status job(s) stopped before completion. Results may still be incomplete.`, 'warn');
-      }
+      log(
+        `Primary detailed status job stopped before completion (phase=${primaryStatusJob.phase || 'unknown'}, ${formatJobCounters(primaryStatusJob.counters)}). Proceeding with partial results.`,
+        'warn',
+      );
     }
   }
+
   resources = mergeResourcesByPath(resources);
 
   const pages = [];
