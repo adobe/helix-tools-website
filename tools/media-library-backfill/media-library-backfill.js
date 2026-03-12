@@ -195,7 +195,32 @@ function isAborted() {
   return abortController && abortController.signal.aborted;
 }
 
-function createRateLimiter(initialRate) {
+function waitForDelay(ms, signal) {
+  const duration = Math.max(0, ms);
+  if (!signal) {
+    return new Promise((resolve) => { setTimeout(resolve, duration); });
+  }
+
+  if (signal.aborted) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    let timeoutId = 0;
+    const onAbort = () => {
+      clearTimeout(timeoutId);
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    };
+
+    timeoutId = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, duration);
+
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+function createRateLimiter(initialRate, getSignal = () => null) {
   let interval = Math.ceil(1000 / initialRate);
   let queue = Promise.resolve();
 
@@ -203,7 +228,7 @@ function createRateLimiter(initialRate) {
     acquire() {
       const gate = queue;
       queue = queue.then(
-        () => new Promise((resolve) => { setTimeout(resolve, interval); }),
+        () => waitForDelay(interval, getSignal()),
       );
       return gate;
     },
@@ -215,7 +240,7 @@ function createRateLimiter(initialRate) {
     },
     backoff(seconds) {
       queue = queue.then(
-        () => new Promise((resolve) => { setTimeout(resolve, seconds * 1000); }),
+        () => waitForDelay(seconds * 1000, getSignal()),
       );
     },
     reset() {
@@ -224,7 +249,7 @@ function createRateLimiter(initialRate) {
   };
 }
 
-const adminLimiter = createRateLimiter(ADMIN_API_RATE);
+const adminLimiter = createRateLimiter(ADMIN_API_RATE, () => abortController?.signal);
 
 async function fetchWithRetry(url, options = {}, maxRetries = 3) {
   const signal = abortController ? abortController.signal : undefined;
@@ -254,7 +279,7 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
           adminLimiter.backoff(retryAfter);
         } else {
           // eslint-disable-next-line no-await-in-loop
-          await new Promise((resolve) => { setTimeout(resolve, retryAfter * 1000); });
+          await waitForDelay(retryAfter * 1000, signal);
         }
         // eslint-disable-next-line no-continue
         continue;
@@ -263,7 +288,7 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
         const delay = (2 ** attempt) * 1000;
         log(`Service unavailable (503), retrying in ${delay / 1000}s...`, 'warn');
         // eslint-disable-next-line no-await-in-loop
-        await new Promise((resolve) => { setTimeout(resolve, delay); });
+        await waitForDelay(delay, signal);
         // eslint-disable-next-line no-continue
         continue;
       }
@@ -272,7 +297,7 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
       if (err.name === 'AbortError') throw err;
       if (attempt < maxRetries) {
         // eslint-disable-next-line no-await-in-loop
-        await new Promise((resolve) => { setTimeout(resolve, (2 ** attempt) * 1000); });
+        await waitForDelay((2 ** attempt) * 1000, signal);
       } else {
         throw err;
       }
@@ -494,13 +519,53 @@ function parseMediaFromMarkdown(markdown, pageBaseUrl) {
     .filter(Boolean);
 }
 
+function toComparableTimestamp(lastModified) {
+  const ts = Date.parse(lastModified);
+  return Number.isNaN(ts) ? Number.MAX_SAFE_INTEGER : ts;
+}
+
+function createDeterministicEntries(mediaCandidates) {
+  const sorted = [...mediaCandidates].sort((a, b) => {
+    const tsDiff = toComparableTimestamp(a.page.lastModified)
+      - toComparableTimestamp(b.page.lastModified);
+    if (tsDiff !== 0) return tsDiff;
+    const pathDiff = a.page.path.localeCompare(b.page.path);
+    if (pathDiff !== 0) return pathDiff;
+    const urlDiff = a.url.localeCompare(b.url);
+    if (urlDiff !== 0) return urlDiff;
+    return a.order - b.order;
+  });
+
+  const seenMedia = new Set();
+  let dupes = 0;
+  const entries = sorted.map(({ page, url }) => {
+    const operation = seenMedia.has(url) ? 'reuse' : 'ingest';
+    if (operation === 'reuse') {
+      dupes += 1;
+    }
+    seenMedia.add(url);
+    return {
+      entry: {
+        operation,
+        path: url,
+        resourcePath: page.path,
+        contentType: getContentType(url),
+        ...extractDimensions(url),
+      },
+      page,
+    };
+  });
+
+  return { entries, dupes };
+}
+
 // Phase 3: Fetch and parse markdown for each page
 async function processPages(org, site, pages) {
   setPhase('Phase 3: Processing page content...', 30);
   log(`Processing ${pages.length} pages for media references...`);
 
-  const allEntries = [];
-  const seenMedia = new Set();
+  const mediaCandidates = [];
+  let candidateOrder = 0;
   let processed = 0;
   let useAdminApi = false;
 
@@ -541,32 +606,29 @@ async function processPages(org, site, pages) {
       const pageBaseUrl = `https://${REF}--${site}--${org}.aem.page${page.path}`;
       const urls = parseMediaFromMarkdown(markdown, pageBaseUrl);
       urls.forEach((url) => {
-        const operation = seenMedia.has(url) ? 'reuse' : 'ingest';
-        if (operation === 'reuse') {
-          stats.dupes += 1;
-        }
-        seenMedia.add(url);
-
-        const entry = {
-          operation,
-          path: url,
-          resourcePath: page.path,
-          contentType: getContentType(url),
-          ...extractDimensions(url),
-        };
-        allEntries.push({ entry, page });
+        mediaCandidates.push({
+          order: candidateOrder,
+          url,
+          page,
+        });
+        candidateOrder += 1;
       });
     }
 
     processed += 1;
     const pct = 30 + Math.round((processed / pages.length) * 40);
     setPhase(`Phase 3: Processing pages... (${processed}/${pages.length})`, pct);
-    stats.media = allEntries.length;
+    stats.media = mediaCandidates.length;
     updateStatsDisplay();
   }, CONCURRENCY);
 
-  log(`Found ${allEntries.length} media entries across ${pages.length} pages`);
-  return allEntries;
+  const { entries, dupes } = createDeterministicEntries(mediaCandidates);
+  stats.media = entries.length;
+  stats.dupes = dupes;
+  updateStatsDisplay();
+
+  log(`Found ${entries.length} media entries across ${pages.length} pages (${dupes} duplicates)`);
+  return entries;
 }
 
 // Phase 4: Post entries to medialog
