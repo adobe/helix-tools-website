@@ -50,6 +50,11 @@ export async function buildMediaDataFromEntries(
     medialogScoped = medialogEntries.filter(
       (m) => m.resourcePath && pathUnder(m.resourcePath, pathNorm),
     );
+  } else {
+    // Match DA-NX: keep referenced (resourcePath) or standalone; drop orphaned.
+    medialogScoped = medialogEntries.filter(
+      (m) => m.resourcePath || (m.originalFilename && !m.resourcePath),
+    );
   }
 
   const { linkedEntries, parseStats } = await processLinkedContent(
