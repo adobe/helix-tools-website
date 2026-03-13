@@ -23,6 +23,7 @@ import {
 import { toAbsoluteFilePath } from './parse.js';
 import { IndexConfig } from '../core/constants.js';
 import { incrementalTimeParams, initialTimeParams } from '../core/storage.js';
+import { isPerfEnabled } from '../core/params.js';
 
 const PROGRESSIVE_DISPLAY_CAP = 3000;
 
@@ -41,6 +42,7 @@ export async function buildMediaDataFromEntries(
   onProgress = null,
   onProgressiveData = null,
   path = '',
+  perf = null,
 ) {
   const pathNorm = normalizePathForFilter(path);
   let medialogScoped = medialogEntries;
@@ -50,7 +52,7 @@ export async function buildMediaDataFromEntries(
     );
   }
 
-  const { linkedEntries } = await processLinkedContent(
+  const { linkedEntries, parseStats } = await processLinkedContent(
     auditlogEntries,
     medialogScoped,
     org,
@@ -58,7 +60,17 @@ export async function buildMediaDataFromEntries(
     'main',
     onProgress,
     path,
+    onProgressiveData,
   );
+
+  // Track markdown parsing stats if perf object provided
+  if (perf && parseStats) {
+    perf.markdownParse.pages = parseStats.pages || 0;
+    perf.markdownParse.durationMs = parseStats.durationMs || 0;
+    perf.markdownParse.success = parseStats.success || 0;
+    perf.markdownParse.fail = parseStats.fail || 0;
+    perf.markdownParse.fetchTimes = parseStats.fetchTimes || { avg: 0, min: 0, max: 0 };
+  }
 
   const referencedHashes = new Set();
   [...medialogScoped, ...linkedEntries].forEach((e) => {
@@ -137,6 +149,44 @@ export async function fetchAndBuildMediaData(org, site, options = {}) {
   } = options;
 
   const buildMode = incremental ? 'incremental' : 'full';
+  const buildStartTime = Date.now();
+
+  if (isPerfEnabled()) {
+    console.log(`[MediaLibrary:build] Starting ${buildMode} build for ${org}/${site}${path || '/'}`);
+  }
+
+  // Performance instrumentation
+  const perf = {
+    mode: buildMode,
+    org,
+    site,
+    path: path || '/',
+    medialog: {
+      streamed: 0,
+      chunks: 0,
+      durationMs: 0,
+    },
+    auditlog: {
+      streamed: 0,
+      chunks: 0,
+      durationMs: 0,
+    },
+    statusAPI: {
+      durationMs: 0,
+      resourcesDiscovered: 0,
+      pagesDiscovered: 0,
+      filesDiscovered: 0,
+    },
+    markdownParse: {
+      pages: 0,
+      durationMs: 0,
+      success: 0,
+      fail: 0,
+      fetchTimes: { avg: 0, min: 0, max: 0 },
+    },
+    totalDurationMs: 0,
+  };
+
   const mediaMap = new Map();
   const pagesByPath = new Map();
   const filesByPath = new Map();
@@ -148,7 +198,12 @@ export async function fetchAndBuildMediaData(org, site, options = {}) {
   if (incremental) {
     const timeParams = incrementalTimeParams(metadata?.lastFetchTime);
 
+    const medialogStart = Date.now();
+    const auditlogStart = Date.now();
+
     const onAuditChunk = (entries) => {
+      perf.auditlog.chunks += 1;
+      perf.auditlog.streamed += entries.length;
       applyAuditChunkToMaps(entries, pagesByPath, filesByPath, deletedPaths);
       const earlyLinked = buildEarlyLinkedPlaceholders(filesByPath, deletedPaths, org, site);
       const fromLinked = transformToMediaData([], earlyLinked);
@@ -156,6 +211,8 @@ export async function fetchAndBuildMediaData(org, site, options = {}) {
     };
 
     const onMedialogChunk = (entries) => {
+      perf.medialog.chunks += 1;
+      perf.medialog.streamed += entries.length;
       mergeEntriesIntoMediaMap(entries, mediaMap);
       const fromMedialog = getMediaItemsFromMap(mediaMap);
       if (fromMedialog.length > 0) onProgressiveData(fromMedialog);
@@ -165,10 +222,17 @@ export async function fetchAndBuildMediaData(org, site, options = {}) {
       fetchAllMediaLog(org, site, timeParams, onMedialogChunk),
       fetchAllAuditLog(org, site, timeParams, onAuditChunk),
     ]);
+
+    perf.medialog.durationMs = Date.now() - medialogStart;
+    perf.auditlog.durationMs = Date.now() - auditlogStart;
   } else {
     const timeParams = initialTimeParams();
 
+    const medialogStart = Date.now();
+
     const onMedialogChunk = (entries) => {
+      perf.medialog.chunks += 1;
+      perf.medialog.streamed += entries.length;
       mergeEntriesIntoMediaMap(entries, mediaMap);
       const fromMedialog = getMediaItemsFromMap(mediaMap);
       if (fromMedialog.length > 0) onProgressiveData(fromMedialog);
@@ -186,25 +250,47 @@ export async function fetchAndBuildMediaData(org, site, options = {}) {
 
     let statusResources;
     let medialogResult;
-    if (statusPromise) {
-      [statusResources, medialogResult] = await Promise.all([
-        statusPromise,
-        fetchAllMediaLog(org, site, timeParams, onMedialogChunk),
-      ]);
-    } else {
-      const progressCallback = (p) => {
-        const msg = p.message || `Status: ${p.progress?.processed ?? 0}/${p.progress?.total ?? 0}...`;
-        onProgress({ stage: p.stage || 'fetching', message: msg });
-      };
-      [statusResources, medialogResult] = await Promise.all([
-        runBulkStatus(org, site, 'main', contentPathForStatus, {
-          onProgress: progressCallback,
-          pollInterval: IndexConfig.STATUS_POLL_INTERVAL_MS,
-          maxDurationMs: IndexConfig.STATUS_POLL_MAX_DURATION_MS,
-        }).then(({ resources: r }) => r),
-        fetchAllMediaLog(org, site, timeParams, onMedialogChunk),
-      ]);
+    const statusStart = Date.now();
+
+    if (isPerfEnabled()) {
+      console.log('[MediaLibrary:build] Fetching status API and medialog in parallel...');
     }
+
+    try {
+      if (statusPromise) {
+        [statusResources, medialogResult] = await Promise.all([
+          statusPromise,
+          fetchAllMediaLog(org, site, timeParams, onMedialogChunk),
+        ]);
+      } else {
+        const progressCallback = (p) => {
+          const msg = p.message || `Status: ${p.progress?.processed ?? 0}/${p.progress?.total ?? 0}...`;
+          onProgress({ stage: p.stage || 'fetching', message: msg });
+        };
+        [statusResources, medialogResult] = await Promise.all([
+          runBulkStatus(org, site, 'main', contentPathForStatus, {
+            onProgress: progressCallback,
+            pollInterval: IndexConfig.STATUS_POLL_INTERVAL_MS,
+            maxDurationMs: IndexConfig.STATUS_POLL_MAX_DURATION_MS,
+          }).then(({ resources: r }) => r),
+          fetchAllMediaLog(org, site, timeParams, onMedialogChunk),
+        ]);
+      }
+
+      if (isPerfEnabled()) {
+        console.log(`[MediaLibrary:build] Status API returned ${statusResources.length} resources`);
+        console.log(`[MediaLibrary:build] Medialog returned ${medialogResult.length} entries`);
+      }
+    } catch (error) {
+      if (isPerfEnabled()) {
+        console.error('[MediaLibrary:build] Error during fetch:', error);
+      }
+      throw error;
+    }
+
+    perf.statusAPI.durationMs = Date.now() - statusStart;
+    perf.statusAPI.resourcesDiscovered = statusResources.length;
+    perf.medialog.durationMs = Date.now() - medialogStart;
 
     const filteredResources = path
       ? statusResources.filter((r) => pathUnder(r.path, path))
@@ -239,6 +325,10 @@ export async function fetchAndBuildMediaData(org, site, options = {}) {
     newAuditlog = syntheticAudit;
   }
 
+  // Track pages and files from status/audit
+  perf.statusAPI.pagesDiscovered = [...pagesByPath.keys()].length;
+  perf.statusAPI.filesDiscovered = [...filesByPath.keys()].length;
+
   const mediaData = await buildMediaDataFromEntries(
     newMedialog,
     newAuditlog,
@@ -247,7 +337,17 @@ export async function fetchAndBuildMediaData(org, site, options = {}) {
     onProgress,
     onProgressiveData,
     path,
+    perf, // Pass perf object for markdown parse tracking
   );
 
-  return { mediaData, buildMode };
+  perf.totalDurationMs = Date.now() - buildStartTime;
+  perf.collectedAt = new Date().toISOString();
+
+  // Log performance metrics only when debug=perf is enabled
+  if (isPerfEnabled()) {
+    console.log('[MediaLibrary:build] Build completed successfully');
+    console.log('[MediaLibrary:perf]', JSON.stringify(perf, null, 2));
+  }
+
+  return { mediaData, buildMode, perf };
 }

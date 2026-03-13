@@ -187,6 +187,7 @@ export async function processLinkedContent(
   ref = 'main',
   onProgress = null,
   path = '',
+  onProgressiveData = null,
 ) {
   const aud = auditlogEntries || [];
   const med = medialogEntries || [];
@@ -210,11 +211,51 @@ export async function processLinkedContent(
   });
 
   if (pageEntries.length === 0) {
-    return { added: [], linkedEntries: [] };
+    return { added: [], linkedEntries: [], parseStats: null };
   }
 
   onProgress?.({ stage: 'parsing', message: 'Building usage map from page content...' });
-  const usageMap = await buildUsageMap(pageEntries, org, repo, ref, onProgress);
+
+  // Create onBatch callback for progressive updates during parsing
+  const onBatch = onProgressiveData
+    ? (usageMapPartial) => {
+      // Build linked entries from current usage map state
+      const linkedPartial = [];
+      const allLinkedPathsPartial = new Set(filesByPath.keys());
+      ['pdfs', 'svgs', 'fragments'].forEach((key) => {
+        usageMapPartial[key]?.forEach((_, fp) => allLinkedPathsPartial.add(fp));
+      });
+
+      allLinkedPathsPartial.forEach((filePath) => {
+        if (deletedPaths.has(filePath)) return;
+        let key = 'fragments';
+        if (isPdf(filePath)) key = 'pdfs';
+        else if (isSvg(filePath)) key = 'svgs';
+        const linkedPages = usageMapPartial[key]?.get(filePath) || [];
+        const status = linkedPages.length > 0 ? 'referenced' : 'discovering';
+        const fileEvent = filesByPath.get(filePath) || { timestamp: 0, user: '' };
+        linkedPages.forEach((doc) => {
+          linkedPartial.push(toLinkedContentEntry(filePath, doc, fileEvent, status, org, repo));
+        });
+      });
+
+      if (linkedPartial.length > 0) {
+        onProgressiveData(linkedPartial);
+      }
+    }
+    : null;
+
+  const result = await buildUsageMap(pageEntries, org, repo, ref, onProgress, onBatch);
+  const usageMap = result.usageMap || result; // Support both old and new return format
+  const parseStats = result.counters
+    ? {
+      pages: result.counters.parsed || 0,
+      durationMs: result.durationMs ?? 0,
+      success: result.counters.success || 0,
+      fail: result.counters.fail || 0,
+      fetchTimes: result.fetchTimes || { avg: 0, min: 0, max: 0 },
+    }
+    : null;
 
   const allLinkedPaths = new Set(filesByPath.keys());
   ['pdfs', 'svgs', 'fragments'].forEach((key) => {
@@ -254,5 +295,5 @@ export async function processLinkedContent(
     });
   });
 
-  return { added: linkedEntries, linkedEntries };
+  return { added: linkedEntries, linkedEntries, parseStats };
 }

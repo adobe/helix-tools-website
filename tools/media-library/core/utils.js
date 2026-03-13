@@ -50,7 +50,7 @@ export function pluralize(singular, plural, count) {
 }
 
 /**
- * Sorts media items for display: newest first by timestamp, then by doc path depth, then by name.
+ * Sorts media items for display: newest first by timestamp, then by doc path depth, then by name, then by URL for stability.
  */
 export function sortMediaData(mediaData) {
   if (!mediaData || mediaData.length === 0) return mediaData ?? [];
@@ -69,6 +69,12 @@ export function sortMediaData(mediaData) {
 
     const nameA = (a.name || '').toLowerCase();
     const nameB = (b.name || '').toLowerCase();
-    return nameA.localeCompare(nameB);
+    const nameDiff = nameA.localeCompare(nameB);
+    if (nameDiff !== 0) return nameDiff;
+
+    // Final tiebreaker: URL/hash for absolute stability
+    const urlA = (a.url || a.hash || '').toLowerCase();
+    const urlB = (b.url || b.hash || '').toLowerCase();
+    return urlA.localeCompare(urlB);
   });
 }

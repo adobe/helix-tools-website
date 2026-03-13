@@ -11,6 +11,7 @@ import {
 } from '../core/constants.js';
 import { getDedupeKey } from '../core/urls.js';
 import { fetchAdminWithRateLimit } from '../core/admin-rate-limit.js';
+import { isPerfEnabled } from '../core/params.js';
 
 export { getDedupeKey };
 
@@ -210,6 +211,7 @@ const ADMIN_PREVIEW_BASE = 'https://admin.hlx.page/preview';
 /**
  * Fetch page markdown via admin.hlx.page (same as page-status diff).
  * Uses shared admin rate limiter (10 req/s) and 429 retry with backoff.
+ * Returns structured result: { markdown, status, reason }
  */
 export async function fetchPageMarkdown(pagePath, org, repo, ref = 'main') {
   try {
@@ -221,17 +223,21 @@ export async function fetchPageMarkdown(pagePath, org, repo, ref = 'main') {
     const url = `${ADMIN_PREVIEW_BASE}/${org}/${repo}/${ref}${fetchPath}`;
 
     const resp = await fetchAdminWithRateLimit(url, {}, { maxRetries: 3 });
-    if (!resp.ok) return null;
-    return resp.text();
-  } catch {
-    return null;
+    if (!resp.ok) {
+      return { markdown: null, status: resp.status, reason: `HTTP ${resp.status}` };
+    }
+    const markdown = await resp.text();
+    return { markdown, status: 200, reason: null };
+  } catch (error) {
+    return { markdown: null, status: null, reason: error.message || 'Network error' };
   }
 }
 
 /**
  * Build usage map by fetching pages and parsing markdown for PDF/SVG/fragment/external links.
+ * Enhanced with batching, failure tracking, retry logic, and progressive callbacks.
  */
-export async function buildUsageMap(pageEntries, org, repo, ref = 'main', onProgress = null) {
+export async function buildUsageMap(pageEntries, org, repo, ref = 'main', onProgress = null, onBatch = null) {
   const usageMap = {
     fragments: new Map(),
     pdfs: new Map(),
@@ -251,18 +257,15 @@ export async function buildUsageMap(pageEntries, org, repo, ref = 'main', onProg
 
   const uniquePages = [...latestTimestampByPath.keys()].filter((p) => !isHiddenPath(p));
 
-  const results = await processConcurrently(
-    uniquePages,
-    async (normalizedPath, i) => {
-      onProgress?.({ message: `Parsing page ${i + 1}/${uniquePages.length}: ${normalizedPath}` });
-      const md = await fetchPageMarkdown(normalizedPath, org, repo, ref);
-      return { normalizedPath, md };
-    },
-    IndexConfig.MAX_CONCURRENT_FETCHES,
-  );
+  const usageMapStartTime = Date.now();
+  const counters = { success: 0, fail: 0, parsed: 0 };
+  const fetchTimes = [];
+  const batchSize = IndexConfig.USAGE_MAP_PROGRESSIVE_BATCH_SIZE ?? 1000;
+  const failureReasons = new Map(); // reason -> count
+  const failedPathsByReason = new Map(); // reason -> path[]
 
-  results.forEach(({ normalizedPath, md }) => {
-    if (!md) return;
+  const processResultIntoUsageMap = ({ normalizedPath, md }) => {
+    if (md == null) return; // allow empty string (200 with empty body)
 
     const addToMap = (map, path) => {
       if (!map.has(path)) map.set(path, new Set());
@@ -294,7 +297,87 @@ export async function buildUsageMap(pageEntries, org, repo, ref = 'main', onProg
     svgs.forEach((s) => addToMap(usageMap.svgs, s));
     icons.forEach((s) => addToMap(usageMap.svgs, s));
     externalUrls.forEach((u) => addToExternalMedia(u));
-  });
+  };
+
+  // Process pages in batches for progressive display
+  for (let batchStart = 0; batchStart < uniquePages.length; batchStart += batchSize) {
+    const batch = uniquePages.slice(batchStart, batchStart + batchSize);
+    const batchResults = await processConcurrently(
+      batch,
+      async (normalizedPath, i) => {
+        const globalIndex = batchStart + i;
+        onProgress?.({ message: `Parsing page ${globalIndex + 1}/${uniquePages.length}: ${normalizedPath}` });
+        const fetchStart = Date.now();
+        const result = await fetchPageMarkdown(normalizedPath, org, repo, ref);
+        const fetchTime = Date.now() - fetchStart;
+        fetchTimes.push(fetchTime);
+
+        const isSuccess = result?.status === 200;
+        const md = isSuccess ? (result.markdown ?? '') : (result?.markdown || null);
+        if (isSuccess) {
+          counters.success += 1;
+        } else {
+          counters.fail += 1;
+          const reason = result?.reason || `HTTP ${result?.status ?? 'unknown'}`;
+          const count = failureReasons.get(reason) || 0;
+          failureReasons.set(reason, count + 1);
+          if (!failedPathsByReason.has(reason)) failedPathsByReason.set(reason, []);
+          failedPathsByReason.get(reason).push(normalizedPath);
+        }
+        counters.parsed += 1;
+        return { normalizedPath, md };
+      },
+      IndexConfig.MAX_CONCURRENT_PAGE_FETCHES,
+    );
+
+    batchResults.forEach(processResultIntoUsageMap);
+
+    // Call onBatch after each batch for progressive UI updates
+    if (onBatch) {
+      onBatch(usageMap);
+    }
+  }
+
+  // Retry failed pages serially (concurrency=1 to avoid overload)
+  const allFailedPaths = [];
+  failedPathsByReason.forEach((paths) => allFailedPaths.push(...paths));
+  if (allFailedPaths.length > 0) {
+    onProgress?.({ message: `Retrying ${allFailedPaths.length} failed pages...` });
+    const retryResults = await processConcurrently(
+      allFailedPaths,
+      async (normalizedPath) => {
+        const result = await fetchPageMarkdown(normalizedPath, org, repo, ref);
+        const isSuccess = result?.status === 200;
+        const md = isSuccess ? (result.markdown ?? '') : (result?.markdown || null);
+        return { normalizedPath, md, isSuccess };
+      },
+      1, /* serial retries */
+    );
+    retryResults.forEach(processResultIntoUsageMap);
+    retryResults.forEach(({ isSuccess }) => {
+      if (isSuccess) {
+        counters.success += 1;
+        counters.fail -= 1;
+      }
+    });
+    // Remove recovered paths from failedPathsByReason and failureReasons
+    const recovered = new Set(retryResults.filter((r) => r.isSuccess).map((r) => r.normalizedPath));
+    if (recovered.size > 0) {
+      failedPathsByReason.forEach((paths, reason) => {
+        const remaining = paths.filter((p) => !recovered.has(p));
+        if (remaining.length === 0) {
+          failedPathsByReason.delete(reason);
+          failureReasons.delete(reason);
+        } else {
+          failedPathsByReason.set(reason, remaining);
+          failureReasons.set(reason, remaining.length);
+        }
+      });
+      if (isPerfEnabled()) {
+        console.log(`[buildUsageMap] Retry: ${recovered.size}/${allFailedPaths.length} recovered`);
+      }
+    }
+  }
 
   // Convert Sets to arrays for consumers
   ['fragments', 'pdfs', 'svgs'].forEach((key) => {
@@ -306,5 +389,49 @@ export async function buildUsageMap(pageEntries, org, repo, ref = 'main', onProg
     usageMap.externalMedia.set(url, { ...data, pages: [...data.pages] });
   });
 
-  return usageMap;
+  // Performance logging
+  const avgFetchTime = fetchTimes.length > 0
+    ? Math.round(fetchTimes.reduce((sum, t) => sum + t, 0) / fetchTimes.length)
+    : 0;
+  const maxFetchTime = fetchTimes.length > 0 ? Math.max(...fetchTimes) : 0;
+  const minFetchTime = fetchTimes.length > 0 ? Math.min(...fetchTimes) : 0;
+  const durationMs = Date.now() - usageMapStartTime;
+  const fragCount = usageMap.fragments?.size ?? 0;
+  const pdfCount = usageMap.pdfs?.size ?? 0;
+  const svgCount = usageMap.svgs?.size ?? 0;
+  const extCount = usageMap.externalMedia?.size ?? 0;
+  const itemsFound = fragCount + pdfCount + svgCount + extCount;
+
+  if (isPerfEnabled()) {
+    const endIso = new Date().toISOString();
+    const durationSec = Math.round(durationMs / 1000);
+    const lines = [
+      `[buildUsageMap] Ended at ${endIso} (duration: ${durationSec}s)`,
+      `  Pages: ${counters.success} success, ${counters.fail} failed of ${uniquePages.length} total`,
+      `  Fetch times: avg=${avgFetchTime}ms, min=${minFetchTime}ms, max=${maxFetchTime}ms`,
+      `  Items: frag=${fragCount}, pdf=${pdfCount}, svg=${svgCount}, ext=${extCount} (${itemsFound} total)`,
+    ];
+    const sortedReasons = [...failureReasons.entries()].sort((a, b) => b[1] - a[1]);
+    if (counters.fail > 0) {
+      if (sortedReasons.length > 0) {
+        lines.push('  Failure breakdown:');
+        sortedReasons.forEach(([reason, count]) => {
+          lines.push(`    ${reason}: ${count} (${Math.round((count / counters.fail) * 100)}%)`);
+          const paths = failedPathsByReason.get(reason) || [];
+          paths.slice(0, 10).forEach((p) => lines.push(`      - ${p}`));
+          if (paths.length > 10) {
+            lines.push(`      ... and ${paths.length - 10} more`);
+          }
+        });
+      }
+    }
+    console.log(lines.join('\n'));
+  }
+
+  return {
+    usageMap,
+    counters,
+    durationMs,
+    fetchTimes: { avg: avgFetchTime, min: minFetchTime, max: maxFetchTime },
+  };
 }
