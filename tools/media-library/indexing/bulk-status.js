@@ -8,6 +8,7 @@ import {
   parseResourcesFromDetailsRaw,
 } from './status-api.js';
 import { IndexConfig } from '../core/constants.js';
+import { pathUnder } from '../core/urls.js';
 
 const REQ_PER_SEC = 10;
 const THROTTLE_MS = 1000 / REQ_PER_SEC;
@@ -118,7 +119,7 @@ function buildPathPartitions(paths, base = null) {
 
   paths.forEach((path) => {
     if (typeof path !== 'string' || !path.startsWith('/')) return;
-    if (base && !path.startsWith(base) && path !== base) return;
+    if (base && !pathUnder(path, base)) return;
     const pathNorm = path.replace(/\/$/, '');
     let relPath;
     if (!base) {
