@@ -395,8 +395,8 @@ export async function buildUsageMap(pageEntries, org, repo, ref = 'main', onProg
   const avgFetchTime = fetchTimes.length > 0
     ? Math.round(fetchTimes.reduce((sum, t) => sum + t, 0) / fetchTimes.length)
     : 0;
-  const maxFetchTime = fetchTimes.length > 0 ? Math.max(...fetchTimes) : 0;
-  const minFetchTime = fetchTimes.length > 0 ? Math.min(...fetchTimes) : 0;
+  const maxFetchTime = fetchTimes.length > 0 ? fetchTimes.reduce((a, b) => Math.max(a, b)) : 0;
+  const minFetchTime = fetchTimes.length > 0 ? fetchTimes.reduce((a, b) => Math.min(a, b)) : 0;
   const durationMs = Date.now() - usageMapStartTime;
   const fragCount = usageMap.fragments?.size ?? 0;
   const pdfCount = usageMap.pdfs?.size ?? 0;

@@ -232,7 +232,7 @@ export async function processLinkedContent(
         if (isPdf(filePath)) key = 'pdfs';
         else if (isSvg(filePath)) key = 'svgs';
         const linkedPages = usageMapPartial[key]?.get(filePath) || [];
-        const status = linkedPages.length > 0 ? 'referenced' : 'discovering';
+        const status = (linkedPages.size ?? linkedPages.length) > 0 ? 'referenced' : 'discovering';
         const fileEvent = filesByPath.get(filePath) || { timestamp: 0, user: '' };
         linkedPages.forEach((doc) => {
           linkedPartial.push(toLinkedContentEntry(filePath, doc, fileEvent, status, org, repo));
