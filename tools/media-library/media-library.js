@@ -419,8 +419,8 @@ async function init() {
 
       const indexDurationSec = Math.round((Date.now() - indexStartTime) / 1000);
       const pagesParsed = perf?.markdownParse?.pages ?? 0;
-      // eslint-disable-next-line no-console -- index lifecycle: end, duration, pages (always logged)
-      console.log(`[Media Library] Index completed in ${indexDurationSec}s, ${pagesParsed} pages`);
+      // eslint-disable-next-line no-console -- index lifecycle (duration, pages)
+      console.log(`[Media Library] Index done: ${indexDurationSec}s, ${pagesParsed} pages`);
 
       const finalMediaData = incremental && hasCache
         ? (() => {

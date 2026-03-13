@@ -8,7 +8,7 @@ let perfLoggedOnce = false;
 /**
  * Check if performance logging is enabled via ?debug=perf URL parameter
  */
-export function isPerfEnabled() {
+export default function isPerfEnabled() {
   if (typeof window === 'undefined') return false;
 
   // Cache the result since URL params don't change during page lifetime
@@ -21,9 +21,10 @@ export function isPerfEnabled() {
   const enabled = debug === 'perf' || debug === 'true' || debug === '1';
   perfEnabledCached = enabled;
 
-  // Log once for debugging
+  // Log once when perf debugging is enabled
   if (enabled && !perfLoggedOnce) {
-    console.log('[Media Library] Performance logging enabled via ?debug=' + debug);
+    // eslint-disable-next-line no-console -- perf mode: indicate debug=perf is active
+    console.log(`[Media Library] Performance logging enabled via ?debug=${debug}`);
     perfLoggedOnce = true;
   }
 

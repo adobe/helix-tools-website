@@ -11,7 +11,7 @@ import {
 } from '../core/constants.js';
 import { getDedupeKey } from '../core/urls.js';
 import { fetchAdminWithRateLimit } from '../core/admin-rate-limit.js';
-import { isPerfEnabled } from '../core/params.js';
+import isPerfEnabled from '../core/params.js';
 
 export { getDedupeKey };
 
@@ -302,6 +302,7 @@ export async function buildUsageMap(pageEntries, org, repo, ref = 'main', onProg
   // Process pages in batches for progressive display
   for (let batchStart = 0; batchStart < uniquePages.length; batchStart += batchSize) {
     const batch = uniquePages.slice(batchStart, batchStart + batchSize);
+    // eslint-disable-next-line no-await-in-loop -- batch: complete each before next
     const batchResults = await processConcurrently(
       batch,
       async (normalizedPath, i) => {
@@ -374,6 +375,7 @@ export async function buildUsageMap(pageEntries, org, repo, ref = 'main', onProg
         }
       });
       if (isPerfEnabled()) {
+        // eslint-disable-next-line no-console -- perf debug when ?debug=perf
         console.log(`[buildUsageMap] Retry: ${recovered.size}/${allFailedPaths.length} recovered`);
       }
     }
@@ -425,6 +427,7 @@ export async function buildUsageMap(pageEntries, org, repo, ref = 'main', onProg
         });
       }
     }
+    // eslint-disable-next-line no-console -- perf debug when ?debug=perf
     console.log(lines.join('\n'));
   }
 

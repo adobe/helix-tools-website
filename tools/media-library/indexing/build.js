@@ -23,7 +23,7 @@ import {
 import { toAbsoluteFilePath } from './parse.js';
 import { IndexConfig } from '../core/constants.js';
 import { incrementalTimeParams, initialTimeParams } from '../core/storage.js';
-import { isPerfEnabled } from '../core/params.js';
+import isPerfEnabled from '../core/params.js';
 
 const PROGRESSIVE_DISPLAY_CAP = 3000;
 
@@ -152,6 +152,7 @@ export async function fetchAndBuildMediaData(org, site, options = {}) {
   const buildStartTime = Date.now();
 
   if (isPerfEnabled()) {
+    // eslint-disable-next-line no-console -- perf debug when ?debug=perf
     console.log(`[MediaLibrary:build] Starting ${buildMode} build for ${org}/${site}${path || '/'}`);
   }
 
@@ -253,6 +254,7 @@ export async function fetchAndBuildMediaData(org, site, options = {}) {
     const statusStart = Date.now();
 
     if (isPerfEnabled()) {
+      // eslint-disable-next-line no-console -- perf debug when ?debug=perf
       console.log('[MediaLibrary:build] Fetching status API and medialog in parallel...');
     }
 
@@ -278,11 +280,14 @@ export async function fetchAndBuildMediaData(org, site, options = {}) {
       }
 
       if (isPerfEnabled()) {
+        // eslint-disable-next-line no-console -- perf debug when ?debug=perf
         console.log(`[MediaLibrary:build] Status API returned ${statusResources.length} resources`);
+        // eslint-disable-next-line no-console -- perf debug when ?debug=perf
         console.log(`[MediaLibrary:build] Medialog returned ${medialogResult.length} entries`);
       }
     } catch (error) {
       if (isPerfEnabled()) {
+        // eslint-disable-next-line no-console -- perf debug: log fetch error when ?debug=perf
         console.error('[MediaLibrary:build] Error during fetch:', error);
       }
       throw error;
@@ -345,7 +350,9 @@ export async function fetchAndBuildMediaData(org, site, options = {}) {
 
   // Log performance metrics only when debug=perf is enabled
   if (isPerfEnabled()) {
+    // eslint-disable-next-line no-console -- perf debug when ?debug=perf
     console.log('[MediaLibrary:build] Build completed successfully');
+    // eslint-disable-next-line no-console -- perf debug when ?debug=perf
     console.log('[MediaLibrary:perf]', JSON.stringify(perf, null, 2));
   }
 

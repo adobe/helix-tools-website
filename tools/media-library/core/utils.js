@@ -21,7 +21,9 @@ export function escapeAttr(str) {
 export function safeUrlForAttr(url) {
   if (!url || typeof url !== 'string') return '';
   const t = url.trim();
-  if (t.startsWith('https://') || t.startsWith('http://') || (t.startsWith('/') && !t.startsWith('//'))) {
+  const hasValidScheme = t.startsWith('https://') || t.startsWith('http://');
+  const isRelPath = t.startsWith('/') && !t.startsWith('//');
+  if (hasValidScheme || isRelPath) {
     return escapeAttr(t);
   }
   return '';
@@ -50,7 +52,7 @@ export function pluralize(singular, plural, count) {
 }
 
 /**
- * Sorts media items for display: newest first by timestamp, then by doc path depth, then by name, then by URL for stability.
+ * Sorts media items for display: newest by timestamp, then doc depth, name, URL.
  */
 export function sortMediaData(mediaData) {
   if (!mediaData || mediaData.length === 0) return mediaData ?? [];
