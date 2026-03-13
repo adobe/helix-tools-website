@@ -8,9 +8,9 @@ import {
   Paths,
   ICON_DOC_EXCLUDE,
   Domains,
-  CORS_PROXY_URL,
 } from '../core/constants.js';
 import { getDedupeKey } from '../core/urls.js';
+import { fetchAdminWithRateLimit } from '../core/admin-rate-limit.js';
 
 export { getDedupeKey };
 
@@ -205,19 +205,22 @@ function processConcurrently(items, fn, concurrency) {
   return Promise.all(workers).then(() => results);
 }
 
+const ADMIN_PREVIEW_BASE = 'https://admin.hlx.page/preview';
+
 /**
- * Fetch page markdown from preview URL.
+ * Fetch page markdown via admin.hlx.page (same as page-status diff).
+ * Uses shared admin rate limiter (10 req/s) and 429 retry with backoff.
  */
 export async function fetchPageMarkdown(pagePath, org, repo, ref = 'main') {
   try {
     const path = pagePath.startsWith('/') ? pagePath : `/${pagePath}`;
+    let fetchPath;
+    if (path.endsWith('/')) fetchPath = `${path}index.md`;
+    else if (path.endsWith('.md')) fetchPath = path;
+    else fetchPath = `${path}.md`;
+    const url = `${ADMIN_PREVIEW_BASE}/${org}/${repo}/${ref}${fetchPath}`;
 
-    // Use CORS proxy to fetch page markdown
-    // Proxy URL is a Cloudflare Worker that forwards requests with CORS headers
-    const pageUrl = `https://${ref}--${repo}--${org}.aem.page${path}`;
-    const url = `${CORS_PROXY_URL}?url=${encodeURIComponent(pageUrl)}`;
-
-    const resp = await fetch(url);
+    const resp = await fetchAdminWithRateLimit(url, {}, { maxRetries: 3 });
     if (!resp.ok) return null;
     return resp.text();
   } catch {

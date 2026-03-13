@@ -13,6 +13,7 @@ import {
   pollStatusJob,
   getStatusJobDetails,
 } from './status-api.js';
+import runBulkStatus from './bulk-status.js';
 import {
   processLinkedContent,
   processStandaloneUploads,
@@ -173,21 +174,8 @@ export async function fetchAndBuildMediaData(org, site, options = {}) {
       if (fromMedialog.length > 0) onProgressiveData(fromMedialog);
     };
 
-    const runStatusJob = async () => {
-      onProgress({ stage: 'fetching', message: 'Creating status job...' });
-      const { jobUrl } = await createBulkStatusJob(org, site, 'main');
-      onProgress({ stage: 'fetching', message: 'Polling status job for site discovery...' });
-      await pollStatusJob(
-        jobUrl,
-        IndexConfig.STATUS_POLL_INTERVAL_MS,
-        (progress) => {
-          const msg = `Status: ${progress?.processed ?? 0}/${progress?.total ?? 0}...`;
-          onProgress({ stage: 'fetching', message: msg });
-        },
-        IndexConfig.STATUS_POLL_MAX_DURATION_MS,
-      );
-      return getStatusJobDetails(jobUrl);
-    };
+    const pathNorm = path ? (path.trim().replace(/\/+$/, '') || '').replace(/^(?!\/)/, '/') : '';
+    const contentPathForStatus = pathNorm || null;
 
     let statusPromise = null;
     if (preValidatedStatusResources != null) {
@@ -204,8 +192,16 @@ export async function fetchAndBuildMediaData(org, site, options = {}) {
         fetchAllMediaLog(org, site, timeParams, onMedialogChunk),
       ]);
     } else {
+      const progressCallback = (p) => {
+        const msg = p.message || `Status: ${p.progress?.processed ?? 0}/${p.progress?.total ?? 0}...`;
+        onProgress({ stage: p.stage || 'fetching', message: msg });
+      };
       [statusResources, medialogResult] = await Promise.all([
-        runStatusJob(),
+        runBulkStatus(org, site, 'main', contentPathForStatus, {
+          onProgress: progressCallback,
+          pollInterval: IndexConfig.STATUS_POLL_INTERVAL_MS,
+          maxDurationMs: IndexConfig.STATUS_POLL_MAX_DURATION_MS,
+        }).then(({ resources: r }) => r),
         fetchAllMediaLog(org, site, timeParams, onMedialogChunk),
       ]);
     }
