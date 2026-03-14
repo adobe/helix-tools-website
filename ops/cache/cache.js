@@ -114,33 +114,166 @@ const showModal = (title, content) => {
 };
 
 /**
+ * Renders a collapsible JSON tree. Objects/arrays at depth 1+ start collapsed.
+ * @param {unknown} value - JSON value to render
+ * @param {number} depth - Current depth
+ * @param {string} [key] - Key name when inside an object
+ * @returns {DocumentFragment}
+ */
+function renderJsonNode(value, depth, key) {
+  const fragment = document.createDocumentFragment();
+  const line = document.createElement('div');
+  line.className = 'json-tree-line';
+  line.dataset.depth = String(depth);
+
+  const isObject = value !== null && typeof value === 'object';
+  const isArray = Array.isArray(value);
+  const isExpandable = isObject;
+
+  const keySpan = key !== undefined ? document.createElement('span') : null;
+  if (keySpan) {
+    keySpan.className = 'json-tree-key';
+    keySpan.textContent = `"${key}": `;
+  }
+
+  const preview = document.createElement('span');
+  preview.className = `json-tree-preview${key === undefined ? ' json-tree-preview-no-key' : ''}`;
+  if (isArray) {
+    preview.textContent = `[${value.length}]`;
+  } else if (isObject && !Array.isArray(value)) {
+    preview.textContent = '{...}';
+  } else if (typeof value === 'string') {
+    preview.className += ' json-tree-string';
+    preview.textContent = `"${escapeHtml(value)}"`;
+  } else if (typeof value === 'number') {
+    preview.className += ' json-tree-number';
+    preview.textContent = String(value);
+  } else if (typeof value === 'boolean') {
+    preview.className += ' json-tree-boolean';
+    preview.textContent = String(value);
+  } else if (value === null) {
+    preview.className += ' json-tree-null';
+    preview.textContent = 'null';
+  }
+
+  const toggle = document.createElement('span');
+  toggle.className = 'json-tree-toggle';
+  toggle.textContent = isExpandable ? '\u25B6' : ' ';
+  toggle.setAttribute('aria-label', isExpandable ? 'Expand' : '');
+  if (isExpandable) {
+    toggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const children = line.nextElementSibling;
+      if (children?.classList.contains('json-tree-children')) {
+        const isCollapsed = children.hidden;
+        children.hidden = !isCollapsed;
+        toggle.textContent = isCollapsed ? '\u25BC' : '\u25B6';
+        toggle.setAttribute('aria-label', isCollapsed ? 'Collapse' : 'Expand');
+        preview.hidden = !children.hidden;
+      }
+    });
+  }
+
+  line.appendChild(toggle);
+  if (keySpan) line.appendChild(keySpan);
+  line.appendChild(preview);
+  fragment.appendChild(line);
+
+  if (isExpandable) {
+    const children = document.createElement('div');
+    children.className = 'json-tree-children';
+    const expandedByDefault = ['config', 'cdn', 'live'].includes(key);
+    const startCollapsed = depth >= 1 && !expandedByDefault;
+    children.hidden = startCollapsed;
+    if (startCollapsed) toggle.textContent = '\u25B6';
+    else preview.hidden = true;
+
+    const entries = isArray
+      ? value.map((v, i) => [String(i), v])
+      : Object.entries(value);
+    entries.forEach(([k, v]) => {
+      children.appendChild(renderJsonNode(v, depth + 1, isArray ? undefined : k));
+    });
+
+    const close = document.createElement('div');
+    close.className = 'json-tree-line json-tree-close';
+    close.dataset.depth = String(depth);
+    const closeChar = isArray ? ']' : '}';
+    close.innerHTML = `<span class="json-tree-toggle"> </span><span class="json-tree-preview json-tree-preview-no-key">${closeChar}</span>`;
+    children.appendChild(close);
+
+    fragment.appendChild(children);
+  }
+
+  return fragment;
+}
+
+/**
  * @param {string} language
  * @param {string} title
  * @param {string} text
  * @returns {Promise<HTMLDivElement>}
  */
 const showCodeModal = async (language, title, text) => {
-  await loadPrism();
+  let useJsonViewer = false;
+  if (language === 'json') {
+    try {
+      JSON.parse(text);
+      useJsonViewer = true;
+    } catch {
+      /* fall through to code view */
+    }
+  }
+
   const blob = new Blob([text], { type: 'text/plain' });
   const downloadUrl = URL.createObjectURL(blob);
-  const modal = showModal(
-    title,
-    /* html */`
+  const downloadFilename = `${title.toLowerCase().replace(/\s+/g, '-')}.${language}`;
+
+  let content;
+  if (useJsonViewer) {
+    content = /* html */`
       <div class="code-panel">
         <div class="code-actions">
           <a class="code-button copy">
             <span class="icon"></span>
           </a>
-          <a class="code-button download" href="${downloadUrl}" download="${title.toLowerCase().replace(/\s+/g, '-')}.${language}">
+          <a class="code-button download" href="${downloadUrl}" download="${downloadFilename}">
+            <span class="icon"></span>
+          </a>
+        </div>
+        <div class="json-tree-container"></div>
+      </div>
+    `;
+  } else {
+    await loadPrism();
+    content = /* html */`
+      <div class="code-panel">
+        <div class="code-actions">
+          <a class="code-button copy">
+            <span class="icon"></span>
+          </a>
+          <a class="code-button download" href="${downloadUrl}" download="${downloadFilename}">
             <span class="icon"></span>
           </a>
         </div>
         <pre><code class="language-${language}">${escapeHtml(text)}</code></pre>
       </div>
-    `,
-  );
-  // eslint-disable-next-line no-undef
-  Prism.highlightElement(modal.querySelector('code'));
+    `;
+  }
+
+  const modal = showModal(title, content);
+
+  if (useJsonViewer) {
+    const data = JSON.parse(text);
+    const container = modal.querySelector('.json-tree-container');
+    const tree = document.createElement('div');
+    tree.className = 'json-tree';
+    tree.appendChild(renderJsonNode(data, 0));
+    container.appendChild(tree);
+  } else {
+    // eslint-disable-next-line no-undef
+    Prism.highlightElement(modal.querySelector('code'));
+  }
 
   const copyBtn = modal.querySelector('.code-actions .copy');
   copyBtn.addEventListener('click', () => {
@@ -158,31 +291,48 @@ const showCodeModal = async (language, title, text) => {
  * @param {import('./types.js').POP[]} pops
  * @param {'fastly'|'cloudflare'} type
  */
-const popsTemplate = (pops, type) => {
+/**
+ * @param {import('./types.js').POP[]} pops
+ * @param {'fastly'|'cloudflare'} type
+ * @param {Record<string, string>} [liveHeaders] Reference headers (e.g. live.headers)
+ */
+const popsTemplate = (pops, type, liveHeaders) => {
   import('./pops-map.js');
+  const encoded = liveHeaders ? encodeURIComponent(JSON.stringify(liveHeaders)) : '';
+  const liveHeadersAttr = encoded ? ` data-live-headers="${encoded}"` : '';
+  const dataPops = encodeURIComponent(JSON.stringify(pops));
   return /* html */`\
-    <details>
-      <summary>POP Details</summary>
+    <div class="pops-details">
+      <h3 class="pops-summary">POP Details</h3>
       <div class="pops">
-        <pops-map data-cdn-type="${type}" data-pops="${encodeURIComponent(JSON.stringify(pops))}"></pops-map>
+        <pops-map data-cdn-type="${type}" data-pops="${dataPops}"${liveHeadersAttr}></pops-map>
+        <div class="pops-legend">
+          <span class="pops-legend-item"><span class="pops-legend-dot pops-legend-dot-success"></span> Consistent with live</span>
+          <span class="pops-legend-item"><span class="pops-legend-dot pops-legend-dot-warning"></span> last-modified/content-length differs</span>
+          <span class="pops-legend-item"><span class="pops-legend-dot pops-legend-dot-error"></span> Hash mismatch</span>
+        </div>
       </div>
-    </details>
+    </div>
   `;
 };
 
 const tileTemplate = (
   env,
+  tileData,
   {
+    contentLengthMatches,
+    lastModMatches,
+    liveHeaders,
+  },
+) => {
+  const {
     headers,
     status,
     url,
     pops,
-  },
-  {
-    contentLengthMatches,
-    lastModMatches,
-  },
-) => /* html */`
+  } = tileData;
+  const popsType = tileData.cdnType ?? tileData.actualCDNType ?? 'fastly';
+  return /* html */`
     <div class="tile">
       <h2>${env}</h2>
       <div class="row">
@@ -232,9 +382,10 @@ const tileTemplate = (
         <span class="val ${valCls}">${val}</span>
       </div>` : '';
   }).join('\n')}
-    ${pops ? popsTemplate(pops, 'fastly') : ''}
+    ${pops ? popsTemplate(pops, popsType, liveHeaders ?? {}) : ''}
     </div>
   `;
+};
 
 /**
  * @param {HTMLDivElement} container
@@ -378,8 +529,11 @@ const renderDetails = (data) => {
   const opts = {
     contentLengthMatches: true,
     lastModMatches: true,
+    liveHeaders: data.live?.headers,
   };
-  if (data.cdn.headers['content-length'] !== data.live.headers['content-length']) {
+  const cdnLen = data.cdn?.headers?.['content-length'] ?? data.cdn?.headers?.content_length;
+  const liveLen = data.live?.headers?.['content-length'] ?? data.live?.headers?.content_length;
+  if (String(cdnLen ?? '').trim() !== String(liveLen ?? '').trim()) {
     opts.contentLengthMatches = false;
   }
   if (data.cdn.headers['last-modified'] !== data.live.headers['last-modified']) {

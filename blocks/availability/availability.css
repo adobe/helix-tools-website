@@ -1,16 +1,53 @@
+/* When loaded in pops-map shadow DOM: containment and pin color overrides */
+:host {
+  overflow: visible;
+  display: block;
+}
+
+:host > * {
+  display: block;
+  overflow: visible;
+  max-height: 45vh;
+}
+
+:host .availability svg circle {
+  fill: #22c55e !important;
+  stroke: #22c55e !important;
+  stroke-width: 0 !important;
+}
+
+:host .availability svg circle.error {
+  fill: #ef4444 !important;
+  stroke: #ef4444 !important;
+}
+
+:host .availability svg circle.header-mismatch {
+  fill: #e67700 !important;
+  stroke: #e67700 !important;
+}
+
 .availability {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
+  max-width: 100%;
+  min-height: 200px;
   max-height: 45vh;
   aspect-ratio: 16 / 9;
   margin: 0 auto var(--spacing-s) auto;
   border-radius: var(--image-border-radius-l);
-  background: light-dark(
-    linear-gradient(135deg, var(--color-white), var(--color-accent-lightgreen-bg)),
-    linear-gradient(135deg, var(--gray-800), var(--gray-900))
-  );
+  background: transparent;
+  overflow: visible;
+}
+
+/* Clips map only; tooltip (sibling) can overflow */
+.availability-map-container {
+  overflow: hidden;
+  display: block;
+  max-width: 100%;
+  max-height: 45vh;
+  border-radius: var(--image-border-radius-xxl);
 }
 
 .availability .tooltip-wrapper {
@@ -18,13 +55,12 @@
   max-width: calc(100% - 6vw);
 }
 
-.availability .tooltip-wrapper > div {
+.availability .tooltip-wrapper > .tooltip {
   white-space: wrap;
   max-width: 316px;
   line-height: 1.2em;
   text-align: center;
   pointer-events: none;
-
 }
 
 @media (width >= 900px) {
@@ -33,45 +69,62 @@
   }
 }
 
-.availability img,
-.availability svg {
-  --availability-shadow-opacity: light-dark(0.33, 0.6);
-
+.availability-map-container img,
+.availability-map-container svg {
   display: block;
   max-width: 100%;
   height: auto;
   aspect-ratio: 2 / 1;
   border-radius: var(--image-border-radius-xxl);
-  background-color: var(--color-white);
-  color: var(--bg-color-grey-2);
-  box-shadow: 0 4px 8px rgb(0 0 0 / var(--availability-shadow-opacity));
+  background-color: #f8f8f8;
+  color: #e6e6e6;
+  box-shadow: 0 4px 8px rgb(0 0 0 / 25%);
 }
 
-.availability svg circle {
-  stroke: var(--color-success);
+.availability-map-container svg path {
+  fill: currentcolor;
+  stroke: #d0d0d0;
+  stroke-width: 0.5;
+}
+
+.availability svg circle,
+.availability-map-container svg circle {
+  stroke: var(--color-success, #22c55e);
   stroke-width: 0;
-  fill: var(--color-success);
+  fill: var(--color-success, #22c55e);
   transition: fill .2s, stroke .2s, stroke-width .2s;
   cursor: context-menu;
 }
 
 .availability svg circle.error {
-  stroke: var(--color-error);
-  fill: var(--color-error);
+  stroke: var(--color-error, #ef4444);
+  fill: var(--color-error, #ef4444);
+}
+
+.availability svg circle.header-mismatch {
+  stroke: var(--color-warning, #e67700);
+  fill: var(--color-warning, #e67700);
+}
+
+.availability svg circle.header-mismatch:hover,
+.availability svg circle.header-mismatch[data-focus] {
+  stroke: var(--color-warning-highlight, #ff9800);
+  stroke-width: 33px;
+  fill: var(--color-warning-highlight, #ff9800);
 }
 
 .availability svg circle:hover,
 .availability svg circle[data-focus] {
-  stroke: var(--color-success-highlight);
+  stroke: var(--color-success-highlight, #4ade80);
   stroke-width: 33px;
-  fill: var(--color-success-highlight);
+  fill: var(--color-success-highlight, #4ade80);
 }
 
 .availability svg circle.error:hover,
 .availability svg circle.error[data-focus] {
-  stroke: var(--color-error-highlight);
+  stroke: var(--color-error-highlight, #f87171);
   stroke-width: 33px;
-  fill: var(--color-error-highlight);
+  fill: var(--color-error-highlight, #f87171);
 }
 
 .availability .tooltip {
@@ -81,8 +134,8 @@
   max-width: 100%;
   border-radius: var(--input-border-radius);
   padding: var(--spacing-xxxs) var(--spacing-xxs);
-  background-color: var(--overlay-curtain-bg-color);
-  color: var(--color-white);
+  background-color: #1a1a1a;
+  color: #fff;
   font-size: var(--type-detail-m-size);
   line-height: var(--type-detail-m-lh);
   opacity: 1;
@@ -121,14 +174,14 @@
   height: 0;
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
-  border-top: 6px solid var(--overlay-curtain-bg-color);
+  border-top: 6px solid #1a1a1a;
 }
 
 .availability .tooltip.flip::after {
   top: -6px;
   bottom: unset;
   border-top: 0;
-  border-bottom: 6px solid var(--overlay-curtain-bg-color);
+  border-bottom: 6px solid #1a1a1a;
 }
 
 .availability .tooltip.min::after {
@@ -144,4 +197,120 @@
 
 .availability .tooltip[aria-hidden='true'] {
   opacity: 0;
+}
+
+/* When tooltip is portaled to body (avoids ancestor overflow clipping) */
+.tooltip.tooltip-portal {
+  z-index: 10001;
+  position: fixed;
+  transform: translate(-50%, calc(-50% - (9px + var(--type-detail-m-lh))));
+  background-color: #1a1a1a !important;
+  color: #fff !important;
+  border-radius: var(--input-border-radius);
+  padding: var(--spacing-xxxs) var(--spacing-xxs);
+  font-size: var(--type-detail-m-size);
+  line-height: var(--type-detail-m-lh);
+  pointer-events: auto;
+}
+
+/* Speech bubble pointer; .availability .tooltip::after doesn't match when portaled */
+.tooltip.tooltip-portal::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid #1a1a1a;
+}
+
+.tooltip.tooltip-portal.flip::after {
+  top: -6px;
+  bottom: unset;
+  border-top: 0;
+  border-bottom: 6px solid #1a1a1a;
+}
+
+.tooltip.tooltip-portal.min::after {
+  left: 3px;
+  border-left: 0;
+}
+
+.tooltip.tooltip-portal.max::after {
+  left: unset;
+  right: -3px;
+  border-right: 0;
+}
+
+.tooltip.tooltip-portal.tooltip-pop {
+  padding: var(--spacing-xxs);
+  max-width: min(280px, 90vw);
+}
+
+.tooltip.tooltip-portal .tooltip-pop-line {
+  margin: 0;
+  font-size: var(--type-detail-m-size);
+  line-height: 1.4;
+}
+
+.tooltip.tooltip-portal .tooltip-pop-label {
+  color: rgb(255 255 255 / 70%);
+}
+
+.tooltip.tooltip-portal .tooltip-pop-value {
+  color: #fff;
+}
+
+.tooltip.tooltip-portal .tooltip-pop-conflict {
+  color: #f59e0b;
+}
+
+.tooltip.tooltip-portal .tooltip-pop-error-value {
+  color: #ef4444;
+}
+
+.availability .tooltip.tooltip-pop {
+  max-width: min(280px, 90vw);
+  padding: var(--spacing-xxs);
+  text-align: left;
+}
+
+.availability .tooltip-pop-line {
+  margin: 0;
+  font-size: var(--type-detail-m-size);
+  line-height: 1.4;
+}
+
+.availability .tooltip-pop-label {
+  color: rgb(255 255 255 / 70%);
+}
+
+.availability .tooltip-pop-value {
+  color: #fff;
+}
+
+.availability .tooltip-pop-conflict {
+  color: #f59e0b;
+}
+
+.availability .tooltip-pop-error-value {
+  color: #ef4444;
+}
+
+.availability .tooltip.tooltip-json {
+  max-width: min(500px, 90vw);
+  padding: var(--spacing-xxs);
+}
+
+.availability .tooltip.tooltip-json pre {
+  margin: 0;
+  max-height: 50vh;
+  overflow: auto;
+  text-align: left;
+  font-size: 0.75em;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
