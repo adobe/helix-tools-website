@@ -20,7 +20,7 @@ import {
   applyAuditChunkToMaps,
   buildEarlyLinkedPlaceholders,
 } from './reconcile.js';
-import { toAbsoluteFilePath } from './parse.js';
+import { toAbsoluteFilePath, isPage } from './parse.js';
 import { IndexConfig } from '../core/constants.js';
 import { incrementalTimeParams, initialTimeParams } from '../core/storage.js';
 import isPerfEnabled from '../core/params.js';
@@ -316,15 +316,17 @@ export async function fetchAndBuildMediaData(org, site, options = {}) {
       );
     }
 
-    const syntheticAudit = filteredResources.map((r) => {
-      const entryPath = toAbsoluteFilePath(r.path);
-      return {
-        path: entryPath,
-        route: 'preview',
-        method: 'UPDATE',
-        timestamp: Date.now(),
-      };
-    });
+    const syntheticAudit = filteredResources
+      .filter((r) => isPage(r.path))
+      .map((r) => {
+        const entryPath = toAbsoluteFilePath(r.path);
+        return {
+          path: entryPath,
+          route: 'preview',
+          method: 'UPDATE',
+          timestamp: Date.now(),
+        };
+      });
 
     applyAuditChunkToMaps(syntheticAudit, pagesByPath, filesByPath, deletedPaths);
     const earlyLinked = buildEarlyLinkedPlaceholders(filesByPath, deletedPaths, org, site);
