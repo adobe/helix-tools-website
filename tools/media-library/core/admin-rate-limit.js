@@ -3,7 +3,9 @@
  * Same pattern as backfill tool: promise-chain acquire, 429 retry with backoff.
  */
 
-const ADMIN_API_RATE = 10;
+import isPerfEnabled from './params.js';
+
+const ADMIN_API_RATE = 8; /* keep some headroom under the 10 RPS project limit */
 
 function waitForDelay(ms, signal = null) {
   const duration = Math.max(0, ms);
@@ -72,10 +74,15 @@ export async function fetchAdminWithRateLimit(
     limiter.handleResponse(res);
 
     if (res.status === 429 && attemptNumber < maxRetries) {
-      const retryAfter = parseInt(
+      const headerVal = parseInt(
         res.headers.get('x-retry-after') || res.headers.get('retry-after'),
         10,
-      ) || (2 ** attemptNumber);
+      );
+      const retryAfter = Math.max(headerVal || 2 ** attemptNumber, 30);
+      if (isPerfEnabled()) {
+        // eslint-disable-next-line no-console
+        console.log(`[admin-api] 429 rate limit hit, backing off ${retryAfter}s (attempt ${attemptNumber + 1}/${maxRetries + 1})`);
+      }
       limiter.backoff(retryAfter);
       return attempt(attemptNumber + 1);
     }

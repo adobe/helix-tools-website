@@ -360,7 +360,7 @@ async function init() {
 
       const indexStartTime = Date.now();
       // eslint-disable-next-line no-console -- index lifecycle: start (always logged)
-      console.log('[Media Library] Index started');
+      console.log(`[Media Library] Index started at ${new Date(indexStartTime).toISOString()}`);
 
       const progressiveMap = new Map();
       let throttleTimer = null;
@@ -417,10 +417,11 @@ async function init() {
         statusResources: statusResourcesForBuild,
       });
 
-      const indexDurationSec = Math.round((Date.now() - indexStartTime) / 1000);
+      const indexEndTime = Date.now();
+      const indexDurationSec = Math.round((indexEndTime - indexStartTime) / 1000);
       const pagesParsed = perf?.markdownParse?.pages ?? 0;
-      // eslint-disable-next-line no-console -- index lifecycle (duration, pages)
-      console.log(`[Media Library] Index done: ${indexDurationSec}s, ${pagesParsed} pages`);
+      // eslint-disable-next-line no-console -- index lifecycle (start/end times, duration, pages)
+      console.log(`[Media Library] Index done: ${indexDurationSec}s, ${pagesParsed} pages (started: ${new Date(indexStartTime).toISOString()}, ended: ${new Date(indexEndTime).toISOString()})`);
 
       const finalMediaData = incremental && hasCache
         ? (() => {

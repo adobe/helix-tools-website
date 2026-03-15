@@ -3,7 +3,6 @@
  */
 import {
   IndexConfig,
-  ExternalMedia,
   MediaType,
   Paths,
   ICON_DOC_EXCLUDE,
@@ -11,6 +10,7 @@ import {
 } from '../core/constants.js';
 import { getDedupeKey } from '../core/urls.js';
 import { fetchAdminWithRateLimit } from '../core/admin-rate-limit.js';
+import { getExternalMediaTypeInfo } from '../core/media.js';
 import isPerfEnabled from '../core/params.js';
 
 export { getDedupeKey };
@@ -89,11 +89,83 @@ function toPath(href) {
   }
 }
 
+const HTML_MEDIA_ATTR_RE = /<(?:img|video|audio|source|iframe)\b[^>]*\b(src|srcset|poster)=["']([^"']+)["'][^>]*>/gi;
+
+function hasMalformedEncodedQuotes(target) {
+  return /^(?:%5c%22|%22)/i.test(target) || /(?:%5c%22|%22)$/i.test(target);
+}
+
+function stripMarkdownTitle(target) {
+  const trimmed = target.trim();
+  if (!trimmed) return '';
+
+  const angleMatch = trimmed.match(/^<([^>]+)>(?:\s+['"].*['"])?$/);
+  if (angleMatch) {
+    return angleMatch[1].trim();
+  }
+
+  const titleMatch = trimmed.match(/^(\S+)(?:\s+['"].*['"])?$/);
+  return titleMatch ? titleMatch[1] : trimmed;
+}
+
+function sanitizeExtractedUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== 'string') return null;
+
+  let value = stripMarkdownTitle(rawUrl);
+  if (!value || hasMalformedEncodedQuotes(value)) return null;
+
+  value = value.trim().replace(/&amp;/g, '&');
+
+  if (
+    (value.startsWith('"') && value.endsWith('"'))
+    || (value.startsWith('\'') && value.endsWith('\''))
+  ) {
+    value = value.slice(1, -1).trim();
+  }
+
+  if (!value || value.includes('\n') || value.includes('\r') || value.includes('\t')) {
+    return null;
+  }
+
+  if (
+    value.startsWith('\\"')
+    || value.endsWith('\\"')
+    || value.startsWith("\\'")
+    || value.endsWith("\\'")
+  ) {
+    return null;
+  }
+
+  if (!value.startsWith('http') && !value.startsWith('/')) {
+    return null;
+  }
+
+  return value;
+}
+
+function extractHtmlMediaUrls(md) {
+  return [...md.matchAll(HTML_MEDIA_ATTR_RE)].flatMap((match) => {
+    const [, attrName, rawValue] = match;
+    if (!rawValue) return [];
+    if (attrName.toLowerCase() === 'srcset') {
+      return rawValue
+        .split(',')
+        .map((candidate) => candidate.trim().split(/\s+/)[0])
+        .filter(Boolean);
+    }
+    return [rawValue];
+  });
+}
+
 function extractUrlsFromMarkdown(md) {
   if (!md || typeof md !== 'string') return [];
-  const fromLinks = [...md.matchAll(MD_LINK_RE)].map((m) => m[1].trim());
-  const fromAutolinks = [...md.matchAll(MD_AUTOLINK_RE)].map((m) => m[1].trim());
-  return [...fromLinks, ...fromAutolinks];
+  const candidates = [
+    ...[...md.matchAll(MD_LINK_RE)].map((m) => m[1]),
+    ...[...md.matchAll(MD_AUTOLINK_RE)].map((m) => m[1]),
+    ...extractHtmlMediaUrls(md),
+  ];
+
+  return [...new Set(candidates.map(sanitizeExtractedUrl).filter(Boolean))];
 }
 
 function isExternalUrl(url) {
@@ -102,54 +174,7 @@ function isExternalUrl(url) {
 }
 
 export function getExternalMediaType(url) {
-  if (!url || !url.startsWith('http') || !isExternalUrl(url)) return null;
-  try {
-    const parsed = new URL(url);
-    const pathPart = parsed.pathname.split('?')[0].split('#')[0];
-    const pathLower = pathPart.toLowerCase();
-    const extMatch = pathLower.match(ExternalMedia.EXTENSION_REGEX);
-    if (extMatch) {
-      const ext = extMatch[1].toLowerCase();
-      let type = MediaType.LINK;
-      if (ExternalMedia.EXTENSIONS.pdf.includes(ext)) type = MediaType.DOCUMENT;
-      else if (ExternalMedia.EXTENSIONS.svg.includes(ext)) type = MediaType.IMAGE;
-      else if (ExternalMedia.EXTENSIONS.image.includes(ext)) type = MediaType.IMAGE;
-      else if (ExternalMedia.EXTENSIONS.video.includes(ext)) type = MediaType.VIDEO;
-      const name = pathPart.split('/').pop() || parsed.hostname;
-      return { type, name };
-    }
-    const host = parsed.hostname;
-    const matched = ExternalMedia.HOST_PATTERNS.find(
-      (p) => p.host.test(host) && (!p.pathContains || parsed.pathname.includes(p.pathContains)),
-    );
-    if (matched) {
-      const { type: patternType } = matched;
-      if (matched.typeFromPath) {
-        const lastSegment = pathPart.split('/').pop() || '';
-        const segExt = lastSegment.split('.').pop()?.toLowerCase();
-        const imageExts = [...ExternalMedia.EXTENSIONS.image, ...ExternalMedia.EXTENSIONS.svg];
-        if (segExt && ExternalMedia.EXTENSIONS.video.includes(segExt)) {
-          return { type: MediaType.VIDEO, name: lastSegment };
-        }
-        if (segExt && ExternalMedia.EXTENSIONS.pdf.includes(segExt)) {
-          return { type: MediaType.DOCUMENT, name: lastSegment };
-        }
-        if (segExt && imageExts.includes(segExt)) {
-          return { type: MediaType.IMAGE, name: lastSegment };
-        }
-      }
-      if (patternType === ExternalMedia.CATEGORY_IMG) {
-        return { type: MediaType.IMAGE, name: pathPart.split('/').pop() || host };
-      }
-      if (patternType === MediaType.VIDEO) {
-        return { type: MediaType.VIDEO, name: host };
-      }
-      return { type: MediaType.LINK, name: host };
-    }
-  } catch {
-    /* parse error */
-  }
-  return null;
+  return getExternalMediaTypeInfo(url);
 }
 
 export function extractExternalMediaUrls(md) {
@@ -339,7 +364,11 @@ export async function buildUsageMap(pageEntries, org, repo, ref = 'main', onProg
     }
   }
 
-  // Retry failed pages serially (concurrency=1 to avoid overload)
+  // Retry failed pages with bounded concurrency pool (max 2) instead of serial
+  const retryConcurrency = Math.max(
+    1,
+    Math.min(2, IndexConfig.MAX_CONCURRENT_PAGE_FETCHES ?? 1),
+  );
   const allFailedPaths = [];
   failedPathsByReason.forEach((paths) => allFailedPaths.push(...paths));
   if (allFailedPaths.length > 0) {
@@ -348,11 +377,10 @@ export async function buildUsageMap(pageEntries, org, repo, ref = 'main', onProg
       allFailedPaths,
       async (normalizedPath) => {
         const result = await fetchPageMarkdown(normalizedPath, org, repo, ref);
-        const isSuccess = result?.status === 200;
-        const md = isSuccess ? (result.markdown ?? '') : (result?.markdown || null);
-        return { normalizedPath, md, isSuccess };
+        const md = result?.markdown || null;
+        return { normalizedPath, md };
       },
-      1, /* serial retries */
+      retryConcurrency,
     );
     retryResults.forEach(processResultIntoUsageMap);
     retryResults.forEach(({ isSuccess }) => {

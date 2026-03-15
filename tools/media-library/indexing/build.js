@@ -1,4 +1,4 @@
-import { toCanonicalMediaKey, pathUnder } from '../core/urls.js';
+import { getDedupeKey, pathUnder } from '../core/urls.js';
 import { MediaLibraryError, ErrorCodes, logMediaLibraryError } from '../core/errors.js';
 import t from '../core/messages.js';
 import {
@@ -19,8 +19,9 @@ import {
   processStandaloneUploads,
   applyAuditChunkToMaps,
   buildEarlyLinkedPlaceholders,
+  toCanonicalPath,
 } from './reconcile.js';
-import { toAbsoluteFilePath, isPage } from './parse.js';
+import { toAbsoluteFilePath } from './parse.js';
 import { IndexConfig } from '../core/constants.js';
 import { incrementalTimeParams, initialTimeParams } from '../core/storage.js';
 import isPerfEnabled from '../core/params.js';
@@ -80,14 +81,30 @@ export async function buildMediaDataFromEntries(
   const referencedHashes = new Set();
   [...medialogScoped, ...linkedEntries].forEach((e) => {
     if (e.resourcePath) {
-      const k = toCanonicalMediaKey(e.path || e.mediaHash);
+      const k = getDedupeKey(e.path || e.mediaHash);
       if (k) referencedHashes.add(k);
     }
   });
 
   const standalone = processStandaloneUploads(medialogScoped, referencedHashes);
   const processedAuditlog = processAuditLog(auditlogEntries, org, site);
-  const allMedialog = [...medialogScoped, ...standalone];
+
+  // Filter out self-referencing entries from medialogScoped (they're now in standalone)
+  const medialogWithoutSelfReferencing = medialogScoped.filter((m) => {
+    if (!m.resourcePath) return true; // Keep unreferenced entries
+    const normResourcePath = toCanonicalPath(m.resourcePath);
+    const mediaFilePath = toCanonicalPath(m.path || m.mediaHash);
+    return mediaFilePath !== normResourcePath; // Filter out self-referencing
+  });
+
+  // Count matched vs unmatched (self-referencing)
+  const matchedCount = medialogWithoutSelfReferencing.filter((m) => m.resourcePath).length;
+  const unmatchedCount = medialogScoped.length - matchedCount - standalone.length;
+  perf.medialog.matched = matchedCount;
+  perf.medialog.standalone = standalone.length;
+  perf.medialog.unmatched = unmatchedCount;
+
+  const allMedialog = [...medialogWithoutSelfReferencing, ...standalone];
   const allAudit = [...processedAuditlog, ...linkedEntries];
   let mediaData = transformToMediaData(allMedialog, allAudit);
 
@@ -103,6 +120,11 @@ export async function buildMediaDataFromEntries(
       ? mediaData.slice(0, PROGRESSIVE_DISPLAY_CAP)
       : mediaData;
     onProgressiveData(toEmit);
+  }
+
+  if (isPerfEnabled()) {
+    // eslint-disable-next-line no-console
+    console.log(`[MediaLibrary:build] Final mediaData count: ${mediaData.length} (matched: ${matchedCount}, standalone: ${standalone.length}, unmatched: ${unmatchedCount})`);
   }
 
   return mediaData;
@@ -170,6 +192,9 @@ export async function fetchAndBuildMediaData(org, site, options = {}) {
     medialog: {
       streamed: 0,
       chunks: 0,
+      matched: 0,
+      standalone: 0,
+      unmatched: 0,
       durationMs: 0,
     },
     auditlog: {
@@ -316,17 +341,15 @@ export async function fetchAndBuildMediaData(org, site, options = {}) {
       );
     }
 
-    const syntheticAudit = filteredResources
-      .filter((r) => isPage(r.path))
-      .map((r) => {
-        const entryPath = toAbsoluteFilePath(r.path);
-        return {
-          path: entryPath,
-          route: 'preview',
-          method: 'UPDATE',
-          timestamp: Date.now(),
-        };
-      });
+    const syntheticAudit = filteredResources.map((r) => {
+      const entryPath = toAbsoluteFilePath(r.path);
+      return {
+        path: entryPath,
+        route: 'preview',
+        method: 'UPDATE',
+        timestamp: Date.now(),
+      };
+    });
 
     applyAuditChunkToMaps(syntheticAudit, pagesByPath, filesByPath, deletedPaths);
     const earlyLinked = buildEarlyLinkedPlaceholders(filesByPath, deletedPaths, org, site);

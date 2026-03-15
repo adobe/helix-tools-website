@@ -16,7 +16,7 @@ import {
 import { Operation, Paths } from '../core/constants.js';
 import { getDedupeKey, pathUnder } from '../core/urls.js';
 
-function toCanonicalPath(path) {
+export function toCanonicalPath(path) {
   if (!path) return '';
   try {
     if (path.startsWith('http')) return new URL(path).pathname;
@@ -152,9 +152,19 @@ export function processStandaloneUploads(medialogEntries, referencedHashes) {
     ? referencedHashes
     : buildReferencedHashes(referencedHashes || []);
   const added = [];
-  const standaloneUploads = medialogEntries.filter(
-    (m) => !m.resourcePath && m.originalFilename,
-  );
+  const standaloneUploads = medialogEntries.filter((m) => {
+    // Case 1: No resourcePath + has originalFilename (existing logic)
+    if (!m.resourcePath && m.originalFilename) return true;
+
+    // Case 2: resourcePath === media path (self-referencing - DA-NX logic)
+    if (m.resourcePath) {
+      const normResourcePath = toCanonicalPath(m.resourcePath);
+      const mediaFilePath = toCanonicalPath(m.path || m.mediaHash);
+      if (mediaFilePath === normResourcePath) return true;
+    }
+
+    return false;
+  });
 
   standaloneUploads.forEach((media) => {
     const key = normalizeMediaKey(media.mediaHash || media.path);

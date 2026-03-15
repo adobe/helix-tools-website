@@ -44,6 +44,13 @@ export const Paths = Object.freeze({
 export const CORS_PROXY_URL = 'https://media-library-cors-proxy.aem-poc-lab.workers.dev/';
 export const MEDIA_UNDERSCORE_PREFIX = 'media_';
 
+// External video detection regexes
+export const YOUTUBE_VIDEO_RE = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)([^&\n?#/]+)|youtu\.be\/([^&\n?#/]+))/;
+export const VIMEO_VIDEO_RE = /(?:player\.)?vimeo\.com\/(?:video\/)?(\d+)(?:$|[/?#])/;
+export const DAILYMOTION_VIDEO_RE = /(?:dailymotion\.com\/video\/|dai\.ly\/)([^&\n?#]+)/;
+export const SCENE7_VIDEO_RE = /scene7\.com\/is\/content\//;
+export const DYNAMIC_MEDIA_VIDEO_RE = /\/is\/content\//;
+
 const mediaExtensions = {
   pdf: ['pdf'],
   svg: ['svg'],
@@ -69,11 +76,6 @@ export const ExternalMedia = Object.freeze({
   EXTENSION_REGEX: mediaExtensionRegex,
   HOST_PATTERNS: [
     { host: /adobeaemcloud\.com$/i, pathContains: 'urn:aaid:aem', typeFromPath: true },
-    { host: /youtube\.com$/i, type: MediaType.VIDEO },
-    { host: /youtu\.be$/i, type: MediaType.VIDEO },
-    { host: /vimeo\.com$/i, type: MediaType.VIDEO },
-    { host: /player\.vimeo\.com$/i, type: MediaType.VIDEO },
-    { host: /unsplash\.com$/i, type: categoryImg },
     { host: /images\.unsplash\.com$/i, type: categoryImg },
   ],
 });
