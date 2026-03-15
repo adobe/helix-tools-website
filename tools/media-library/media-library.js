@@ -630,11 +630,9 @@ async function init() {
       pathInput.value = pathParam;
     }
 
-    // Auto-load after a short delay to ensure DOM is ready
-    setTimeout(() => {
-      const path = getPathFromInput();
-      loadMediaData(orgParam, siteParam, path);
-    }, 100);
+    // Auto-load immediately (DOM is ready since module scripts are deferred)
+    const path = getPathFromInput();
+    loadMediaData(orgParam, siteParam, path);
   }
 }
 
