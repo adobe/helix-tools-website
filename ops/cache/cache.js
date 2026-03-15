@@ -144,7 +144,7 @@ function renderJsonNode(value, depth, key) {
     preview.textContent = '{...}';
   } else if (typeof value === 'string') {
     preview.className += ' json-tree-string';
-    preview.textContent = `"${escapeHtml(value)}"`;
+    preview.textContent = `"${value}"`;
   } else if (typeof value === 'number') {
     preview.className += ' json-tree-number';
     preview.textContent = String(value);
