@@ -3,14 +3,15 @@
  */
 import {
   IndexConfig,
-  ExternalMedia,
   MediaType,
   Paths,
   ICON_DOC_EXCLUDE,
   Domains,
-  CORS_PROXY_URL,
 } from '../core/constants.js';
 import { getDedupeKey } from '../core/urls.js';
+import { fetchAdminWithRateLimit } from '../core/admin-rate-limit.js';
+import { getExternalMediaTypeInfo } from '../core/media.js';
+import isPerfEnabled from '../core/params.js';
 
 export { getDedupeKey };
 
@@ -88,11 +89,83 @@ function toPath(href) {
   }
 }
 
+const HTML_MEDIA_ATTR_RE = /<(?:img|video|audio|source|iframe)\b[^>]*\b(src|srcset|poster)=["']([^"']+)["'][^>]*>/gi;
+
+function hasMalformedEncodedQuotes(target) {
+  return /^(?:%5c%22|%22)/i.test(target) || /(?:%5c%22|%22)$/i.test(target);
+}
+
+function stripMarkdownTitle(target) {
+  const trimmed = target.trim();
+  if (!trimmed) return '';
+
+  const angleMatch = trimmed.match(/^<([^>]+)>(?:\s+['"].*['"])?$/);
+  if (angleMatch) {
+    return angleMatch[1].trim();
+  }
+
+  const titleMatch = trimmed.match(/^(\S+)(?:\s+['"].*['"])?$/);
+  return titleMatch ? titleMatch[1] : trimmed;
+}
+
+function sanitizeExtractedUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== 'string') return null;
+
+  let value = stripMarkdownTitle(rawUrl);
+  if (!value || hasMalformedEncodedQuotes(value)) return null;
+
+  value = value.trim().replace(/&amp;/g, '&');
+
+  if (
+    (value.startsWith('"') && value.endsWith('"'))
+    || (value.startsWith('\'') && value.endsWith('\''))
+  ) {
+    value = value.slice(1, -1).trim();
+  }
+
+  if (!value || value.includes('\n') || value.includes('\r') || value.includes('\t')) {
+    return null;
+  }
+
+  if (
+    value.startsWith('\\"')
+    || value.endsWith('\\"')
+    || value.startsWith("\\'")
+    || value.endsWith("\\'")
+  ) {
+    return null;
+  }
+
+  if (!value.startsWith('http') && !value.startsWith('/')) {
+    return null;
+  }
+
+  return value;
+}
+
+function extractHtmlMediaUrls(md) {
+  return [...md.matchAll(HTML_MEDIA_ATTR_RE)].flatMap((match) => {
+    const [, attrName, rawValue] = match;
+    if (!rawValue) return [];
+    if (attrName.toLowerCase() === 'srcset') {
+      return rawValue
+        .split(',')
+        .map((candidate) => candidate.trim().split(/\s+/)[0])
+        .filter(Boolean);
+    }
+    return [rawValue];
+  });
+}
+
 function extractUrlsFromMarkdown(md) {
   if (!md || typeof md !== 'string') return [];
-  const fromLinks = [...md.matchAll(MD_LINK_RE)].map((m) => m[1].trim());
-  const fromAutolinks = [...md.matchAll(MD_AUTOLINK_RE)].map((m) => m[1].trim());
-  return [...fromLinks, ...fromAutolinks];
+  const candidates = [
+    ...[...md.matchAll(MD_LINK_RE)].map((m) => m[1]),
+    ...[...md.matchAll(MD_AUTOLINK_RE)].map((m) => m[1]),
+    ...extractHtmlMediaUrls(md),
+  ];
+
+  return [...new Set(candidates.map(sanitizeExtractedUrl).filter(Boolean))];
 }
 
 function isExternalUrl(url) {
@@ -101,54 +174,7 @@ function isExternalUrl(url) {
 }
 
 export function getExternalMediaType(url) {
-  if (!url || !url.startsWith('http') || !isExternalUrl(url)) return null;
-  try {
-    const parsed = new URL(url);
-    const pathPart = parsed.pathname.split('?')[0].split('#')[0];
-    const pathLower = pathPart.toLowerCase();
-    const extMatch = pathLower.match(ExternalMedia.EXTENSION_REGEX);
-    if (extMatch) {
-      const ext = extMatch[1].toLowerCase();
-      let type = MediaType.LINK;
-      if (ExternalMedia.EXTENSIONS.pdf.includes(ext)) type = MediaType.DOCUMENT;
-      else if (ExternalMedia.EXTENSIONS.svg.includes(ext)) type = MediaType.IMAGE;
-      else if (ExternalMedia.EXTENSIONS.image.includes(ext)) type = MediaType.IMAGE;
-      else if (ExternalMedia.EXTENSIONS.video.includes(ext)) type = MediaType.VIDEO;
-      const name = pathPart.split('/').pop() || parsed.hostname;
-      return { type, name };
-    }
-    const host = parsed.hostname;
-    const matched = ExternalMedia.HOST_PATTERNS.find(
-      (p) => p.host.test(host) && (!p.pathContains || parsed.pathname.includes(p.pathContains)),
-    );
-    if (matched) {
-      const { type: patternType } = matched;
-      if (matched.typeFromPath) {
-        const lastSegment = pathPart.split('/').pop() || '';
-        const segExt = lastSegment.split('.').pop()?.toLowerCase();
-        const imageExts = [...ExternalMedia.EXTENSIONS.image, ...ExternalMedia.EXTENSIONS.svg];
-        if (segExt && ExternalMedia.EXTENSIONS.video.includes(segExt)) {
-          return { type: MediaType.VIDEO, name: lastSegment };
-        }
-        if (segExt && ExternalMedia.EXTENSIONS.pdf.includes(segExt)) {
-          return { type: MediaType.DOCUMENT, name: lastSegment };
-        }
-        if (segExt && imageExts.includes(segExt)) {
-          return { type: MediaType.IMAGE, name: lastSegment };
-        }
-      }
-      if (patternType === ExternalMedia.CATEGORY_IMG) {
-        return { type: MediaType.IMAGE, name: pathPart.split('/').pop() || host };
-      }
-      if (patternType === MediaType.VIDEO) {
-        return { type: MediaType.VIDEO, name: host };
-      }
-      return { type: MediaType.LINK, name: host };
-    }
-  } catch {
-    /* parse error */
-  }
-  return null;
+  return getExternalMediaTypeInfo(url);
 }
 
 export function extractExternalMediaUrls(md) {
@@ -205,30 +231,38 @@ function processConcurrently(items, fn, concurrency) {
   return Promise.all(workers).then(() => results);
 }
 
+const ADMIN_PREVIEW_BASE = 'https://admin.hlx.page/preview';
+
 /**
- * Fetch page markdown from preview URL.
+ * Fetch page markdown via admin.hlx.page (same as page-status diff).
+ * Uses shared admin rate limiter (10 req/s) and 429 retry with backoff.
+ * Returns structured result: { markdown, status, reason }
  */
 export async function fetchPageMarkdown(pagePath, org, repo, ref = 'main') {
   try {
     const path = pagePath.startsWith('/') ? pagePath : `/${pagePath}`;
+    let fetchPath;
+    if (path.endsWith('/')) fetchPath = `${path}index.md`;
+    else if (path.endsWith('.md')) fetchPath = path;
+    else fetchPath = `${path}.md`;
+    const url = `${ADMIN_PREVIEW_BASE}/${org}/${repo}/${ref}${fetchPath}`;
 
-    // Use CORS proxy to fetch page markdown
-    // Proxy URL is a Cloudflare Worker that forwards requests with CORS headers
-    const pageUrl = `https://${ref}--${repo}--${org}.aem.page${path}`;
-    const url = `${CORS_PROXY_URL}?url=${encodeURIComponent(pageUrl)}`;
-
-    const resp = await fetch(url);
-    if (!resp.ok) return null;
-    return resp.text();
-  } catch {
-    return null;
+    const resp = await fetchAdminWithRateLimit(url, {}, { maxRetries: 3 });
+    if (!resp.ok) {
+      return { markdown: null, status: resp.status, reason: `HTTP ${resp.status}` };
+    }
+    const markdown = await resp.text();
+    return { markdown, status: 200, reason: null };
+  } catch (error) {
+    return { markdown: null, status: null, reason: error.message || 'Network error' };
   }
 }
 
 /**
  * Build usage map by fetching pages and parsing markdown for PDF/SVG/fragment/external links.
+ * Enhanced with batching, failure tracking, retry logic, and progressive callbacks.
  */
-export async function buildUsageMap(pageEntries, org, repo, ref = 'main', onProgress = null) {
+export async function buildUsageMap(pageEntries, org, repo, ref = 'main', onProgress = null, onBatch = null) {
   const usageMap = {
     fragments: new Map(),
     pdfs: new Map(),
@@ -248,18 +282,15 @@ export async function buildUsageMap(pageEntries, org, repo, ref = 'main', onProg
 
   const uniquePages = [...latestTimestampByPath.keys()].filter((p) => !isHiddenPath(p));
 
-  const results = await processConcurrently(
-    uniquePages,
-    async (normalizedPath, i) => {
-      onProgress?.({ message: `Parsing page ${i + 1}/${uniquePages.length}: ${normalizedPath}` });
-      const md = await fetchPageMarkdown(normalizedPath, org, repo, ref);
-      return { normalizedPath, md };
-    },
-    IndexConfig.MAX_CONCURRENT_FETCHES,
-  );
+  const usageMapStartTime = Date.now();
+  const counters = { success: 0, fail: 0, parsed: 0 };
+  const fetchTimes = [];
+  const batchSize = IndexConfig.USAGE_MAP_PROGRESSIVE_BATCH_SIZE ?? 1000;
+  const failureReasons = new Map(); // reason -> count
+  const failedPathsByReason = new Map(); // reason -> path[]
 
-  results.forEach(({ normalizedPath, md }) => {
-    if (!md) return;
+  const processResultIntoUsageMap = ({ normalizedPath, md }) => {
+    if (md == null) return; // allow empty string (200 with empty body)
 
     const addToMap = (map, path) => {
       if (!map.has(path)) map.set(path, new Set());
@@ -291,7 +322,92 @@ export async function buildUsageMap(pageEntries, org, repo, ref = 'main', onProg
     svgs.forEach((s) => addToMap(usageMap.svgs, s));
     icons.forEach((s) => addToMap(usageMap.svgs, s));
     externalUrls.forEach((u) => addToExternalMedia(u));
-  });
+  };
+
+  // Process pages in batches for progressive display
+  for (let batchStart = 0; batchStart < uniquePages.length; batchStart += batchSize) {
+    const batch = uniquePages.slice(batchStart, batchStart + batchSize);
+    // eslint-disable-next-line no-await-in-loop -- batch: complete each before next
+    const batchResults = await processConcurrently(
+      batch,
+      async (normalizedPath, i) => {
+        const globalIndex = batchStart + i;
+        onProgress?.({ message: `Parsing page ${globalIndex + 1}/${uniquePages.length}: ${normalizedPath}` });
+        const fetchStart = Date.now();
+        const result = await fetchPageMarkdown(normalizedPath, org, repo, ref);
+        const fetchTime = Date.now() - fetchStart;
+        fetchTimes.push(fetchTime);
+
+        const isSuccess = result?.status === 200;
+        const md = isSuccess ? (result.markdown ?? '') : (result?.markdown || null);
+        if (isSuccess) {
+          counters.success += 1;
+        } else {
+          counters.fail += 1;
+          const reason = result?.reason || `HTTP ${result?.status ?? 'unknown'}`;
+          const count = failureReasons.get(reason) || 0;
+          failureReasons.set(reason, count + 1);
+          if (!failedPathsByReason.has(reason)) failedPathsByReason.set(reason, []);
+          failedPathsByReason.get(reason).push(normalizedPath);
+        }
+        counters.parsed += 1;
+        return { normalizedPath, md };
+      },
+      IndexConfig.MAX_CONCURRENT_PAGE_FETCHES,
+    );
+
+    batchResults.forEach(processResultIntoUsageMap);
+
+    // Call onBatch after each batch for progressive UI updates
+    if (onBatch) {
+      onBatch(usageMap);
+    }
+  }
+
+  // Retry failed pages with bounded concurrency pool (max 2) instead of serial
+  const retryConcurrency = Math.max(
+    1,
+    Math.min(2, IndexConfig.MAX_CONCURRENT_PAGE_FETCHES ?? 1),
+  );
+  const allFailedPaths = [];
+  failedPathsByReason.forEach((paths) => allFailedPaths.push(...paths));
+  if (allFailedPaths.length > 0) {
+    onProgress?.({ message: `Retrying ${allFailedPaths.length} failed pages...` });
+    const retryResults = await processConcurrently(
+      allFailedPaths,
+      async (normalizedPath) => {
+        const result = await fetchPageMarkdown(normalizedPath, org, repo, ref);
+        const md = result?.markdown || null;
+        return { normalizedPath, md };
+      },
+      retryConcurrency,
+    );
+    retryResults.forEach(processResultIntoUsageMap);
+    retryResults.forEach(({ isSuccess }) => {
+      if (isSuccess) {
+        counters.success += 1;
+        counters.fail -= 1;
+      }
+    });
+    // Remove recovered paths from failedPathsByReason and failureReasons
+    const recovered = new Set(retryResults.filter((r) => r.isSuccess).map((r) => r.normalizedPath));
+    if (recovered.size > 0) {
+      failedPathsByReason.forEach((paths, reason) => {
+        const remaining = paths.filter((p) => !recovered.has(p));
+        if (remaining.length === 0) {
+          failedPathsByReason.delete(reason);
+          failureReasons.delete(reason);
+        } else {
+          failedPathsByReason.set(reason, remaining);
+          failureReasons.set(reason, remaining.length);
+        }
+      });
+      if (isPerfEnabled()) {
+        // eslint-disable-next-line no-console -- perf debug when ?debug=perf
+        console.log(`[buildUsageMap] Retry: ${recovered.size}/${allFailedPaths.length} recovered`);
+      }
+    }
+  }
 
   // Convert Sets to arrays for consumers
   ['fragments', 'pdfs', 'svgs'].forEach((key) => {
@@ -303,5 +419,50 @@ export async function buildUsageMap(pageEntries, org, repo, ref = 'main', onProg
     usageMap.externalMedia.set(url, { ...data, pages: [...data.pages] });
   });
 
-  return usageMap;
+  // Performance logging
+  const avgFetchTime = fetchTimes.length > 0
+    ? Math.round(fetchTimes.reduce((sum, t) => sum + t, 0) / fetchTimes.length)
+    : 0;
+  const maxFetchTime = fetchTimes.length > 0 ? fetchTimes.reduce((a, b) => Math.max(a, b)) : 0;
+  const minFetchTime = fetchTimes.length > 0 ? fetchTimes.reduce((a, b) => Math.min(a, b)) : 0;
+  const durationMs = Date.now() - usageMapStartTime;
+  const fragCount = usageMap.fragments?.size ?? 0;
+  const pdfCount = usageMap.pdfs?.size ?? 0;
+  const svgCount = usageMap.svgs?.size ?? 0;
+  const extCount = usageMap.externalMedia?.size ?? 0;
+  const itemsFound = fragCount + pdfCount + svgCount + extCount;
+
+  if (isPerfEnabled()) {
+    const endIso = new Date().toISOString();
+    const durationSec = Math.round(durationMs / 1000);
+    const lines = [
+      `[buildUsageMap] Ended at ${endIso} (duration: ${durationSec}s)`,
+      `  Pages: ${counters.success} success, ${counters.fail} failed of ${uniquePages.length} total`,
+      `  Fetch times: avg=${avgFetchTime}ms, min=${minFetchTime}ms, max=${maxFetchTime}ms`,
+      `  Items: frag=${fragCount}, pdf=${pdfCount}, svg=${svgCount}, ext=${extCount} (${itemsFound} total)`,
+    ];
+    const sortedReasons = [...failureReasons.entries()].sort((a, b) => b[1] - a[1]);
+    if (counters.fail > 0) {
+      if (sortedReasons.length > 0) {
+        lines.push('  Failure breakdown:');
+        sortedReasons.forEach(([reason, count]) => {
+          lines.push(`    ${reason}: ${count} (${Math.round((count / counters.fail) * 100)}%)`);
+          const paths = failedPathsByReason.get(reason) || [];
+          paths.slice(0, 10).forEach((p) => lines.push(`      - ${p}`));
+          if (paths.length > 10) {
+            lines.push(`      ... and ${paths.length - 10} more`);
+          }
+        });
+      }
+    }
+    // eslint-disable-next-line no-console -- perf debug when ?debug=perf
+    console.log(lines.join('\n'));
+  }
+
+  return {
+    usageMap,
+    counters,
+    durationMs,
+    fetchTimes: { avg: avgFetchTime, min: minFetchTime, max: maxFetchTime },
+  };
 }
