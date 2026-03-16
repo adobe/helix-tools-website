@@ -326,8 +326,8 @@ function updateConsoleControls() {
     : `Showing latest ${visible} of ${total} log entries`;
   DOM.showAllLogs.hidden = false;
   DOM.showAllLogs.textContent = consoleState.showAll
-    ? `Show recent (${LOG_WINDOW_SIZE})`
-    : `Show all (${total})`;
+    ? 'Show Recent Logs'
+    : 'Show All Logs';
   DOM.showAllLogs.setAttribute('aria-pressed', String(consoleState.showAll));
 }
 

@@ -100,6 +100,10 @@
   white-space: nowrap;
 }
 
+.media-library-backfill #show-all-logs[hidden] {
+  display: none;
+}
+
 .media-library-backfill #console-output {
   max-height: 400px;
   overflow-y: auto;
