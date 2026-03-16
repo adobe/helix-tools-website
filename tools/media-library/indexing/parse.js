@@ -377,8 +377,9 @@ export async function buildUsageMap(pageEntries, org, repo, ref = 'main', onProg
       allFailedPaths,
       async (normalizedPath) => {
         const result = await fetchPageMarkdown(normalizedPath, org, repo, ref);
-        const md = result?.markdown || null;
-        return { normalizedPath, md };
+        const isSuccess = result?.status === 200;
+        const md = isSuccess ? (result.markdown ?? '') : (result?.markdown || null);
+        return { normalizedPath, md, isSuccess };
       },
       retryConcurrency,
     );

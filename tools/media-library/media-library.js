@@ -36,6 +36,7 @@ import {
   fetchAndBuildMediaData,
   validatePathWithStatus,
 } from './indexing/build.js';
+import isPerfEnabled from './core/params.js';
 
 import createMediaInfoModal from './views/mediainfo/mediainfo.js';
 import { setMediaLibraryContext } from './core/context.js';
@@ -359,8 +360,6 @@ async function init() {
       updateAppState({ isValidating: false, isIndexing: true, progressiveMediaData: [] });
 
       const indexStartTime = Date.now();
-      // eslint-disable-next-line no-console -- index lifecycle: start (always logged)
-      console.log(`[Media Library] Index started at ${new Date(indexStartTime).toISOString()}`);
 
       const progressiveMap = new Map();
       let throttleTimer = null;
@@ -420,8 +419,11 @@ async function init() {
       const indexEndTime = Date.now();
       const indexDurationSec = Math.round((indexEndTime - indexStartTime) / 1000);
       const pagesParsed = perf?.markdownParse?.pages ?? 0;
-      // eslint-disable-next-line no-console -- index lifecycle (start/end times, duration, pages)
-      console.log(`[Media Library] Index done: ${indexDurationSec}s, ${pagesParsed} pages (started: ${new Date(indexStartTime).toISOString()}, ended: ${new Date(indexEndTime).toISOString()})`);
+
+      if (isPerfEnabled()) {
+        // eslint-disable-next-line no-console -- perf debug when ?debug=perf
+        console.log(`[Media Library] Index done: ${indexDurationSec}s, ${pagesParsed} pages (started: ${new Date(indexStartTime).toISOString()}, ended: ${new Date(indexEndTime).toISOString()})`);
+      }
 
       const finalMediaData = incremental && hasCache
         ? (() => {

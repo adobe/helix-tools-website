@@ -100,9 +100,11 @@ export async function buildMediaDataFromEntries(
   // Count matched vs unmatched (self-referencing)
   const matchedCount = medialogWithoutSelfReferencing.filter((m) => m.resourcePath).length;
   const unmatchedCount = medialogScoped.length - matchedCount - standalone.length;
-  perf.medialog.matched = matchedCount;
-  perf.medialog.standalone = standalone.length;
-  perf.medialog.unmatched = unmatchedCount;
+  if (perf) {
+    perf.medialog.matched = matchedCount;
+    perf.medialog.standalone = standalone.length;
+    perf.medialog.unmatched = unmatchedCount;
+  }
 
   const allMedialog = [...medialogWithoutSelfReferencing, ...standalone];
   const allAudit = [...processedAuditlog, ...linkedEntries];
