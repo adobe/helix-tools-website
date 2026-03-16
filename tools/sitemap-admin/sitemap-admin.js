@@ -118,7 +118,7 @@ function displaySitemapDetails(sitemapName, sitemapDef, newSitemap = false) {
     if (resp.ok) {
       sitemapDetails.close();
       sitemapDetails.remove();
-      showIndexReminder(newSitemap ? 'added' : 'updated');
+      if (newSitemap) showIndexReminder('added');
 
       const sitemapsList = document.getElementById('sitemaps-list');
       sitemapsList.innerHTML = '';
@@ -265,7 +265,7 @@ function displayLanguageEditDialog(sitemapName, langCode, langDef, isNew = false
     if (resp.ok) {
       langDialog.close();
       langDialog.remove();
-      showIndexReminder(isNew ? 'language added' : 'language updated');
+      if (isNew) showIndexReminder('language added');
 
       const sitemapsList = document.getElementById('sitemaps-list');
       sitemapsList.innerHTML = '';
