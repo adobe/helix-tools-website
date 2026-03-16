@@ -10,7 +10,7 @@ const consoleBlock = document.querySelector('.console');
 const addSitemapButton = document.getElementById('add-sitemap');
 const indexReminder = document.getElementById('index-reminder');
 
-const showIndexOnLoad = new URLSearchParams(window.location.search).has('showIndexDef');
+let showIndexOnLoad = new URLSearchParams(window.location.search).has('showIndexDef');
 
 let loadedSitemaps;
 let YAML;
@@ -591,7 +591,10 @@ async function init() {
 
       populateSitemaps(loadedSitemaps.sitemaps || {});
       addSitemapButton.disabled = false;
-      if (showIndexOnLoad) showIndexDialog();
+      if (showIndexOnLoad) {
+        showIndexOnLoad = false;
+        showIndexDialog();
+      }
     } else if (resp.status === 404) {
       updateConfig();
       // eslint-disable-next-line import/no-unresolved
@@ -600,7 +603,10 @@ async function init() {
       loadedSitemaps = { version: 1, sitemaps: {} };
       populateSitemaps({});
       addSitemapButton.disabled = false;
-      if (showIndexOnLoad) showIndexDialog();
+      if (showIndexOnLoad) {
+        showIndexOnLoad = false;
+        showIndexDialog();
+      }
     } else if (resp.status === 401) {
       ensureLogin(org.value, site.value);
     }
