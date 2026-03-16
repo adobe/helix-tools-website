@@ -3,6 +3,7 @@ import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 
 const ADMIN_BASE = 'https://admin.hlx.page';
+const DA_ETC_ORIGIN = 'https://da-etc.adobeaem.workers.dev';
 const AEM_PAGE_SUFFIX = '.aem.page';
 const REF = 'main';
 const BATCH_SIZE = 10;
@@ -473,14 +474,30 @@ function createRateLimiter(initialRate, getSignal = () => null) {
 adminLimiter = createRateLimiter(ADMIN_API_RATE, () => abortController?.signal);
 const aemPageLimiter = createRateLimiter(AEM_PAGE_RATE, () => abortController?.signal);
 
+function etcFetch(href, api, options) {
+  const url = `${DA_ETC_ORIGIN}/${api}?url=${encodeURIComponent(href)}`;
+  const opts = options || {};
+  return fetch(url, opts);
+}
+
 function getRateLimitedTarget(url) {
   if (url.startsWith(ADMIN_BASE)) {
-    return { limiter: adminLimiter, label: 'admin API', queue503Backoff: false };
+    return {
+      limiter: adminLimiter,
+      label: 'admin API',
+      queue503Backoff: false,
+      fetch: (targetUrl, fetchOptions) => fetch(targetUrl, fetchOptions),
+    };
   }
 
   try {
     if (new URL(url).hostname.endsWith(AEM_PAGE_SUFFIX)) {
-      return { limiter: aemPageLimiter, label: 'aem.page', queue503Backoff: true };
+      return {
+        limiter: aemPageLimiter,
+        label: 'aem.page',
+        queue503Backoff: true,
+        fetch: (targetUrl, fetchOptions) => etcFetch(targetUrl, 'cors', fetchOptions),
+      };
     }
   } catch {
     return null;
@@ -503,7 +520,9 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
         if (isAborted()) throw new DOMException('Aborted', 'AbortError');
       }
       // eslint-disable-next-line no-await-in-loop
-      const res = await fetch(url, fetchOptions);
+      const res = await (rateLimitedTarget?.fetch
+        ? rateLimitedTarget.fetch(url, fetchOptions)
+        : fetch(url, fetchOptions));
       if (rateLimitedTarget) {
         rateLimitedTarget.limiter.handleResponse(res);
       }
