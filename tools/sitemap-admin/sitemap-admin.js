@@ -8,12 +8,21 @@ const site = document.getElementById('site');
 const org = document.getElementById('org');
 const consoleBlock = document.querySelector('.console');
 const addSitemapButton = document.getElementById('add-sitemap');
+const indexReminder = document.getElementById('index-reminder');
+
+const showIndexOnLoad = new URLSearchParams(window.location.search).has('showIndexDef');
 
 let loadedSitemaps;
 let YAML;
+let cdnProdHost;
 
 function isMultiLanguageSitemap(sitemapDef) {
   return sitemapDef?.languages !== undefined;
+}
+
+function showIndexReminder(action) {
+  indexReminder.querySelector('p').textContent = `Sitemap ${action}. Remember to update your sitemap-index.xml to reflect this change.`;
+  indexReminder.hidden = false;
 }
 
 function displaySitemapDetails(sitemapName, sitemapDef, newSitemap = false) {
@@ -109,6 +118,7 @@ function displaySitemapDetails(sitemapName, sitemapDef, newSitemap = false) {
     if (resp.ok) {
       sitemapDetails.close();
       sitemapDetails.remove();
+      showIndexReminder(newSitemap ? 'added' : 'updated');
 
       const sitemapsList = document.getElementById('sitemaps-list');
       sitemapsList.innerHTML = '';
@@ -255,6 +265,7 @@ function displayLanguageEditDialog(sitemapName, langCode, langDef, isNew = false
     if (resp.ok) {
       langDialog.close();
       langDialog.remove();
+      showIndexReminder(isNew ? 'language added' : 'language updated');
 
       const sitemapsList = document.getElementById('sitemaps-list');
       sitemapsList.innerHTML = '';
@@ -303,6 +314,7 @@ async function removeLanguage(sitemapName, langCode) {
   logResponse(consoleBlock, resp.status, ['POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, resp.headers.get('x-error') || '']);
 
   if (resp.ok) {
+    showIndexReminder('language removed');
     const sitemapsList = document.getElementById('sitemaps-list');
     sitemapsList.innerHTML = '';
     adminForm.dispatchEvent(new Event('submit'));
@@ -346,6 +358,7 @@ async function removeSitemap(name) {
   logResponse(consoleBlock, resp.status, ['POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, resp.headers.get('x-error') || '']);
 
   if (resp.ok) {
+    showIndexReminder('removed');
     const sitemapsList = document.getElementById('sitemaps-list');
     sitemapsList.innerHTML = '';
     adminForm.dispatchEvent(new Event('submit'));
@@ -452,11 +465,108 @@ function populateSitemaps(sitemaps) {
   });
 }
 
+function collectSitemapEntries() {
+  const entries = [];
+  if (!loadedSitemaps?.sitemaps) return entries;
+
+  Object.values(loadedSitemaps.sitemaps).forEach((sitemapDef) => {
+    const origin = sitemapDef.origin || '';
+    if (isMultiLanguageSitemap(sitemapDef)) {
+      Object.values(sitemapDef.languages).forEach((langDef) => {
+        if (langDef.destination) entries.push({ destination: langDef.destination, origin });
+      });
+    } else if (sitemapDef.destination) {
+      entries.push({ destination: sitemapDef.destination, origin });
+    }
+  });
+
+  return entries;
+}
+
+async function fetchCdnProdHost() {
+  const resp = await fetch(`https://admin.hlx.page/config/${org.value}/sites/${site.value}/cdn.json`);
+  logResponse(consoleBlock, resp.status, ['GET', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/cdn.json`, resp.headers.get('x-error') || '']);
+  if (resp.ok) {
+    const config = await resp.json();
+    cdnProdHost = config.prod?.host;
+  }
+}
+
+function getOrigin(sitemapOrigin) {
+  if (cdnProdHost) return `https://${cdnProdHost}`;
+  if (sitemapOrigin) return sitemapOrigin;
+  return '';
+}
+
+function buildSitemapIndex() {
+  const sitemapEntries = collectSitemapEntries();
+  if (sitemapEntries.length === 0) return '';
+
+  const defaultOrigin = getOrigin('');
+  const entries = sitemapEntries.map(({ destination, origin }) => {
+    const resolvedOrigin = getOrigin(origin);
+    return `  <sitemap>\n    <loc>${resolvedOrigin}${destination}</loc>\n  </sitemap>`;
+  }).join('\n');
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${entries}
+  <!-- add custom sitemap entries here
+  <sitemap>
+    <loc>${defaultOrigin}/custom-sitemap.xml</loc>
+  </sitemap>
+  -->
+</sitemapindex>`;
+}
+
+async function showIndexDialog() {
+  if (!cdnProdHost) await fetchCdnProdHost();
+  const xml = buildSitemapIndex();
+  if (!xml) return;
+
+  document.body.append(document.querySelector('#sitemap-index-dialog-template').content.cloneNode(true));
+  const dialog = document.querySelector('dialog.sitemap-index-dialog');
+
+  dialog.querySelector('#sitemap-index-xml').value = xml;
+  dialog.showModal();
+
+  dialog.querySelector('#copy-index').addEventListener('click', (e) => {
+    navigator.clipboard.writeText(xml);
+    e.target.textContent = 'Copied';
+    e.target.disabled = true;
+  });
+
+  dialog.querySelector('#close-index').addEventListener('click', () => {
+    dialog.close();
+    dialog.remove();
+  });
+
+  dialog.addEventListener('click', (e) => {
+    const {
+      left, right, top, bottom,
+    } = dialog.getBoundingClientRect();
+    const { clientX, clientY } = e;
+    if (clientX < left || clientX > right || clientY < top || clientY > bottom) {
+      dialog.close();
+      dialog.remove();
+    }
+  });
+}
+
 async function init() {
   await initConfigField();
 
   addSitemapButton.addEventListener('click', () => {
     showTypeSelectionDialog();
+  });
+
+  indexReminder.querySelector('#index-reminder-build').addEventListener('click', () => {
+    indexReminder.hidden = true;
+    showIndexDialog();
+  });
+
+  indexReminder.querySelector('#index-reminder-dismiss').addEventListener('click', () => {
+    indexReminder.hidden = true;
   });
 
   adminForm.addEventListener('submit', async (e) => {
@@ -481,6 +591,7 @@ async function init() {
 
       populateSitemaps(loadedSitemaps.sitemaps || {});
       addSitemapButton.disabled = false;
+      if (showIndexOnLoad) showIndexDialog();
     } else if (resp.status === 404) {
       updateConfig();
       // eslint-disable-next-line import/no-unresolved
@@ -489,10 +600,15 @@ async function init() {
       loadedSitemaps = { version: 1, sitemaps: {} };
       populateSitemaps({});
       addSitemapButton.disabled = false;
+      if (showIndexOnLoad) showIndexDialog();
     } else if (resp.status === 401) {
       ensureLogin(org.value, site.value);
     }
   });
+
+  if (org.value && site.value) {
+    adminForm.requestSubmit();
+  }
 }
 
 registerToolReady(init());
