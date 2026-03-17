@@ -125,7 +125,7 @@
   width: max-content;
   max-width: 100%;
   border-radius: var(--input-border-radius);
-  padding: var(--spacing-xxxs) var(--spacing-xxs);
+  padding: var(--spacing-xs) var(--spacing-s);
   background-color: #1a1a1a;
   color: #fff;
   font-size: var(--type-detail-m-size);
@@ -201,7 +201,7 @@
 
 .availability .tooltip.tooltip-pop {
   max-width: min(280px, 90vw);
-  padding: var(--spacing-xxs);
+  padding: var(--spacing-s);
   text-align: left;
 }
 
@@ -229,7 +229,7 @@
 
 .availability .tooltip.tooltip-json {
   max-width: min(500px, 90vw);
-  padding: var(--spacing-xxs);
+  padding: var(--spacing-s);
 }
 
 .availability .tooltip.tooltip-json pre {
@@ -250,7 +250,7 @@
   background-color: #1a1a1a !important;
   color: #fff !important;
   border-radius: var(--input-border-radius);
-  padding: var(--spacing-75) var(--spacing-200);
+  padding: var(--spacing-xs) var(--spacing-s);
   font-size: var(--type-detail-m-size);
   line-height: var(--type-detail-m-lh);
   pointer-events: auto;
@@ -288,7 +288,7 @@
 }
 
 .tooltip.tooltip-portal.tooltip-pop {
-  padding: var(--spacing-200);
+  padding: var(--spacing-s);
   max-width: min(280px, 90vw);
 }
 
