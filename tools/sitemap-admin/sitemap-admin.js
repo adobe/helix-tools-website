@@ -340,11 +340,11 @@ async function generateSitemap(destination) {
   const sitemapUrl = `https://admin.hlx.page/sitemap/${org.value}/${site.value}/main${destination}`;
   const resp = await fetch(sitemapUrl, { method: 'POST' });
 
-  if (resp.ok) {
+  if (resp.status === 204) {
+    logResponse(consoleBlock, 204, ['POST', sitemapUrl, 'Path is not a destination for any configured sitemap']);
+  } else if (resp.ok) {
     const result = await resp.json();
     logResponse(consoleBlock, 200, ['POST', sitemapUrl, `Generated sitemap(s): ${result.paths?.join(', ') || destination}`]);
-  } else if (resp.status === 204) {
-    logResponse(consoleBlock, 204, ['POST', sitemapUrl, 'Path is not a destination for any configured sitemap']);
   } else {
     logResponse(consoleBlock, resp.status, ['POST', sitemapUrl, resp.headers.get('x-error') || '']);
   }
@@ -458,10 +458,12 @@ function populateSitemaps(sitemaps) {
         return;
       }
 
-      await generateSitemap(destPath);
-
-      btn.disabled = false;
-      btn.textContent = 'Generate';
+      try {
+        await generateSitemap(destPath);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Generate';
+      }
     });
 
     sitemapItem.querySelector('.remove-sitemap-btn').addEventListener('click', async (e) => {
