@@ -21,7 +21,7 @@ function isMultiLanguageSitemap(sitemapDef) {
 }
 
 function showIndexReminder(action) {
-  indexReminder.querySelector('p').textContent = `Sitemap ${action}. Remember to update your sitemap-index.xml to reflect this change.`;
+  indexReminder.querySelector('#index-reminder-action').textContent = action;
   indexReminder.hidden = false;
 }
 

@@ -50,7 +50,7 @@
 
     <div>
       <aside id="index-reminder" class="index-reminder" hidden aria-live="polite">
-        <p>Remember to update your <code>sitemap-index.xml</code> to reflect this change.</p>
+        <p>Sitemap <span id="index-reminder-action">updated</span>. Remember to update your <code>sitemap-index.xml</code> to reflect this change.</p>
         <div class="index-reminder-actions">
           <button type="button" id="index-reminder-build" class="button outline small">Generate sitemap-index.xml</button>
           <button type="button" id="index-reminder-dismiss" class="dismiss-btn" aria-label="Dismiss">&times;</button>
@@ -293,9 +293,10 @@
     </dialog>
   </template>
   <template id="sitemap-index-dialog-template">
-    <dialog class="sitemap-index-dialog" aria-label="Generate sitemap-index.xml">
+    <dialog class="sitemap-index-dialog" aria-labelledby="sitemap-index-dialog-title">
       <div class="sitemap-index-content">
         <div class="sitemap-index-header">
+          <h3 id="sitemap-index-dialog-title">Generate sitemap-index.xml</h3>
           <p>Copy and commit this as <code>sitemap-index.xml</code> in the root of your site's repository. Update it whenever you add or remove sitemaps.</p>
         </div>
         <textarea id="sitemap-index-xml" readonly aria-label="Sitemap index XML"></textarea>
