@@ -16,6 +16,26 @@ let loadedSitemaps;
 let YAML;
 let cdnProdHost;
 
+function cleanupDialog(dialog) {
+  dialog.close();
+  dialog.remove();
+}
+
+function registerDialogCleanup(dialog) {
+  dialog.addEventListener('close', () => {
+    dialog.remove();
+  });
+
+  dialog.addEventListener('cancel', () => {
+    dialog.remove();
+  });
+}
+
+async function ensureYaml() {
+  // eslint-disable-next-line import/no-unresolved
+  YAML = YAML || await import('https://unpkg.com/yaml@2.8.1/browser/index.js');
+}
+
 function isMultiLanguageSitemap(sitemapDef) {
   return sitemapDef?.languages !== undefined;
 }
@@ -29,7 +49,8 @@ function displaySitemapDetails(sitemapName, sitemapDef, newSitemap = false) {
   const isMultiLang = isMultiLanguageSitemap(sitemapDef);
   const templateId = isMultiLang ? '#sitemap-multilang-dialog-template' : '#sitemap-details-dialog-template';
   document.body.append(document.querySelector(templateId).content.cloneNode(true));
-  const sitemapDetails = document.querySelector('dialog.sitemap-details');
+  const sitemapDetails = document.body.querySelector('dialog.sitemap-details:last-of-type');
+  registerDialogCleanup(sitemapDetails);
 
   sitemapDetails.querySelector('#sitemap-name').value = sitemapName;
   if (!newSitemap) {
@@ -56,8 +77,7 @@ function displaySitemapDetails(sitemapName, sitemapDef, newSitemap = false) {
     const backButton = backButtonWrapper.querySelector('#back-sitemap');
     backButton.addEventListener('click', (e) => {
       e.preventDefault();
-      sitemapDetails.close();
-      sitemapDetails.remove();
+      cleanupDialog(sitemapDetails);
       // eslint-disable-next-line no-use-before-define
       showTypeSelectionDialog();
     });
@@ -116,8 +136,7 @@ function displaySitemapDetails(sitemapName, sitemapDef, newSitemap = false) {
     logResponse(consoleBlock, resp.status, ['POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, resp.headers.get('x-error') || '']);
 
     if (resp.ok) {
-      sitemapDetails.close();
-      sitemapDetails.remove();
+      cleanupDialog(sitemapDetails);
       if (newSitemap) showIndexReminder('added');
 
       const sitemapsList = document.getElementById('sitemaps-list');
@@ -131,8 +150,7 @@ function displaySitemapDetails(sitemapName, sitemapDef, newSitemap = false) {
 
   cancel.addEventListener('click', (e) => {
     e.preventDefault();
-    sitemapDetails.close();
-    sitemapDetails.remove();
+    cleanupDialog(sitemapDetails);
   });
 
   sitemapDetails.addEventListener('click', (e) => {
@@ -141,21 +159,20 @@ function displaySitemapDetails(sitemapName, sitemapDef, newSitemap = false) {
     } = sitemapDetails.getBoundingClientRect();
     const { clientX, clientY } = e;
     if (clientX < left || clientX > right || clientY < top || clientY > bottom) {
-      sitemapDetails.close();
-      sitemapDetails.remove();
+      cleanupDialog(sitemapDetails);
     }
   });
 }
 
 function showTypeSelectionDialog() {
   document.body.append(document.querySelector('#sitemap-type-dialog-template').content.cloneNode(true));
-  const typeDialog = document.querySelector('dialog.sitemap-type-dialog');
+  const typeDialog = document.body.querySelector('dialog.sitemap-type-dialog:last-of-type');
+  registerDialogCleanup(typeDialog);
   typeDialog.showModal();
 
   typeDialog.querySelector('#simple-sitemap-btn').addEventListener('click', (e) => {
     e.preventDefault();
-    typeDialog.close();
-    typeDialog.remove();
+    cleanupDialog(typeDialog);
     displaySitemapDetails('', {
       source: '/query-index.json',
       destination: '/sitemap.xml',
@@ -165,8 +182,7 @@ function showTypeSelectionDialog() {
 
   typeDialog.querySelector('#multilang-sitemap-btn').addEventListener('click', (e) => {
     e.preventDefault();
-    typeDialog.close();
-    typeDialog.remove();
+    cleanupDialog(typeDialog);
     displaySitemapDetails('', {
       lastmod: 'YYYY-MM-DD',
       languages: {},
@@ -175,8 +191,7 @@ function showTypeSelectionDialog() {
 
   typeDialog.querySelector('#cancel-type-btn').addEventListener('click', (e) => {
     e.preventDefault();
-    typeDialog.close();
-    typeDialog.remove();
+    cleanupDialog(typeDialog);
   });
 
   typeDialog.addEventListener('click', (e) => {
@@ -185,15 +200,15 @@ function showTypeSelectionDialog() {
     } = typeDialog.getBoundingClientRect();
     const { clientX, clientY } = e;
     if (clientX < left || clientX > right || clientY < top || clientY > bottom) {
-      typeDialog.close();
-      typeDialog.remove();
+      cleanupDialog(typeDialog);
     }
   });
 }
 
 function displayLanguageEditDialog(sitemapName, langCode, langDef, isNew = false) {
   document.body.append(document.querySelector('#language-edit-dialog-template').content.cloneNode(true));
-  const langDialog = document.querySelector('dialog.language-edit-dialog');
+  const langDialog = document.body.querySelector('dialog.language-edit-dialog:last-of-type');
+  registerDialogCleanup(langDialog);
 
   const langCodeInput = langDialog.querySelector('#lang-code');
   langCodeInput.value = langCode;
@@ -263,8 +278,7 @@ function displayLanguageEditDialog(sitemapName, langCode, langDef, isNew = false
     logResponse(consoleBlock, resp.status, ['POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, resp.headers.get('x-error') || '']);
 
     if (resp.ok) {
-      langDialog.close();
-      langDialog.remove();
+      cleanupDialog(langDialog);
       if (isNew) showIndexReminder('language added');
 
       const sitemapsList = document.getElementById('sitemaps-list');
@@ -278,8 +292,7 @@ function displayLanguageEditDialog(sitemapName, langCode, langDef, isNew = false
 
   cancel.addEventListener('click', (e) => {
     e.preventDefault();
-    langDialog.close();
-    langDialog.remove();
+    cleanupDialog(langDialog);
   });
 
   langDialog.addEventListener('click', (e) => {
@@ -288,8 +301,7 @@ function displayLanguageEditDialog(sitemapName, langCode, langDef, isNew = false
     } = langDialog.getBoundingClientRect();
     const { clientX, clientY } = e;
     if (clientX < left || clientX > right || clientY < top || clientY > bottom) {
-      langDialog.close();
-      langDialog.remove();
+      cleanupDialog(langDialog);
     }
   });
 }
@@ -381,13 +393,13 @@ function populateSitemaps(sitemaps) {
     sitemapItem.querySelector('.sitemap-name').textContent = name;
 
     if (isMultiLang) {
-      // Display multi-language sitemap info
+      // Render top-level multilang metadata separately from per-language settings.
       const languageCount = Object.keys(sitemapDef.languages).length;
       sitemapItem.querySelector('.sitemap-attribute-value-languages').textContent = `${languageCount} language${languageCount !== 1 ? 's' : ''}`;
       sitemapItem.querySelector('.sitemap-attribute-value-origin').textContent = sitemapDef.origin || 'n/a';
       sitemapItem.querySelector('.sitemap-attribute-value-default').textContent = sitemapDef.default || 'n/a';
 
-      // Show list of languages with edit/remove buttons
+      // Each language row gets its own controls so authors can update entries in place.
       const languagesList = sitemapItem.querySelector('.languages-list');
       Object.entries(sitemapDef.languages).forEach(([langCode, langDef]) => {
         languagesList.append(document.querySelector('#language-item-template').content.cloneNode(true));
@@ -396,26 +408,23 @@ function populateSitemaps(sitemaps) {
         langItem.querySelector('.lang-code').textContent = langCode;
         langItem.querySelector('.lang-destination').textContent = langDef.destination;
 
-        // Edit language button
         langItem.querySelector('.edit-language-btn').addEventListener('click', (e) => {
           e.preventDefault();
           displayLanguageEditDialog(name, langCode, langDef, false);
         });
 
-        // Remove language button
         langItem.querySelector('.remove-language-btn').addEventListener('click', async (e) => {
           e.preventDefault();
           await removeLanguage(name, langCode);
         });
       });
 
-      // Add language button
       sitemapItem.querySelector('.add-language-btn').addEventListener('click', (e) => {
         e.preventDefault();
         displayLanguageEditDialog(name, '', {}, true);
       });
     } else {
-      // Display simple sitemap info
+      // Simple sitemaps expose a single source/destination pair on the card.
       sitemapItem.querySelector('.sitemap-attribute-value-source').textContent = sitemapDef.source || 'n/a';
       sitemapItem.querySelector('.sitemap-attribute-value-destination').textContent = sitemapDef.destination || 'n/a';
       sitemapItem.querySelector('.sitemap-attribute-value-origin').textContent = sitemapDef.origin || 'n/a';
@@ -498,6 +507,15 @@ function getOrigin(sitemapOrigin) {
   return '';
 }
 
+function escapeXml(value) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll('\'', '&apos;');
+}
+
 function buildSitemapIndex() {
   const sitemapEntries = collectSitemapEntries();
   if (sitemapEntries.length === 0) return '';
@@ -505,7 +523,7 @@ function buildSitemapIndex() {
   const defaultOrigin = getOrigin('');
   const entries = sitemapEntries.map(({ destination, origin }) => {
     const resolvedOrigin = getOrigin(origin);
-    return `  <sitemap>\n    <loc>${resolvedOrigin}${destination}</loc>\n  </sitemap>`;
+    return `  <sitemap>\n    <loc>${escapeXml(`${resolvedOrigin}${destination}`)}</loc>\n  </sitemap>`;
   }).join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -522,10 +540,15 @@ ${entries}
 async function showIndexDialog() {
   if (!cdnProdHost) await fetchCdnProdHost();
   const xml = buildSitemapIndex();
-  if (!xml) return;
+  if (!xml) {
+    // eslint-disable-next-line no-alert
+    alert('No sitemap destinations are configured yet, so there is no sitemap-index.xml to generate.');
+    return;
+  }
 
   document.body.append(document.querySelector('#sitemap-index-dialog-template').content.cloneNode(true));
-  const dialog = document.querySelector('dialog.sitemap-index-dialog');
+  const dialog = document.body.querySelector('dialog.sitemap-index-dialog:last-of-type');
+  registerDialogCleanup(dialog);
 
   dialog.querySelector('#sitemap-index-xml').value = xml;
   dialog.showModal();
@@ -537,8 +560,7 @@ async function showIndexDialog() {
   });
 
   dialog.querySelector('#close-index').addEventListener('click', () => {
-    dialog.close();
-    dialog.remove();
+    cleanupDialog(dialog);
   });
 
   dialog.addEventListener('click', (e) => {
@@ -547,8 +569,7 @@ async function showIndexDialog() {
     } = dialog.getBoundingClientRect();
     const { clientX, clientY } = e;
     if (clientX < left || clientX > right || clientY < top || clientY > bottom) {
-      dialog.close();
-      dialog.remove();
+      cleanupDialog(dialog);
     }
   });
 }
@@ -583,8 +604,7 @@ async function init() {
 
     if (resp.ok) {
       updateConfig();
-      // eslint-disable-next-line import/no-unresolved
-      YAML = YAML || await import('https://unpkg.com/yaml@2.8.1/browser/index.js');
+      await ensureYaml();
 
       const yamlText = await resp.text();
       loadedSitemaps = YAML.parse(yamlText);
@@ -597,8 +617,7 @@ async function init() {
       }
     } else if (resp.status === 404) {
       updateConfig();
-      // eslint-disable-next-line import/no-unresolved
-      YAML = YAML || await import('https://unpkg.com/yaml@2.8.1/browser/index.js');
+      await ensureYaml();
 
       loadedSitemaps = { version: 1, sitemaps: {} };
       populateSitemaps({});

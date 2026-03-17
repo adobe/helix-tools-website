@@ -559,7 +559,7 @@
         }
       }
 
-      .sitemap-type-content .button-area {
+      .sitemap-type-button-area {
         display: flex;
         justify-content: center;
         margin-top: var(--spacing-m);
