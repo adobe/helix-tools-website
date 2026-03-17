@@ -10,22 +10,6 @@
   max-height: 45vh;
 }
 
-:host .availability svg circle {
-  fill: #22c55e !important;
-  stroke: #22c55e !important;
-  stroke-width: 0 !important;
-}
-
-:host .availability svg circle.error {
-  fill: #ef4444 !important;
-  stroke: #ef4444 !important;
-}
-
-:host .availability svg circle.header-mismatch {
-  fill: #e67700 !important;
-  stroke: #e67700 !important;
-}
-
 .availability {
   display: flex;
   align-items: center;
@@ -53,14 +37,6 @@
 .availability .tooltip-wrapper {
   position: relative;
   max-width: calc(100% - 6vw);
-}
-
-.availability .tooltip-wrapper > .tooltip {
-  white-space: wrap;
-  max-width: 316px;
-  line-height: 1.2em;
-  text-align: center;
-  pointer-events: none;
 }
 
 @media (width >= 900px) {
@@ -125,6 +101,22 @@
   stroke: var(--color-error-highlight, #f87171);
   stroke-width: 33px;
   fill: var(--color-error-highlight, #f87171);
+}
+
+:host .availability svg circle {
+  fill: #22c55e !important;
+  stroke: #22c55e !important;
+  stroke-width: 0 !important;
+}
+
+:host .availability svg circle.error {
+  fill: #ef4444 !important;
+  stroke: #ef4444 !important;
+}
+
+:host .availability svg circle.header-mismatch {
+  fill: #e67700 !important;
+  stroke: #e67700 !important;
 }
 
 .availability .tooltip {
@@ -199,6 +191,13 @@
   opacity: 0;
 }
 
+.availability .tooltip-wrapper > .tooltip {
+  white-space: wrap;
+  max-width: 316px;
+  line-height: 1.2em;
+  text-align: center;
+  pointer-events: none;
+}
 
 .availability .tooltip.tooltip-pop {
   max-width: min(280px, 90vw);
