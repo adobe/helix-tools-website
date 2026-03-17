@@ -110,6 +110,16 @@ class PopsMap extends HTMLElement {
   connectedCallback() {
     const shadow = this.attachShadow({ mode: 'open' });
 
+    // Also inject into main document so portaled tooltips (in document.body) are styled
+    const LINK_ID = 'availability-css';
+    if (!document.getElementById(LINK_ID)) {
+      const mainLink = document.createElement('link');
+      mainLink.id = LINK_ID;
+      mainLink.rel = 'stylesheet';
+      mainLink.href = '/blocks/availability/availability.css';
+      document.head.appendChild(mainLink);
+    }
+
     shadow.appendChild(this.styleLink);
 
     const wrapper = document.createElement('div');

@@ -243,7 +243,7 @@
 }
 
 /* Portaled tooltip (appended to document.body to avoid ancestor overflow clipping) */
-.tooltip.tooltip-portal {
+.availability-tooltip-portal {
   z-index: 10001;
   position: fixed;
   transform: translate(-50%, calc(-50% - (9px + var(--type-detail-m-lh))));
@@ -256,7 +256,7 @@
   pointer-events: auto;
 }
 
-.tooltip.tooltip-portal::after {
+.availability-tooltip-portal::after {
   content: '';
   position: absolute;
   left: 50%;
@@ -269,47 +269,47 @@
   border-top: 6px solid #1a1a1a;
 }
 
-.tooltip.tooltip-portal.flip::after {
+.availability-tooltip-portal.flip::after {
   top: -6px;
   bottom: unset;
   border-top: 0;
   border-bottom: 6px solid #1a1a1a;
 }
 
-.tooltip.tooltip-portal.min::after {
+.availability-tooltip-portal.min::after {
   left: 3px;
   border-left: 0;
 }
 
-.tooltip.tooltip-portal.max::after {
+.availability-tooltip-portal.max::after {
   left: unset;
   right: -3px;
   border-right: 0;
 }
 
-.tooltip.tooltip-portal.tooltip-pop {
+.availability-tooltip-portal.tooltip-pop {
   padding: var(--spacing-s);
   max-width: min(280px, 90vw);
 }
 
-.tooltip.tooltip-portal .tooltip-pop-line {
+.availability-tooltip-portal .tooltip-pop-line {
   margin: 0;
   font-size: var(--type-detail-m-size);
   line-height: 1.4;
 }
 
-.tooltip.tooltip-portal .tooltip-pop-label {
+.availability-tooltip-portal .tooltip-pop-label {
   color: rgb(255 255 255 / 70%);
 }
 
-.tooltip.tooltip-portal .tooltip-pop-value {
+.availability-tooltip-portal .tooltip-pop-value {
   color: #fff;
 }
 
-.tooltip.tooltip-portal .tooltip-pop-conflict {
+.availability-tooltip-portal .tooltip-pop-conflict {
   color: #f59e0b;
 }
 
-.tooltip.tooltip-portal .tooltip-pop-error-value {
+.availability-tooltip-portal .tooltip-pop-error-value {
   color: #ef4444;
 }

@@ -90,7 +90,7 @@ function buildPopTooltipData(popResponse, mismatchFields = []) {
   };
 }
 
-const PORTAL_STYLE_ID = 'availability-tooltip-portal-style';
+const PORTAL_STYLE_ID = 'availability-availability-tooltip-portal-style';
 
 /** @returns {HTMLStyleElement} */
 function getPortalStyle() {
@@ -337,7 +337,7 @@ function focusPin(pin, tooltip, svg) {
   }
   if (tooltip.classList.contains('tooltip-pop')) {
     document.body.appendChild(tooltip);
-    tooltip.classList.add('tooltip-portal');
+    tooltip.classList.add('availability-tooltip-portal');
   }
   positionTooltip(tooltip, pin, svg);
   tooltip.setAttribute('aria-hidden', false);
@@ -354,13 +354,13 @@ function unfocusPin(tooltip, svg) {
     focused.removeAttribute('data-focus');
     focused.style.removeProperty('stroke-width');
   }
-  if (tooltip.classList.contains('tooltip-portal')) {
+  if (tooltip.classList.contains('availability-tooltip-portal')) {
     const block = svg.closest('.block');
     const wrapper = block?.querySelector('.tooltip-wrapper');
     if (wrapper) {
       wrapper.prepend(tooltip);
     }
-    tooltip.classList.remove('tooltip-portal');
+    tooltip.classList.remove('availability-tooltip-portal');
   }
   tooltip.setAttribute('aria-hidden', true);
 }

@@ -186,7 +186,11 @@ function renderJsonNode(value, depth, key) {
     const startCollapsed = depth >= 1 && !expandedByDefault;
     children.hidden = startCollapsed;
     if (startCollapsed) toggle.textContent = '\u25B6';
-    else preview.hidden = true;
+    else {
+      preview.hidden = true;
+      toggle.textContent = '\u25BC';
+      toggle.setAttribute('aria-label', 'Collapse');
+    }
 
     const entries = isArray
       ? value.map((v, i) => [String(i), v])
