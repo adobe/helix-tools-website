@@ -557,6 +557,10 @@ async function init() {
     setTimeout(() => button.click());
   }
 
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') button.click();
+  });
+
   button.addEventListener('click', async () => {
     let url;
     try {
