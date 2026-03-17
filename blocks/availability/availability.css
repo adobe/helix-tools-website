@@ -205,6 +205,11 @@
   text-align: left;
 }
 
+.availability .tooltip.tooltip-pop::after,
+.availability-tooltip-portal.tooltip-pop::after {
+  content: none;
+}
+
 .availability .tooltip-pop-line {
   margin: 0;
   font-size: var(--type-detail-m-size);
