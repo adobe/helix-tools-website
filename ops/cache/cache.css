@@ -38,6 +38,7 @@
   border-radius: 8px;
   margin: 12px 0;
   padding: 12px 0;
+  overflow: visible;
 }
 
 html[data-theme="dark"] .cache .tile {
@@ -92,19 +93,70 @@ html[data-theme="dark"] .cache .tile {
   color: light-dark(#6b4500, #e6d6a8);
 }
 
-.cache .tile details {
+.cache .tile .pops-details {
   margin-top: 12px;
+  /* no overflow so tooltips can extend beyond tile bounds; contain: layout prevents map overlap */
+  contain: layout;
+}
+
+.cache .tile .pops-details .pops-summary {
+  display: block;
+  margin: 0 0 12px 0;
+  padding: 0;
 }
 
 .cache .tile .pops {
   position: relative;
   width: 100%;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  /* contain layout so map cannot overlap title (sibling above) or legend (sibling below);
+     no overflow clip so tooltips can extend beyond map bounds */
+  contain: layout;
 }
 
 .cache .tile pops-map {
   display: block;
   width: 100%;
+  min-width: 0;
+  min-height: 200px;
+  flex-shrink: 0;
+  max-height: 45vh;
+  contain: layout;
+}
+
+.cache .pops-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1em;
+  flex-shrink: 0;
+  font-size: 0.85em;
+}
+
+.cache .pops-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+}
+
+.cache .pops-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.cache .pops-legend-dot-success {
+  background-color: var(--color-success, #0f7);
+}
+
+.cache .pops-legend-dot-warning {
+  background-color: var(--color-warning, #e67700);
+}
+
+.cache .pops-legend-dot-error {
+  background-color: var(--color-error, #f44);
 }
 
 .cache pre {
@@ -207,3 +259,69 @@ html[data-theme="dark"] .cache .tile {
 .cache .code-actions a.code-button.download span.icon {
   background-image: url('/icons/download.svg');
 }
+
+html[data-theme='dark'] .cache .code-actions a.code-button span.icon {
+  filter: invert(1);
+}
+
+/* Collapsible JSON tree in probe details modal */
+.cache .json-tree-container {
+  max-height: 70vh;
+  overflow: auto;
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+  padding: 12px 0;
+}
+
+.cache .json-tree .json-tree-line {
+  display: grid;
+  grid-template-columns: 1.2em 32ch 1fr;
+  align-items: baseline;
+  padding: 2px 0;
+  white-space: nowrap;
+  min-width: 0;
+  overflow-x: auto;
+  gap: 0;
+}
+
+.cache .json-tree .json-tree-preview-no-key {
+  grid-column: 2 / -1;
+}
+
+.cache .json-tree .json-tree-preview {
+  min-width: 0;
+}
+
+.cache .json-tree .json-tree-preview.json-tree-preview-no-key {
+  grid-column: 2 / -1;
+}
+
+.cache .json-tree-children {
+  padding-left: 1.5em;
+}
+
+.cache .json-tree-children[hidden] {
+  display: none;
+}
+
+.cache .json-tree .json-tree-close {
+  margin-left: -1.5em;
+}
+
+.cache .json-tree .json-tree-toggle {
+  display: inline-block;
+  width: 1.2em;
+  cursor: pointer;
+  user-select: none;
+}
+
+.cache .json-tree .json-tree-key {
+  color: light-dark(#905, #e48);
+  min-width: 32ch;
+  flex-shrink: 0;
+}
+
+.cache .json-tree .json-tree-string { color: light-dark(#070, #7a7); }
+.cache .json-tree .json-tree-number { color: light-dark(#00f, #6af); }
+.cache .json-tree .json-tree-boolean { color: light-dark(#00f, #6af); }
+.cache .json-tree .json-tree-null { color: light-dark(#999, #999); }
