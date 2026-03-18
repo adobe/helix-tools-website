@@ -145,13 +145,16 @@ async function addUsersToSite(users) {
 
 async function addUsersToOrg(users) {
   const adminURL = `https://admin.hlx.page/config/${org.value}/users.json`;
-  const resp = await fetch(adminURL, {
-    method: 'POST',
-    body: JSON.stringify(users),
-    headers: { 'Content-Type': 'application/json' },
-  });
-  logResponse(consoleBlock, resp.status, ['POST', adminURL, resp.headers.get('x-error') || '']);
-  return resp.ok;
+  const results = await Promise.all(users.map(async (user) => {
+    const resp = await fetch(adminURL, {
+      method: 'POST',
+      body: JSON.stringify(user),
+      headers: { 'Content-Type': 'application/json' },
+    });
+    logResponse(consoleBlock, resp.status, ['POST', adminURL, resp.headers.get('x-error') || '']);
+    return resp.ok;
+  }));
+  return results.every(Boolean);
 }
 
 async function updateSiteUserRoles(user) {
@@ -854,7 +857,7 @@ function displayUsers(users) {
           ${icon('list')}
         </button>
       </div>
-      <button class="button add-user-btn">+ Add User</button>
+      <button class="button add-user-btn">+ Add User(s)</button>
     </div>
   `;
 
