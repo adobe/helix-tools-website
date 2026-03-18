@@ -253,6 +253,63 @@ dialog.user-admin-modal .field-hint a {
   color: var(--blue-600);
 }
 
+/* Roles Grid - detailed checkboxes for single-user modal */
+dialog.user-admin-modal .roles-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: var(--spacing-s);
+  background: var(--layer-elevated);
+}
+
+dialog.user-admin-modal .role-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-s);
+  padding: var(--spacing-s);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+dialog.user-admin-modal .role-option:hover {
+  background: var(--color-button-accent-bg);
+}
+
+dialog.user-admin-modal .role-option input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+dialog.user-admin-modal .role-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+dialog.user-admin-modal .role-name {
+  font-weight: 600;
+  color: var(--color-text);
+  font-size: var(--body-size-m);
+}
+
+dialog.user-admin-modal .role-desc {
+  font-size: var(--body-size-s);
+  color: var(--gray-600);
+  font-weight: normal;
+}
+
+/* Toggle mode button */
+dialog.user-admin-modal .modal-footer .toggle-mode-btn {
+  margin-right: auto;
+}
+
 /* Danger Button - scoped to user-admin-modal */
 dialog.user-admin-modal .button.danger {
   color: var(--red-700);
