@@ -3,12 +3,15 @@ import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 
 const ADMIN_BASE = 'https://admin.hlx.page';
+const DA_ETC_ORIGIN = 'https://da-etc.adobeaem.workers.dev';
+const AEM_PAGE_SUFFIX = '.aem.page';
 const REF = 'main';
 const BATCH_SIZE = 10;
 const CONCURRENCY = 5;
 const POLL_INTERVAL = 2000;
 const JOB_COUNTER_LOG_INTERVAL = 10000;
 const ADMIN_API_RATE = 10;
+const AEM_PAGE_RATE = 190;
 const LOG_WINDOW_SIZE = 1000;
 const TERMINAL_JOB_STATE = 'stopped';
 const LARGE_SITE_PATH_THRESHOLD = 20000;
@@ -44,6 +47,8 @@ const CONTENT_TYPE_MAP = {
 const DOM = {};
 
 let abortController = null;
+// Initialized after createRateLimiter so the shared abort-signal closure is available.
+// eslint-disable-next-line prefer-const
 let adminLimiter;
 const stats = {
   pages: 0, media: 0, sent: 0, errors: 0, dupes: 0,
@@ -467,33 +472,68 @@ function createRateLimiter(initialRate, getSignal = () => null) {
 }
 
 adminLimiter = createRateLimiter(ADMIN_API_RATE, () => abortController?.signal);
+const aemPageLimiter = createRateLimiter(AEM_PAGE_RATE, () => abortController?.signal);
+
+function etcFetch(href, api, options) {
+  const url = `${DA_ETC_ORIGIN}/${api}?url=${encodeURIComponent(href)}`;
+  const opts = options || {};
+  return fetch(url, opts);
+}
+
+function getRateLimitedTarget(url) {
+  if (url.startsWith(ADMIN_BASE)) {
+    return {
+      limiter: adminLimiter,
+      label: 'admin API',
+      queue503Backoff: false,
+      fetch: (targetUrl, fetchOptions) => fetch(targetUrl, fetchOptions),
+    };
+  }
+
+  try {
+    if (new URL(url).hostname.endsWith(AEM_PAGE_SUFFIX)) {
+      return {
+        limiter: aemPageLimiter,
+        label: 'aem.page',
+        queue503Backoff: true,
+        fetch: (targetUrl, fetchOptions) => etcFetch(targetUrl, 'cors', fetchOptions),
+      };
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
 
 async function fetchWithRetry(url, options = {}, maxRetries = 3) {
   const signal = abortController ? abortController.signal : undefined;
   const fetchOptions = { ...options, signal };
-  const isAdminApi = url.startsWith(ADMIN_BASE);
+  const rateLimitedTarget = getRateLimitedTarget(url);
 
   for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
     if (isAborted()) throw new DOMException('Aborted', 'AbortError');
     try {
-      if (isAdminApi) {
+      if (rateLimitedTarget) {
         // eslint-disable-next-line no-await-in-loop
-        await adminLimiter.acquire();
+        await rateLimitedTarget.limiter.acquire();
         if (isAborted()) throw new DOMException('Aborted', 'AbortError');
       }
       // eslint-disable-next-line no-await-in-loop
-      const res = await fetch(url, fetchOptions);
-      if (isAdminApi) {
-        adminLimiter.handleResponse(res);
+      const res = await (rateLimitedTarget?.fetch
+        ? rateLimitedTarget.fetch(url, fetchOptions)
+        : fetch(url, fetchOptions));
+      if (rateLimitedTarget) {
+        rateLimitedTarget.limiter.handleResponse(res);
       }
       if (res.status === 429 && attempt < maxRetries) {
         const retryAfter = parseInt(
           res.headers.get('x-retry-after') || res.headers.get('retry-after'),
           10,
         ) || (2 ** attempt);
-        log(`Rate limited (429), pausing ${retryAfter}s before retry (${attempt + 1}/${maxRetries})...`, 'warn');
-        if (isAdminApi) {
-          adminLimiter.backoff(retryAfter);
+        log(`${rateLimitedTarget?.label || 'Request'} rate limited (429), pausing ${retryAfter}s before retry (${attempt + 1}/${maxRetries})...`, 'warn');
+        if (rateLimitedTarget) {
+          rateLimitedTarget.limiter.backoff(retryAfter);
         } else {
           // eslint-disable-next-line no-await-in-loop
           await waitForDelay(retryAfter * 1000, signal);
@@ -503,9 +543,13 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
       }
       if (res.status === 503 && attempt < maxRetries) {
         const delay = (2 ** attempt) * 1000;
-        log(`Service unavailable (503), retrying in ${delay / 1000}s...`, 'warn');
-        // eslint-disable-next-line no-await-in-loop
-        await waitForDelay(delay, signal);
+        log(`${rateLimitedTarget?.label || 'Service'} unavailable (503), retrying in ${delay / 1000}s...`, 'warn');
+        if (rateLimitedTarget?.queue503Backoff) {
+          rateLimitedTarget.limiter.backoff(delay / 1000);
+        } else {
+          // eslint-disable-next-line no-await-in-loop
+          await waitForDelay(delay, signal);
+        }
         // eslint-disable-next-line no-continue
         continue;
       }
@@ -1249,27 +1293,12 @@ async function processPages(org, site, pages) {
   const mediaCandidates = [];
   let candidateOrder = 0;
   let processed = 0;
-  let useAdminApi = false;
 
   async function fetchMarkdown(page) {
     const markdownPath = toMarkdownPath(page.path);
-    if (!useAdminApi) {
-      try {
-        const cdnUrl = `https://${REF}--${site}--${org}.aem.page${markdownPath}`;
-        const res = await fetchWithRetry(cdnUrl, {}, 1);
-        if (res.ok) return res.text();
-      } catch (err) {
-        if (err.name === 'AbortError') throw err;
-      }
-      if (!useAdminApi) {
-        useAdminApi = true;
-        log('CDN not accessible, switching to admin API...', 'warn');
-      }
-    }
-
-    const adminUrl = `${ADMIN_BASE}/preview/${org}/${site}/${REF}${markdownPath}`;
-    const adminRes = await fetchWithRetry(adminUrl, {}, 1);
-    if (adminRes.ok) return adminRes.text();
+    const pageUrl = `https://${REF}--${site}--${org}.aem.page${markdownPath}`;
+    const pageRes = await fetchWithRetry(pageUrl, {}, 1);
+    if (pageRes.ok) return pageRes.text();
     return null;
   }
 
@@ -1418,6 +1447,7 @@ async function runBackfill() {
 
   abortController = new AbortController();
   adminLimiter.reset();
+  aemPageLimiter.reset();
   disableForm();
   resetStats();
   resetConsole();
