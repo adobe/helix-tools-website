@@ -196,24 +196,22 @@ function displayIndexDetails(indexName, indexDef, newIndex = false) {
 }
 
 function showJobStatus(jobDetails) {
-  document.querySelector('dialog.reindex-status-dialog')?.remove();
+  // Clone and append the status dialog template
+  document.body.append(document.querySelector('#reindex-status-dialog-template').content.cloneNode(true));
+  const statusDialog = document.querySelector('dialog.reindex-status-dialog');
 
-  const fragment = document.querySelector('#reindex-status-dialog-template').content.cloneNode(true);
-  const statusDialog = fragment.querySelector('dialog.reindex-status-dialog');
-  document.body.append(fragment);
-
+  // Format and display the job details
   const jobDetailsEl = statusDialog.querySelector('.job-details');
   jobDetailsEl.textContent = JSON.stringify(jobDetails, null, 2);
 
+  // Set up close button
   const closeBtn = statusDialog.querySelector('.close-status-btn');
   closeBtn.addEventListener('click', () => {
     statusDialog.close();
-  });
-
-  statusDialog.addEventListener('close', () => {
     statusDialog.remove();
   });
 
+  // Close on click outside modal
   statusDialog.addEventListener('click', (e) => {
     const {
       left, right, top, bottom,
@@ -221,6 +219,7 @@ function showJobStatus(jobDetails) {
     const { clientX, clientY } = e;
     if (clientX < left || clientX > right || clientY < top || clientY > bottom) {
       statusDialog.close();
+      statusDialog.remove();
     }
   });
 
