@@ -15,7 +15,7 @@ const AEM_PAGE_RATE = 190;
 const LOG_WINDOW_SIZE = 1000;
 const TERMINAL_JOB_STATE = 'stopped';
 const LARGE_SITE_PATH_THRESHOLD = 20000;
-const TARGET_PARTITION_RESOURCE_COUNT = 20000;
+const TARGET_PARTITION_RESOURCE_COUNT = 10000;
 const MAX_PARTITION_PATHS = 250;
 const PARTITION_LABEL_PATH_LIMIT = 3;
 const MIN_ETA_SAMPLE_MS = 10000;
@@ -973,8 +973,7 @@ async function runStatusJob(org, site, paths, {
 }
 
 async function runPartitionedStatusJobs(org, site, partitions, {
-  phaseOffset = 10,
-  phaseSpan = 10,
+  showProgress = true,
 } = {}) {
   if (!partitions.length) {
     return {
@@ -987,10 +986,12 @@ async function runPartitionedStatusJobs(org, site, partitions, {
   const partitionCounters = [];
   let incompleteCount = 0;
   let resources = [];
-  updateProgressMetrics({
-    discoveryTotalJobs: partitions.length,
-    discoveryCompletedJobs: 0,
-  });
+  if (showProgress) {
+    updateProgressMetrics({
+      discoveryTotalJobs: partitions.length,
+      discoveryCompletedJobs: 0,
+    });
+  }
   log(`Running ${partitions.length} packed detailed status job(s) targeting about ${TARGET_PARTITION_RESOURCE_COUNT} preview path(s) each`);
 
   for (let i = 0; i < partitions.length; i += 1) {
@@ -998,21 +999,23 @@ async function runPartitionedStatusJobs(org, site, partitions, {
     const partition = partitions[i];
     const partitionPaths = normalizePartitionPaths(partition);
     const partitionLabel = formatPartitionLabel(partition, i, partitions.length);
-    const baseProgress = phaseOffset + Math.floor((i / partitions.length) * phaseSpan);
-    const progressSpan = Math.max(1, Math.ceil(phaseSpan / partitions.length));
 
     // eslint-disable-next-line no-await-in-loop
     const partitionJob = await runStatusJob(org, site, partitionPaths, {
       jobLabel: partitionLabel,
       onPoll: ({ state, progress }) => {
-        const phaseProgress = Math.min(
-          phaseOffset + phaseSpan,
-          baseProgress + Math.round((progress / 100) * progressSpan),
-        );
-        setPhase(
-          `Phase 1: Discovering pages... (partition ${i + 1}/${partitions.length}, ${state} ${progress}%)`,
-          phaseProgress,
-        );
+        if (showProgress) {
+          const baseProgress = 10 + Math.floor((i / partitions.length) * 10);
+          const progressSpan = Math.max(1, Math.ceil(10 / partitions.length));
+          const phaseProgress = Math.min(
+            20,
+            baseProgress + Math.round((progress / 100) * progressSpan),
+          );
+          setPhase(
+            `Phase 1: Discovering pages... (partition ${i + 1}/${partitions.length}, ${state} ${progress}%)`,
+            phaseProgress,
+          );
+        }
       },
     });
 
@@ -1022,7 +1025,9 @@ async function runPartitionedStatusJobs(org, site, partitions, {
       log(`${partitionLabel} stopped before completion (phase=${partitionJob.phase || 'unknown'}, resources=${partitionJob.resources.length})`, 'warn');
     }
     resources = mergeResourcesByPath(resources, partitionJob.resources);
-    updateProgressMetrics({ discoveryCompletedJobs: i + 1 });
+    if (showProgress) {
+      updateProgressMetrics({ discoveryCompletedJobs: i + 1 });
+    }
   }
 
   const counters = sumJobCounters(partitionCounters);
@@ -1038,8 +1043,71 @@ async function runPartitionedStatusJobs(org, site, partitions, {
   };
 }
 
-// Phase 1: Discover all pages via bulk status job
-async function discoverPages(org, site) {
+function classifyDiscoveredPaths(discoveredPaths) {
+  const pages = [];
+  const standaloneMedia = [];
+
+  discoveredPaths.forEach((path) => {
+    if (MEDIA_EXTENSIONS.test(path)) {
+      standaloneMedia.push({ path });
+    } else if (!path.match(/\.\w+$/)) {
+      pages.push({ path });
+    }
+  });
+
+  return { pages, standaloneMedia };
+}
+
+function buildStatusMetadata(resources) {
+  const pageMetadataByPath = new Map();
+  const standaloneMediaMetadataByPath = new Map();
+
+  resources.forEach((resource) => {
+    if (!resource.previewLastModified) return;
+
+    const metadata = {
+      path: resource.path,
+      lastModified: resource.previewLastModified,
+      user: resource.previewLastModifiedBy || '',
+    };
+
+    if (MEDIA_EXTENSIONS.test(resource.path)) {
+      standaloneMediaMetadataByPath.set(resource.path, metadata);
+    } else if (!resource.path.match(/\.\w+$/)) {
+      pageMetadataByPath.set(resource.path, metadata);
+    }
+  });
+
+  return {
+    pageMetadataByPath,
+    standaloneMediaMetadataByPath,
+  };
+}
+
+function applyStatusMetadata(items, metadataByPath) {
+  let withMetadata = 0;
+  let withoutMetadata = 0;
+
+  items.forEach((item) => {
+    const metadata = metadataByPath.get(item.path);
+    if (!metadata) {
+      withoutMetadata += 1;
+      return;
+    }
+
+    item.lastModified = metadata.lastModified;
+    item.user = metadata.user;
+    withMetadata += 1;
+  });
+
+  return {
+    withMetadata,
+    withoutMetadata,
+  };
+}
+
+// Phase 1: Discover all page/media paths via lightweight bulk status job
+async function discoverPaths(org, site) {
   beginProgressPhase('discovery', {
     discoveryTotalJobs: 0,
     discoveryCompletedJobs: 0,
@@ -1072,25 +1140,50 @@ async function discoverPages(org, site) {
     log(`Path discovery stopped before completion (phase=${pathDiscoveryJob.phase || 'unknown'}), and returned no paths.`, 'warn');
   }
 
+  const { pages, standaloneMedia } = classifyDiscoveredPaths(discoveredPaths);
+
+  stats.pages = pages.length;
+  updateProgressMetrics({
+    totalPages: pages.length,
+    standaloneMediaCount: standaloneMedia.length,
+  });
+  updateStatsDisplay();
+  log(`Discovered ${pages.length} page path(s) and ${standaloneMedia.length} standalone media path(s)`);
+
+  return {
+    pages,
+    standaloneMedia,
+    pathDiscoveryJob,
+    partitionPlan,
+  };
+}
+
+async function loadDetailedStatusMetadata(org, site, {
+  pathDiscoveryJob,
+  partitionPlan,
+}) {
+  const pathCount = pathDiscoveryJob.paths.length;
   let resources = [];
+
   if (pathCount === 0 && pathDiscoveryJob.isComplete) {
     log('No preview paths found for this site.');
-  } else if (!pathDiscoveryJob.isComplete && partitionPlan) {
+    return buildStatusMetadata(resources);
+  }
+
+  if (!pathDiscoveryJob.isComplete && partitionPlan) {
     log(`Running detailed status with ${describePartitionPlan(partitionPlan)} from partial path discovery. Coverage may still be incomplete.`, 'warn');
-    ({ resources } = await runPartitionedStatusJobs(org, site, partitionPlan.partitions));
+    ({ resources } = await runPartitionedStatusJobs(org, site, partitionPlan.partitions, {
+      showProgress: false,
+    }));
   } else if (pathDiscoveryJob.isComplete && pathCount > LARGE_SITE_PATH_THRESHOLD) {
     log(`Path discovery found ${pathCount} preview path(s), above threshold ${LARGE_SITE_PATH_THRESHOLD}. Running detailed status with ${describePartitionPlan(partitionPlan)}.`);
-    ({ resources } = await runPartitionedStatusJobs(org, site, partitionPlan.partitions));
+    ({ resources } = await runPartitionedStatusJobs(org, site, partitionPlan.partitions, {
+      showProgress: false,
+    }));
   } else {
-    log('Starting detailed status job for full site...');
+    log('Starting detailed status job for full site in parallel with markdown crawling...');
     const primaryStatusJob = await runStatusJob(org, site, ['/*'], {
       jobLabel: 'Primary detailed status job',
-      onPoll: ({ state, progress }) => {
-        setPhase(
-          `Phase 1: Discovering pages... (${state} ${progress}%)`,
-          10 + Math.min(progress * 0.1, 10),
-        );
-      },
     });
 
     resources = primaryStatusJob.resources;
@@ -1105,6 +1198,9 @@ async function discoverPages(org, site) {
         org,
         site,
         partitionPlan.partitions,
+        {
+          showProgress: false,
+        },
       );
       resources = mergeResourcesByPath(resources, partitionedDiscovery.resources);
     } else {
@@ -1115,36 +1211,9 @@ async function discoverPages(org, site) {
     }
   }
 
-  resources = mergeResourcesByPath(resources);
-
-  const pages = [];
-  const standaloneMedia = [];
-
-  resources.forEach((r) => {
-    if (!r.previewLastModified) return;
-    if (MEDIA_EXTENSIONS.test(r.path)) {
-      standaloneMedia.push({
-        path: r.path,
-        lastModified: r.previewLastModified,
-        user: r.previewLastModifiedBy || '',
-      });
-    } else if (!r.path.match(/\.\w+$/)) {
-      pages.push({
-        path: r.path,
-        lastModified: r.previewLastModified,
-        user: r.previewLastModifiedBy || '',
-      });
-    }
-  });
-
-  stats.pages = pages.length;
-  updateProgressMetrics({
-    totalPages: pages.length,
-    standaloneMediaCount: standaloneMedia.length,
-  });
-  updateStatsDisplay();
-  log(`Discovered ${pages.length} pages and ${standaloneMedia.length} standalone media files`);
-  return { pages, standaloneMedia };
+  const metadata = buildStatusMetadata(mergeResourcesByPath(resources));
+  log(`Detailed status resolved metadata for ${metadata.pageMetadataByPath.size} page(s) and ${metadata.standaloneMediaMetadataByPath.size} standalone media path(s)`);
+  return metadata;
 }
 
 function getContentType(url) {
@@ -1184,6 +1253,22 @@ function toMarkdownPath(pagePath) {
     return `${pagePath}index.md`;
   }
   return `${pagePath}.md`;
+}
+
+async function fetchAemPageLastModified(url, allowGetFallback = false) {
+  const methods = allowGetFallback ? ['HEAD', 'GET'] : ['HEAD'];
+
+  for (let i = 0; i < methods.length; i += 1) {
+    const method = methods[i];
+    const options = method === 'HEAD' ? { method } : {};
+    // eslint-disable-next-line no-await-in-loop
+    const response = await fetchWithRetry(url, options, 1);
+    if (response.ok) {
+      return response.headers.get('last-modified') || '';
+    }
+  }
+
+  return '';
 }
 
 function parseMediaFromMarkdown(markdown, pageBaseUrl) {
@@ -1298,7 +1383,10 @@ async function processPages(org, site, pages) {
     const markdownPath = toMarkdownPath(page.path);
     const pageUrl = `https://${REF}--${site}--${org}.aem.page${markdownPath}`;
     const pageRes = await fetchWithRetry(pageUrl, {}, 1);
-    if (pageRes.ok) return pageRes.text();
+    if (pageRes.ok) {
+      page.fallbackLastModified = pageRes.headers.get('last-modified') || page.fallbackLastModified || '';
+      return pageRes.text();
+    }
     return null;
   }
 
@@ -1329,19 +1417,68 @@ async function processPages(org, site, pages) {
 
     processed += 1;
     updateProgressMetrics({ processedPages: processed });
-    const pct = 25 + Math.round((processed / pages.length) * 45);
+    const pct = 25 + Math.round((processed / pages.length) * 40);
     setPhase(`Phase 2: Processing pages... (${processed}/${pages.length})`, pct);
     stats.media = mediaCandidates.length;
     updateStatsDisplay();
   }, CONCURRENCY);
 
-  const { entries, dupes } = createDeterministicEntries(mediaCandidates);
-  stats.media = entries.length;
-  stats.dupes = dupes;
-  updateStatsDisplay();
+  log(`Collected ${mediaCandidates.length} media candidate(s) across ${pages.length} crawled page(s)`);
+  return mediaCandidates;
+}
 
-  log(`Found ${entries.length} media entries across ${pages.length} pages (${dupes} duplicates)`);
-  return entries;
+function applyFallbackLastModified(items) {
+  let applied = 0;
+  let missing = 0;
+
+  items.forEach((item) => {
+    if (item.lastModified) {
+      return;
+    }
+
+    if (item.fallbackLastModified) {
+      item.lastModified = item.fallbackLastModified;
+      item.user = '';
+      applied += 1;
+      return;
+    }
+
+    missing += 1;
+  });
+
+  return { applied, missing };
+}
+
+async function populateStandaloneMediaFallbackLastModified(org, site, standaloneMedia) {
+  const pending = standaloneMedia.filter(
+    (media) => !media.lastModified && !media.fallbackLastModified,
+  );
+  if (!pending.length) {
+    return { attempted: 0, found: 0 };
+  }
+
+  log(`Fetching aem.page Last-Modified fallback for ${pending.length} standalone media path(s)...`);
+  let found = 0;
+
+  await runWithConcurrency(pending, async (media) => {
+    const mediaUrl = `https://${REF}--${site}--${org}.aem.page${media.path}`;
+
+    try {
+      const lastModified = await fetchAemPageLastModified(mediaUrl, true);
+      if (lastModified) {
+        media.fallbackLastModified = lastModified;
+        found += 1;
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') throw err;
+      log(`Failed to fetch fallback Last-Modified for ${media.path}: ${err.message}`, 'warn');
+    }
+  }, CONCURRENCY);
+
+  return {
+    attempted: pending.length,
+    found,
+  };
 }
 
 // Phase 3: Post entries to medialog
@@ -1459,12 +1596,90 @@ async function runBackfill() {
   try {
     log(`Starting backfill for ${org}/${site}${dryRun ? ' (dry run)' : ''}...`);
 
-    const { pages, standaloneMedia } = await discoverPages(org, site);
+    const discovery = await discoverPaths(org, site);
     if (isAborted()) return;
 
-    const entries = await processPages(org, site, pages);
+    let statusMetadataReady = false;
+    const statusMetadataPromise = loadDetailedStatusMetadata(org, site, discovery)
+      .then((metadata) => {
+        statusMetadataReady = true;
+        return { metadata };
+      })
+      .catch((error) => {
+        statusMetadataReady = true;
+        return { error };
+      });
+
+    const mediaCandidates = await processPages(org, site, discovery.pages);
     if (isAborted()) return;
 
+    if (!statusMetadataReady) {
+      beginProgressPhase('metadata');
+      setPhase('Phase 2.5: Waiting for detailed status metadata...', 65);
+    }
+    const statusMetadataResult = await statusMetadataPromise;
+    if (statusMetadataResult.error) {
+      throw statusMetadataResult.error;
+    }
+
+    const {
+      pageMetadataByPath,
+      standaloneMediaMetadataByPath,
+    } = statusMetadataResult.metadata;
+
+    applyStatusMetadata(discovery.pages, pageMetadataByPath);
+    applyStatusMetadata(
+      discovery.standaloneMedia,
+      standaloneMediaMetadataByPath,
+    );
+
+    const pageFallbackStats = applyFallbackLastModified(discovery.pages);
+
+    if (
+      pageFallbackStats.missing > 0
+      || discovery.standaloneMedia.some((media) => !media.lastModified)
+    ) {
+      setPhase('Phase 2.5: Filling fallback Last-Modified metadata...', 68);
+    }
+
+    const standaloneFallbackFetchStats = await populateStandaloneMediaFallbackLastModified(
+      org,
+      site,
+      discovery.standaloneMedia,
+    );
+    const standaloneFallbackStats = applyFallbackLastModified(discovery.standaloneMedia);
+
+    if (pageFallbackStats.applied > 0 || standaloneFallbackStats.applied > 0) {
+      log(
+        `Used aem.page Last-Modified fallback for ${pageFallbackStats.applied} page(s) and ${standaloneFallbackStats.applied} standalone media path(s); user will remain empty for those entries.`,
+        'warn',
+      );
+    }
+
+    if (standaloneFallbackFetchStats.attempted > 0 && standaloneFallbackFetchStats.found === 0) {
+      log('Standalone media fallback header fetches completed without any recoverable Last-Modified values.', 'warn');
+    }
+
+    if (pageFallbackStats.missing > 0 || standaloneFallbackStats.missing > 0) {
+      log(
+        `No Last-Modified metadata was available for ${pageFallbackStats.missing} page(s) and ${standaloneFallbackStats.missing} standalone media path(s) even after fallback; those items will still be skipped.`,
+        'warn',
+      );
+    }
+
+    const eligibleMediaCandidates = mediaCandidates.filter(({ page }) => page.lastModified);
+    const skippedCandidateCount = mediaCandidates.length - eligibleMediaCandidates.length;
+    if (skippedCandidateCount > 0) {
+      log(`Skipping ${skippedCandidateCount} media candidate(s) whose source page had neither detailed status metadata nor an aem.page Last-Modified fallback.`, 'warn');
+    }
+
+    const { entries, dupes } = createDeterministicEntries(eligibleMediaCandidates);
+    stats.media = entries.length;
+    stats.dupes = dupes;
+    updateStatsDisplay();
+    log(`Found ${entries.length} media entries across ${discovery.pages.length} crawled page(s) (${dupes} duplicates)`);
+
+    const standaloneMedia = discovery.standaloneMedia.filter((media) => media.lastModified);
     const existingMediaPaths = new Set(entries.map(({ entry }) => entry.path));
     standaloneMedia.forEach((media) => {
       const mediaUrl = `https://${REF}--${site}--${org}.aem.page${media.path}`;
