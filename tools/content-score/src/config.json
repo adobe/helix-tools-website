@@ -1,0 +1,183 @@
+{
+  "categories": [
+    { "id": "alt", "heading": "Alt Text" },
+    { "id": "heading", "heading": "Headings" },
+    { "id": "link", "heading": "Links & Buttons" },
+    { "id": "nested-blocks", "heading": "Nested Blocks" },
+    { "id": "row-col-spans", "heading": "Row/Column Spans" },
+    { "id": "column-counts", "heading": "Column Counts" },
+    { "id": "list-like", "heading": "List-Like Content" },
+    { "id": "block-sprawl", "heading": "Block Sprawl" }
+  ],
+  "rules": [
+    {
+      "id": "alt-not-needed-with-surrounding-text",
+      "category": "alt",
+      "target": "img[alt]",
+      "label": "Alt not needed (image has surrounding text)",
+      "messages": {
+        "problem": "Alt text not needed on decorative images",
+        "recommendation": "Remove the alt text if the image is decorative"
+      },
+      "fixableBy": "author",
+      "thresholds": {}
+    },
+    {
+      "id": "alt-required-in-link-button",
+      "category": "alt",
+      "target": "a[href], button",
+      "label": "Alt required in link or button",
+      "messages": {
+        "problem": "No accessible text in {type} (only image)",
+        "recommendation": "Add alt text to image or visible inside the {type}"
+      },
+      "fixableBy": "author",
+      "thresholds": {}
+    },
+    {
+      "id": "heading-no-h1",
+      "category": "heading",
+      "target": "h1",
+      "label": "No h1 on page",
+      "messages": {
+        "problem": "No h1 found on page",
+        "recommendation": "Add an h1 to the page"
+      },
+      "fixableBy": "author",
+      "thresholds": { "error": 1 }
+    },
+    {
+      "id": "heading-multiple-h1",
+      "category": "heading",
+      "target": "h1",
+      "label": "Multiple h1s",
+      "messages": {
+        "problem": "Multiple h1s found ({count} total)",
+        "recommendation": "Use only one h1 (main page heading)"
+      },
+      "fixableBy": "author",
+      "thresholds": { "error": 2 }
+    },
+    {
+      "id": "heading-skipped-level",
+      "category": "heading",
+      "target": "h1, h2, h3, h4, h5, h6",
+      "label": "Skipped heading level",
+      "messages": {
+        "problem": "Heading levels skip from h{previousLevel} to {tag}",
+        "recommendation": "Organize headings in order (h{previousLevel} → h{nextLevel}) to avoid skipping levels"
+      },
+      "fixableBy": "author",
+      "thresholds": { "error": 1 }
+    },
+    {
+      "id": "link-generic-text",
+      "category": "link",
+      "target": "a[href], button",
+      "label": "Generic link text",
+      "messages": {
+        "problem": "Link text ({found}) is generic",
+        "recommendation": "Use link text that describes the destination"
+      },
+      "fixableBy": "author",
+      "thresholds": { "error": 1 },
+      "patterns": ["click here", "click this", "go", "here", "this", "start", "right here", "more", "learn more"]
+    },
+    {
+      "id": "link-repeated-in-section",
+      "category": "link",
+      "target": "a[href], button",
+      "label": "Repeated in section",
+      "messages": {
+        "problem": "Same link text ({text}) repeated {count}× in section",
+        "recommendation": "Use unique link text for unique links"
+      },
+      "fixableBy": "author",
+      "thresholds": { "warning": 1, "error": 2 }
+    },
+    {
+      "id": "nested-blocks",
+      "category": "nested-blocks",
+      "target": "table",
+      "label": "Nested blocks",
+      "messages": {
+        "problem": "Block contains {count} nested {blockWord}",
+        "recommendation": "Avoid placing blocks inside other blocks"
+      },
+      "fixableBy": "author",
+      "thresholds": { "warning": 1, "error": 2 }
+    },
+    {
+      "id": "row-col-spans",
+      "category": "row-col-spans",
+      "target": "td, th",
+      "label": "Row/column spans",
+      "messages": {
+        "problem": "Block {tableIndex}: {spanCount} merged {cellWord} ({locations})",
+        "recommendation": "Avoid merged cells when possible"
+      },
+      "fixableBy": "author",
+      "thresholds": { "warning": 2, "error": 5 }
+    },
+    {
+      "id": "column-counts",
+      "category": "column-counts",
+      "target": "table",
+      "label": "Too many columns",
+      "messages": {
+        "problem": "Block {tableIndex}: {maxColumns} columns",
+        "recommendation": "Reduce column count to improve readability (recommended: <{threshold})"
+      },
+      "fixableBy": "author",
+      "thresholds": { "recommended": 4, "warning": 5, "error": 6 }
+    },
+    {
+      "id": "block-sprawl-types",
+      "category": "block-sprawl",
+      "target": "div[class]",
+      "label": "Too many block types",
+      "messages": {
+        "problem": "{count} unique block types",
+        "recommendation": "Reduce block types to simplify user experience (recommended: <{threshold})"
+      },
+      "fixableBy": "author",
+      "thresholds": { "recommended": 8, "warning": 9, "error": 13 }
+    },
+    {
+      "id": "block-sprawl-variants",
+      "category": "block-sprawl",
+      "target": "div[class]",
+      "label": "Too many variants",
+      "messages": {
+        "problem": "{count} unique variants",
+        "recommendation": "Reduce variants to simplify user experience (recommended: <{threshold})"
+      },
+      "fixableBy": "author",
+      "thresholds": { "recommended": 12, "warning": 13, "error": 19 }
+    },
+    {
+      "id": "list-like-bullets",
+      "category": "list-like",
+      "target": "p",
+      "label": "Bullets or dashes",
+      "messages": {
+        "problem": "{count} paragraphs starting with bullets",
+        "recommendation": "Use a list to improve readability"
+      },
+      "fixableBy": "author",
+      "thresholds": { "warning": 1, "error": 2 }
+    },
+    {
+      "id": "list-like-numbers",
+      "category": "list-like",
+      "target": "p",
+      "label": "Numbers",
+      "messages": {
+        "problem": "{count} paragraphs starting with numbers",
+        "recommendation": "Use an ordered list to improve readability"
+      },
+      "fixableBy": "author",
+      "thresholds": { "warning": 1, "error": 2 }
+    }
+  ]
+}

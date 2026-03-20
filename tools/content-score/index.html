@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';" move-to-http-header="true">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>Content Score | AEM Tools</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/content-score/content-score.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/content-score/content-score.css" />
+</head>
+
+<body class="content-score">
+  <header></header>
+  <main>
+
+    <!-- TITLE -->
+    <div>
+      <h1>Content Score</h1>
+      <p>
+        <strong>Content Score</strong> is a browser tool that audits authoring quality and flags issues on the current
+        page.
+      </p>
+      <ol class="workflow">
+        <li>Loads with Sidekick</li>
+        <li>Reads rules from config</li>
+        <li>Scans page content</li>
+        <li>Assigns warnings and errors</li>
+        <li>Calculates score</li>
+        <li>Renders badge and issue tray</li>
+      </ol>
+      <p class="button-wrapper">
+        <a class="button emphasis"
+          href="https://github.com/adobe/helix-tools-website/tree/main/tools/content-score/src/README.md"
+          target="_blank" rel="noopener">Learn more about Content Score in the README</a>
+      </p>
+    </div>
+
+    <!-- SETUP -->
+    <div class="install">
+      <h2>Add to Your Project</h2>
+      <p>Include this snippet in the <a href="https://www.aem.live/developer/keeping-it-100#three-phase-loading-e-l-d" target="_blank" rel="noopener">delayed phase</a> of your AEM project (e.g. <code>scripts.js</code> → <code>loadDelayed</code>):</p>
+      <div class="pre-wrap">
+        <p>JavaScript</p>
+        <pre><code>const initContentScore = async () => {
+  const { init } = await import('https://tools.aem.live/tools/content-score/src/scripts.js');
+  await init();
+};
+
+const sk = document.querySelector('aem-sidekick');
+
+if (sk) initContentScore();
+else {
+  document.addEventListener('sidekick-ready', initContentScore, { once: true });
+}</code></pre>
+      </div>
+      <p>Reload the page, then open Sidekick. The content score badge appears next to it.</p>
+      <div class="badge-preview" data-state="needs-improvement">
+        <p class="badge-headline">
+          <strong class="badge-message">Content could be improved</strong>
+          <span class="badge-action">Review suggestions</span>
+        </p>
+        <p class="badge-count">0 errors · 3 warnings</p>
+      </div>
+    </div>
+
+    <!-- WHAT IT CHECKS -->
+    <div id="quality-checks">
+      <h2>Quality Checks</h2>
+      <ul class="content-score-categories">
+        <li>
+          <span class="category-media">🖼️</span>
+          <div class="category-details">
+            <p class="category-title">Alt Text</p>
+            <ul>
+              <li>Decorative images with redundant alt text</li>
+              <li>Image-only links or buttons missing alt text</li>
+            </ul>
+          </div>
+        </li>
+        <li>
+          <span class="category-media">🔤</span>
+          <div class="category-details">
+            <p class="category-title">Headings</p>
+            <ul>
+              <li>Missing h1</li>
+              <li>Multiple h1s</li>
+              <li>Skipped heading levels</li>
+            </ul>
+          </div>
+        </li>
+        <li>
+          <span class="category-media">🔗</span>
+          <div class="category-details">
+            <p class="category-title">Links &amp; Buttons</p>
+            <ul>
+              <li>Generic link text (e.g. "click here", "more")</li>
+              <li>Same link text repeated within a section</li>
+            </ul>
+          </div>
+        </li>
+        <li>
+          <span class="category-media">🔁</span>
+          <div class="category-details">
+            <p class="category-title">Nested Blocks</p>
+            <ul>
+              <li>Blocks nested inside other blocks</li>
+            </ul>
+          </div>
+        </li>
+        <li>
+          <span class="category-media">📐</span>
+          <div class="category-details">
+            <p class="category-title">Row/Column Spans</p>
+            <ul>
+              <li>Merged cells in block tables</li>
+            </ul>
+          </div>
+        </li>
+        <li>
+          <span class="category-media">📊</span>
+          <div class="category-details">
+            <p class="category-title">Column Counts</p>
+            <ul>
+              <li>Column bloat in a block table</li>
+            </ul>
+          </div>
+        </li>
+        <li>
+          <span class="category-media">📋</span>
+          <div class="category-details">
+            <p class="category-title">List-Like Content</p>
+            <ul>
+              <li>Paragraphs starting with bullet characters</li>
+              <li>Paragraphs starting with numbers</li>
+            </ul>
+          </div>
+        </li>
+        <li>
+          <span class="category-media">📦</span>
+          <div class="category-details">
+            <p class="category-title">Block Sprawl</p>
+            <ul>
+              <li>Block bloat on a page</li>
+              <li>Variant bloat on a page</li>
+            </ul>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </main>
+  <footer></footer>
+</body>
+
+</html>

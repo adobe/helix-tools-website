@@ -1,0 +1,227 @@
+.content-score h2 {
+  text-align: center;
+}
+
+/* workflow stepper */
+.content-score .workflow {
+  list-style: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs) 0;
+  display: flex;
+  margin-block: var(--spacing-m) 0;
+  padding: 0;
+  color: var(--color-font-grey);
+}
+
+.content-score .workflow > li {
+  align-items: center;
+  display: flex;
+  font-size: var(--body-size-m);
+}
+
+.content-score .workflow > li:not(:last-child)::after {
+  content: '→';
+  margin-inline: var(--spacing-s);
+  opacity: 0.75;
+}
+
+/* install section */
+.content-score .install {
+  border: 1px solid var(--layer-pasteboard);
+  padding-block-start: var(--spacing-xs);
+  background: var(--layer-depth);
+}
+
+.content-score .install-note {
+  position: relative;
+  color: var(--color-font-grey);
+  font-size: var(--body-size-s);
+  text-align: center;
+}
+
+.content-score .install-note::before {
+  content: '*';
+  padding-inline-end: 1ch;
+  color: var(--spectrum-blue);
+  font-weight: 700;
+}
+
+.content-score .install-note code {
+  background: transparent;
+  font-size: inherit;
+}
+
+/* code blocks */
+.content-score .pre-wrap {
+  position: relative;
+  border-radius: var(--rounding-l);
+  padding: var(--spacing-m);
+  background: var(--layer-pasteboard);
+}
+
+.content-score .pre-wrap > p {
+  margin: 0;
+  padding: 0;
+  color: var(--color-font-grey);
+  font-size: var(--body-size-s);
+  text-transform: lowercase;
+}
+
+.content-score .pre-wrap > pre {
+  overflow-x: auto;
+  margin-bottom: 0;
+  padding: var(--spacing-m) 0;
+  background: inherit;
+}
+
+
+.content-score .pre-wrap > pre::-webkit-scrollbar-thumb {
+  border-color: var(--layer-pasteboard);
+}
+
+.content-score .pre-wrap > pre code {
+  padding: 0;
+  background: inherit;
+}
+
+.content-score .pre-wrap button {
+  position: absolute;
+  inset-block-start: var(--spacing-xs);
+  inset-inline-end: var(--spacing-xs);
+  border-radius: var(--rounding-m);
+  font-size: var(--body-size-s);
+}
+
+/* badge preview */
+.content-score .badge-preview-wrapper {
+  margin-block-end: 0;
+}
+
+.content-score .badge-preview {
+  flex-direction: column;
+  justify-content: center;
+  gap: 1ch 0.5ch;
+  display: flex;
+  min-height: 72px;
+  width: min(100%, 334px);
+  margin-inline: auto;
+  border-radius: 10px 10px 0 0;
+  padding: 8px 12px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 15%), 0 1px 3px rgb(0 0 0 / 10%);
+  background: #ad6500;
+  color: #fff;
+  transform-origin: center bottom;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .content-score .badge-preview {
+    transition: background 0.8s ease;
+  }
+}
+
+@media (width >= 900px) {
+  .content-score .badge-preview {
+    transform: scale(1.15);
+  }
+}
+
+@media (width >= 1200px) {
+  .content-score .badge-preview {
+    transform: scale(1.25);
+  }
+}
+
+.content-score .badge-preview[data-state="good"] {
+  background: #008744;
+}
+
+.content-score .badge-preview[data-state="poor"] {
+  background: #eb0000;
+}
+
+.content-score .badge-preview .badge-headline {
+  flex-wrap: wrap;
+  gap: 0 0.5em;
+  display: flex;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.content-score .badge-preview .badge-message {
+  font-weight: 600;
+}
+
+.content-score .badge-preview .badge-action {
+  font-weight: 400;
+  text-decoration: underline;
+}
+
+.content-score .badge-preview .badge-count {
+  margin: 0;
+  opacity: 0.9;
+  font-weight: 400;
+}
+
+/* categories grid */
+.content-score .content-score-categories {
+  list-style: none;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-m);
+  display: grid;
+  margin: 0;
+  padding: 0;
+}
+
+@media (width >= 600px) {
+  .content-score .content-score-categories {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (width >= 1200px) {
+  .content-score .content-score-categories {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.content-score .content-score-categories > li {
+  gap: var(--spacing-s);
+  display: flex;
+  border-inline-start: 3px solid var(--layer-pasteboard);
+  padding: var(--spacing-m);
+  background-color: var(--layer-depth);
+}
+
+.content-score .category-media {
+  flex-shrink: 0;
+  align-items: flex-start;
+  justify-content: center;
+  display: flex;
+  width: 44px;
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.content-score .category-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.content-score .category-title {
+  margin-block: 0 var(--spacing-xs);
+  font-weight: 600;
+}
+
+.content-score .category-details ul {
+  list-style: disc;
+  margin: 0;
+  padding-inline-start: 1em;
+  color: var(--color-font-grey);
+  font-size: 0.875em;
+}

@@ -1,0 +1,24 @@
+<link rel="stylesheet" data-tray-styles>
+<aside aria-label="Content Score">
+  <header>
+    <h2 data-tray-key="title">Content Score</h2>
+    <div class="header-end">
+      <div class="header-status">
+        <p class="header-summary" data-summary aria-live="polite"></p>
+        <span class="score" data-score aria-live="polite"></span>
+      </div>
+      <button type="button" class="tray-close" aria-label="Close"></button>
+    </div>
+  </header>
+  <div class="sort-control">
+    <label for="tray-sort">
+      <span data-tray-key="sort-label">Sort by:</span>
+    </label>
+    <select id="tray-sort" class="sort-toggle" aria-label="Sort issues">
+      <option value="order" data-tray-key="sort-order">Order</option>
+      <option value="outcome" data-tray-key="sort-outcome">Severity</option>
+      <option value="type" data-tray-key="sort-type">Type</option>
+    </select>
+  </div>
+  <div class="tray-sections"></div>
+</aside>
