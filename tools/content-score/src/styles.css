@@ -1,0 +1,213 @@
+:root {
+  --content-score-red-light: #FFEBEB;
+  --content-score-red-med: #EB0000;
+  --content-score-red-dark: #A30000;
+  --content-score-amber-light: #FFF7EB;
+  --content-score-amber-med: #AD6500;
+  --content-score-amber-dark: #7A4700;
+  --content-score-blue-light: #EBFAFF;
+  --content-score-blue-med: #007EA8;
+  --content-score-blue-dark: #005A78;
+  --content-score-green-light: #EBFFF5;
+  --content-score-green-med: #008744;
+  --content-score-green-dark: #005E2F;
+}
+
+/* --- Badge --- */
+
+.content-score {
+  --med: var(--content-score-blue-med);
+  
+  all: revert;
+  align-items: center;
+  gap: 6px;
+  display: flex;
+  position: fixed;
+  inset: auto auto 58px 58px;
+  z-index: 9999;
+  min-height: 38px;
+  border-radius: 10px 10px 0 0;
+  padding: 8px 12px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 15%), 0 1px 3px rgb(0 0 0 / 10%);
+  background-color: var(--med);
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  line-height: 1;
+  text-transform: none;
+  white-space: nowrap;
+  transition: box-shadow 0.15s ease;
+}
+
+.content-score:hover {
+  box-shadow: 0 4px 12px rgb(0 0 0 / 20%), 0 2px 4px rgb(0 0 0 / 10%);
+}
+
+.content-score.score-good {
+  --med: var(--content-score-green-med);
+}
+
+.content-score.score-needs-improvement {
+  --med: var(--content-score-amber-med);
+}
+
+.content-score.score-poor {
+  --med: var(--content-score-red-med);
+}
+
+@media (width >= 800px) {
+  .content-score {
+    inset: auto auto calc(58px + 55px) 50%;
+    transform: translateX(-50%);
+  }
+}
+
+.content-score-toggle p {
+  margin: 0;
+}
+
+.badge-headline {
+  line-height: 1.2;
+}
+
+.badge-message {
+  font-weight: 600;
+}
+
+.badge-action {
+  margin-inline-start: 0.5em;
+  font-weight: 400;
+  text-decoration: underline;
+}
+
+.badge-count {
+  max-height: 2em;
+  overflow: hidden;
+  opacity: 0.9;
+  font-weight: 400;
+  transition: opacity 0.3s ease, max-height 0.3s ease;
+}
+
+.content-score:not(.count-visible) .badge-count {
+  opacity: 0;
+  max-height: 0;
+}
+
+/* --- Badge toggle --- */
+
+.content-score-toggle {
+  all: unset;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  display: flex;
+  min-width: 0;
+  box-sizing: border-box;
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.content-score-toggle:focus {
+  box-shadow: none;
+}
+
+.content-score-toggle:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* --- Badge dismiss --- */
+
+.content-score-dismiss {
+  all: unset;
+  flex-shrink: 0;
+  place-items: center;
+  display: grid;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  padding: 0;
+  background: rgb(255 255 255 / 25%);
+  color: #fff;
+  font-size: 1rem;
+  line-height: 0;
+  cursor: pointer;
+}
+
+.content-score-dismiss[hidden] {
+  display: none;
+}
+
+.content-score-dismiss:hover {
+  background: rgb(255 255 255 / 40%);
+}
+
+.content-score-dismiss:focus {
+  box-shadow: none;
+}
+
+.content-score-dismiss:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+
+.content-score-dismiss-icon {
+  display: block;
+  width: 10px;
+  height: 10px;
+}
+
+/* --- Page highlight (element focus) --- */
+
+.content-score-highlight {
+  --light: var(--content-score-blue-light);
+  --med: var(--content-score-blue-med);
+  --dark: var(--content-score-blue-dark);
+
+  scroll-margin-top: 58px !important;
+  outline: 3px solid var(--med);
+  outline-offset: 2px;
+  animation: content-score-pulse 1.5s ease-in-out infinite;
+}
+
+.content-score-highlight[data-content-score-outcome="error"] {
+  --light: var(--content-score-red-light);
+  --med: var(--content-score-red-med);
+  --dark: var(--content-score-red-dark);
+}
+
+.content-score-highlight[data-content-score-outcome="warning"] {
+  --light: var(--content-score-amber-light);
+  --med: var(--content-score-amber-med);
+  --dark: var(--content-score-amber-dark);
+}
+
+.content-score-highlight[data-content-score-outcome="info"] {
+  --light: var(--content-score-blue-light);
+  --med: var(--content-score-blue-med);
+  --dark: var(--content-score-blue-dark);
+}
+
+@keyframes content-score-pulse {
+  0%, 100% {
+    outline-color: var(--dark);
+    outline-offset: 2px;
+    outline-width: 3px;
+  }
+
+  50% {
+    outline-color: var(--med);
+    outline-offset: 6px;
+    outline-width: 4px;
+  }
+}
