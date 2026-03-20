@@ -325,7 +325,7 @@ ul {
   font-weight: 500;
   line-height: 1.2;
   color: var(--gray-dark);
-  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .issue-outcome-badge {
@@ -348,7 +348,7 @@ ul {
   color: var(--gray-med);
   font-size: 0.75rem;
   line-height: 1.2;
-  word-break: break-word;
+  word-break: break-all;
 }
 
 .issue-targets {
