@@ -67,7 +67,7 @@ function disableForNonAdmin(modal) {
   if (info) {
     info.classList.add('warning');
     info.innerHTML = `<p><strong>Access Restricted</strong></p>
-      <p>You don't have permission to generate reports. Please ensure you have a valid RUM admin token.</p>`;
+      <p>You don't have permission to generate reports. Contact your OpTel administrator.</p>`;
   }
 }
 

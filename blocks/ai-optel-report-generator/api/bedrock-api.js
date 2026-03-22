@@ -9,7 +9,7 @@ const MAX_RETRIES = 4;
 const ENDPOINT = BEDROCK_CONFIG.PROXY_ENDPOINT;
 const JOBS_ENDPOINT = `${BEDROCK_CONFIG.PROXY_ENDPOINT}/jobs`;
 const USAGE_ENDPOINT = `${BEDROCK_CONFIG.PROXY_ENDPOINT}/usage`;
-const POLL_INTERVAL = 3000; // Poll every 3 seconds
+const POLL_INTERVAL = 5000; // Poll every 5 seconds
 const MAX_POLL_TIME = 300000; // Max 5 minutes
 
 // Usage tracking for billing
@@ -32,13 +32,11 @@ function trackUsage(usage, model) {
 /** Submit accumulated usage to server */
 export async function submitUsage(reportId) {
   if (usageTracker.inputTokens === 0 && usageTracker.outputTokens === 0) {
-    console.log('[Bedrock-Usage] No usage to submit');
     return;
   }
 
   const token = getAdminToken();
   if (!token) {
-    console.warn('[Bedrock-Usage] No auth token, skipping usage submission');
     return;
   }
 
@@ -57,9 +55,7 @@ export async function submitUsage(reportId) {
       }),
     });
 
-    if (response.ok) {
-      console.log(`[Bedrock-Usage] Submitted: ${usageTracker.inputTokens} in / ${usageTracker.outputTokens} out tokens`);
-    } else {
+    if (!response.ok) {
       console.warn('[Bedrock-Usage] Failed to submit:', response.status);
     }
   } catch (err) {
@@ -178,10 +174,6 @@ export async function callBedrockAPI(params) {
   const requestBody = buildRequestBody(params);
   let lastError;
 
-  console.log(`[Bedrock] Using model: ${requestBody.modelId} | max_tokens: ${requestBody.max_tokens}`);
-  console.log('[Bedrock] Making request to:', ENDPOINT);
-  console.log('[Bedrock] Request body:', JSON.stringify(requestBody, null, 2));
-
   for (let attempt = 0; attempt < MAX_RETRIES; attempt += 1) {
     // eslint-disable-next-line no-await-in-loop
     const response = await fetch(ENDPOINT, {
@@ -193,17 +185,12 @@ export async function callBedrockAPI(params) {
       body: JSON.stringify(requestBody),
     });
 
-    console.log('[Bedrock] Response status:', response.status);
-
     if (response.ok) {
       // eslint-disable-next-line no-await-in-loop
       const data = await response.json();
-      console.log('[Bedrock] Raw response data:', data);
-      console.log('[Bedrock] Raw content items:', JSON.stringify(data.content, null, 2));
 
       // Normalize content to ensure tool_use blocks have all required fields
       const normalizedContent = normalizeResponseContent(data.content, params.tools);
-      console.log('[Bedrock] Normalized content:', normalizedContent);
 
       // Track usage for billing
       trackUsage(data.usage, data.model || AI_MODELS.BEDROCK_MODEL_ID);
@@ -230,12 +217,10 @@ export async function callBedrockAPI(params) {
     // eslint-disable-next-line no-await-in-loop
     const errorText = await response.text();
     lastError = `Bedrock API error: ${response.status} ${xError || errorText}`;
-    console.log('[Bedrock] Error:', lastError);
 
     // Retry on 429 (rate limit) and 502/503 (transient proxy/CDN errors)
     if ([429, 502, 503].includes(response.status) && attempt < MAX_RETRIES - 1) {
       const delay = (2 ** attempt) * (response.status >= 500 ? 3000 : 1000);
-      console.log(`[Bedrock] Retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})...`);
       // eslint-disable-next-line no-await-in-loop
       await new Promise((r) => { setTimeout(r, delay); });
     } else {
@@ -256,7 +241,6 @@ async function submitBedrockJob(params) {
   if (!token) throw new Error('RUM admin token not found. Please ensure you are logged in.');
 
   const requestBody = buildRequestBody(params);
-  console.log('[Bedrock-Async] Submitting job to:', JOBS_ENDPOINT);
 
   const response = await fetch(JOBS_ENDPOINT, {
     method: 'POST',
@@ -278,7 +262,6 @@ async function submitBedrockJob(params) {
   }
 
   const data = await response.json();
-  console.log('[Bedrock-Async] Job submitted:', data.jobId);
   return data;
 }
 
@@ -292,7 +275,6 @@ async function pollJobStatus(jobId) {
   if (!token) throw new Error('RUM admin token not found.');
 
   const jobUrl = `${JOBS_ENDPOINT}/${jobId}`;
-  console.log('[Bedrock-Async] Polling job:', jobUrl);
 
   const response = await fetch(jobUrl, {
     method: 'GET',
@@ -320,9 +302,6 @@ async function pollJobStatus(jobId) {
  * @returns {Promise<object>} - Bedrock response
  */
 export async function callBedrockAPIAsync(params, onProgress = null) {
-  const requestBody = buildRequestBody(params);
-  console.log(`[Bedrock-Async] Using model: ${requestBody.modelId} | max_tokens: ${requestBody.max_tokens}`);
-
   // Submit job
   const { jobId } = await submitBedrockJob(params);
 
@@ -339,7 +318,6 @@ export async function callBedrockAPIAsync(params, onProgress = null) {
 
     // eslint-disable-next-line no-await-in-loop
     const job = await pollJobStatus(jobId);
-    console.log(`[Bedrock-Async] Poll #${pollCount}: status=${job.status}`);
 
     if (onProgress) {
       onProgress({
@@ -351,7 +329,6 @@ export async function callBedrockAPIAsync(params, onProgress = null) {
     }
 
     if (job.status === 'completed') {
-      console.log('[Bedrock-Async] Job completed successfully');
       const { result } = job;
 
       // Normalize content
