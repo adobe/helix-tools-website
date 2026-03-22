@@ -191,7 +191,7 @@
 
 .report-generate-btn:disabled {
   background: var(--color-btn-disabled);
-  color: var(--color-text-secondary);
+  color: white;
   cursor: not-allowed;
 }
 
@@ -203,7 +203,8 @@
 }
 
 .report-generate-btn:active:not(:disabled) {
-  transform: translateY(0);
+  transform: scale(0.98);
+  background: var(--color-btn-primary-hover);
 }
 
 /* Info & Status Messages */

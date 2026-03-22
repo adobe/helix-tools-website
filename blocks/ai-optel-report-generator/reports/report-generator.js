@@ -118,7 +118,8 @@ export default async function generateReport(statusDiv, button, modal) {
       const stepIndex = isStep3 ? 3 : 2;
       const pct = isStep3 ? 87.5 + (batchPercent * 0.125) : 50 + (batchPercent * 0.375);
       const detail = message || REPORT_STEPS[stepIndex].detail;
-      setProgress(pct, REPORT_STEPS[stepIndex].name, detail);
+      const animate = status === 'in-progress';
+      setProgress(pct, REPORT_STEPS[stepIndex].name, detail, animate);
     };
 
     const analysisResult = await runCompleteRumAnalysis(progressCallback);

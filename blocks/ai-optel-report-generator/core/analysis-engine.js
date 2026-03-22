@@ -141,13 +141,7 @@ async function callAnthropicAPI(dashboardData, facetTools, progressCallback) {
       }
 
       const { callAIAsync } = await import('../api/api-factory.js');
-      const finalData = await callAIAsync(finalRequest, (progress) => {
-        // Update progress based on job status
-        if (progressCallback && progress.status === 'processing') {
-          const elapsed = Math.round((progress.elapsed || 0) / 1000);
-          progressCallback(3, 'in-progress', `Generating report... (${elapsed}s elapsed)`, 50 + Math.min(30, elapsed));
-        }
-      });
+      const finalData = await callAIAsync(finalRequest);
 
       if (finalData) {
         if (finalData.stop_reason === 'max_tokens') {

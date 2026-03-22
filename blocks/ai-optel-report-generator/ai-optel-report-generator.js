@@ -19,8 +19,7 @@ export function closeReportModal() {
 
 const canCloseModal = (modal) => {
   const hasProgress = modal.querySelector('#circular-progress-container');
-  const saveBtn = modal.querySelector('#save-report-btn:not([disabled])');
-  return !hasProgress && !saveBtn;
+  return !hasProgress;
 };
 
 function setupCloseHandlers(modal) {
