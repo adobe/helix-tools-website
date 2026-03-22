@@ -26,22 +26,9 @@ function formatDashboardData(dashboardData) {
     .map(([k, v]) => `- ${k}: ${v}`)
     .join('\n');
 
-  const segments = Object.entries(dashboardData.segments || {})
-    .map(([segment, items]) => {
-      const top5 = items.slice(0, 5)
-        .map((item) => {
-          const itemMetrics = item.metrics && Object.keys(item.metrics).length > 0
-            ? `, metrics: ${JSON.stringify(item.metrics)}`
-            : '';
-          return `${item.value} (${item.count.toLocaleString()}${itemMetrics})`;
-        })
-        .join(', ');
-      const more = items.length > 5 ? ` ... and ${items.length - 5} more` : '';
-      return `${segment}: ${top5}${more}`;
-    })
-    .join('\n');
+  const facetNames = Object.keys(dashboardData.segments || {}).join(', ');
 
-  return `DASHBOARD DATA:\n${metrics}\n\nSEGMENTS DATA (showing top items per facet):\n${segments}`;
+  return `DASHBOARD METRICS:\n${metrics}\n\nAVAILABLE FACETS: ${facetNames}`;
 }
 
 function createBatchMessage(batch, baseMessage, dashboardData, isFirstBatch) {
