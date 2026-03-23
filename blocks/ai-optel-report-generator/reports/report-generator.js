@@ -4,12 +4,14 @@
 
 import runCompleteRumAnalysis from '../core/analysis-engine.js';
 import { resetCachedFacetTools } from '../core/facet-manager.js';
+import { resetUsageTracker, submitUsage } from '../api/bedrock-api.js';
 import {
   createCircularProgress,
   initializeStepProgress,
   advanceStep,
   setProgress,
   completeProgress,
+  resetProgress,
 } from '../ui/progress-indicator.js';
 import {
   toggleFormVisibility,
@@ -65,43 +67,35 @@ function showReportResults(modalBody, reportContent) {
 
 /** Handle generation error */
 function handleGenerationError(body, progress, status, btn, origText, err) {
+  resetProgress();
   progress?.remove();
   toggleFormVisibility(body, true);
 
   const isAuth = err.isAuthError;
   const isFatal = err.isFatalError;
 
-  if (isAuth) {
-    localStorage.removeItem('awsBedrockToken');
-    const tokenInput = body.querySelector('#report-bedrock-token');
-    if (tokenInput) {
-      tokenInput.disabled = false;
-      tokenInput.value = '';
-      tokenInput.style.borderColor = '#ff4444';
-      tokenInput.focus();
-    }
-    const infoBox = body.querySelector('.report-info');
-    if (infoBox) infoBox.style.display = 'none';
-  }
-
   // Display error message with appropriate context
   let errorMessage;
   if (isAuth) {
-    errorMessage = err.message;
+    errorMessage = 'Authentication failed. Please ensure you have a valid RUM admin token.';
   } else if (isFatal) {
-    errorMessage = err.message; // Already includes "Bedrock API error: 503..."
+    errorMessage = err.message;
   } else {
     errorMessage = `Error: ${err.message}`;
   }
 
   showStatus(status, 'error', errorMessage);
-  updateButtonState(btn, false, isAuth ? 'Save Token & Generate' : origText);
+  updateButtonState(btn, false, origText);
 }
 
 /** Generate the RUM analysis report */
 export default async function generateReport(statusDiv, button, modal) {
   const originalText = button.textContent;
   updateButtonState(button, true, 'Generating...');
+
+  // Reset usage tracker for this report
+  resetUsageTracker();
+  const reportId = `report_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
   statusDiv.style.display = 'none';
   const progressContainer = createCircularProgress();
@@ -126,7 +120,8 @@ export default async function generateReport(statusDiv, button, modal) {
       const stepIndex = isStep3 ? 3 : 2;
       const pct = isStep3 ? 87.5 + (batchPercent * 0.125) : 50 + (batchPercent * 0.375);
       const detail = message || REPORT_STEPS[stepIndex].detail;
-      setProgress(pct, REPORT_STEPS[stepIndex].name, detail);
+      const animate = status === 'in-progress';
+      setProgress(pct, REPORT_STEPS[stepIndex].name, detail, animate);
     };
 
     const analysisResult = await runCompleteRumAnalysis(progressCallback);
@@ -138,6 +133,9 @@ export default async function generateReport(statusDiv, button, modal) {
       .forEach((k) => url.searchParams.delete(k));
     window.history.replaceState({}, '', url);
     if (typeof window.slicerDraw === 'function') await window.slicerDraw();
+
+    // Submit usage data for tracking
+    await submitUsage(reportId);
 
     setTimeout(() => {
       showReportResults(modalBody, analysisResult);
