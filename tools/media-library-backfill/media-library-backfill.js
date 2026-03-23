@@ -1581,7 +1581,9 @@ async function processPages(org, site, pages) {
     flushProcessingProgress();
   }, PAGE_CRAWL_CONCURRENCY);
 
-  flushProcessingProgress(true);
+  if (pages.length > 0) {
+    flushProcessingProgress(true);
+  }
 
   if (htmlPageCount > 0) {
     log(`Scraped media from HTML responses for ${htmlPageCount} page(s) that did not return markdown.`, 'warn');
