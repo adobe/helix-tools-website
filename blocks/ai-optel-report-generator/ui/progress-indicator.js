@@ -37,11 +37,14 @@ function startDotAnimation() {
   const baseText = detailEl.textContent.replace(/\.+$/, '');
   let dotCount = 1;
 
-  // Set initial dot immediately
+  // Set dots using DOM manipulation to avoid innerHTML XSS risk
   const setDots = () => {
-    const visible = '.'.repeat(dotCount);
-    const hidden = `<span style="visibility:hidden">${'.'.repeat(3 - dotCount)}</span>`;
-    detailEl.innerHTML = baseText + visible + hidden;
+    const hiddenSpan = document.createElement('span');
+    hiddenSpan.style.visibility = 'hidden';
+    hiddenSpan.textContent = '.'.repeat(3 - dotCount);
+
+    detailEl.textContent = baseText + '.'.repeat(dotCount);
+    detailEl.appendChild(hiddenSpan);
   };
   setDots();
 

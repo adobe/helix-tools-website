@@ -11,6 +11,7 @@ import {
   advanceStep,
   setProgress,
   completeProgress,
+  resetProgress,
 } from '../ui/progress-indicator.js';
 import {
   toggleFormVisibility,
@@ -66,6 +67,7 @@ function showReportResults(modalBody, reportContent) {
 
 /** Handle generation error */
 function handleGenerationError(body, progress, status, btn, origText, err) {
+  resetProgress();
   progress?.remove();
   toggleFormVisibility(body, true);
 
