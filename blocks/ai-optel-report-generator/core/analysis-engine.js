@@ -10,7 +10,7 @@ import {
   processMetricsBatches,
 } from './metrics-processing.js';
 import { buildFacetInfoSection } from '../reports/facet-link-generator.js';
-import { PATHS, API_CONFIG } from '../config.js';
+import { PATHS, API_CONFIG, AI_MODELS } from '../config.js';
 
 // Template cache
 let systemPromptCache = null;
@@ -42,63 +42,35 @@ async function getOverviewAnalysisTemplate() {
   return overviewAnalysisTemplateCache || 'CREATE A CLEAN, PROFESSIONAL REPORT WITH STRUCTURED SECTIONS.';
 }
 
-function buildFinalSynthesisMessage(dashboardData, allInsights, overviewTemplate) {
+function buildFinalSynthesisMessage(dashboardData, allInsights) {
   const hasMetrics = Object.keys(dashboardData.metrics).length > 0;
 
-  return `Create a polished, professional analysis report based on the data below.
+  return `Create a polished, professional analysis report. Use only the data below as source material.
 
-DO NOT include any of the raw batch content in your response. Use it only as source material for your analysis.
+DATE RANGE: ${dashboardData.dateRange || 'Not specified'}
 
-==== REPORT STRUCTURE REQUIREMENTS ====
-1. Start with EXECUTIVE SUMMARY section (required, comes first)
-2. Follow with other sections as defined in the template
-3. Ensure all facets are covered across appropriate sections
-
-==== DATA TIME PERIOD ====
-${dashboardData.dateRange ? `Date Range Selected: ${dashboardData.dateRange}` : 'WARNING: Date range not available'}
-${dashboardData.dateRange ? `(Found in: <daterange-wrapper><input data-value="${dashboardData.dateRange}">)` : ''}
-
-IMPORTANT: All insights and metrics in this report are for the ${dashboardData.dateRange || 'specified'} time period.
-Convert the data-value to readable format in your report (e.g., "month" → "Last 30 Days", "week" → "Last 7 Days").
-==== END TIME PERIOD ====
-==== FACET COVERAGE CHECKLIST ====
-WARNING: The following facets MUST ALL be covered in the "Key Metrics & Findings" section.
-Each facet needs 1 positive + 1 improvement observation:
-
-${Object.keys(dashboardData.segments)
-    .map((facet, idx) => `${idx + 1}. ${facet}`)
-    .join('\n')}
-
-TOTAL: ${Object.keys(dashboardData.segments).length} facets to cover
-==== END CHECKLIST ====
-==== ACTUAL DASHBOARD METRICS (USE THESE EXACT VALUES) ====
+DASHBOARD METRICS:
 ${hasMetrics
     ? Object.entries(dashboardData.metrics)
       .map(([metric, value]) => `${metric}: ${value}`)
       .join('\n')
-    : 'WARNING: Dashboard metrics not available - focus analysis on segment data from tool results'}
+    : 'Dashboard metrics not available - use segment data from batch analyses'}
 
-TOTAL SEGMENTS: ${Object.keys(dashboardData.segments).length} facets analyzed
-
-COMPLETE LIST OF ALL FACETS THAT MUST BE COVERED:
-${Object.keys(dashboardData.segments).join(', ')}
-
-Each of these facets MUST get 1 positive + 1 improvement mention in the "Key Metrics & Findings" section.
-
-SEGMENT SUMMARY (showing top items per facet):
+FACETS ANALYZED (${Object.keys(dashboardData.segments).length} total):
 ${Object.entries(dashboardData.segments)
     .slice(0, 10)
-    .map(([segment, items]) => `- ${segment}: ${items.length} items, top item: ${items[0]?.value || 'N/A'} (${items[0]?.count?.toLocaleString() || 0})`)
+    .map(([segment, items]) => `- ${segment}: ${items.length} items, top: ${items[0]?.value || 'N/A'} (${items[0]?.count?.toLocaleString() || 0})`)
     .join('\n')}
-${Object.keys(dashboardData.segments).length > 10 ? `... and ${Object.keys(dashboardData.segments).length - 10} more facets` : ''}
-==== END DASHBOARD METRICS ====
+${Object.keys(dashboardData.segments).length > 10 ? `... and ${Object.keys(dashboardData.segments).length - 10} more` : ''}
 
-==== SOURCE MATERIAL (FOR REFERENCE ONLY - DO NOT INCLUDE IN RESPONSE) ====
-${allInsights.map((insight) => insight.slice(0, 1000)).join('\n\n')}
-${allInsights.reduce((sum, i) => sum + i.length, 0) > allInsights.length * 1000 ? '\n\n[Additional analysis details available - use the dashboard metrics and segment data above for specific numbers]' : ''}
-==== END SOURCE MATERIAL ====
+BATCH ANALYSIS RESULTS:
+${(() => {
+    const maxTotal = 6000;
+    const perInsight = Math.min(600, Math.floor(maxTotal / allInsights.length));
+    return allInsights.map((insight) => insight.slice(0, perInsight)).join('\n---\n');
+  })()}
 
-${overviewTemplate}`;
+Generate the report following the template structure in your system instructions.`;
 }
 
 /** Call AWS Bedrock API for analysis */
@@ -135,26 +107,24 @@ async function callAnthropicAPI(dashboardData, facetTools, progressCallback) {
         progressCallback(3, 'in-progress', 'Generating streamlined overview report...', 10);
       }
 
-      // Load overview template
+      // Load overview template and facet info into system prompt
       if (progressCallback) {
         progressCallback(3, 'in-progress', 'Loading overview template...', 25);
       }
       const overviewTemplate = await getOverviewAnalysisTemplate();
+      const facetInfoSection = buildFacetInfoSection(dashboardData);
+      const enhancedSystemPrompt = `${systemPromptText}\n\n${overviewTemplate}\n\n${facetInfoSection}`;
 
-      // Build final synthesis message
+      // Build lean user message with just data
       const finalSynthesisMessage = buildFinalSynthesisMessage(
         dashboardData,
         allInsights,
-        overviewTemplate,
       );
 
-      // Add facet info to system prompt (instructions belong in system, not user message)
-      const facetInfoSection = buildFacetInfoSection(dashboardData);
-      const enhancedSystemPrompt = `${systemPromptText}\n\n${facetInfoSection}`;
-
-      const maxTokens = 7500;
+      const maxTokens = API_CONFIG.SYNTHESIS_MAX_TOKENS || 4096;
 
       const finalRequest = {
+        modelId: AI_MODELS.SYNTHESIS_MODEL_ID || AI_MODELS.BEDROCK_MODEL_ID,
         max_tokens: maxTokens,
         messages: [{ role: 'user', content: finalSynthesisMessage }],
         system: enhancedSystemPrompt,
@@ -165,13 +135,13 @@ async function callAnthropicAPI(dashboardData, facetTools, progressCallback) {
         progressCallback(3, 'in-progress', 'Preparing the overview analysis...', 40);
       }
 
-      // Make final API call using API Factory (AWS Bedrock)
+      // Make final API call using async mode to avoid timeout
       if (progressCallback) {
-        progressCallback(3, 'in-progress', 'Generating insights and findings...', 65);
+        progressCallback(3, 'in-progress', 'Generating insights and findings (this may take a minute)...', 50);
       }
 
-      const { callAI } = await import('../api/api-factory.js');
-      const finalData = await callAI(finalRequest);
+      const { callAIAsync } = await import('../api/api-factory.js');
+      const finalData = await callAIAsync(finalRequest);
 
       if (finalData) {
         if (finalData.stop_reason === 'max_tokens') {

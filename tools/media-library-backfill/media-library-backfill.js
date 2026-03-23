@@ -7,7 +7,8 @@ const DA_ETC_ORIGIN = 'https://da-etc.adobeaem.workers.dev';
 const AEM_PAGE_SUFFIX = '.aem.page';
 const REF = 'main';
 const BATCH_SIZE = 10;
-const CONCURRENCY = 5;
+const PAGE_CRAWL_CONCURRENCY = 25;
+const FALLBACK_METADATA_CONCURRENCY = 5;
 const POLL_INTERVAL = 2000;
 const JOB_COUNTER_LOG_INTERVAL = 10000;
 const ADMIN_API_RATE = 10;
@@ -22,6 +23,8 @@ const MIN_ETA_SAMPLE_MS = 10000;
 const MIN_PROCESSING_ETA_SAMPLE_COUNT = 50;
 const MIN_INGEST_ETA_SAMPLE_COUNT = 3;
 const DEFAULT_INGEST_BATCH_DURATION_MS = 150;
+const PROCESSING_PROGRESS_PAGE_INTERVAL = 25;
+const PROCESSING_PROGRESS_MIN_INTERVAL_MS = 500;
 
 const VIDEO_EXTENSIONS = /\.(mp4|mov|webm|avi|m4v|mkv)$/i;
 
@@ -1497,6 +1500,8 @@ async function processPages(org, site, pages) {
   let candidateOrder = 0;
   let processed = 0;
   let htmlPageCount = 0;
+  let lastProgressProcessed = 0;
+  let lastProgressUpdateAt = Date.now();
 
   async function fetchPageContent(page) {
     const markdownPath = toMarkdownPath(page.path);
@@ -1515,6 +1520,30 @@ async function processPages(org, site, pages) {
       };
     }
     return null;
+  }
+
+  function flushProcessingProgress(force = false) {
+    const now = Date.now();
+    const processedDelta = processed - lastProgressProcessed;
+    const shouldFlush = force
+      || processed === pages.length
+      || processedDelta >= PROCESSING_PROGRESS_PAGE_INTERVAL
+      || (
+        processedDelta > 0
+        && (now - lastProgressUpdateAt) >= PROCESSING_PROGRESS_MIN_INTERVAL_MS
+      );
+
+    if (!shouldFlush) {
+      return;
+    }
+
+    updateProgressMetrics({ processedPages: processed });
+    const pct = 25 + Math.round((processed / pages.length) * 40);
+    setPhase(`Phase 2: Processing pages... (${processed}/${pages.length})`, pct);
+    stats.media = mediaCandidates.length;
+    updateStatsDisplay();
+    lastProgressProcessed = processed;
+    lastProgressUpdateAt = now;
   }
 
   await runWithConcurrency(pages, async (page) => {
@@ -1549,12 +1578,12 @@ async function processPages(org, site, pages) {
     }
 
     processed += 1;
-    updateProgressMetrics({ processedPages: processed });
-    const pct = 25 + Math.round((processed / pages.length) * 40);
-    setPhase(`Phase 2: Processing pages... (${processed}/${pages.length})`, pct);
-    stats.media = mediaCandidates.length;
-    updateStatsDisplay();
-  }, CONCURRENCY);
+    flushProcessingProgress();
+  }, PAGE_CRAWL_CONCURRENCY);
+
+  if (pages.length > 0) {
+    flushProcessingProgress(true);
+  }
 
   if (htmlPageCount > 0) {
     log(`Scraped media from HTML responses for ${htmlPageCount} page(s) that did not return markdown.`, 'warn');
@@ -1609,7 +1638,7 @@ async function populateStandaloneMediaFallbackLastModified(org, site, standalone
       if (err.name === 'AbortError') throw err;
       log(`Failed to fetch fallback Last-Modified for ${media.path}: ${err.message}`, 'warn');
     }
-  }, CONCURRENCY);
+  }, FALLBACK_METADATA_CONCURRENCY);
 
   return {
     attempted: pending.length,
