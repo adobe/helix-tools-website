@@ -172,7 +172,7 @@ async function init() {
     if (!await ensureLogin(org.value, site.value)) {
       window.addEventListener('profile-update', ({ detail: loginInfo }) => {
         if (loginInfo.includes(org.value)) {
-          e.target.querySelector('button[type="submit"]').click();
+        if (Array.isArray(loginInfo) && loginInfo.includes(org.value)) {
         }
       }, { once: true });
       return;
