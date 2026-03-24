@@ -131,20 +131,23 @@ async function deleteUserFromOrg(user) {
   return resp.ok;
 }
 
-async function addUserToSite(user) {
-  accessConfig.users.push(user);
+async function addUsersToSite(users) {
+  users.forEach((u) => accessConfig.users.push(u));
   return updateSiteAccess();
 }
 
-async function addUserToOrg(user) {
+async function addUsersToOrg(users) {
   const adminURL = `https://admin.hlx.page/config/${org.value}/users.json`;
-  const resp = await fetch(adminURL, {
-    method: 'POST',
-    body: JSON.stringify(user),
-    headers: { 'Content-Type': 'application/json' },
-  });
-  logResponse(consoleBlock, resp.status, ['POST', adminURL, resp.headers.get('x-error') || '']);
-  return resp.ok;
+  const results = await Promise.all(users.map(async (user) => {
+    const resp = await fetch(adminURL, {
+      method: 'POST',
+      body: JSON.stringify(user),
+      headers: { 'Content-Type': 'application/json' },
+    });
+    logResponse(consoleBlock, resp.status, ['POST', adminURL, resp.headers.get('x-error') || '']);
+    return resp.ok;
+  }));
+  return results.every(Boolean);
 }
 
 async function updateSiteUserRoles(user) {
@@ -155,73 +158,149 @@ async function updateSiteUserRoles(user) {
   return updateSiteAccess();
 }
 
-function createRoleCheckboxes(selectedRoles = []) {
-  return ROLES.map((role) => {
+function createCompactRoleCheckboxes(selectedRoles = []) {
+  const container = document.createElement('div');
+  container.className = 'compact-roles';
+  ROLES.forEach((role) => {
     const roleInfo = ROLE_DESCRIPTIONS[role];
-    const checked = selectedRoles.includes(role) ? 'checked' : '';
-    return `
-      <label class="role-option" title="${roleInfo.permissions}">
-        <input type="checkbox" name="role" value="${role}" ${checked} />
-        <span class="role-info">
-          <span class="role-name">${roleInfo.label}</span>
-          <span class="role-desc">${roleInfo.description}</span>
-        </span>
-      </label>
-    `;
-  }).join('');
+    const label = document.createElement('label');
+    label.className = 'role-pill';
+    label.title = roleInfo.description;
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = role;
+    if (selectedRoles.includes(role)) checkbox.checked = true;
+    const span = document.createElement('span');
+    span.textContent = roleInfo.label;
+    label.appendChild(checkbox);
+    label.appendChild(span);
+    container.appendChild(label);
+  });
+  return container;
 }
 
-function openUserModal(user, onSave) {
-  const isNew = !user;
+function createRolesReference() {
+  const details = document.createElement('details');
+  details.className = 'roles-reference';
+  const summary = document.createElement('summary');
+  summary.textContent = 'What do these roles mean?';
+  details.appendChild(summary);
+  const list = document.createElement('dl');
+  list.className = 'roles-reference-list';
+  ROLES.forEach((role) => {
+    const roleInfo = ROLE_DESCRIPTIONS[role];
+    const dt = document.createElement('dt');
+    dt.textContent = roleInfo.label;
+    const dd = document.createElement('dd');
+    dd.textContent = roleInfo.description;
+    list.appendChild(dt);
+    list.appendChild(dd);
+  });
+  const link = document.createElement('a');
+  link.href = 'https://www.aem.live/docs/authentication-setup-authoring#admin-roles';
+  link.target = '_blank';
+  link.className = 'roles-reference-link';
+  link.textContent = 'Learn more about roles';
+  details.appendChild(list);
+  details.appendChild(link);
+  return details;
+}
 
-  const dialog = document.createElement('dialog');
-  dialog.className = 'user-admin-modal';
-  dialog.innerHTML = `
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 class="modal-title"></h3>
-        <button type="button" class="modal-close" aria-label="Close">&times;</button>
-      </div>
-      <div class="modal-body">
-        <form id="user-admin-modal-form">
-          ${isNew ? `
-            <div class="form-field">
-              <label for="user-email">Email</label>
-              <input type="email" id="user-email" name="email" required placeholder="user@example.com" />
-            </div>
-          ` : ''}
-          <div class="form-field">
-            <label>Roles</label>
-            <p class="field-hint">Select one or more roles. <a href="https://www.aem.live/docs/authentication-setup-authoring#admin-roles" target="_blank">Learn more about roles</a></p>
-            <div class="roles-grid">
-              ${createRoleCheckboxes(user?.roles || [])}
-            </div>
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        ${!isNew ? '<button type="button" class="button danger outline delete-btn">Delete User</button>' : ''}
-        <button type="button" class="button outline cancel-btn">Cancel</button>
-        <button type="submit" form="user-admin-modal-form" class="button save-btn">Save</button>
-      </div>
-    </div>
-  `;
+function createUserEntry(entriesContainer, updateSaveLabel) {
+  const entry = document.createElement('div');
+  entry.className = 'user-entry';
 
-  // Set title safely using textContent to prevent XSS
-  const titleEl = dialog.querySelector('.modal-title');
-  titleEl.textContent = isNew ? 'Add User' : `Edit User: ${user.email}`;
+  const header = document.createElement('div');
+  header.className = 'user-entry-header';
+  const label = document.createElement('span');
+  label.className = 'user-entry-label';
+  const num = entriesContainer.querySelectorAll('.user-entry').length + 1;
+  label.textContent = `User ${num}`;
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'user-entry-remove';
+  removeBtn.textContent = 'Remove';
+  header.appendChild(label);
+  header.appendChild(removeBtn);
 
-  document.body.appendChild(dialog);
-  dialog.showModal();
+  const emailField = document.createElement('div');
+  emailField.className = 'form-field';
+  const emailLabel = document.createElement('label');
+  emailLabel.textContent = 'Email';
+  const emailInput = document.createElement('input');
+  emailInput.type = 'email';
+  emailInput.required = true;
+  emailInput.placeholder = 'user@example.com';
+  emailField.appendChild(emailLabel);
+  emailField.appendChild(emailInput);
 
+  const rolesField = document.createElement('div');
+  rolesField.className = 'form-field';
+  const rolesLabel = document.createElement('label');
+  rolesLabel.textContent = 'Roles';
+  rolesField.appendChild(rolesLabel);
+  rolesField.appendChild(createCompactRoleCheckboxes());
+
+  entry.appendChild(header);
+  entry.appendChild(emailField);
+  entry.appendChild(rolesField);
+
+  const renumber = () => {
+    entriesContainer.querySelectorAll('.user-entry').forEach((e, i) => {
+      e.querySelector('.user-entry-label').textContent = `User ${i + 1}`;
+    });
+  };
+
+  const updateRemoveVisibility = () => {
+    const entries = entriesContainer.querySelectorAll('.user-entry');
+    const hide = entries.length <= 1;
+    entries.forEach((e) => {
+      e.querySelector('.user-entry-remove').style.display = hide ? 'none' : '';
+    });
+  };
+
+  removeBtn.addEventListener('click', () => {
+    entry.remove();
+    renumber();
+    updateSaveLabel();
+    updateRemoveVisibility();
+  });
+
+  entriesContainer.appendChild(entry);
+  updateSaveLabel();
+  updateRemoveVisibility();
+  return entry;
+}
+
+function showModalError(dialog, message) {
+  let banner = dialog.querySelector('.modal-error');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.className = 'modal-error';
+    banner.setAttribute('role', 'alert');
+    const footer = dialog.querySelector('.modal-footer');
+    footer.parentNode.insertBefore(banner, footer);
+  }
+  banner.textContent = message;
+  banner.hidden = false;
+}
+
+function clearModalError(dialog) {
+  const banner = dialog.querySelector('.modal-error');
+  if (banner) banner.hidden = true;
+}
+
+function setupModalShell(dialog, options = {}) {
   const closeModal = () => {
+    if (options.confirmClose && !options.confirmClose()) return;
     dialog.close();
     dialog.remove();
   };
 
-  // Clean up dialog when closed via Escape key (cancel event fires before close)
-  dialog.addEventListener('cancel', closeModal);
-
+  dialog.addEventListener('cancel', (e) => {
+    e.preventDefault();
+    closeModal();
+  });
   dialog.querySelector('.modal-close').addEventListener('click', closeModal);
   dialog.querySelector('.cancel-btn').addEventListener('click', closeModal);
 
@@ -234,95 +313,362 @@ function openUserModal(user, onSave) {
     }
   });
 
-  const form = dialog.querySelector('#user-admin-modal-form');
-  const saveBtn = dialog.querySelector('.save-btn');
+  return closeModal;
+}
+
+function openAddUsersModal(onSave) {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'user-admin-modal';
+
+  const content = document.createElement('div');
+  content.className = 'modal-content';
+
+  const headerDiv = document.createElement('div');
+  headerDiv.className = 'modal-header';
+  const title = document.createElement('h3');
+  title.className = 'modal-title';
+  title.textContent = 'Add Users';
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'modal-close';
+  closeBtn.setAttribute('aria-label', 'Close');
+  closeBtn.textContent = '\u00D7';
+  headerDiv.appendChild(title);
+  headerDiv.appendChild(closeBtn);
+
+  const presetsDiv = document.createElement('div');
+  presetsDiv.className = 'modal-toolbar';
+  const presetsLabel = document.createElement('label');
+  presetsLabel.className = 'presets-label';
+  presetsLabel.textContent = 'Role Presets';
+  presetsDiv.appendChild(presetsLabel);
+  const presetsBtnRow = document.createElement('div');
+  presetsBtnRow.className = 'presets-btn-row';
+  const entriesContainer = document.createElement('div');
+  entriesContainer.className = 'user-entries';
+  ROLES.forEach((role) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'role-preset-btn';
+    btn.textContent = ROLE_DESCRIPTIONS[role].label;
+    btn.addEventListener('click', () => {
+      const cbs = entriesContainer.querySelectorAll(`input[type="checkbox"][value="${role}"]`);
+      const allChecked = cbs.length > 0 && [...cbs].every((cb) => cb.checked);
+      cbs.forEach((cb) => { cb.checked = !allChecked; });
+      entriesContainer.querySelectorAll('.user-entry.has-error').forEach((entry) => {
+        entry.classList.remove('has-error');
+      });
+    });
+    presetsBtnRow.appendChild(btn);
+  });
+  presetsDiv.appendChild(presetsBtnRow);
+  presetsDiv.appendChild(createRolesReference());
+
+  const bodyDiv = document.createElement('div');
+  bodyDiv.className = 'modal-body';
+  const form = document.createElement('form');
+  form.id = 'user-admin-modal-form';
+  form.noValidate = true;
+  const addAnotherBtn = document.createElement('button');
+  addAnotherBtn.type = 'button';
+  addAnotherBtn.className = 'button outline add-another-btn';
+  addAnotherBtn.textContent = '+ Add Another User';
+  form.appendChild(entriesContainer);
+  form.appendChild(addAnotherBtn);
+  bodyDiv.appendChild(form);
+
+  const footerDiv = document.createElement('div');
+  footerDiv.className = 'modal-footer';
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.className = 'button outline cancel-btn';
+  cancelBtn.textContent = 'Cancel';
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'submit';
+  saveBtn.setAttribute('form', 'user-admin-modal-form');
+  saveBtn.className = 'button save-btn';
+  saveBtn.textContent = 'Add 2 Users';
+  footerDiv.appendChild(cancelBtn);
+  footerDiv.appendChild(saveBtn);
+
+  content.appendChild(headerDiv);
+  content.appendChild(presetsDiv);
+  content.appendChild(bodyDiv);
+  content.appendChild(footerDiv);
+  dialog.appendChild(content);
+
+  document.body.appendChild(dialog);
+  dialog.showModal();
+
+  const closeModal = setupModalShell(dialog, {
+    confirmClose: () => {
+      const emails = dialog.querySelectorAll('input[type="email"]');
+      const hasData = [...emails].some((input) => input.value.trim() !== '');
+      if (!hasData) return true;
+      // eslint-disable-next-line no-alert
+      return window.confirm('You have unsaved changes. Discard?');
+    },
+  });
+
+  const updateSaveLabel = () => {
+    const count = entriesContainer.querySelectorAll('.user-entry').length;
+    saveBtn.textContent = `Add ${count} User${count !== 1 ? 's' : ''}`;
+  };
+
+  const firstEntry = createUserEntry(entriesContainer, updateSaveLabel);
+  createUserEntry(entriesContainer, updateSaveLabel);
+  firstEntry.querySelector('input[type="email"]').focus();
+
+  addAnotherBtn.addEventListener('click', () => {
+    const entry = createUserEntry(entriesContainer, updateSaveLabel);
+    entry.querySelector('input[type="email"]').focus();
+    entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const checkboxes = form.querySelectorAll('input[type="checkbox"]:checked');
-    const roles = [...checkboxes].map((cb) => cb.value);
+    clearModalError(dialog);
 
-    if (roles.length === 0) {
-      showToast('Please select at least one role', 'error');
-      return;
-    }
+    const entries = entriesContainer.querySelectorAll('.user-entry');
+    const users = [];
+    let hasError = false;
 
-    const email = isNew ? form.querySelector('#user-email').value : user.email;
+    entries.forEach((entry) => entry.classList.remove('has-error'));
 
-    // Check for duplicate users when adding new
-    if (isNew) {
-      const emailLower = email.toLowerCase();
-      const exists = accessConfig.users.some((u) => u.email.toLowerCase() === emailLower);
-      if (exists) {
-        showToast('A user with this email already exists', 'error');
+    entries.forEach((entry) => {
+      if (hasError) return;
+      const emailInput = entry.querySelector('input[type="email"]');
+      const email = emailInput.value.trim();
+      const roles = [...entry.querySelectorAll('input[type="checkbox"]:checked')]
+        .map((cb) => cb.value);
+
+      if (!email) {
+        entry.classList.add('has-error');
+        entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        emailInput.focus();
+        showModalError(dialog, 'Please enter an email for each user');
+        hasError = true;
         return;
       }
+
+      if (!emailInput.validity.valid) {
+        entry.classList.add('has-error');
+        entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        emailInput.focus();
+        showModalError(dialog, `Invalid email: ${email}`);
+        hasError = true;
+        return;
+      }
+
+      if (roles.length === 0) {
+        entry.classList.add('has-error');
+        entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        showModalError(dialog, 'Please select at least one role for each user');
+        hasError = true;
+        return;
+      }
+
+      const emailLower = email.toLowerCase();
+      if (users.some((u) => u.email.toLowerCase() === emailLower)) {
+        entry.classList.add('has-error');
+        entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        showModalError(dialog, `Duplicate email in batch: ${email}`);
+        hasError = true;
+        return;
+      }
+      if (accessConfig.users.some((u) => u.email.toLowerCase() === emailLower)) {
+        entry.classList.add('has-error');
+        entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        showModalError(dialog, `User already exists: ${email}`);
+        hasError = true;
+        return;
+      }
+
+      users.push({ email, roles });
+    });
+
+    if (hasError || users.length === 0) return;
+
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+
+    try {
+      const success = await onSave(users);
+      if (success) {
+        const msg = users.length === 1
+          ? 'User added successfully'
+          : `${users.length} users added successfully`;
+        closeModal();
+        showToast(msg);
+        adminForm.dispatchEvent(new Event('submit'));
+      } else {
+        showModalError(dialog, 'Failed to add users');
+        saveBtn.disabled = false;
+        updateSaveLabel();
+      }
+    } catch (err) {
+      showModalError(dialog, `Error: ${err.message || 'Failed to add users'}`);
+      saveBtn.disabled = false;
+      updateSaveLabel();
+    }
+  });
+}
+
+function openEditUserModal(user, onSave) {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'user-admin-modal';
+
+  const content = document.createElement('div');
+  content.className = 'modal-content';
+
+  const headerDiv = document.createElement('div');
+  headerDiv.className = 'modal-header';
+  const title = document.createElement('h3');
+  title.className = 'modal-title';
+  title.textContent = `Edit User: ${user.email}`;
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'modal-close';
+  closeBtn.setAttribute('aria-label', 'Close');
+  closeBtn.textContent = '\u00D7';
+  headerDiv.appendChild(title);
+  headerDiv.appendChild(closeBtn);
+
+  const bodyDiv = document.createElement('div');
+  bodyDiv.className = 'modal-body';
+  const form = document.createElement('form');
+  form.id = 'user-admin-modal-form';
+
+  const rolesField = document.createElement('div');
+  rolesField.className = 'form-field';
+  const rolesLabel = document.createElement('label');
+  rolesLabel.textContent = 'Roles';
+  const hint = document.createElement('p');
+  hint.className = 'field-hint';
+  const hintLink = document.createElement('a');
+  hintLink.href = 'https://www.aem.live/docs/authentication-setup-authoring#admin-roles';
+  hintLink.target = '_blank';
+  hintLink.textContent = 'Learn more about roles';
+  hint.append('Select one or more roles. ', hintLink);
+  const editPresetsRow = document.createElement('div');
+  editPresetsRow.className = 'role-presets';
+  ROLES.forEach((role) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'role-preset-btn';
+    btn.textContent = ROLE_DESCRIPTIONS[role].label;
+    btn.addEventListener('click', () => {
+      rolesField.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+        cb.checked = cb.value === role;
+      });
+    });
+    editPresetsRow.appendChild(btn);
+  });
+  rolesField.appendChild(rolesLabel);
+  rolesField.appendChild(hint);
+  rolesField.appendChild(editPresetsRow);
+  rolesField.appendChild(createCompactRoleCheckboxes(user.roles || []));
+  form.appendChild(rolesField);
+  bodyDiv.appendChild(form);
+
+  const footerDiv = document.createElement('div');
+  footerDiv.className = 'modal-footer';
+  const deleteBtn = document.createElement('button');
+  deleteBtn.type = 'button';
+  deleteBtn.className = 'button danger outline delete-btn';
+  deleteBtn.textContent = 'Delete User';
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.className = 'button outline cancel-btn';
+  cancelBtn.textContent = 'Cancel';
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'submit';
+  saveBtn.setAttribute('form', 'user-admin-modal-form');
+  saveBtn.className = 'button save-btn';
+  saveBtn.textContent = 'Save';
+  footerDiv.appendChild(deleteBtn);
+  footerDiv.appendChild(cancelBtn);
+  footerDiv.appendChild(saveBtn);
+
+  content.appendChild(headerDiv);
+  content.appendChild(bodyDiv);
+  content.appendChild(footerDiv);
+  dialog.appendChild(content);
+
+  document.body.appendChild(dialog);
+  dialog.showModal();
+
+  const closeModal = setupModalShell(dialog);
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearModalError(dialog);
+    const roles = [...form.querySelectorAll('input[type="checkbox"]:checked')]
+      .map((cb) => cb.value);
+
+    if (roles.length === 0) {
+      showModalError(dialog, 'Please select at least one role');
+      return;
     }
 
     saveBtn.disabled = true;
     saveBtn.textContent = 'Saving...';
 
-    const updatedUser = { email, roles, id: user?.id };
+    const updatedUser = { email: user.email, roles, id: user.id };
 
     try {
-      const success = await onSave(updatedUser, isNew);
+      const success = await onSave(updatedUser);
       if (success) {
-        showToast(isNew ? 'User added successfully' : 'User updated successfully');
         closeModal();
+        showToast('User updated successfully');
         adminForm.dispatchEvent(new Event('submit'));
       } else {
-        showToast('Failed to save user', 'error');
+        showModalError(dialog, 'Failed to save user');
         saveBtn.disabled = false;
         saveBtn.textContent = 'Save';
       }
     } catch (err) {
-      showToast(`Error: ${err.message || 'Failed to save user'}`, 'error');
+      showModalError(dialog, `Error: ${err.message || 'Failed to save user'}`);
       saveBtn.disabled = false;
       saveBtn.textContent = 'Save';
     }
   });
 
-  const deleteBtn = dialog.querySelector('.delete-btn');
-  if (deleteBtn) {
-    deleteBtn.addEventListener('click', async () => {
-      // eslint-disable-next-line no-alert
-      const emailCheck = prompt(`To confirm deletion, enter the email: ${user.email}`);
-      if (emailCheck !== user.email) {
-        if (emailCheck !== null) showToast('Email did not match', 'error');
-        return;
+  deleteBtn.addEventListener('click', async () => {
+    clearModalError(dialog);
+    // eslint-disable-next-line no-alert
+    const emailCheck = prompt(`To confirm deletion, enter the email: ${user.email}`);
+    if (emailCheck !== user.email) {
+      if (emailCheck !== null) showModalError(dialog, 'Email did not match');
+      return;
+    }
+
+    deleteBtn.disabled = true;
+    deleteBtn.textContent = 'Deleting...';
+
+    try {
+      let success;
+      if (accessConfig.type === 'site') {
+        success = await deleteUserFromSite(user);
+      } else {
+        success = await deleteUserFromOrg(user);
       }
 
-      deleteBtn.disabled = true;
-      deleteBtn.textContent = 'Deleting...';
-
-      try {
-        let success;
-        if (accessConfig.type === 'site') {
-          success = await deleteUserFromSite(user);
-        } else {
-          success = await deleteUserFromOrg(user);
-        }
-
-        if (success) {
-          showToast('User deleted');
-          closeModal();
-          adminForm.dispatchEvent(new Event('submit'));
-        } else {
-          showToast('Failed to delete user', 'error');
-          deleteBtn.disabled = false;
-          deleteBtn.textContent = 'Delete User';
-        }
-      } catch (err) {
-        showToast(`Error: ${err.message || 'Failed to delete user'}`, 'error');
+      if (success) {
+        closeModal();
+        showToast('User deleted');
+        adminForm.dispatchEvent(new Event('submit'));
+      } else {
+        showModalError(dialog, 'Failed to delete user');
         deleteBtn.disabled = false;
         deleteBtn.textContent = 'Delete User';
       }
-    });
-  }
-
-  if (isNew) {
-    dialog.querySelector('#user-email').focus();
-  }
+    } catch (err) {
+      showModalError(dialog, `Error: ${err.message || 'Failed to delete user'}`);
+      deleteBtn.disabled = false;
+      deleteBtn.textContent = 'Delete User';
+    }
+  });
 }
 
 function createUserCard(user) {
@@ -363,7 +709,7 @@ function createUserCard(user) {
   editBtn.innerHTML = `${icon('edit')} Edit`;
 
   editBtn.addEventListener('click', () => {
-    openUserModal(user, async (updatedUser) => {
+    openEditUserModal(user, async (updatedUser) => {
       if (accessConfig.type === 'site') {
         return updateSiteUserRoles(updatedUser);
       }
@@ -401,7 +747,7 @@ function displayUsers(users) {
           ${icon('list')}
         </button>
       </div>
-      <button class="button add-user-btn">+ Add User</button>
+      <button class="button add-user-btn">+ Add User(s)</button>
     </div>
   `;
 
@@ -436,14 +782,11 @@ function displayUsers(users) {
 
   // Add user button
   header.querySelector('.add-user-btn').addEventListener('click', () => {
-    openUserModal(null, async (newUser, isNew) => {
-      if (isNew) {
-        if (accessConfig.type === 'site') {
-          return addUserToSite(newUser);
-        }
-        return addUserToOrg(newUser);
+    openAddUsersModal(async (newUsers) => {
+      if (accessConfig.type === 'site') {
+        return addUsersToSite(newUsers);
       }
-      return false;
+      return addUsersToOrg(newUsers);
     });
   });
 
