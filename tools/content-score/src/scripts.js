@@ -175,10 +175,10 @@ function getPlainHtmlPath() {
 }
 
 /**
- * Fetches and parses .plain.html representation of current page.
+ * Fetches and parses `.plain.html` for the current URL.
  * @returns {Promise<Document|null>} Parsed plain DOM or `null` if fetch fails
  */
-async function getPlainDom() {
+async function fetchPlainDom() {
   try {
     const plainUrl = getPlainHtmlPath();
     const resp = await fetch(plainUrl);
@@ -186,9 +186,7 @@ async function getPlainDom() {
 
     const html = await resp.text();
     const parser = new DOMParser();
-    const plainDoc = parser.parseFromString(html, 'text/html');
-
-    return plainDoc;
+    return parser.parseFromString(html, 'text/html');
   } catch (error) {
     return null;
   }
@@ -583,11 +581,11 @@ function checkLinks(doc, config) {
 /**
  * Checks for nested blocks using config.
  * @param {Object} config - Config from loadConfig()
- * @returns {Promise<Array>} Array of nested block issues
+ * @param {Document|null} plainDom - Parsed `.plain.html` document, or `null` if unavailable
+ * @returns {Array} Nested block issues
  */
-async function checkNestedBlocks(config) {
+function checkNestedBlocks(config, plainDom) {
   const issues = [];
-  const plainDom = await getPlainDom();
   const rule = getRule(config, 'nested-blocks');
 
   if (!plainDom || !rule) return issues;
@@ -611,11 +609,11 @@ async function checkNestedBlocks(config) {
 /**
  * Checks for complex rowspan/colspan patterns using config.
  * @param {Object} config - Config from loadConfig()
- * @returns {Promise<Array>} Array of row/column span issues
+ * @param {Document|null} plainDom - Parsed `.plain.html` document, or `null` if unavailable
+ * @returns {Array} Row/column span issues
  */
-async function checkRowColSpans(config) {
+function checkRowColSpans(config, plainDom) {
   const issues = [];
-  const plainDom = await getPlainDom();
   const rule = getRule(config, 'row-col-spans');
 
   if (!plainDom || !rule) return issues;
@@ -671,11 +669,11 @@ async function checkRowColSpans(config) {
 /**
  * Checks for tables with too many columns using config.
  * @param {Object} config - Config from loadConfig()
- * @returns {Promise<Array>} Array of column count issues
+ * @param {Document|null} plainDom - Parsed `.plain.html` document, or `null` if unavailable
+ * @returns {Array} Column count issues
  */
-async function checkColumnCounts(config) {
+function checkColumnCounts(config, plainDom) {
   const issues = [];
-  const plainDom = await getPlainDom();
   const rule = getRule(config, 'column-counts');
 
   if (!plainDom || !rule) return issues;
@@ -783,11 +781,11 @@ function checkListLikeContent(doc = document, config = {}) {
 /**
  * Checks for block and variant sprawl from .plain.html using config.
  * @param {Object} config - Config from loadConfig()
- * @returns {Promise<Array>} Array of block sprawl issues
+ * @param {Document|null} plainDom - Parsed `.plain.html` document, or `null` if unavailable
+ * @returns {Array} Block sprawl issues
  */
-async function checkBlockSprawl(config) {
+function checkBlockSprawl(config, plainDom) {
   const issues = [];
-  const plainDom = await getPlainDom();
   const typesRule = getRule(config, 'block-sprawl-types');
   const variantsRule = getRule(config, 'block-sprawl-variants');
 
@@ -834,7 +832,7 @@ async function checkBlockSprawl(config) {
   return issues;
 }
 
-/** Detail key → detector (doc, config) → issues or Promise<issues>. */
+/** Detail key → detector `(doc, config, plainDom)` → issues or Promise<issues>. */
 const DETECTORS = {
   altIssues: (doc, config) => [
     ...checkImageAlt(doc, config),
@@ -842,11 +840,11 @@ const DETECTORS = {
   ],
   headingIssues: (doc, config) => checkHeadings(doc, config),
   linkIssues: (doc, config) => checkLinks(doc, config),
-  nestedBlocksIssues: (_doc, config) => checkNestedBlocks(config),
-  rowColSpansIssues: (_doc, config) => checkRowColSpans(config),
-  columnCountsIssues: (_doc, config) => checkColumnCounts(config),
+  nestedBlocksIssues: (_doc, config, plainDom) => checkNestedBlocks(config, plainDom),
+  rowColSpansIssues: (_doc, config, plainDom) => checkRowColSpans(config, plainDom),
+  columnCountsIssues: (_doc, config, plainDom) => checkColumnCounts(config, plainDom),
   listLikeIssues: (doc, config) => checkListLikeContent(doc, config),
-  blockSprawlIssues: (_doc, config) => checkBlockSprawl(config),
+  blockSprawlIssues: (_doc, config, plainDom) => checkBlockSprawl(config, plainDom),
 };
 
 /**
@@ -858,8 +856,15 @@ export default async function analyzeContent(doc = document) {
   const config = await loadConfig();
   const categories = config.categories || [];
   const keys = categories.map((c) => categoryIdToDetailsKey(c.id));
+  const needsPlainDom = keys.some(
+    (key) => key === 'nestedBlocksIssues'
+      || key === 'rowColSpansIssues'
+      || key === 'columnCountsIssues'
+      || key === 'blockSprawlIssues',
+  );
+  const plainDom = needsPlainDom ? await fetchPlainDom() : null;
   const results = await Promise.all(
-    keys.map((key) => Promise.resolve(DETECTORS[key] ? DETECTORS[key](doc, config) : [])),
+    keys.map((key) => Promise.resolve(DETECTORS[key] ? DETECTORS[key](doc, config, plainDom) : [])),
   );
   const details = Object.fromEntries(keys.map((key, i) => [key, results[i]]));
 
