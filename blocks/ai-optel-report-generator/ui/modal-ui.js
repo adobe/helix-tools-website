@@ -2,8 +2,6 @@
  * Modal UI - Creation, structure, and state management
  */
 
-const STORAGE_KEY = 'awsBedrockToken';
-
 function createModalHeader() {
   const header = document.createElement('div');
   header.className = 'report-modal-header';
@@ -16,25 +14,11 @@ function createModalBody() {
   const body = document.createElement('div');
   body.className = 'report-modal-body';
 
-  const token = localStorage.getItem(STORAGE_KEY) || '';
-  const hasToken = !!token;
-
   body.innerHTML = `
-    <div class="report-form-group">
-      <label for="report-bedrock-token">Enter your AWS Bedrock Token</label>
-      <div class="report-quick-filter">
-        <input type="password" id="report-bedrock-token" placeholder="AWS Bearer Token..."
-          value="${token}" ${hasToken ? 'disabled' : ''}>
-      </div>
-    </div>
-    <button id="report-generate-btn" class="report-generate-btn">
-      ${hasToken ? 'Generate Report' : 'Save Token & Generate'}
-    </button>
+    <button id="report-generate-btn" class="report-generate-btn">Generate Report</button>
     <div class="report-info">
-      <p>${hasToken
-    ? 'Your API credentials are saved. Click "Generate Report" to start the analysis.'
-    : 'Enter your AWS Bedrock token to generate a comprehensive report of your site data.'}</p>
-      ${hasToken ? '<p class="provider-text">Provider: <span id="provider-name">Checking...</span></p>' : ''}
+      <p>Click "Generate Report" to start the AI-powered analysis of your site data.</p>
+      <p class="provider-text">Provider: <span id="provider-name">Checking...</span></p>
     </div>
     <div id="report-status" style="display: none;"></div>`;
 
@@ -55,7 +39,6 @@ export function createModalStructure() {
 
 export function toggleFormVisibility(modalBody, visible) {
   const display = visible ? 'block' : 'none';
-  modalBody.querySelector('.report-form-group')?.style.setProperty('display', display);
   modalBody.querySelector('.report-info')?.style.setProperty('display', display);
 }
 

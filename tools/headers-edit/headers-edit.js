@@ -1,4 +1,5 @@
 import { registerToolReady } from '../../scripts/scripts.js';
+import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 
@@ -168,6 +169,15 @@ async function init() {
       return;
     }
 
+    if (!await ensureLogin(org.value, site.value)) {
+      window.addEventListener('profile-update', ({ detail: loginInfo }) => {
+        if (Array.isArray(loginInfo) && loginInfo.includes(org.value)) {
+          e.target.querySelector('button[type="submit"]').click();
+        }
+      }, { once: true });
+      return;
+    }
+
     saveCurrentPathHeaders();
 
     const headersUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/headers.json`;
@@ -198,6 +208,15 @@ async function init() {
     if (!org.value || !site.value) {
       // eslint-disable-next-line no-alert
       alert('Please select an organization and site first');
+      return;
+    }
+
+    if (!await ensureLogin(org.value, site.value)) {
+      window.addEventListener('profile-update', ({ detail: loginInfo }) => {
+        if (Array.isArray(loginInfo) && loginInfo.includes(org.value)) {
+          e.target.querySelector('button[type="submit"]').click();
+        }
+      }, { once: true });
       return;
     }
 

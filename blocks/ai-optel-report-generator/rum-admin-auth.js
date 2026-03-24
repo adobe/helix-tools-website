@@ -5,10 +5,12 @@
 const BUNDLES_API = 'https://bundles.aem.page';
 const TOKEN_KEYS = ['rum-bundler-token', 'rum-admin-token'];
 
-const getToken = () => TOKEN_KEYS.map((k) => localStorage.getItem(k)).find(Boolean);
+export const getAdminToken = () => TOKEN_KEYS.map((k) => localStorage.getItem(k)).find(Boolean);
+
+export const hasAdminToken = () => !!getAdminToken();
 
 export default async function checkRumAdminAccess() {
-  const token = getToken();
+  const token = getAdminToken();
   if (!token) return { isAdmin: false };
 
   try {
