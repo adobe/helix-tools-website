@@ -281,24 +281,14 @@ function createUserEntry(entriesContainer, updateSaveLabel) {
     });
   };
 
-  const updateRemoveVisibility = () => {
-    const entries = entriesContainer.querySelectorAll('.user-entry');
-    const hide = entries.length <= 1;
-    entries.forEach((e) => {
-      e.querySelector('.user-entry-remove').style.display = hide ? 'none' : '';
-    });
-  };
-
   removeBtn.addEventListener('click', () => {
     entry.remove();
     renumber();
     updateSaveLabel();
-    updateRemoveVisibility();
   });
 
   entriesContainer.appendChild(entry);
   updateSaveLabel();
-  updateRemoveVisibility();
   return entry;
 }
 
@@ -320,20 +310,53 @@ function clearModalError(dialog) {
   if (banner) banner.hidden = true;
 }
 
-function setupModalShell(dialog, options = {}) {
+function createModal(titleText, saveText = 'Save') {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'user-admin-modal';
+  const content = document.createElement('div');
+  content.className = 'modal-content';
+  const headerDiv = document.createElement('div');
+  headerDiv.className = 'modal-header';
+  const title = document.createElement('h3');
+  title.className = 'modal-title';
+  title.textContent = titleText;
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'modal-close';
+  closeBtn.setAttribute('aria-label', 'Close');
+  closeBtn.textContent = '\u00D7';
+  headerDiv.appendChild(title);
+  headerDiv.appendChild(closeBtn);
+  const bodyDiv = document.createElement('div');
+  bodyDiv.className = 'modal-body';
+  const footerDiv = document.createElement('div');
+  footerDiv.className = 'modal-footer';
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.className = 'button outline cancel-btn';
+  cancelBtn.textContent = 'Cancel';
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'submit';
+  saveBtn.setAttribute('form', 'user-admin-modal-form');
+  saveBtn.className = 'button save-btn';
+  saveBtn.textContent = saveText;
+  footerDiv.appendChild(cancelBtn);
+  footerDiv.appendChild(saveBtn);
+  content.appendChild(headerDiv);
+  content.appendChild(bodyDiv);
+  content.appendChild(footerDiv);
+  dialog.appendChild(content);
+
+  let confirmClose = null;
   const closeModal = () => {
-    if (options.confirmClose && !options.confirmClose()) return;
+    if (confirmClose && !confirmClose()) return;
     dialog.close();
     dialog.remove();
   };
 
-  dialog.addEventListener('cancel', (e) => {
-    e.preventDefault();
-    closeModal();
-  });
-  dialog.querySelector('.modal-close').addEventListener('click', closeModal);
-  dialog.querySelector('.cancel-btn').addEventListener('click', closeModal);
-
+  dialog.addEventListener('cancel', (e) => { e.preventDefault(); closeModal(); });
+  closeBtn.addEventListener('click', closeModal);
+  cancelBtn.addEventListener('click', closeModal);
   dialog.addEventListener('click', (e) => {
     const rect = dialog.getBoundingClientRect();
     const { clientX, clientY } = e;
@@ -343,28 +366,23 @@ function setupModalShell(dialog, options = {}) {
     }
   });
 
-  return closeModal;
+  document.body.appendChild(dialog);
+  dialog.showModal();
+
+  return {
+    dialog,
+    content,
+    bodyDiv,
+    footerDiv,
+    saveBtn,
+    closeModal,
+    setConfirmClose: (fn) => { confirmClose = fn; },
+  };
 }
 
 function openAddUsersModal(onSave) {
-  const dialog = document.createElement('dialog');
-  dialog.className = 'user-admin-modal';
-
-  const content = document.createElement('div');
-  content.className = 'modal-content';
-
-  const headerDiv = document.createElement('div');
-  headerDiv.className = 'modal-header';
-  const title = document.createElement('h3');
-  title.className = 'modal-title';
-  title.textContent = 'Add Users';
-  const closeBtn = document.createElement('button');
-  closeBtn.type = 'button';
-  closeBtn.className = 'modal-close';
-  closeBtn.setAttribute('aria-label', 'Close');
-  closeBtn.textContent = '\u00D7';
-  headerDiv.appendChild(title);
-  headerDiv.appendChild(closeBtn);
+  const entriesContainer = document.createElement('div');
+  entriesContainer.className = 'user-entries';
 
   const presetsDiv = document.createElement('div');
   presetsDiv.className = 'modal-toolbar';
@@ -374,8 +392,6 @@ function openAddUsersModal(onSave) {
   presetsDiv.appendChild(presetsLabel);
   const presetsBtnRow = document.createElement('div');
   presetsBtnRow.className = 'presets-btn-row';
-  const entriesContainer = document.createElement('div');
-  entriesContainer.className = 'user-entries';
   ROLES.forEach((role) => {
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -394,8 +410,20 @@ function openAddUsersModal(onSave) {
   presetsDiv.appendChild(presetsBtnRow);
   presetsDiv.appendChild(createRolesReference());
 
-  const bodyDiv = document.createElement('div');
-  bodyDiv.className = 'modal-body';
+  const {
+    dialog, content, bodyDiv, saveBtn, closeModal, setConfirmClose,
+  } = createModal('Add Users', 'Add 2 Users');
+
+  content.insertBefore(presetsDiv, bodyDiv);
+
+  setConfirmClose(() => {
+    const emails = dialog.querySelectorAll('input[type="email"]');
+    const hasData = [...emails].some((input) => input.value.trim() !== '');
+    if (!hasData) return true;
+    // eslint-disable-next-line no-alert
+    return window.confirm('You have unsaved changes. Discard?');
+  });
+
   const form = document.createElement('form');
   form.id = 'user-admin-modal-form';
   form.noValidate = true;
@@ -406,39 +434,6 @@ function openAddUsersModal(onSave) {
   form.appendChild(entriesContainer);
   form.appendChild(addAnotherBtn);
   bodyDiv.appendChild(form);
-
-  const footerDiv = document.createElement('div');
-  footerDiv.className = 'modal-footer';
-  const cancelBtn = document.createElement('button');
-  cancelBtn.type = 'button';
-  cancelBtn.className = 'button outline cancel-btn';
-  cancelBtn.textContent = 'Cancel';
-  const saveBtn = document.createElement('button');
-  saveBtn.type = 'submit';
-  saveBtn.setAttribute('form', 'user-admin-modal-form');
-  saveBtn.className = 'button save-btn';
-  saveBtn.textContent = 'Add 2 Users';
-  footerDiv.appendChild(cancelBtn);
-  footerDiv.appendChild(saveBtn);
-
-  content.appendChild(headerDiv);
-  content.appendChild(presetsDiv);
-  content.appendChild(bodyDiv);
-  content.appendChild(footerDiv);
-  dialog.appendChild(content);
-
-  document.body.appendChild(dialog);
-  dialog.showModal();
-
-  const closeModal = setupModalShell(dialog, {
-    confirmClose: () => {
-      const emails = dialog.querySelectorAll('input[type="email"]');
-      const hasData = [...emails].some((input) => input.value.trim() !== '');
-      if (!hasData) return true;
-      // eslint-disable-next-line no-alert
-      return window.confirm('You have unsaved changes. Discard?');
-    },
-  });
 
   const updateSaveLabel = () => {
     const count = entriesContainer.querySelectorAll('.user-entry').length;
@@ -463,6 +458,14 @@ function openAddUsersModal(onSave) {
     const users = [];
     let hasError = false;
 
+    const flagError = (entry, message, focusEl) => {
+      entry.classList.add('has-error');
+      entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      if (focusEl) focusEl.focus();
+      showModalError(dialog, message);
+      hasError = true;
+    };
+
     entries.forEach((entry) => entry.classList.remove('has-error'));
 
     entries.forEach((entry) => {
@@ -472,45 +475,17 @@ function openAddUsersModal(onSave) {
       const roles = [...entry.querySelectorAll('input[type="checkbox"]:checked')]
         .map((cb) => cb.value);
 
-      if (!email) {
-        entry.classList.add('has-error');
-        entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        emailInput.focus();
-        showModalError(dialog, 'Please enter an email for each user');
-        hasError = true;
-        return;
-      }
-
-      if (!emailInput.validity.valid) {
-        entry.classList.add('has-error');
-        entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        emailInput.focus();
-        showModalError(dialog, `Invalid email: ${email}`);
-        hasError = true;
-        return;
-      }
-
-      if (roles.length === 0) {
-        entry.classList.add('has-error');
-        entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        showModalError(dialog, 'Please select at least one role for each user');
-        hasError = true;
-        return;
-      }
+      if (!email) { flagError(entry, 'Please enter an email for each user', emailInput); return; }
+      if (!emailInput.validity.valid) { flagError(entry, `Invalid email: ${email}`, emailInput); return; }
+      if (roles.length === 0) { flagError(entry, 'Please select at least one role for each user'); return; }
 
       const emailLower = email.toLowerCase();
       if (users.some((u) => u.email.toLowerCase() === emailLower)) {
-        entry.classList.add('has-error');
-        entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        showModalError(dialog, `Duplicate email in batch: ${email}`);
-        hasError = true;
+        flagError(entry, `Duplicate email in batch: ${email}`);
         return;
       }
       if (accessConfig.users.some((u) => u.email.toLowerCase() === emailLower)) {
-        entry.classList.add('has-error');
-        entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        showModalError(dialog, `User already exists: ${email}`);
-        hasError = true;
+        flagError(entry, `User already exists: ${email}`);
         return;
       }
 
@@ -545,30 +520,18 @@ function openAddUsersModal(onSave) {
 }
 
 function openEditUserModal(user, onSave) {
-  const dialog = document.createElement('dialog');
-  dialog.className = 'user-admin-modal';
+  const {
+    dialog, bodyDiv, footerDiv, saveBtn, closeModal,
+  } = createModal(`Edit User: ${user.email}`);
 
-  const content = document.createElement('div');
-  content.className = 'modal-content';
+  const deleteBtn = document.createElement('button');
+  deleteBtn.type = 'button';
+  deleteBtn.className = 'button danger outline delete-btn';
+  deleteBtn.textContent = 'Delete User';
+  footerDiv.prepend(deleteBtn);
 
-  const headerDiv = document.createElement('div');
-  headerDiv.className = 'modal-header';
-  const title = document.createElement('h3');
-  title.className = 'modal-title';
-  title.textContent = `Edit User: ${user.email}`;
-  const closeBtn = document.createElement('button');
-  closeBtn.type = 'button';
-  closeBtn.className = 'modal-close';
-  closeBtn.setAttribute('aria-label', 'Close');
-  closeBtn.textContent = '\u00D7';
-  headerDiv.appendChild(title);
-  headerDiv.appendChild(closeBtn);
-
-  const bodyDiv = document.createElement('div');
-  bodyDiv.className = 'modal-body';
   const form = document.createElement('form');
   form.id = 'user-admin-modal-form';
-
   const rolesField = document.createElement('div');
   rolesField.className = 'form-field';
   const rolesLabel = document.createElement('label');
@@ -585,35 +548,6 @@ function openEditUserModal(user, onSave) {
   rolesField.appendChild(createDetailedRoleCheckboxes(user.roles || []));
   form.appendChild(rolesField);
   bodyDiv.appendChild(form);
-
-  const footerDiv = document.createElement('div');
-  footerDiv.className = 'modal-footer';
-  const deleteBtn = document.createElement('button');
-  deleteBtn.type = 'button';
-  deleteBtn.className = 'button danger outline delete-btn';
-  deleteBtn.textContent = 'Delete User';
-  const cancelBtn = document.createElement('button');
-  cancelBtn.type = 'button';
-  cancelBtn.className = 'button outline cancel-btn';
-  cancelBtn.textContent = 'Cancel';
-  const saveBtn = document.createElement('button');
-  saveBtn.type = 'submit';
-  saveBtn.setAttribute('form', 'user-admin-modal-form');
-  saveBtn.className = 'button save-btn';
-  saveBtn.textContent = 'Save';
-  footerDiv.appendChild(deleteBtn);
-  footerDiv.appendChild(cancelBtn);
-  footerDiv.appendChild(saveBtn);
-
-  content.appendChild(headerDiv);
-  content.appendChild(bodyDiv);
-  content.appendChild(footerDiv);
-  dialog.appendChild(content);
-
-  document.body.appendChild(dialog);
-  dialog.showModal();
-
-  const closeModal = setupModalShell(dialog);
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
