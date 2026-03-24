@@ -132,8 +132,10 @@ async function deleteUserFromOrg(user) {
 }
 
 async function addUsersToSite(users) {
+  const snapshot = [...accessConfig.users];
   users.forEach((u) => accessConfig.users.push(u));
   const ok = await updateSiteAccess();
+  if (!ok) accessConfig.users = snapshot;
   return ok ? users.length : 0;
 }
 
@@ -149,8 +151,12 @@ async function addUsersToOrg(users) {
         headers: { 'Content-Type': 'application/json' },
       });
       logResponse(consoleBlock, resp.status, ['POST', adminURL, resp.headers.get('x-error') || '']);
-      if (resp.ok) added += 1;
-      else throw new Error(`Failed to add ${user.email}`);
+      if (resp.ok) {
+        added += 1;
+        accessConfig.users.push(user);
+      } else {
+        throw new Error(`Failed to add ${user.email}`);
+      }
     }, Promise.resolve());
   } catch (err) {
     err.addedCount = added;
