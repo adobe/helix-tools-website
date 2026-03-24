@@ -158,6 +158,36 @@ async function updateSiteUserRoles(user) {
   return updateSiteAccess();
 }
 
+function createDetailedRoleCheckboxes(selectedRoles = []) {
+  const grid = document.createElement('div');
+  grid.className = 'roles-grid';
+  ROLES.forEach((role) => {
+    const roleInfo = ROLE_DESCRIPTIONS[role];
+    const label = document.createElement('label');
+    label.className = 'role-option';
+    label.title = roleInfo.permissions;
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.name = 'role';
+    checkbox.value = role;
+    if (selectedRoles.includes(role)) checkbox.checked = true;
+    const infoSpan = document.createElement('span');
+    infoSpan.className = 'role-info';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'role-name';
+    nameSpan.textContent = roleInfo.label;
+    const descSpan = document.createElement('span');
+    descSpan.className = 'role-desc';
+    descSpan.textContent = roleInfo.description;
+    infoSpan.appendChild(nameSpan);
+    infoSpan.appendChild(descSpan);
+    label.appendChild(checkbox);
+    label.appendChild(infoSpan);
+    grid.appendChild(label);
+  });
+  return grid;
+}
+
 function createCompactRoleCheckboxes(selectedRoles = []) {
   const container = document.createElement('div');
   container.className = 'compact-roles';
@@ -550,24 +580,9 @@ function openEditUserModal(user, onSave) {
   hintLink.target = '_blank';
   hintLink.textContent = 'Learn more about roles';
   hint.append('Select one or more roles. ', hintLink);
-  const editPresetsRow = document.createElement('div');
-  editPresetsRow.className = 'role-presets';
-  ROLES.forEach((role) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'role-preset-btn';
-    btn.textContent = ROLE_DESCRIPTIONS[role].label;
-    btn.addEventListener('click', () => {
-      rolesField.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
-        cb.checked = cb.value === role;
-      });
-    });
-    editPresetsRow.appendChild(btn);
-  });
   rolesField.appendChild(rolesLabel);
   rolesField.appendChild(hint);
-  rolesField.appendChild(editPresetsRow);
-  rolesField.appendChild(createCompactRoleCheckboxes(user.roles || []));
+  rolesField.appendChild(createDetailedRoleCheckboxes(user.roles || []));
   form.appendChild(rolesField);
   bodyDiv.appendChild(form);
 
