@@ -2,6 +2,10 @@
 
 Content Score is a browser tool that audits authoring quality on the current page. It runs when the Sidekick loads and shows a badge (score and error/warning counts) and a tray of issues and selecting an issue highlights the relevant element(s) on the page. The tool checks alt text, heading order, link text, table structure, list-like paragraphs, block sprawl, and related issues.
 
+## Embedding in your project
+
+Load `init` from `https://tools.aem.live/tools/content-score/src/scripts.js` (see the snippet on the Content Score tool page).
+
 ## Workflow
 
 1. **Init** – When Sidekick is ready, load the tool CSS and call `init()` in `tools/content-score/src/scripts.js`.
