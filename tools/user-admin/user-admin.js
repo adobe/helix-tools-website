@@ -503,6 +503,7 @@ function openAddUsersModal(onSave) {
         const msg = users.length === 1
           ? 'User added successfully'
           : `${users.length} users added successfully`;
+        setConfirmClose(null);
         closeModal();
         showToast(msg);
         adminForm.dispatchEvent(new Event('submit'));
