@@ -17,7 +17,7 @@
   display: none;
 }
 
-@media (width >= 800px) {
+@media (min-width: 900px) {
   :host {
     inset: 0 auto 0 0;
     width: 320px;
