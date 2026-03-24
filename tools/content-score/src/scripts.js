@@ -412,6 +412,7 @@ function checkImageAlt(doc, config) {
     const altTrimmed = (img.getAttribute('alt') || '').trim();
     if (altTrimmed.length === 0) return null;
     if (img.getAttribute('aria-hidden') === 'true') return null;
+    if (img.closest('a[href], button')) return null;
     if (!imageHasSurroundingText(img)) return null;
     return {
       element: getImageHighlightTarget(img),
@@ -1006,4 +1007,18 @@ export async function init() {
   window.contentScore = result;
   const closeIcon = await loadCloseSvg();
   renderBadge(result, closeIcon);
+
+  const sk = document.querySelector('aem-sidekick');
+  if (sk) {
+    const observer = new MutationObserver(() => {
+      if (!sk.open) {
+        observer.disconnect();
+        const badge = document.querySelector('.content-score');
+        if (badge) badge.remove();
+        const tray = document.querySelector('content-score-tray');
+        if (tray) tray.remove();
+      }
+    });
+    observer.observe(sk, { attributes: true, attributeFilter: ['open'] });
+  }
 }
