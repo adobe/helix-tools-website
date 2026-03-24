@@ -440,6 +440,10 @@ dialog.user-admin-modal .user-entry-remove:hover {
   text-decoration: underline;
 }
 
+dialog.user-admin-modal .user-entry:only-child .user-entry-remove {
+  display: none;
+}
+
 /* Modal toolbar - pinned strip between header and scrollable body */
 dialog.user-admin-modal .modal-toolbar {
   display: flex;
