@@ -15,6 +15,46 @@ let state = {
   totalSteps: 0, currentStep: 0, steps: [], maxProgress: 0,
 };
 
+let dotAnimationInterval = null;
+
+/** Stop animating dots */
+function stopDotAnimation() {
+  if (dotAnimationInterval) {
+    clearInterval(dotAnimationInterval);
+    dotAnimationInterval = null;
+  }
+}
+
+/** Start animating dots on the task detail text */
+function startDotAnimation() {
+  stopDotAnimation();
+  const container = document.getElementById(CONFIG.ID);
+  if (!container) return;
+
+  const detailEl = container.querySelector('.progress-task-detail');
+  if (!detailEl) return;
+
+  const baseText = detailEl.textContent.replace(/\.+$/, '');
+  let dotCount = 1;
+
+  // Set dots using DOM manipulation to avoid innerHTML XSS risk
+  const setDots = () => {
+    const hiddenSpan = document.createElement('span');
+    hiddenSpan.style.visibility = 'hidden';
+    hiddenSpan.textContent = '.'.repeat(3 - dotCount);
+
+    detailEl.textContent = baseText + '.'.repeat(dotCount);
+    detailEl.appendChild(hiddenSpan);
+  };
+  setDots();
+
+  // Cycle dots: 1 -> 2 -> 3 -> 1
+  dotAnimationInterval = setInterval(() => {
+    dotCount = (dotCount % 3) + 1;
+    setDots();
+  }, 500);
+}
+
 /** Create circular progress indicator element */
 export function createCircularProgress() {
   const c = document.createElement('div');
@@ -45,7 +85,7 @@ export function createCircularProgress() {
 }
 
 /** Update progress display */
-export function updateCircularProgress(percent, taskName = '', taskDetail = '') {
+export function updateCircularProgress(percent, taskName = '', taskDetail = '', animate = false) {
   const container = document.getElementById(CONFIG.ID);
   if (!container) return;
 
@@ -61,7 +101,13 @@ export function updateCircularProgress(percent, taskName = '', taskDetail = '') 
   const nameEl = container.querySelector('.progress-task-name');
   const detailEl = container.querySelector('.progress-task-detail');
   if (nameEl && taskName) nameEl.textContent = taskName;
-  if (detailEl && taskDetail) detailEl.textContent = taskDetail;
+  if (detailEl && taskDetail) detailEl.textContent = taskDetail.replace(/\.+$/, '');
+
+  if (animate) {
+    startDotAnimation();
+  } else {
+    stopDotAnimation();
+  }
 }
 
 /** Initialize step-based progress with step definitions */
@@ -116,6 +162,7 @@ export function getProgressState() {
 
 /** Reset progress to initial state */
 export function resetProgress() {
+  stopDotAnimation();
   state = {
     totalSteps: 0, currentStep: 0, steps: [], maxProgress: 0,
   };
@@ -123,11 +170,12 @@ export function resetProgress() {
 }
 
 /** Set progress to specific percentage with message */
-export function setProgress(percent, message = '', detail = '') {
-  updateCircularProgress(percent, message, detail);
+export function setProgress(percent, message = '', detail = '', animate = false) {
+  updateCircularProgress(percent, message, detail, animate);
 }
 
 /** Complete progress (100%) */
 export function completeProgress(message = 'Complete!', detail = 'Report generated successfully') {
+  stopDotAnimation();
   updateCircularProgress(100, message, detail);
 }
