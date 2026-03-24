@@ -57,7 +57,7 @@
   --med: var(--content-score-red-med);
 }
 
-@media (min-width: 900px) {
+@media (width >= 900px) {
   .content-score {
     inset: auto auto calc(58px + 55px) 50%;
     transform: translateX(-50%);
