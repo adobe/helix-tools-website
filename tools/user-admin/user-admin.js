@@ -138,16 +138,17 @@ async function addUsersToSite(users) {
 
 async function addUsersToOrg(users) {
   const adminURL = `https://admin.hlx.page/config/${org.value}/users.json`;
-  const results = await Promise.all(users.map(async (user) => {
+  for (const user of users) {
+    // eslint-disable-next-line no-await-in-loop
     const resp = await fetch(adminURL, {
       method: 'POST',
       body: JSON.stringify(user),
       headers: { 'Content-Type': 'application/json' },
     });
     logResponse(consoleBlock, resp.status, ['POST', adminURL, resp.headers.get('x-error') || '']);
-    return resp.ok;
-  }));
-  return results.every(Boolean);
+    if (!resp.ok) return false;
+  }
+  return true;
 }
 
 async function updateSiteUserRoles(user) {
