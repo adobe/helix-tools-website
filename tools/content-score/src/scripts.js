@@ -158,12 +158,29 @@ function normalizeText(text) {
 }
 
 /**
+ * Resolves the `.plain.html` URL for the current page path.
+ * @returns {string} Absolute path (same origin) to fetch
+ */
+function getPlainHtmlPath() {
+  const plain = 'plain.html';
+  const { pathname } = window.location;
+  if (pathname.endsWith('/')) {
+    const dir = pathname.replace(/\/+$/, '') || '/';
+    if (dir === '/') {
+      return `/index.${plain}`;
+    }
+    return `${dir}/index.${plain}`;
+  }
+  return `${pathname}.${plain}`;
+}
+
+/**
  * Fetches and parses .plain.html representation of current page.
  * @returns {Promise<Document|null>} Parsed plain DOM or `null` if fetch fails
  */
 async function getPlainDom() {
   try {
-    const plainUrl = `${window.location.pathname}.plain.html`;
+    const plainUrl = getPlainHtmlPath();
     const resp = await fetch(plainUrl);
     if (!resp.ok) return null;
 
