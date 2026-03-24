@@ -132,8 +132,11 @@
 
 /* User Modal - dialog is appended to body, use element selector for scoping */
 dialog.user-admin-modal {
+  display: flex;
+  flex-direction: column;
   max-width: 600px;
   width: 90vw;
+  max-height: 85vh;
   border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 0;
@@ -144,6 +147,7 @@ dialog.user-admin-modal {
   left: 50%;
   transform: translate(-50%, -50%);
   margin: 0;
+  overflow: hidden;
 }
 
 dialog.user-admin-modal::backdrop {
@@ -153,7 +157,8 @@ dialog.user-admin-modal::backdrop {
 dialog.user-admin-modal .modal-content {
   display: flex;
   flex-direction: column;
-  max-height: 85vh;
+  flex: 1;
+  min-height: 0;
 }
 
 dialog.user-admin-modal .modal-header {
@@ -199,6 +204,16 @@ dialog.user-admin-modal .modal-body {
   padding: var(--spacing-l);
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
+}
+
+dialog.user-admin-modal .modal-error {
+  padding: var(--spacing-s) var(--spacing-l);
+  background: var(--red-100);
+  color: var(--red-800);
+  font-size: var(--body-size-s);
+  font-weight: 500;
+  border-top: 1px solid var(--red-200);
 }
 
 dialog.user-admin-modal .modal-footer {
@@ -253,56 +268,69 @@ dialog.user-admin-modal .field-hint a {
   color: var(--blue-600);
 }
 
-/* Roles Grid */
-dialog.user-admin-modal .roles-grid {
+/* Roles reference - collapsible definition list nested inside presets */
+dialog.user-admin-modal .roles-reference {
+  border: none;
+  background: none;
+}
+
+dialog.user-admin-modal .roles-reference summary {
+  padding: 0;
+  font-weight: normal;
+  font-size: var(--body-size-s);
+  cursor: pointer;
+  color: var(--color-font-grey);
+  list-style: none;
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: var(--spacing-xs);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: var(--spacing-s);
-  background: var(--layer-elevated);
 }
 
-dialog.user-admin-modal .role-option {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--spacing-s);
-  padding: var(--spacing-s);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
+dialog.user-admin-modal .roles-reference summary:hover {
+  color: var(--blue-700);
 }
 
-dialog.user-admin-modal .role-option:hover {
-  background: var(--color-button-accent-bg);
+dialog.user-admin-modal .roles-reference summary::-webkit-details-marker {
+  display: none;
 }
 
-dialog.user-admin-modal .role-option input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  margin-top: 2px;
-  cursor: pointer;
-  flex-shrink: 0;
+dialog.user-admin-modal .roles-reference summary::before {
+  content: '\25B6';
+  font-size: 0.55em;
+  transition: transform 0.2s ease;
 }
 
-dialog.user-admin-modal .role-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
+dialog.user-admin-modal .roles-reference[open] summary::before {
+  transform: rotate(90deg);
 }
 
-dialog.user-admin-modal .role-name {
+dialog.user-admin-modal .roles-reference-list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px var(--spacing-m);
+  padding: var(--spacing-xs) 0 0;
+  margin: 0;
+}
+
+dialog.user-admin-modal .roles-reference-list dt {
   font-weight: 600;
+  font-size: var(--body-size-s);
   color: var(--color-text);
-  font-size: var(--body-size-m);
+  padding: 2px 0;
 }
 
-dialog.user-admin-modal .role-desc {
+dialog.user-admin-modal .roles-reference-list dd {
   font-size: var(--body-size-s);
   color: var(--gray-600);
-  font-weight: normal;
+  margin: 0;
+  padding: 2px 0;
+}
+
+dialog.user-admin-modal .roles-reference-link {
+  display: inline-block;
+  padding-top: var(--spacing-xs);
+  font-size: var(--body-size-s);
+  color: var(--blue-600);
 }
 
 /* Danger Button - scoped to user-admin-modal */
@@ -315,6 +343,152 @@ dialog.user-admin-modal .button.danger:hover {
   background: var(--red-700);
   color: white;
   border-color: var(--red-700);
+}
+
+/* Multi-user entry */
+dialog.user-admin-modal .user-entries {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-m);
+}
+
+dialog.user-admin-modal .user-entry {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: var(--spacing-m);
+}
+
+dialog.user-admin-modal .user-entry.has-error {
+  border-color: var(--red-600);
+}
+
+dialog.user-admin-modal .user-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-s);
+}
+
+dialog.user-admin-modal .user-entry-label {
+  font-weight: 600;
+  font-size: var(--body-size-m);
+}
+
+dialog.user-admin-modal .user-entry-remove {
+  background: none;
+  border: none;
+  font-size: var(--body-size-s);
+  cursor: pointer;
+  color: var(--color-font-grey);
+  padding: 0;
+}
+
+dialog.user-admin-modal .user-entry-remove:hover {
+  color: var(--red-600);
+  text-decoration: underline;
+}
+
+/* Modal toolbar - pinned strip between header and scrollable body */
+dialog.user-admin-modal .modal-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+  padding: var(--spacing-m) var(--spacing-l);
+  background: light-dark(var(--gray-50), var(--gray-800));
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+dialog.user-admin-modal .modal-toolbar .presets-label {
+  font-weight: 600;
+  font-size: var(--body-size-m);
+  color: var(--color-text);
+  margin: 0;
+}
+
+dialog.user-admin-modal .modal-toolbar .presets-btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+dialog.user-admin-modal .role-preset-btn {
+  background: none;
+  border: 1px dashed var(--color-border);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: var(--body-size-s);
+  cursor: pointer;
+  color: var(--color-font-grey);
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+dialog.user-admin-modal .role-preset-btn:hover {
+  border-color: var(--blue-500);
+  border-style: solid;
+  color: var(--blue-700);
+}
+
+/* Role presets in edit modal form field */
+dialog.user-admin-modal .form-field .role-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs);
+}
+
+/* Compact role pills */
+dialog.user-admin-modal .compact-roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+dialog.user-admin-modal .role-pill {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+dialog.user-admin-modal .role-pill input[type="checkbox"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+dialog.user-admin-modal .role-pill span {
+  display: inline-block;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: var(--body-size-s);
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+dialog.user-admin-modal .role-pill span:hover {
+  border-color: var(--blue-500);
+}
+
+dialog.user-admin-modal .role-pill input[type="checkbox"]:focus-visible + span {
+  outline: 2px solid var(--blue-500);
+  outline-offset: 2px;
+}
+
+dialog.user-admin-modal .role-pill input[type="checkbox"]:checked + span {
+  background: var(--blue-100);
+  border-color: var(--blue-500);
+  color: var(--blue-700);
+}
+
+dialog.user-admin-modal .add-another-btn {
+  margin-top: var(--spacing-s);
 }
 
 @media (width >= 600px) {
