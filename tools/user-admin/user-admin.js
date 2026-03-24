@@ -133,22 +133,30 @@ async function deleteUserFromOrg(user) {
 
 async function addUsersToSite(users) {
   users.forEach((u) => accessConfig.users.push(u));
-  return updateSiteAccess();
+  const ok = await updateSiteAccess();
+  return ok ? users.length : 0;
 }
 
 async function addUsersToOrg(users) {
   const adminURL = `https://admin.hlx.page/config/${org.value}/users.json`;
-  return users.reduce(async (prevPromise, user) => {
-    const allOk = await prevPromise;
-    if (!allOk) return false;
-    const resp = await fetch(adminURL, {
-      method: 'POST',
-      body: JSON.stringify(user),
-      headers: { 'Content-Type': 'application/json' },
-    });
-    logResponse(consoleBlock, resp.status, ['POST', adminURL, resp.headers.get('x-error') || '']);
-    return resp.ok;
-  }, Promise.resolve(true));
+  let added = 0;
+  try {
+    await users.reduce(async (prevPromise, user) => {
+      await prevPromise;
+      const resp = await fetch(adminURL, {
+        method: 'POST',
+        body: JSON.stringify(user),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      logResponse(consoleBlock, resp.status, ['POST', adminURL, resp.headers.get('x-error') || '']);
+      if (resp.ok) added += 1;
+      else throw new Error(`Failed to add ${user.email}`);
+    }, Promise.resolve());
+  } catch (err) {
+    err.addedCount = added;
+    throw err;
+  }
+  return added;
 }
 
 async function updateSiteUserRoles(user) {
@@ -237,7 +245,11 @@ function createRolesReference() {
   return details;
 }
 
+let entryIdCounter = 0;
+
 function createUserEntry(entriesContainer, updateSaveLabel) {
+  entryIdCounter += 1;
+  const entryId = entryIdCounter;
   const entry = document.createElement('div');
   entry.className = 'user-entry';
 
@@ -257,20 +269,27 @@ function createUserEntry(entriesContainer, updateSaveLabel) {
   const emailField = document.createElement('div');
   emailField.className = 'form-field';
   const emailLabel = document.createElement('label');
+  emailLabel.htmlFor = `user-email-${entryId}`;
   emailLabel.textContent = 'Email';
   const emailInput = document.createElement('input');
   emailInput.type = 'email';
+  emailInput.id = `user-email-${entryId}`;
   emailInput.required = true;
   emailInput.placeholder = 'user@example.com';
   emailField.appendChild(emailLabel);
   emailField.appendChild(emailInput);
 
+  const rolesFieldId = `user-roles-${entryId}`;
   const rolesField = document.createElement('div');
   rolesField.className = 'form-field';
   const rolesLabel = document.createElement('label');
+  rolesLabel.id = rolesFieldId;
   rolesLabel.textContent = 'Roles';
+  const rolesContainer = createCompactRoleCheckboxes();
+  rolesContainer.setAttribute('role', 'group');
+  rolesContainer.setAttribute('aria-labelledby', rolesFieldId);
   rolesField.appendChild(rolesLabel);
-  rolesField.appendChild(createCompactRoleCheckboxes());
+  rolesField.appendChild(rolesContainer);
 
   entry.appendChild(header);
   entry.appendChild(emailField);
@@ -311,6 +330,39 @@ function clearModalError(dialog) {
   if (banner) banner.hidden = true;
 }
 
+function showConfirmDialog(message) {
+  return new Promise((resolve) => {
+    const dlg = document.createElement('dialog');
+    dlg.className = 'user-admin-modal';
+    dlg.style.maxWidth = '400px';
+    const body = document.createElement('div');
+    body.className = 'modal-body';
+    const msg = document.createElement('p');
+    msg.textContent = message;
+    body.appendChild(msg);
+    const footer = document.createElement('div');
+    footer.className = 'modal-footer';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'button outline';
+    cancelBtn.textContent = 'Cancel';
+    const confirmBtn = document.createElement('button');
+    confirmBtn.type = 'button';
+    confirmBtn.className = 'button';
+    confirmBtn.textContent = 'Discard';
+    footer.appendChild(cancelBtn);
+    footer.appendChild(confirmBtn);
+    dlg.appendChild(body);
+    dlg.appendChild(footer);
+    document.body.appendChild(dlg);
+    dlg.showModal();
+    const close = (result) => { dlg.close(); dlg.remove(); resolve(result); };
+    cancelBtn.addEventListener('click', () => close(false));
+    confirmBtn.addEventListener('click', () => close(true));
+    dlg.addEventListener('cancel', () => close(false));
+  });
+}
+
 function createModal(titleText, saveText = 'Save') {
   const dialog = document.createElement('dialog');
   dialog.className = 'user-admin-modal';
@@ -349,8 +401,15 @@ function createModal(titleText, saveText = 'Save') {
   dialog.appendChild(content);
 
   let confirmClose = null;
-  const closeModal = () => {
-    if (confirmClose && !confirmClose()) return;
+  let closing = false;
+  const closeModal = async () => {
+    if (closing) return;
+    if (confirmClose) {
+      closing = true;
+      const allowed = await confirmClose();
+      closing = false;
+      if (!allowed) return;
+    }
     dialog.close();
     dialog.remove();
   };
@@ -388,7 +447,7 @@ function openAddUsersModal(onSave) {
 
   const presetsDiv = document.createElement('div');
   presetsDiv.className = 'modal-toolbar';
-  const presetsLabel = document.createElement('label');
+  const presetsLabel = document.createElement('span');
   presetsLabel.className = 'presets-label';
   presetsLabel.textContent = 'Roles (Apply to all)';
   presetsDiv.appendChild(presetsLabel);
@@ -418,12 +477,11 @@ function openAddUsersModal(onSave) {
 
   content.insertBefore(presetsDiv, bodyDiv);
 
-  setConfirmClose(() => {
+  setConfirmClose(async () => {
     const emails = dialog.querySelectorAll('input[type="email"]');
     const hasData = [...emails].some((input) => input.value.trim() !== '');
     if (!hasData) return true;
-    // eslint-disable-next-line no-alert
-    return window.confirm('You have unsaved changes. Discard?');
+    return showConfirmDialog('You have unsaved changes. Discard?');
   });
 
   const form = document.createElement('form');
@@ -496,12 +554,15 @@ function openAddUsersModal(onSave) {
 
     if (hasError || users.length === 0) return;
 
+    const validEntries = [...entriesContainer.querySelectorAll('.user-entry')]
+      .filter((entry) => entry.querySelector('input[type="email"]').value.trim());
+
     saveBtn.disabled = true;
     saveBtn.textContent = 'Saving...';
 
     try {
-      const success = await onSave(users);
-      if (success) {
+      const added = await onSave(users);
+      if (added === users.length) {
         const msg = users.length === 1
           ? 'User added successfully'
           : `${users.length} users added successfully`;
@@ -513,11 +574,23 @@ function openAddUsersModal(onSave) {
         showModalError(dialog, 'Failed to add users');
         saveBtn.disabled = false;
         updateSaveLabel();
+        adminForm.dispatchEvent(new Event('submit'));
       }
     } catch (err) {
-      showModalError(dialog, `Error: ${err.message || 'Failed to add users'}`);
+      const added = err.addedCount || 0;
+      if (added > 0) {
+        validEntries.slice(0, added).forEach((entry) => entry.remove());
+        entriesContainer.querySelectorAll('.user-entry').forEach((el, i) => {
+          el.querySelector('.user-entry-label').textContent = `User ${i + 1}`;
+        });
+        const failed = users.length - added;
+        showModalError(dialog, `${added} user(s) added, ${failed} failed: ${err.message}`);
+      } else {
+        showModalError(dialog, `Error: ${err.message || 'Failed to add users'}`);
+      }
       saveBtn.disabled = false;
       updateSaveLabel();
+      adminForm.dispatchEvent(new Event('submit'));
     }
   });
 }
