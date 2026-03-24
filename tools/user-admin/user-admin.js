@@ -358,6 +358,7 @@ function createModal(titleText, saveText = 'Save') {
   closeBtn.addEventListener('click', closeModal);
   cancelBtn.addEventListener('click', closeModal);
   dialog.addEventListener('click', (e) => {
+    if (e.target !== dialog) return;
     const rect = dialog.getBoundingClientRect();
     const { clientX, clientY } = e;
     if (clientX < rect.left || clientX > rect.right
