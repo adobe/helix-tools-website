@@ -7,7 +7,8 @@ const DA_ETC_ORIGIN = 'https://da-etc.adobeaem.workers.dev';
 const AEM_PAGE_SUFFIX = '.aem.page';
 const REF = 'main';
 const BATCH_SIZE = 10;
-const CONCURRENCY = 5;
+const PAGE_CRAWL_CONCURRENCY = 25;
+const FALLBACK_METADATA_CONCURRENCY = 5;
 const POLL_INTERVAL = 2000;
 const JOB_COUNTER_LOG_INTERVAL = 10000;
 const ADMIN_API_RATE = 10;
@@ -22,6 +23,8 @@ const MIN_ETA_SAMPLE_MS = 10000;
 const MIN_PROCESSING_ETA_SAMPLE_COUNT = 50;
 const MIN_INGEST_ETA_SAMPLE_COUNT = 3;
 const DEFAULT_INGEST_BATCH_DURATION_MS = 150;
+const PROCESSING_PROGRESS_PAGE_INTERVAL = 25;
+const PROCESSING_PROGRESS_MIN_INTERVAL_MS = 500;
 
 const VIDEO_EXTENSIONS = /\.(mp4|mov|webm|avi|m4v|mkv)$/i;
 
@@ -1271,6 +1274,63 @@ async function fetchAemPageLastModified(url, allowGetFallback = false) {
   return '';
 }
 
+function isHtmlResponse(contentType, body) {
+  if (contentType?.includes('text/html') || contentType?.includes('application/xhtml+xml')) {
+    return true;
+  }
+
+  const trimmed = body?.trimStart().toLowerCase() || '';
+  return trimmed.startsWith('<!doctype html')
+    || trimmed.startsWith('<html')
+    || trimmed.startsWith('<head')
+    || trimmed.startsWith('<body');
+}
+
+function getHtmlBaseUrl(doc, fallbackBaseUrl, responseSourceUrl = '') {
+  const candidates = [
+    doc.querySelector('base[href]')?.getAttribute('href'),
+    responseSourceUrl,
+    doc.querySelector('link[rel="canonical"]')?.getAttribute('href'),
+    doc.querySelector('meta[property="og:url"]')?.getAttribute('content'),
+    doc.querySelector('meta[name="twitter:url"]')?.getAttribute('content'),
+  ].filter(Boolean);
+
+  for (let i = 0; i < candidates.length; i += 1) {
+    try {
+      // eslint-disable-next-line no-new
+      return new URL(candidates[i], fallbackBaseUrl).toString();
+    } catch {
+      // ignore invalid candidate and continue
+    }
+  }
+
+  return fallbackBaseUrl;
+}
+
+function parseSrcsetUrls(srcset) {
+  if (!srcset) return [];
+
+  return srcset
+    .split(',')
+    .map((entry) => entry.trim().split(/\s+/)[0])
+    .filter(Boolean);
+}
+
+function normalizeCollectedMediaUrls(mediaUrls, baseUrl) {
+  const seenPageMedia = new Set();
+
+  return mediaUrls
+    .map((url) => normalizeMediaUrl(url, baseUrl))
+    .filter(Boolean)
+    .filter((url) => {
+      if (seenPageMedia.has(url)) {
+        return false;
+      }
+      seenPageMedia.add(url);
+      return true;
+    });
+}
+
 function parseMediaFromMarkdown(markdown, pageBaseUrl) {
   const mediaUrls = [];
 
@@ -1321,6 +1381,67 @@ function parseMediaFromMarkdown(markdown, pageBaseUrl) {
       seenPageMedia.add(url);
       return true;
     });
+}
+
+function parseMediaFromHtml(html, fallbackBaseUrl, responseSourceUrl = '') {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const pageBaseUrl = getHtmlBaseUrl(doc, fallbackBaseUrl, responseSourceUrl);
+  const mediaUrls = [];
+
+  doc.querySelectorAll('img[src]').forEach((img) => {
+    mediaUrls.push(img.getAttribute('src'));
+  });
+
+  doc.querySelectorAll('img[srcset]').forEach((img) => {
+    mediaUrls.push(...parseSrcsetUrls(img.getAttribute('srcset')));
+  });
+
+  doc.querySelectorAll('source[src]').forEach((source) => {
+    const src = source.getAttribute('src');
+    if (src && MEDIA_EXTENSIONS.test(src)) {
+      mediaUrls.push(src);
+    }
+  });
+
+  doc.querySelectorAll('source[srcset]').forEach((source) => {
+    mediaUrls.push(...parseSrcsetUrls(source.getAttribute('srcset')));
+  });
+
+  doc.querySelectorAll('video[src], video[poster]').forEach((video) => {
+    if (video.getAttribute('src')) {
+      mediaUrls.push(video.getAttribute('src'));
+    }
+    if (video.getAttribute('poster')) {
+      mediaUrls.push(video.getAttribute('poster'));
+    }
+  });
+
+  doc.querySelectorAll('meta[property="og:image"], meta[property="og:image:url"], meta[name="twitter:image"], meta[name="twitter:image:src"], meta[property="og:video"], meta[property="og:video:url"]').forEach((meta) => {
+    const value = meta.getAttribute('content');
+    if (value) {
+      mediaUrls.push(value);
+    }
+  });
+
+  doc.querySelectorAll('a[href]').forEach((anchor) => {
+    const href = anchor.getAttribute('href');
+    if (href && VIDEO_EXTENSIONS.test(href)) {
+      mediaUrls.push(href);
+    }
+  });
+
+  doc.querySelectorAll('[style*="background-image"]').forEach((element) => {
+    const style = element.getAttribute('style') || '';
+    const matches = style.match(/url\((['"]?)(.*?)\1\)/gi) || [];
+    matches.forEach((match) => {
+      const urlMatch = match.match(/url\((['"]?)(.*?)\1\)/i);
+      if (urlMatch?.[2]) {
+        mediaUrls.push(urlMatch[2]);
+      }
+    });
+  });
+
+  return normalizeCollectedMediaUrls(mediaUrls, pageBaseUrl);
 }
 
 function toComparableTimestamp(lastModified) {
@@ -1378,33 +1499,74 @@ async function processPages(org, site, pages) {
   const mediaCandidates = [];
   let candidateOrder = 0;
   let processed = 0;
+  let htmlPageCount = 0;
+  let lastProgressProcessed = 0;
+  let lastProgressUpdateAt = Date.now();
 
-  async function fetchMarkdown(page) {
+  async function fetchPageContent(page) {
     const markdownPath = toMarkdownPath(page.path);
     const pageUrl = `https://${REF}--${site}--${org}.aem.page${markdownPath}`;
     const pageRes = await fetchWithRetry(pageUrl, {}, 1);
     if (pageRes.ok) {
       page.fallbackLastModified = pageRes.headers.get('last-modified') || page.fallbackLastModified || '';
-      return pageRes.text();
+      return {
+        body: await pageRes.text(),
+        contentType: pageRes.headers.get('content-type') || '',
+        requestUrl: pageUrl,
+        responseSourceUrl: pageRes.headers.get('x-source-location')
+          || pageRes.headers.get('x-content-source-location')
+          || pageRes.headers.get('location')
+          || '',
+      };
     }
     return null;
+  }
+
+  function flushProcessingProgress(force = false) {
+    const now = Date.now();
+    const processedDelta = processed - lastProgressProcessed;
+    const shouldFlush = force
+      || processed === pages.length
+      || processedDelta >= PROCESSING_PROGRESS_PAGE_INTERVAL
+      || (
+        processedDelta > 0
+        && (now - lastProgressUpdateAt) >= PROCESSING_PROGRESS_MIN_INTERVAL_MS
+      );
+
+    if (!shouldFlush) {
+      return;
+    }
+
+    updateProgressMetrics({ processedPages: processed });
+    const pct = 25 + Math.round((processed / pages.length) * 40);
+    setPhase(`Phase 2: Processing pages... (${processed}/${pages.length})`, pct);
+    stats.media = mediaCandidates.length;
+    updateStatsDisplay();
+    lastProgressProcessed = processed;
+    lastProgressUpdateAt = now;
   }
 
   await runWithConcurrency(pages, async (page) => {
     if (isAborted()) return;
 
-    let markdown;
+    let pageContent;
     try {
-      markdown = await fetchMarkdown(page);
+      pageContent = await fetchPageContent(page);
     } catch (err) {
       if (err.name === 'AbortError') throw err;
       log(`Failed to fetch ${page.path}: ${err.message}`, 'error');
       stats.errors += 1;
     }
 
-    if (markdown) {
-      const pageBaseUrl = `https://${REF}--${site}--${org}.aem.page${page.path}`;
-      const urls = parseMediaFromMarkdown(markdown, pageBaseUrl);
+    if (pageContent?.body) {
+      const pageBaseUrl = pageContent.responseSourceUrl || pageContent.requestUrl;
+      const isHtml = isHtmlResponse(pageContent.contentType, pageContent.body);
+      if (isHtml) {
+        htmlPageCount += 1;
+      }
+      const urls = isHtml
+        ? parseMediaFromHtml(pageContent.body, pageBaseUrl, pageContent.responseSourceUrl)
+        : parseMediaFromMarkdown(pageContent.body, pageBaseUrl);
       urls.forEach((url) => {
         mediaCandidates.push({
           order: candidateOrder,
@@ -1416,13 +1578,16 @@ async function processPages(org, site, pages) {
     }
 
     processed += 1;
-    updateProgressMetrics({ processedPages: processed });
-    const pct = 25 + Math.round((processed / pages.length) * 40);
-    setPhase(`Phase 2: Processing pages... (${processed}/${pages.length})`, pct);
-    stats.media = mediaCandidates.length;
-    updateStatsDisplay();
-  }, CONCURRENCY);
+    flushProcessingProgress();
+  }, PAGE_CRAWL_CONCURRENCY);
 
+  if (pages.length > 0) {
+    flushProcessingProgress(true);
+  }
+
+  if (htmlPageCount > 0) {
+    log(`Scraped media from HTML responses for ${htmlPageCount} page(s) that did not return markdown.`, 'warn');
+  }
   log(`Collected ${mediaCandidates.length} media candidate(s) across ${pages.length} crawled page(s)`);
   return mediaCandidates;
 }
@@ -1473,7 +1638,7 @@ async function populateStandaloneMediaFallbackLastModified(org, site, standalone
       if (err.name === 'AbortError') throw err;
       log(`Failed to fetch fallback Last-Modified for ${media.path}: ${err.message}`, 'warn');
     }
-  }, CONCURRENCY);
+  }, FALLBACK_METADATA_CONCURRENCY);
 
   return {
     attempted: pending.length,
