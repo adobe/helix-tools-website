@@ -125,13 +125,13 @@
   }
 }
 
-@media (width >= 900px) {
+@media (min-width: 900px) {
   .content-score .badge-preview {
     transform: scale(1.15);
   }
 }
 
-@media (width >= 1200px) {
+@media (min-width: 1200px) {
   .content-score .badge-preview {
     transform: scale(1.25);
   }
@@ -178,13 +178,13 @@
   padding: 0;
 }
 
-@media (width >= 600px) {
+@media (min-width: 600px) {
   .content-score .content-score-categories {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (width >= 1200px) {
+@media (min-width: 1200px) {
   .content-score .content-score-categories {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
