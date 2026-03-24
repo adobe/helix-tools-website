@@ -390,7 +390,7 @@ function openAddUsersModal(onSave) {
   presetsDiv.className = 'modal-toolbar';
   const presetsLabel = document.createElement('label');
   presetsLabel.className = 'presets-label';
-  presetsLabel.textContent = 'Role Presets';
+  presetsLabel.textContent = 'Roles (Apply to all)';
   presetsDiv.appendChild(presetsLabel);
   const presetsBtnRow = document.createElement('div');
   presetsBtnRow.className = 'presets-btn-row';
