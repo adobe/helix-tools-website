@@ -1240,15 +1240,6 @@ async function fetchLastModified(url, allowGetFallback = false) {
         return lastModified;
       }
 
-      if (lastModified && Number.isFinite(lastModifiedTs) && lastModifiedTs <= 0) {
-        const responseDate = (response.headers.get('date') || '').trim();
-        const responseDateTs = normalizeTimestampMs(responseDate);
-
-        if (Number.isFinite(responseDateTs) && responseDateTs > 0) {
-          return responseDate;
-        }
-      }
-
       return '';
     }
   }
