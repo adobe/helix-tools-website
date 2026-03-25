@@ -6,9 +6,8 @@ const ADMIN_BASE = 'https://admin.hlx.page';
 const DA_ETC_ORIGIN = 'https://da-etc.adobeaem.workers.dev';
 const AEM_PAGE_SUFFIX = '.aem.page';
 const REF = 'main';
-const BATCH_SIZE = 10;
+const MEDIALOG_IMPORT_BUNDLE_VERSION = 1;
 const PAGE_CRAWL_CONCURRENCY = 25;
-const FALLBACK_METADATA_CONCURRENCY = 5;
 const POLL_INTERVAL = 2000;
 const JOB_COUNTER_LOG_INTERVAL = 10000;
 const ADMIN_API_RATE = 10;
@@ -21,7 +20,6 @@ const MAX_PARTITION_PATHS = 250;
 const PARTITION_LABEL_PATH_LIMIT = 3;
 const MIN_ETA_SAMPLE_MS = 10000;
 const MIN_PROCESSING_ETA_SAMPLE_COUNT = 50;
-const MIN_INGEST_ETA_SAMPLE_COUNT = 3;
 const DEFAULT_INGEST_BATCH_DURATION_MS = 150;
 const PROCESSING_PROGRESS_PAGE_INTERVAL = 25;
 const PROCESSING_PROGRESS_MIN_INTERVAL_MS = 500;
@@ -67,7 +65,6 @@ const progressState = {
   status: 'idle',
   phase: 'idle',
   phaseStartedAt: 0,
-  dryRun: false,
   discoveryTotalJobs: 0,
   discoveryCompletedJobs: 0,
   totalPages: 0,
@@ -83,7 +80,6 @@ function initDOM() {
   DOM.form = form;
   DOM.org = form.querySelector('#org');
   DOM.site = form.querySelector('#site');
-  DOM.dryRun = form.querySelector('#dry-run');
   DOM.fallbackUser = form.querySelector('#fallback-user');
   DOM.runBtn = form.querySelector('#run-btn');
   DOM.cancelBtn = form.querySelector('#cancel-btn');
@@ -134,22 +130,6 @@ function estimateIngestBatchDurationMs() {
   return Math.max(DEFAULT_INGEST_BATCH_DURATION_MS, adminLimiter.getInterval());
 }
 
-function estimateTotalEntriesForEta() {
-  if (progressState.totalEntries > 0) {
-    return progressState.totalEntries;
-  }
-
-  if (progressState.processedPages <= 0 || progressState.totalPages <= 0) {
-    return progressState.standaloneMediaCount;
-  }
-
-  const estimatedPageEntries = Math.round(
-    (stats.media / progressState.processedPages) * progressState.totalPages,
-  );
-
-  return Math.max(stats.media, estimatedPageEntries) + progressState.standaloneMediaCount;
-}
-
 function estimateRemainingMs() {
   if (!progressState.phaseStartedAt) {
     return null;
@@ -179,36 +159,13 @@ function estimateRemainingMs() {
 
       const remainingPages = Math.max(0, progressState.totalPages - progressState.processedPages);
       const msPerPage = phaseElapsed / progressState.processedPages;
-      let remaining = remainingPages * msPerPage;
-
-      if (!progressState.dryRun) {
-        const estimatedTotalEntries = estimateTotalEntriesForEta();
-        if (estimatedTotalEntries > 0) {
-          const estimatedBatches = Math.ceil(estimatedTotalEntries / BATCH_SIZE);
-          remaining += estimatedBatches * estimateIngestBatchDurationMs();
-        }
-      }
-
-      return remaining;
+      return remainingPages * msPerPage;
     }
-    case 'ingest': {
-      const remainingBatches = Math.max(
-        0,
-        progressState.totalBatches - progressState.processedBatches,
-      );
-      if (remainingBatches === 0) {
+    case 'export': {
+      if (progressState.processedBatches > 0) {
         return 0;
       }
-
-      if (
-        progressState.processedBatches >= MIN_INGEST_ETA_SAMPLE_COUNT
-        && phaseElapsed >= MIN_ETA_SAMPLE_MS
-      ) {
-        const msPerBatch = phaseElapsed / progressState.processedBatches;
-        return remainingBatches * msPerBatch;
-      }
-
-      return remainingBatches * estimateIngestBatchDurationMs();
+      return Math.max(500, estimateIngestBatchDurationMs());
     }
     default:
       return null;
@@ -263,7 +220,6 @@ function resetProgressTracking() {
   progressState.status = 'idle';
   progressState.phase = 'idle';
   progressState.phaseStartedAt = 0;
-  progressState.dryRun = false;
   progressState.discoveryTotalJobs = 0;
   progressState.discoveryCompletedJobs = 0;
   progressState.totalPages = 0;
@@ -275,11 +231,10 @@ function resetProgressTracking() {
   updateProgressMeta();
 }
 
-function startProgressTracking(dryRun = false) {
+function startProgressTracking() {
   resetProgressTracking();
   progressState.startedAt = Date.now();
   progressState.status = 'running';
-  progressState.dryRun = dryRun;
   updateProgressMeta();
   progressState.timerId = window.setInterval(updateProgressMeta, 1000);
 }
@@ -1258,7 +1213,7 @@ function toMarkdownPath(pagePath) {
   return `${pagePath}.md`;
 }
 
-async function fetchAemPageLastModified(url, allowGetFallback = false) {
+async function fetchLastModified(url, allowGetFallback = false) {
   const methods = allowGetFallback ? ['HEAD', 'GET'] : ['HEAD'];
 
   for (let i = 0; i < methods.length; i += 1) {
@@ -1444,8 +1399,19 @@ function parseMediaFromHtml(html, fallbackBaseUrl, responseSourceUrl = '') {
   return normalizeCollectedMediaUrls(mediaUrls, pageBaseUrl);
 }
 
+function normalizeTimestampMs(value) {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : NaN;
+  }
+  if (typeof value === 'string' && value) {
+    const ts = Date.parse(value);
+    return Number.isNaN(ts) ? NaN : ts;
+  }
+  return NaN;
+}
+
 function toComparableTimestamp(lastModified) {
-  const ts = Date.parse(lastModified);
+  const ts = normalizeTimestampMs(lastModified);
   return Number.isNaN(ts) ? Number.MAX_SAFE_INTEGER : ts;
 }
 
@@ -1482,6 +1448,114 @@ function createDeterministicEntries(mediaCandidates) {
   });
 
   return { entries, dupes };
+}
+
+function compareResolvedEntries(a, b) {
+  const tsDiff = a.timestamp - b.timestamp;
+  if (tsDiff !== 0) return tsDiff;
+  const operationDiff = (a.operation || '').localeCompare(b.operation || '');
+  if (operationDiff !== 0) return operationDiff;
+  const pathDiff = (a.path || '').localeCompare(b.path || '');
+  if (pathDiff !== 0) return pathDiff;
+  const resourcePathDiff = (a.resourcePath || '').localeCompare(b.resourcePath || '');
+  if (resourcePathDiff !== 0) return resourcePathDiff;
+  const contentTypeDiff = (a.contentType || '').localeCompare(b.contentType || '');
+  if (contentTypeDiff !== 0) return contentTypeDiff;
+  const userDiff = (a.user || '').localeCompare(b.user || '');
+  if (userDiff !== 0) return userDiff;
+  return (a.sourceOrder || 0) - (b.sourceOrder || 0);
+}
+
+function createResolvedEntries(entries, fallbackUser) {
+  return entries
+    .map(({ entry, page, ingestLastModified }, sourceOrder) => {
+      const user = page.user || fallbackUser || '';
+      const timestamp = normalizeTimestampMs(
+        entry.operation === 'reuse'
+          ? page.lastModified
+          : (ingestLastModified || page.lastModified),
+      );
+
+      return {
+        ...entry,
+        user,
+        timestamp,
+        sourceOrder,
+      };
+    })
+    .sort(compareResolvedEntries);
+}
+
+function buildExportBundle(org, site, resolvedEntries, warningMessages = []) {
+  const entries = resolvedEntries.map(({ sourceOrder, ...entry }) => entry);
+  const ingestCount = entries.filter((entry) => entry.operation === 'ingest').length;
+  const reuseCount = entries.filter((entry) => entry.operation === 'reuse').length;
+
+  return {
+    version: MEDIALOG_IMPORT_BUNDLE_VERSION,
+    generatedAt: new Date().toISOString(),
+    org,
+    site,
+    ref: REF,
+    summary: {
+      pagesCrawled: stats.pages,
+      mediaEntries: entries.length,
+      ingestCount,
+      reuseCount,
+      duplicateCount: stats.dupes,
+      warnings: warningMessages,
+    },
+    entries,
+  };
+}
+
+function downloadJson(filename, payload) {
+  const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+  const href = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = href;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(href);
+}
+
+async function exportBundle(org, site, entries, fallbackUser, warningMessages = []) {
+  beginProgressPhase('export', {
+    totalEntries: entries.length,
+    totalBatches: 1,
+    processedBatches: 0,
+  });
+  setPhase('Phase 3: Building export bundle...', 70);
+
+  const resolvedEntries = createResolvedEntries(entries, fallbackUser);
+  const validEntries = resolvedEntries.filter((entry) => Number.isFinite(entry.timestamp));
+  const skippedTimestampCount = resolvedEntries.length - validEntries.length;
+  if (skippedTimestampCount > 0) {
+    log(
+      `Skipping ${skippedTimestampCount} entry/entries that could not be normalized to a numeric timestamp.`,
+      'warn',
+    );
+  }
+
+  const bundle = buildExportBundle(org, site, validEntries, warningMessages);
+  const timestampLabel = new Date().toISOString().replace(/[:.]/g, '-');
+  const filename = `medialog-import-bundle-${org}-${site}-${timestampLabel}.json`;
+
+  setPhase('Phase 3: Downloading export bundle...', 95);
+  downloadJson(filename, bundle);
+
+  stats.sent = validEntries.length;
+  updateStatsDisplay();
+  updateProgressMetrics({ processedBatches: 1, totalEntries: validEntries.length });
+  log(`Downloaded medialog import bundle: ${filename}`);
+
+  return {
+    filename,
+    exportedEntries: validEntries.length,
+    skippedTimestampCount,
+  };
 }
 
 // Phase 2: Fetch and parse markdown for each page
@@ -1629,7 +1703,7 @@ async function populateStandaloneMediaFallbackLastModified(org, site, standalone
     const mediaUrl = `https://${REF}--${site}--${org}.aem.page${media.path}`;
 
     try {
-      const lastModified = await fetchAemPageLastModified(mediaUrl, true);
+      const lastModified = await fetchLastModified(mediaUrl, true);
       if (lastModified) {
         media.fallbackLastModified = lastModified;
         found += 1;
@@ -1638,7 +1712,7 @@ async function populateStandaloneMediaFallbackLastModified(org, site, standalone
       if (err.name === 'AbortError') throw err;
       log(`Failed to fetch fallback Last-Modified for ${media.path}: ${err.message}`, 'warn');
     }
-  }, FALLBACK_METADATA_CONCURRENCY);
+  }, PAGE_CRAWL_CONCURRENCY);
 
   return {
     attempted: pending.length,
@@ -1646,94 +1720,63 @@ async function populateStandaloneMediaFallbackLastModified(org, site, standalone
   };
 }
 
-// Phase 3: Post entries to medialog
-async function ingestEntries(org, site, entries, fallbackUser, dryRun) {
-  beginProgressPhase('ingest', {
-    totalEntries: entries.length,
-    totalBatches: Math.ceil(entries.length / BATCH_SIZE),
-    processedBatches: 0,
-  });
-  setPhase('Phase 3: Ingesting entries...', 70);
-
-  const enrichedEntries = entries.map(({ entry, page }) => {
-    const user = page.user || fallbackUser || '';
-    return {
-      ...entry,
-      user,
-      timestamp: page.lastModified,
-    };
-  });
-
-  if (dryRun) {
-    log('DRY RUN — entries that would be sent:', 'warn');
-    enrichedEntries.forEach((e) => {
-      log(`  ${e.operation} ${e.contentType} ${e.path} (from ${e.resourcePath}, user: ${e.user || 'unknown'})`);
-    });
-    stats.sent = enrichedEntries.length;
-    updateProgressMetrics({ processedBatches: progressState.totalBatches });
-    updateStatsDisplay();
-    return;
+async function populateIngestLastModified(entries) {
+  const pending = entries.filter(({ entry }) => entry.operation === 'ingest');
+  if (!pending.length) {
+    return { attempted: 0, found: 0 };
   }
 
-  log(`Posting ${enrichedEntries.length} entries in batches of ${BATCH_SIZE}...`);
+  log(`Fetching asset/media Last-Modified for ${pending.length} ingest entry URL(s)...`);
+  let found = 0;
 
-  for (let i = 0; i < enrichedEntries.length; i += BATCH_SIZE) {
-    if (isAborted()) throw new DOMException('Aborted', 'AbortError');
-    const batch = enrichedEntries.slice(i, i + BATCH_SIZE);
-    const batchNum = Math.floor(i / BATCH_SIZE) + 1;
-    const totalBatches = Math.ceil(enrichedEntries.length / BATCH_SIZE);
-
+  await runWithConcurrency(pending, async (item) => {
     try {
-      const url = `${ADMIN_BASE}/medialog/${org}/${site}/${REF}/`;
-      // eslint-disable-next-line no-await-in-loop
-      const res = await fetchWithRetry(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entries: batch }),
-      });
-
-      if (res.ok) {
-        stats.sent += batch.length;
-        log(`Batch ${batchNum}/${totalBatches}: sent ${batch.length} entries`);
-      } else {
-        stats.errors += batch.length;
-        log(`Batch ${batchNum}/${totalBatches}: failed (${res.status})`, 'error');
+      const assetUrl = new URL(item.entry.path);
+      assetUrl.hostname = assetUrl.hostname
+        .replace('.hlx.page', '.aem.page')
+        .replace('.hlx.live', '.aem.page')
+        .replace('.aem.live', '.aem.page');
+      const lastModified = await fetchLastModified(assetUrl.toString(), true);
+      if (lastModified) {
+        item.ingestLastModified = lastModified;
+        found += 1;
       }
     } catch (err) {
       if (err.name === 'AbortError') throw err;
-      stats.errors += batch.length;
-      log(`Batch ${batchNum}/${totalBatches}: error — ${err.message}`, 'error');
+      log(`Failed to fetch asset/media Last-Modified for ${item.entry.path}: ${err.message}`, 'warn');
     }
+  }, PAGE_CRAWL_CONCURRENCY);
 
-    updateStatsDisplay();
-    updateProgressMetrics({ processedBatches: batchNum });
-    const pct = 70 + Math.round(((i + batch.length) / enrichedEntries.length) * 25);
-    setPhase(`Phase 3: Ingesting... (${batchNum}/${totalBatches})`, pct);
-  }
+  return {
+    attempted: pending.length,
+    found,
+  };
 }
 
-function showReport(dryRun, startTime) {
+function showReport(startTime, exportResult) {
   const duration = formatDuration(Date.now() - startTime);
   setPhase('Complete', 100);
-  log('--- Backfill Summary ---', 'success');
+  log('--- Export Summary ---', 'success');
   log(`  Duration: ${duration}`);
   log(`  Pages crawled: ${stats.pages}`);
   log(`  Media entries: ${stats.media}`);
   log(`  Unique (ingest): ${stats.media - stats.dupes}`);
   log(`  Duplicates (reuse): ${stats.dupes}`);
-  if (dryRun) {
-    log('  Mode: DRY RUN (no entries were posted)', 'warn');
-  } else {
-    log(`  Entries sent: ${stats.sent}`);
-    log(`  Errors: ${stats.errors}`);
+  log(`  Bundle entries: ${stats.sent}`);
+  if (exportResult?.skippedTimestampCount > 0) {
+    log(`  Invalid timestamps skipped: ${exportResult.skippedTimestampCount}`, 'warn');
   }
+  if (exportResult?.filename) {
+    log(`  Bundle file: ${exportResult.filename}`);
+  }
+  log('  Next step: run the separate backfill CLI with your bucket and contentBusId.');
+  log(`  Errors: ${stats.errors}`);
   log('Done.', 'success');
 }
 
 async function runBackfill() {
   const org = DOM.org.value.trim();
   const site = DOM.site.value.trim();
-  const dryRun = DOM.dryRun.checked;
   const fallbackUser = DOM.fallbackUser.value.trim();
 
   if (!org || !site) return;
@@ -1753,13 +1796,19 @@ async function runBackfill() {
   disableForm();
   resetStats();
   resetConsole();
-  startProgressTracking(dryRun);
+  startProgressTracking();
   DOM.console.setAttribute('aria-hidden', 'false');
   DOM.progressSection.setAttribute('aria-hidden', 'false');
 
   const startTime = Date.now();
   try {
-    log(`Starting backfill for ${org}/${site}${dryRun ? ' (dry run)' : ''}...`);
+    const bundleWarnings = [];
+    const warnForBundle = (message) => {
+      bundleWarnings.push(message);
+      log(message, 'warn');
+    };
+
+    log(`Starting medialog bundle export for ${org}/${site}...`);
 
     const discovery = await discoverPaths(org, site);
     if (isAborted()) return;
@@ -1815,27 +1864,25 @@ async function runBackfill() {
     const standaloneFallbackStats = applyFallbackLastModified(discovery.standaloneMedia);
 
     if (pageFallbackStats.applied > 0 || standaloneFallbackStats.applied > 0) {
-      log(
+      warnForBundle(
         `Used aem.page Last-Modified fallback for ${pageFallbackStats.applied} page(s) and ${standaloneFallbackStats.applied} standalone media path(s); user will remain empty for those entries.`,
-        'warn',
       );
     }
 
     if (standaloneFallbackFetchStats.attempted > 0 && standaloneFallbackFetchStats.found === 0) {
-      log('Standalone media fallback header fetches completed without any recoverable Last-Modified values.', 'warn');
+      warnForBundle('Standalone media fallback header fetches completed without any recoverable Last-Modified values.');
     }
 
     if (pageFallbackStats.missing > 0 || standaloneFallbackStats.missing > 0) {
-      log(
+      warnForBundle(
         `No Last-Modified metadata was available for ${pageFallbackStats.missing} page(s) and ${standaloneFallbackStats.missing} standalone media path(s) even after fallback; those items will still be skipped.`,
-        'warn',
       );
     }
 
     const eligibleMediaCandidates = mediaCandidates.filter(({ page }) => page.lastModified);
     const skippedCandidateCount = mediaCandidates.length - eligibleMediaCandidates.length;
     if (skippedCandidateCount > 0) {
-      log(`Skipping ${skippedCandidateCount} media candidate(s) whose source page had neither detailed status metadata nor an aem.page Last-Modified fallback.`, 'warn');
+      warnForBundle(`Skipping ${skippedCandidateCount} media candidate(s) whose source page had neither detailed status metadata nor an aem.page Last-Modified fallback.`);
     }
 
     const { entries, dupes } = createDeterministicEntries(eligibleMediaCandidates);
@@ -1864,16 +1911,33 @@ async function runBackfill() {
         page: media,
       });
     });
+    setPhase('Phase 2.6: Resolving ingest asset timestamps...', 69);
+    const ingestLastModifiedStats = await populateIngestLastModified(entries);
+    if (ingestLastModifiedStats.attempted > 0 && ingestLastModifiedStats.found > 0) {
+      log(
+        `Resolved asset/media Last-Modified for ${ingestLastModifiedStats.found} `
+          + `of ${ingestLastModifiedStats.attempted} ingest entry URL(s).`,
+      );
+    }
+    if (
+      ingestLastModifiedStats.attempted > 0
+      && ingestLastModifiedStats.found < ingestLastModifiedStats.attempted
+    ) {
+      warnForBundle(
+        'Some ingest entry URLs did not expose a usable asset/media Last-Modified header; '
+          + 'those ingests will fall back to the current page or standalone preview timestamp.',
+      );
+    }
     updateProgressMetrics({
       totalEntries: entries.length,
-      totalBatches: Math.ceil(entries.length / BATCH_SIZE),
+      totalBatches: 1,
     });
     updateStatsDisplay();
 
-    await ingestEntries(org, site, entries, fallbackUser, dryRun);
+    const exportResult = await exportBundle(org, site, entries, fallbackUser, bundleWarnings);
     if (isAborted()) return;
 
-    showReport(dryRun, startTime);
+    showReport(startTime, exportResult);
     updateConfig();
   } catch (err) {
     if (err.name === 'AbortError') {
