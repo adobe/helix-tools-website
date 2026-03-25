@@ -1769,7 +1769,7 @@ function showReport(startTime, exportResult) {
   if (exportResult?.filename) {
     log(`  Bundle file: ${exportResult.filename}`);
   }
-  log('  Next step: run the CLI in tools/media-library-backfill/cli with your bucket and contentBusId.');
+  log('  Next step: run the separate backfill CLI with your bucket and contentBusId.');
   log(`  Errors: ${stats.errors}`);
   log('Done.', 'success');
 }
