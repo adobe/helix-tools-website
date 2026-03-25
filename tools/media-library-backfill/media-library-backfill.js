@@ -1213,6 +1213,17 @@ function toMarkdownPath(pagePath) {
   return `${pagePath}.md`;
 }
 
+function normalizeTimestampMs(value) {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : NaN;
+  }
+  if (typeof value === 'string' && value) {
+    const ts = Date.parse(value);
+    return Number.isNaN(ts) ? NaN : ts;
+  }
+  return NaN;
+}
+
 async function fetchLastModified(url, allowGetFallback = false) {
   const methods = allowGetFallback ? ['HEAD', 'GET'] : ['HEAD'];
 
@@ -1222,7 +1233,23 @@ async function fetchLastModified(url, allowGetFallback = false) {
     // eslint-disable-next-line no-await-in-loop
     const response = await fetchWithRetry(url, options, 1);
     if (response.ok) {
-      return response.headers.get('last-modified') || '';
+      const lastModified = (response.headers.get('last-modified') || '').trim();
+      const lastModifiedTs = normalizeTimestampMs(lastModified);
+
+      if (Number.isFinite(lastModifiedTs) && lastModifiedTs > 0) {
+        return lastModified;
+      }
+
+      if (lastModified && Number.isFinite(lastModifiedTs) && lastModifiedTs <= 0) {
+        const responseDate = (response.headers.get('date') || '').trim();
+        const responseDateTs = normalizeTimestampMs(responseDate);
+
+        if (Number.isFinite(responseDateTs) && responseDateTs > 0) {
+          return responseDate;
+        }
+      }
+
+      return '';
     }
   }
 
@@ -1397,17 +1424,6 @@ function parseMediaFromHtml(html, fallbackBaseUrl, responseSourceUrl = '') {
   });
 
   return normalizeCollectedMediaUrls(mediaUrls, pageBaseUrl);
-}
-
-function normalizeTimestampMs(value) {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : NaN;
-  }
-  if (typeof value === 'string' && value) {
-    const ts = Date.parse(value);
-    return Number.isNaN(ts) ? NaN : ts;
-  }
-  return NaN;
 }
 
 function toComparableTimestamp(lastModified) {
