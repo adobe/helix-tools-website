@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable no-console */
 
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -256,29 +257,33 @@ async function readExistingIndex(s3, bucket, prefix) {
 }
 
 async function getEarliestExistingState(s3, bucket, prefix, existingFiles) {
-  for (const basename of existingFiles) {
+  async function inspectFile(index) {
+    if (index >= existingFiles.length) {
+      return {
+        basename: '',
+        firstTimestamp: null,
+      };
+    }
+
+    const basename = existingFiles[index];
     const key = `${prefix}/${basename}.gz`;
     const entries = await getObjectEntries(s3, bucket, key);
     if (!Array.isArray(entries) || entries.length === 0) {
-      // Keep looking for the first non-empty file.
-      // eslint-disable-next-line no-continue
-      continue;
+      return inspectFile(index + 1);
     }
+
     const firstTimestamp = normalizeTimestampMs(entries[0].timestamp);
     if (!Number.isFinite(firstTimestamp)) {
-      // eslint-disable-next-line no-continue
-      continue;
+      return inspectFile(index + 1);
     }
+
     return {
       basename,
       firstTimestamp,
     };
   }
 
-  return {
-    basename: '',
-    firstTimestamp: null,
-  };
+  return inspectFile(0);
 }
 
 function gzipEntries(entries) {
@@ -438,9 +443,8 @@ async function uploadArtifacts({
   artifacts,
   newIndexContents,
 }) {
-  for (const artifact of artifacts) {
-    // eslint-disable-next-line no-await-in-loop
-    await s3.send(new PutObjectCommand({
+  await artifacts.reduce(
+    (promise, artifact) => promise.then(() => s3.send(new PutObjectCommand({
       Bucket: bucket,
       Key: `${prefix}/${artifact.basename}.gz`,
       Body: artifact.gzipBuffer,
@@ -449,8 +453,9 @@ async function uploadArtifacts({
       Metadata: {
         'last-event-time': formatTimestamp(artifact.lastTimestamp),
       },
-    }));
-  }
+    }))),
+    Promise.resolve(),
+  );
 
   if (newIndexContents) {
     await s3.send(new PutObjectCommand({
@@ -465,10 +470,17 @@ async function uploadArtifacts({
 function printSummary(summary, artifacts) {
   console.log(`Bucket: ${summary.target.bucket}`);
   console.log(`Target prefix (contentBusId): ${summary.target.prefix}`);
-  console.log(`Earliest existing medialog timestamp: ${summary.existingMedialog.earliestExistingTimestamp || 'none'}`);
+  console.log(
+    `Earliest existing medialog timestamp: ${
+      summary.existingMedialog.earliestExistingTimestamp || 'none'
+    }`,
+  );
   console.log(`Mergeable entries: ${summary.importPlan.mergeableCount}`);
   console.log(`Already recorded/skipped: ${summary.importPlan.alreadyRecordedSkippedCount}`);
-  if (summary.importPlan.alreadyRecordedRange.first || summary.importPlan.alreadyRecordedRange.last) {
+  if (
+    summary.importPlan.alreadyRecordedRange.first
+    || summary.importPlan.alreadyRecordedRange.last
+  ) {
     console.log(
       `Already recorded range: ${summary.importPlan.alreadyRecordedRange.first || 'n/a'} -> `
         + `${summary.importPlan.alreadyRecordedRange.last || 'n/a'}`,

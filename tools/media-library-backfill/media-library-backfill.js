@@ -20,7 +20,6 @@ const MAX_PARTITION_PATHS = 250;
 const PARTITION_LABEL_PATH_LIMIT = 3;
 const MIN_ETA_SAMPLE_MS = 10000;
 const MIN_PROCESSING_ETA_SAMPLE_COUNT = 50;
-const MIN_INGEST_ETA_SAMPLE_COUNT = 3;
 const DEFAULT_INGEST_BATCH_DURATION_MS = 150;
 const PROCESSING_PROGRESS_PAGE_INTERVAL = 25;
 const PROCESSING_PROGRESS_MIN_INTERVAL_MS = 500;
@@ -129,22 +128,6 @@ function formatDuration(ms) {
 
 function estimateIngestBatchDurationMs() {
   return Math.max(DEFAULT_INGEST_BATCH_DURATION_MS, adminLimiter.getInterval());
-}
-
-function estimateTotalEntriesForEta() {
-  if (progressState.totalEntries > 0) {
-    return progressState.totalEntries;
-  }
-
-  if (progressState.processedPages <= 0 || progressState.totalPages <= 0) {
-    return progressState.standaloneMediaCount;
-  }
-
-  const estimatedPageEntries = Math.round(
-    (stats.media / progressState.processedPages) * progressState.totalPages,
-  );
-
-  return Math.max(stats.media, estimatedPageEntries) + progressState.standaloneMediaCount;
 }
 
 function estimateRemainingMs() {
