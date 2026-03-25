@@ -23,7 +23,7 @@
     <!-- TITLE -->
     <div>
       <h1>Media Library Backfill</h1>
-      <p>The <strong>Media Library Backfill</strong> tool retroactively populates the AEM media log by crawling all pages on a site, parsing their content for media references, and posting entries to the medialog API.</p>
+      <p>The <strong>Media Library Backfill</strong> tool crawls all pages on a site, parses their content for media references, and exports a historical medialog import bundle for the CLI in <code>tools/media-library-backfill/cli</code>.</p>
       <p>To use this tool, you must first log in to the relevant site in your user profile on the top right in the header of this page.</p>
     </div>
 
@@ -44,10 +44,6 @@
         </div>
 
         <div class="options-field">
-          <label class="dry-run-label">
-            <input type="checkbox" name="dry-run" id="dry-run" />
-            <span>Dry run (preview entries without updating media log)</span>
-          </label>
           <div class="form-field fallback-user-field">
             <label for="fallback-user">Fallback user email</label>
             <input name="fallback-user" id="fallback-user" type="email" placeholder="user@example.com" />
@@ -55,7 +51,7 @@
         </div>
 
         <p class="button-wrapper">
-          <button type="submit" class="button" id="run-btn">Run Backfill</button>
+          <button type="submit" class="button" id="run-btn">Export Bundle</button>
           <button type="button" class="button outline" id="cancel-btn" hidden>Cancel</button>
         </p>
       </form>
@@ -70,7 +66,7 @@
         <div class="stats-row">
           <span class="stat">Pages: <strong id="stat-pages">0</strong></span>
           <span class="stat">Media: <strong id="stat-media">0</strong></span>
-          <span class="stat">Sent: <strong id="stat-sent">0</strong></span>
+          <span class="stat">Bundled: <strong id="stat-sent">0</strong></span>
           <span class="stat">Errors: <strong id="stat-errors">0</strong></span>
           <span class="stat">Dupes: <strong id="stat-dupes">0</strong></span>
         </div>

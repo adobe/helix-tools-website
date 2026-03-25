@@ -2,6 +2,7 @@
 coverage/*
 logs/*
 node_modules/*
+tools/media-library-backfill/cli/node_modules/
 
 helix-importer-ui
 .DS_Store
