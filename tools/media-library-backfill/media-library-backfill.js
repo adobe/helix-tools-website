@@ -1233,14 +1233,7 @@ async function fetchLastModified(url, allowGetFallback = false) {
     // eslint-disable-next-line no-await-in-loop
     const response = await fetchWithRetry(url, options, 1);
     if (response.ok) {
-      const lastModified = (response.headers.get('last-modified') || '').trim();
-      const lastModifiedTs = normalizeTimestampMs(lastModified);
-
-      if (Number.isFinite(lastModifiedTs) && lastModifiedTs > 0) {
-        return lastModified;
-      }
-
-      return '';
+      return (response.headers.get('last-modified') || '').trim();
     }
   }
 
@@ -1477,11 +1470,12 @@ function createResolvedEntries(entries, fallbackUser) {
   return entries
     .map(({ entry, page, ingestLastModified }, sourceOrder) => {
       const user = page.user || fallbackUser || '';
-      const timestamp = normalizeTimestampMs(
-        entry.operation === 'reuse'
-          ? page.lastModified
-          : (ingestLastModified || page.lastModified),
-      );
+      const timestamp = entry.operation === 'reuse'
+        ? normalizeTimestampMs(page.lastModified)
+        : (() => {
+          const ingestTimestamp = normalizeTimestampMs(ingestLastModified);
+          return Number.isFinite(ingestTimestamp) ? ingestTimestamp : 0;
+        })();
 
       return {
         ...entry,
@@ -1932,7 +1926,7 @@ async function runBackfill() {
     ) {
       warnForBundle(
         'Some ingest entry URLs did not expose a usable asset/media Last-Modified header; '
-          + 'those ingests will fall back to the current page or standalone preview timestamp.',
+          + 'those ingests will be exported with timestamp 0.',
       );
     }
     updateProgressMetrics({
