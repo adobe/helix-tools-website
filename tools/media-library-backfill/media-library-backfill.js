@@ -2,12 +2,16 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import {
-  canonicalizeHashedMediaUrl,
   dedupeMediaUrls,
   deriveOriginalFilename,
   extractMediaHash,
   getMediaIdentity,
 } from './media-identity.js';
+import {
+  getSiteAemPageOrigin,
+  normalizeMediaUrlToCurrentSiteAemPage,
+  resolveHtmlMediaBaseUrl,
+} from './media-origin.js';
 
 const ADMIN_BASE = 'https://admin.hlx.page';
 const DA_ETC_ORIGIN = 'https://da-etc.adobeaem.workers.dev';
@@ -1192,22 +1196,12 @@ function extractDimensions(url) {
   return {};
 }
 
-function normalizeMediaUrl(rawUrl, pageBaseUrl) {
-  if (!rawUrl) return null;
-  try {
-    const normalizedInput = rawUrl.startsWith('//') ? `https:${rawUrl}` : rawUrl;
-    const url = new URL(normalizedInput, pageBaseUrl);
-    if (!['http:', 'https:'].includes(url.protocol)) return null;
-    if (url.hostname.includes('.hlx.page')) {
-      url.hostname = url.hostname.replace('.hlx.page', '.aem.page');
-    }
-    if (url.hostname.includes('.hlx.live')) {
-      url.hostname = url.hostname.replace('.hlx.live', '.aem.live');
-    }
-    return canonicalizeHashedMediaUrl(url.toString());
-  } catch (err) {
-    return null;
-  }
+function normalizeMediaUrl(rawUrl, pageBaseUrl, siteAemOrigin, pageSourceUrl = '') {
+  return normalizeMediaUrlToCurrentSiteAemPage(rawUrl, {
+    pageBaseUrl,
+    siteAemOrigin,
+    pageSourceUrl,
+  });
 }
 
 function toMarkdownPath(pagePath) {
@@ -1278,25 +1272,11 @@ function isHtmlResponse(contentType, body) {
     || trimmed.startsWith('<body');
 }
 
-function getHtmlBaseUrl(doc, fallbackBaseUrl, responseSourceUrl = '') {
-  const candidates = [
-    doc.querySelector('base[href]')?.getAttribute('href'),
-    responseSourceUrl,
-    doc.querySelector('link[rel="canonical"]')?.getAttribute('href'),
-    doc.querySelector('meta[property="og:url"]')?.getAttribute('content'),
-    doc.querySelector('meta[name="twitter:url"]')?.getAttribute('content'),
-  ].filter(Boolean);
-
-  for (let i = 0; i < candidates.length; i += 1) {
-    try {
-      // eslint-disable-next-line no-new
-      return new URL(candidates[i], fallbackBaseUrl).toString();
-    } catch {
-      // ignore invalid candidate and continue
-    }
-  }
-
-  return fallbackBaseUrl;
+function getHtmlBaseUrl(doc, fallbackBaseUrl) {
+  return resolveHtmlMediaBaseUrl(
+    doc.querySelector('base[href]')?.getAttribute('href') || '',
+    fallbackBaseUrl,
+  );
 }
 
 function parseSrcsetUrls(srcset) {
@@ -1308,13 +1288,13 @@ function parseSrcsetUrls(srcset) {
     .filter(Boolean);
 }
 
-function normalizeCollectedMediaUrls(mediaUrls, baseUrl) {
+function normalizeCollectedMediaUrls(mediaUrls, baseUrl, siteAemOrigin, pageSourceUrl = '') {
   return dedupeMediaUrls(mediaUrls
-    .map((url) => normalizeMediaUrl(url, baseUrl))
+    .map((url) => normalizeMediaUrl(url, baseUrl, siteAemOrigin, pageSourceUrl))
     .filter(Boolean));
 }
 
-function parseMediaFromMarkdown(markdown, pageBaseUrl) {
+function parseMediaFromMarkdown(markdown, pageBaseUrl, siteAemOrigin) {
   const mediaUrls = [];
 
   // Inline images: ![alt](url) or ![alt](url "title")
@@ -1353,13 +1333,13 @@ function parseMediaFromMarkdown(markdown, pageBaseUrl) {
   }
 
   return dedupeMediaUrls(mediaUrls
-    .map((url) => normalizeMediaUrl(url, pageBaseUrl))
+    .map((url) => normalizeMediaUrl(url, pageBaseUrl, siteAemOrigin))
     .filter(Boolean));
 }
 
-function parseMediaFromHtml(html, fallbackBaseUrl, responseSourceUrl = '') {
+function parseMediaFromHtml(html, fallbackBaseUrl, siteAemOrigin, responseSourceUrl = '') {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  const pageBaseUrl = getHtmlBaseUrl(doc, fallbackBaseUrl, responseSourceUrl);
+  const pageBaseUrl = getHtmlBaseUrl(doc, fallbackBaseUrl);
   const mediaUrls = [];
 
   doc.querySelectorAll('img[src]').forEach((img) => {
@@ -1415,7 +1395,7 @@ function parseMediaFromHtml(html, fallbackBaseUrl, responseSourceUrl = '') {
     });
   });
 
-  return normalizeCollectedMediaUrls(mediaUrls, pageBaseUrl);
+  return normalizeCollectedMediaUrls(mediaUrls, pageBaseUrl, siteAemOrigin, responseSourceUrl);
 }
 
 function toComparableTimestamp(lastModified) {
@@ -1601,6 +1581,7 @@ async function processPages(org, site, pages) {
   let redirectSkippedCount = 0;
   let lastProgressProcessed = 0;
   let lastProgressUpdateAt = Date.now();
+  const siteAemOrigin = getSiteAemPageOrigin(org, site, REF);
 
   async function fetchPageContent(page) {
     const markdownPath = toMarkdownPath(page.path);
@@ -1664,14 +1645,19 @@ async function processPages(org, site, pages) {
     }
 
     if (pageContent?.body) {
-      const pageBaseUrl = pageContent.responseSourceUrl || pageContent.requestUrl;
+      const pageBaseUrl = pageContent.requestUrl;
       const isHtml = isHtmlResponse(pageContent.contentType, pageContent.body);
       if (isHtml) {
         htmlPageCount += 1;
       }
       const urls = isHtml
-        ? parseMediaFromHtml(pageContent.body, pageBaseUrl, pageContent.responseSourceUrl)
-        : parseMediaFromMarkdown(pageContent.body, pageBaseUrl);
+        ? parseMediaFromHtml(
+          pageContent.body,
+          pageBaseUrl,
+          siteAemOrigin,
+          pageContent.responseSourceUrl,
+        )
+        : parseMediaFromMarkdown(pageContent.body, pageBaseUrl, siteAemOrigin);
       urls.forEach((url) => {
         mediaCandidates.push({
           order: candidateOrder,
