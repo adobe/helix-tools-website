@@ -134,9 +134,14 @@ async function deleteUserFromOrg(user) {
 async function addUsersToSite(users) {
   const snapshot = [...accessConfig.users];
   users.forEach((u) => accessConfig.users.push(u));
-  const ok = await updateSiteAccess();
-  if (!ok) accessConfig.users = snapshot;
-  return ok ? users.length : 0;
+  try {
+    const ok = await updateSiteAccess();
+    if (!ok) accessConfig.users = snapshot;
+    return ok ? users.length : 0;
+  } catch (err) {
+    accessConfig.users = snapshot;
+    throw err;
+  }
 }
 
 async function addUsersToOrg(users) {
@@ -486,7 +491,9 @@ function openAddUsersModal(onSave) {
   setConfirmClose(async () => {
     const emails = dialog.querySelectorAll('input[type="email"]');
     const hasData = [...emails].some((input) => input.value.trim() !== '');
-    if (!hasData) return true;
+    const checkboxes = dialog.querySelectorAll('input[type="checkbox"]');
+    const hasRoles = [...checkboxes].some((cb) => cb.checked);
+    if (!hasData && !hasRoles) return true;
     return showConfirmDialog('You have unsaved changes. Discard?');
   });
 
