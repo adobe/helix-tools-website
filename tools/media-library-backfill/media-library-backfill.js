@@ -1,6 +1,13 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
+import {
+  canonicalizeHashedMediaUrl,
+  dedupeMediaUrls,
+  deriveOriginalFilename,
+  extractMediaHash,
+  getMediaIdentity,
+} from './media-identity.js';
 
 const ADMIN_BASE = 'https://admin.hlx.page';
 const DA_ETC_ORIGIN = 'https://da-etc.adobeaem.workers.dev';
@@ -1185,26 +1192,6 @@ function extractDimensions(url) {
   return {};
 }
 
-function getPathnameFromMediaRef(pathOrUrl) {
-  if (!pathOrUrl || typeof pathOrUrl !== 'string') return '';
-  try {
-    return new URL(pathOrUrl).pathname || '';
-  } catch {
-    return pathOrUrl.split(/[?#]/, 1)[0];
-  }
-}
-
-function extractMediaHash(pathOrUrl) {
-  const pathname = getPathnameFromMediaRef(pathOrUrl);
-  const match = pathname.match(/\/media_([0-9a-f]+)\.[a-z0-9]+$/i);
-  return match?.[1] || '';
-}
-
-function deriveOriginalFilename(pathOrUrl) {
-  const pathname = getPathnameFromMediaRef(pathOrUrl);
-  return extractMediaHash(pathOrUrl) ? pathOrUrl : (pathname || pathOrUrl);
-}
-
 function normalizeMediaUrl(rawUrl, pageBaseUrl) {
   if (!rawUrl) return null;
   try {
@@ -1217,7 +1204,7 @@ function normalizeMediaUrl(rawUrl, pageBaseUrl) {
     if (url.hostname.includes('.hlx.live')) {
       url.hostname = url.hostname.replace('.hlx.live', '.aem.live');
     }
-    return url.toString();
+    return canonicalizeHashedMediaUrl(url.toString());
   } catch (err) {
     return null;
   }
@@ -1322,18 +1309,9 @@ function parseSrcsetUrls(srcset) {
 }
 
 function normalizeCollectedMediaUrls(mediaUrls, baseUrl) {
-  const seenPageMedia = new Set();
-
-  return mediaUrls
+  return dedupeMediaUrls(mediaUrls
     .map((url) => normalizeMediaUrl(url, baseUrl))
-    .filter(Boolean)
-    .filter((url) => {
-      if (seenPageMedia.has(url)) {
-        return false;
-      }
-      seenPageMedia.add(url);
-      return true;
-    });
+    .filter(Boolean));
 }
 
 function parseMediaFromMarkdown(markdown, pageBaseUrl) {
@@ -1374,18 +1352,9 @@ function parseMediaFromMarkdown(markdown, pageBaseUrl) {
     match = linkRegex.exec(markdown);
   }
 
-  const seenPageMedia = new Set();
-
-  return mediaUrls
+  return dedupeMediaUrls(mediaUrls
     .map((url) => normalizeMediaUrl(url, pageBaseUrl))
-    .filter(Boolean)
-    .filter((url) => {
-      if (seenPageMedia.has(url)) {
-        return false;
-      }
-      seenPageMedia.add(url);
-      return true;
-    });
+    .filter(Boolean));
 }
 
 function parseMediaFromHtml(html, fallbackBaseUrl, responseSourceUrl = '') {
@@ -1461,6 +1430,8 @@ function createDeterministicEntries(mediaCandidates) {
     if (tsDiff !== 0) return tsDiff;
     const pathDiff = a.page.path.localeCompare(b.page.path);
     if (pathDiff !== 0) return pathDiff;
+    const identityDiff = getMediaIdentity(a.url).localeCompare(getMediaIdentity(b.url));
+    if (identityDiff !== 0) return identityDiff;
     const urlDiff = a.url.localeCompare(b.url);
     if (urlDiff !== 0) return urlDiff;
     return a.order - b.order;
@@ -1469,11 +1440,12 @@ function createDeterministicEntries(mediaCandidates) {
   const seenMedia = new Set();
   let dupes = 0;
   const entries = sorted.map(({ page, url }) => {
-    const operation = seenMedia.has(url) ? 'reuse' : 'ingest';
+    const mediaIdentity = getMediaIdentity(url);
+    const operation = seenMedia.has(mediaIdentity) ? 'reuse' : 'ingest';
     if (operation === 'reuse') {
       dupes += 1;
     }
-    seenMedia.add(url);
+    seenMedia.add(mediaIdentity);
     return {
       entry: {
         operation,
@@ -1958,15 +1930,16 @@ async function runBackfill() {
     log(`Found ${entries.length} media entries across ${discovery.pages.length} crawled page(s) (${dupes} duplicates)`);
 
     const standaloneMedia = discovery.standaloneMedia.filter((media) => media.lastModified);
-    const existingMediaPaths = new Set(entries.map(({ entry }) => entry.path));
+    const existingMediaPaths = new Set(entries.map(({ entry }) => getMediaIdentity(entry.path)));
     standaloneMedia.forEach((media) => {
       const mediaUrl = `https://${REF}--${site}--${org}.aem.page${media.path}`;
+      const mediaIdentity = getMediaIdentity(mediaUrl);
       stats.media += 1;
-      if (existingMediaPaths.has(mediaUrl)) {
+      if (existingMediaPaths.has(mediaIdentity)) {
         stats.dupes += 1;
         return;
       }
-      existingMediaPaths.add(mediaUrl);
+      existingMediaPaths.add(mediaIdentity);
       entries.push({
         entry: {
           operation: 'ingest',
