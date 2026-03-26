@@ -1200,6 +1200,11 @@ function extractMediaHash(pathOrUrl) {
   return match?.[1] || '';
 }
 
+function deriveOriginalFilename(pathOrUrl) {
+  const pathname = getPathnameFromMediaRef(pathOrUrl);
+  return extractMediaHash(pathOrUrl) ? pathOrUrl : (pathname || pathOrUrl);
+}
+
 function normalizeMediaUrl(rawUrl, pageBaseUrl) {
   if (!rawUrl) return null;
   try {
@@ -1505,6 +1510,7 @@ function createResolvedEntries(entries, fallbackUser, contentSourceType = 'marku
     .map(({ entry, page, ingestLastModified }, sourceOrder) => {
       const user = page.user || fallbackUser || '';
       const mediaHash = extractMediaHash(entry.path);
+      const originalFilename = deriveOriginalFilename(entry.path);
       const timestamp = entry.operation === 'reuse'
         ? normalizeTimestampMs(page.lastModified)
         : (() => {
@@ -1515,7 +1521,7 @@ function createResolvedEntries(entries, fallbackUser, contentSourceType = 'marku
       return {
         ...entry,
         ...(mediaHash ? { mediaHash } : {}),
-        originalFilename: entry.path,
+        originalFilename,
         contentSourceType,
         user,
         timestamp,
