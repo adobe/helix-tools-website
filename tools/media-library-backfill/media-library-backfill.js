@@ -1185,6 +1185,21 @@ function extractDimensions(url) {
   return {};
 }
 
+function getPathnameFromMediaRef(pathOrUrl) {
+  if (!pathOrUrl || typeof pathOrUrl !== 'string') return '';
+  try {
+    return new URL(pathOrUrl).pathname || '';
+  } catch {
+    return pathOrUrl.split(/[?#]/, 1)[0];
+  }
+}
+
+function extractMediaHash(pathOrUrl) {
+  const pathname = getPathnameFromMediaRef(pathOrUrl);
+  const match = pathname.match(/\/media_([0-9a-f]+)\.[a-z0-9]+$/i);
+  return match?.[1] || '';
+}
+
 function normalizeMediaUrl(rawUrl, pageBaseUrl) {
   if (!rawUrl) return null;
   try {
@@ -1238,6 +1253,25 @@ async function fetchLastModified(url, allowGetFallback = false) {
   }
 
   return '';
+}
+
+async function fetchContentSourceType(org, site) {
+  const configUrl = `${ADMIN_BASE}/config/${encodeURIComponent(org)}/sites/${encodeURIComponent(site)}.json`;
+
+  try {
+    const response = await fetchWithRetry(configUrl, {}, 1);
+    if (!response.ok) {
+      log(`Site config lookup returned ${response.status}; defaulting contentSourceType to markup.`, 'warn');
+      return 'markup';
+    }
+
+    const config = await response.json();
+    return config?.content?.source?.type || 'markup';
+  } catch (err) {
+    if (err.name === 'AbortError') throw err;
+    log(`Failed to load site config for contentSourceType: ${err.message}. Defaulting to markup.`, 'warn');
+    return 'markup';
+  }
 }
 
 function isHtmlResponse(contentType, body) {
@@ -1466,10 +1500,11 @@ function compareResolvedEntries(a, b) {
   return (a.sourceOrder || 0) - (b.sourceOrder || 0);
 }
 
-function createResolvedEntries(entries, fallbackUser) {
+function createResolvedEntries(entries, fallbackUser, contentSourceType = 'markup') {
   return entries
     .map(({ entry, page, ingestLastModified }, sourceOrder) => {
       const user = page.user || fallbackUser || '';
+      const mediaHash = extractMediaHash(entry.path);
       const timestamp = entry.operation === 'reuse'
         ? normalizeTimestampMs(page.lastModified)
         : (() => {
@@ -1479,6 +1514,9 @@ function createResolvedEntries(entries, fallbackUser) {
 
       return {
         ...entry,
+        ...(mediaHash ? { mediaHash } : {}),
+        originalFilename: entry.path,
+        contentSourceType,
         user,
         timestamp,
         sourceOrder,
@@ -1522,7 +1560,14 @@ function downloadJson(filename, payload) {
   URL.revokeObjectURL(href);
 }
 
-async function exportBundle(org, site, entries, fallbackUser, warningMessages = []) {
+async function exportBundle(
+  org,
+  site,
+  entries,
+  fallbackUser,
+  contentSourceType,
+  warningMessages = [],
+) {
   beginProgressPhase('export', {
     totalEntries: entries.length,
     totalBatches: 1,
@@ -1530,7 +1575,7 @@ async function exportBundle(org, site, entries, fallbackUser, warningMessages = 
   });
   setPhase('Phase 3: Building export bundle...', 70);
 
-  const resolvedEntries = createResolvedEntries(entries, fallbackUser);
+  const resolvedEntries = createResolvedEntries(entries, fallbackUser, contentSourceType);
   const validEntries = resolvedEntries.filter((entry) => Number.isFinite(entry.timestamp));
   const skippedTimestampCount = resolvedEntries.length - validEntries.length;
   if (skippedTimestampCount > 0) {
@@ -1575,13 +1620,20 @@ async function processPages(org, site, pages) {
   let candidateOrder = 0;
   let processed = 0;
   let htmlPageCount = 0;
+  let redirectSkippedCount = 0;
   let lastProgressProcessed = 0;
   let lastProgressUpdateAt = Date.now();
 
   async function fetchPageContent(page) {
     const markdownPath = toMarkdownPath(page.path);
     const pageUrl = `https://${REF}--${site}--${org}.aem.page${markdownPath}`;
-    const pageRes = await fetchWithRetry(pageUrl, {}, 1);
+    const pageRes = await fetchWithRetry(pageUrl, { redirect: 'manual' }, 1);
+    if (pageRes.status === 0 || (pageRes.status >= 300 && pageRes.status < 400)) {
+      return {
+        redirected: true,
+        requestUrl: pageUrl,
+      };
+    }
     if (pageRes.ok) {
       page.fallbackLastModified = pageRes.headers.get('last-modified') || page.fallbackLastModified || '';
       return {
@@ -1650,6 +1702,8 @@ async function processPages(org, site, pages) {
         });
         candidateOrder += 1;
       });
+    } else if (pageContent?.redirected) {
+      redirectSkippedCount += 1;
     }
 
     processed += 1;
@@ -1662,6 +1716,9 @@ async function processPages(org, site, pages) {
 
   if (htmlPageCount > 0) {
     log(`Scraped media from HTML responses for ${htmlPageCount} page(s) that did not return markdown.`, 'warn');
+  }
+  if (redirectSkippedCount > 0) {
+    log(`Skipped ${redirectSkippedCount} page(s) whose markdown path responded with a redirect instead of direct content.`, 'warn');
   }
   log(`Collected ${mediaCandidates.length} media candidate(s) across ${pages.length} crawled page(s)`);
   return mediaCandidates;
@@ -1808,8 +1865,10 @@ async function runBackfill() {
       bundleWarnings.push(message);
       log(message, 'warn');
     };
+    const contentSourceType = await fetchContentSourceType(org, site);
 
     log(`Starting medialog bundle export for ${org}/${site}...`);
+    log(`Using contentSourceType=${contentSourceType} for exported backfill entries.`);
 
     const discovery = await discoverPaths(org, site);
     if (isAborted()) return;
@@ -1935,7 +1994,14 @@ async function runBackfill() {
     });
     updateStatsDisplay();
 
-    const exportResult = await exportBundle(org, site, entries, fallbackUser, bundleWarnings);
+    const exportResult = await exportBundle(
+      org,
+      site,
+      entries,
+      fallbackUser,
+      contentSourceType,
+      bundleWarnings,
+    );
     if (isAborted()) return;
 
     showReport(startTime, exportResult);
