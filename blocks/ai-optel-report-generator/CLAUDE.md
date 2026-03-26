@@ -23,13 +23,13 @@ blocks/ai-optel-report-generator/
 ├── cleanup-utils.js               # URL param cleanup on modal close
 │
 ├── core/
-│   ├── analysis-engine.js         # Top-level orchestrator — runCompleteRumAnalysis()
+│   ├── analysis-engine.js         # Top-level orchestrator for the full analysis pipeline
 │   ├── dashboard-extractor.js     # Extracts metrics, facets, date range from live DOM
 │   ├── facet-manager.js           # Converts facets to AI tool definitions, handles tool calls
 │   └── metrics-processing.js      # Sequential batch processing of per-facet AI analysis
 │
 ├── api/
-│   ├── api-factory.js             # Provider abstraction — callAI() and callAIAsync()
+│   ├── api-factory.js             # Provider abstraction for sync and async AI calls
 │   └── bedrock-api.js             # AWS Bedrock integration via bundles.aem.page proxy
 │
 ├── ui/
@@ -62,8 +62,8 @@ Entry point: `facetsidebar.js` (in `tools/optel/oversight/elements/`) creates th
 ### 2. Dashboard Preparation
 
 Before analysis begins, `report-generator.js` prepares the dashboard:
-- Sets `metrics=super` in the URL to load checkpoint-level data (calls `window.slicerDraw()` to refresh)
-- Sets `endDate` to today to lock the date range via `fetchPrevious31Days`
+- Sets `metrics=super` in the URL to load checkpoint-level data and refreshes the dashboard
+- Sets `endDate` to today to lock the date range
 - Resets cached facet tools so fresh facets are extracted
 - After report generation completes, these params are removed and the dashboard is restored to its original state
 
@@ -76,14 +76,14 @@ Before analysis begins, `report-generator.js` prepares the dashboard:
 
 ### 4. AI Tool Construction
 
-`facet-manager.js` scans `<facet-sidebar>` and creates an AI tool definition for each non-empty facet. Each tool supports three operations: `filter`, `analyze`, and `summarize`. Empty facets are skipped. Results are cached until `resetCachedFacetTools()` is called.
+`facet-manager.js` scans `<facet-sidebar>` and creates an AI tool definition for each non-empty facet. Each tool supports three operations: `filter`, `analyze`, and `summarize`. Empty facets are skipped. Results are cached and reused within a single generation run.
 
-A `DOMOperationQueue` serializes filter operations to prevent DOM conflicts during concurrent tool calls.
+A DOM operation queue serializes filter operations to prevent conflicts during concurrent tool calls.
 
 ### 5. Sequential Batch Analysis
 
 `metrics-processing.js` processes facets one at a time:
-- Creates one-tool-per-batch (configurable via `TOOLS_PER_BATCH`)
+- Creates one-tool-per-batch
 - For each batch: sends a prompt to the AI with the tool, the AI calls the tool, results are fed back as a follow-up message
 - After all batches complete, a follow-up synthesis call combines all per-facet insights
 - 500ms delay between batches to avoid rate limiting
@@ -92,8 +92,8 @@ A `DOMOperationQueue` serializes filter operations to prevent DOM conflicts duri
 
 `analysis-engine.js` orchestrates the end-to-end flow:
 - Loads `system-prompt.txt` and `overview-analysis-template.html`
-- Injects facet linking instructions via `facet-link-generator.js` (`buildFacetInfoSection()`)
-- Makes an async job-queue call (`callAIAsync`) for the final comprehensive report to avoid browser timeouts
+- Injects facet linking instructions from `facet-link-generator.js` into the system prompt
+- Makes an async job-queue call for the final comprehensive report to avoid browser timeouts
 - The AI produces structured HTML with `data-facet` spans for interactive links
 
 ### 7. AWS Bedrock Integration
@@ -101,17 +101,17 @@ A `DOMOperationQueue` serializes filter operations to prevent DOM conflicts duri
 All AI calls go through `bundles.aem.page/bedrock` (proxied via the RUM Bundler).
 
 `bedrock-api.js` provides two modes:
-- **Sync** (`callBedrockAPI`): Used for per-facet batch calls. Includes retry logic (up to 4 attempts) with exponential backoff for 429/502/503 errors.
-- **Async** (`callBedrockAPIAsync`): Used for the final report. Submits a job to `/bedrock/jobs`, then polls `/bedrock/jobs/{jobId}` every 5 seconds (max 5 minutes).
+- **Sync:** Used for per-facet batch calls. Includes retry logic (up to 4 attempts) with exponential backoff for 429/502/503 errors.
+- **Async:** Used for the final report. Submits a job to `/bedrock/jobs`, then polls for completion every 5 seconds (max 5 minutes).
 
-Usage tracking (`inputTokens`, `outputTokens`, `model`) is accumulated per report and submitted to `/bedrock/usage` after generation completes.
+Token usage (input/output) is accumulated per report and submitted to `/bedrock/usage` after generation completes.
 
 ### 8. Report Persistence
 
 `da-upload.js` handles saving:
 - Wraps AI output in `report-template.html`
 - Transforms content into DA-compatible table format with `<h4>` section headings
-- Converts `data-facet` spans into validated, clickable `<a>` links via `facet-link-generator.js`
+- Converts `data-facet` spans into validated, clickable links using `facet-link-generator.js`
 - Embeds `report-view` and `report-end-date` meta tags for consistent loading
 - Uploads via Cloudflare Worker (`optel-da-upload.adobeaem.workers.dev`) to DA path: `adobe/helix-optel/optel-reports/{domain}/{filename}.html`
 
@@ -137,11 +137,11 @@ Usage tracking (`inputTokens`, `outputTokens`, `model`) is accumulated per repor
 
 **Report → Dashboard:** Clicking a facet link in the report navigates to the dashboard with filters pre-applied (e.g., `?checkpoint=lcp&error.source=network`). Existing `url` and `userAgent` filters are preserved.
 
-**Back to Report:** After drill-down, a floating + static "Back to Report" button appears (managed via `IntersectionObserver`). Clicking it restores the report view at the exact scroll position using session storage.
+**Back to Report:** After drill-down, a floating + static "Back to Report" button appears. Clicking it restores the report view at the exact scroll position using session storage.
 
 ### Shareable Links
 
-Reports are addressable via `?report=YYYY-MM-DD&view=week`. On page load, `checkForSharedReport()` matches the date against saved reports and opens the matching report inline. The view and endDate are restored from meta tags in the report HTML.
+Reports are addressable via `?report=YYYY-MM-DD&view=week`. On page load, the date is matched against saved reports and the matching report opens inline. The view and endDate are restored from meta tags in the report HTML.
 
 ## Configuration
 
@@ -162,5 +162,5 @@ All configuration lives in `config.js`:
 This block is NOT loaded via CMS content. It is lazy-loaded by `tools/optel/oversight/elements/facetsidebar.js`:
 
 1. The Claude button click loads `ai-optel-report-generator.css` and `.js`
-2. Calls `window.openReportModal()` to open the generation modal
+2. Opens the report generation modal
 3. Separately, `report-actions.js` is lazy-loaded on sidebar init to populate saved reports in the daterange picker dropdown
