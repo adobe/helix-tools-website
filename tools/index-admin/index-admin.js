@@ -15,8 +15,11 @@ let loadedIndices;
 let YAML;
 
 function displayIndexDetails(indexName, indexDef, newIndex = false) {
-  document.body.append(document.querySelector('#index-details-dialog-template').content.cloneNode(true));
-  const indexDetails = document.querySelector('dialog.index-details');
+  document.querySelector('dialog.index-details')?.remove();
+
+  const fragment = document.querySelector('#index-details-dialog-template').content.cloneNode(true);
+  const indexDetails = fragment.querySelector('dialog.index-details');
+  document.body.append(fragment);
 
   indexDetails.querySelector('#index-name').value = indexName;
   if (!newIndex) {
@@ -69,6 +72,10 @@ function displayIndexDetails(indexName, indexDef, newIndex = false) {
   });
 
   indexDetails.showModal();
+
+  indexDetails.addEventListener('close', () => {
+    indexDetails.remove();
+  });
 
   // Add event listeners for add/remove property buttons
   const addPropertyBtn = indexDetails.querySelector('.add-property-btn');
@@ -161,7 +168,6 @@ function displayIndexDetails(indexName, indexDef, newIndex = false) {
 
     if (resp.ok) {
       indexDetails.close();
-      indexDetails.remove();
 
       const indexesList = document.getElementById('indexes-list');
       indexesList.innerHTML = '';
@@ -175,10 +181,9 @@ function displayIndexDetails(indexName, indexDef, newIndex = false) {
   cancel.addEventListener('click', (e) => {
     e.preventDefault();
     indexDetails.close();
-    indexDetails.remove();
   });
 
-  // close on click ouside modal
+  // close on click outside modal
   indexDetails.addEventListener('click', (e) => {
     const {
       left, right, top, bottom,
@@ -186,7 +191,6 @@ function displayIndexDetails(indexName, indexDef, newIndex = false) {
     const { clientX, clientY } = e;
     if (clientX < left || clientX > right || clientY < top || clientY > bottom) {
       indexDetails.close();
-      indexDetails.remove();
     }
   });
 }
