@@ -4,22 +4,6 @@
   margin-top: var(--spacing-l);
 }
 
-.media-library-backfill .dry-run-label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  cursor: pointer;
-  margin-bottom: var(--spacing-s);
-}
-
-.media-library-backfill .dry-run-label input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  cursor: pointer;
-  accent-color: var(--spectrum-blue);
-}
-
 .media-library-backfill #progress-section {
   border: 1px solid var(--color-border);
   border-radius: var(--rounding-m);

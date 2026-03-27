@@ -1,13 +1,24 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
+import {
+  dedupeMediaUrls,
+  deriveOriginalFilename,
+  extractMediaHash,
+  getMediaIdentity,
+} from './media-identity.js';
+import {
+  getSiteAemPageOrigin,
+  normalizeMediaUrlToCurrentSiteAemPage,
+  resolveHtmlMediaBaseUrl,
+} from './media-origin.js';
 
 const ADMIN_BASE = 'https://admin.hlx.page';
 const DA_ETC_ORIGIN = 'https://da-etc.adobeaem.workers.dev';
 const AEM_PAGE_SUFFIX = '.aem.page';
 const REF = 'main';
-const BATCH_SIZE = 10;
-const CONCURRENCY = 5;
+const MEDIALOG_IMPORT_BUNDLE_VERSION = 1;
+const PAGE_CRAWL_CONCURRENCY = 25;
 const POLL_INTERVAL = 2000;
 const JOB_COUNTER_LOG_INTERVAL = 10000;
 const ADMIN_API_RATE = 10;
@@ -20,8 +31,9 @@ const MAX_PARTITION_PATHS = 250;
 const PARTITION_LABEL_PATH_LIMIT = 3;
 const MIN_ETA_SAMPLE_MS = 10000;
 const MIN_PROCESSING_ETA_SAMPLE_COUNT = 50;
-const MIN_INGEST_ETA_SAMPLE_COUNT = 3;
 const DEFAULT_INGEST_BATCH_DURATION_MS = 150;
+const PROCESSING_PROGRESS_PAGE_INTERVAL = 25;
+const PROCESSING_PROGRESS_MIN_INTERVAL_MS = 500;
 
 const VIDEO_EXTENSIONS = /\.(mp4|mov|webm|avi|m4v|mkv)$/i;
 
@@ -64,7 +76,6 @@ const progressState = {
   status: 'idle',
   phase: 'idle',
   phaseStartedAt: 0,
-  dryRun: false,
   discoveryTotalJobs: 0,
   discoveryCompletedJobs: 0,
   totalPages: 0,
@@ -80,7 +91,6 @@ function initDOM() {
   DOM.form = form;
   DOM.org = form.querySelector('#org');
   DOM.site = form.querySelector('#site');
-  DOM.dryRun = form.querySelector('#dry-run');
   DOM.fallbackUser = form.querySelector('#fallback-user');
   DOM.runBtn = form.querySelector('#run-btn');
   DOM.cancelBtn = form.querySelector('#cancel-btn');
@@ -131,22 +141,6 @@ function estimateIngestBatchDurationMs() {
   return Math.max(DEFAULT_INGEST_BATCH_DURATION_MS, adminLimiter.getInterval());
 }
 
-function estimateTotalEntriesForEta() {
-  if (progressState.totalEntries > 0) {
-    return progressState.totalEntries;
-  }
-
-  if (progressState.processedPages <= 0 || progressState.totalPages <= 0) {
-    return progressState.standaloneMediaCount;
-  }
-
-  const estimatedPageEntries = Math.round(
-    (stats.media / progressState.processedPages) * progressState.totalPages,
-  );
-
-  return Math.max(stats.media, estimatedPageEntries) + progressState.standaloneMediaCount;
-}
-
 function estimateRemainingMs() {
   if (!progressState.phaseStartedAt) {
     return null;
@@ -176,36 +170,13 @@ function estimateRemainingMs() {
 
       const remainingPages = Math.max(0, progressState.totalPages - progressState.processedPages);
       const msPerPage = phaseElapsed / progressState.processedPages;
-      let remaining = remainingPages * msPerPage;
-
-      if (!progressState.dryRun) {
-        const estimatedTotalEntries = estimateTotalEntriesForEta();
-        if (estimatedTotalEntries > 0) {
-          const estimatedBatches = Math.ceil(estimatedTotalEntries / BATCH_SIZE);
-          remaining += estimatedBatches * estimateIngestBatchDurationMs();
-        }
-      }
-
-      return remaining;
+      return remainingPages * msPerPage;
     }
-    case 'ingest': {
-      const remainingBatches = Math.max(
-        0,
-        progressState.totalBatches - progressState.processedBatches,
-      );
-      if (remainingBatches === 0) {
+    case 'export': {
+      if (progressState.processedBatches > 0) {
         return 0;
       }
-
-      if (
-        progressState.processedBatches >= MIN_INGEST_ETA_SAMPLE_COUNT
-        && phaseElapsed >= MIN_ETA_SAMPLE_MS
-      ) {
-        const msPerBatch = phaseElapsed / progressState.processedBatches;
-        return remainingBatches * msPerBatch;
-      }
-
-      return remainingBatches * estimateIngestBatchDurationMs();
+      return Math.max(500, estimateIngestBatchDurationMs());
     }
     default:
       return null;
@@ -260,7 +231,6 @@ function resetProgressTracking() {
   progressState.status = 'idle';
   progressState.phase = 'idle';
   progressState.phaseStartedAt = 0;
-  progressState.dryRun = false;
   progressState.discoveryTotalJobs = 0;
   progressState.discoveryCompletedJobs = 0;
   progressState.totalPages = 0;
@@ -272,11 +242,10 @@ function resetProgressTracking() {
   updateProgressMeta();
 }
 
-function startProgressTracking(dryRun = false) {
+function startProgressTracking() {
   resetProgressTracking();
   progressState.startedAt = Date.now();
   progressState.status = 'running';
-  progressState.dryRun = dryRun;
   updateProgressMeta();
   progressState.timerId = window.setInterval(updateProgressMeta, 1000);
 }
@@ -1227,22 +1196,12 @@ function extractDimensions(url) {
   return {};
 }
 
-function normalizeMediaUrl(rawUrl, pageBaseUrl) {
-  if (!rawUrl) return null;
-  try {
-    const normalizedInput = rawUrl.startsWith('//') ? `https:${rawUrl}` : rawUrl;
-    const url = new URL(normalizedInput, pageBaseUrl);
-    if (!['http:', 'https:'].includes(url.protocol)) return null;
-    if (url.hostname.includes('.hlx.page')) {
-      url.hostname = url.hostname.replace('.hlx.page', '.aem.page');
-    }
-    if (url.hostname.includes('.hlx.live')) {
-      url.hostname = url.hostname.replace('.hlx.live', '.aem.live');
-    }
-    return url.toString();
-  } catch (err) {
-    return null;
-  }
+function normalizeMediaUrl(rawUrl, pageBaseUrl, siteAemOrigin, pageSourceUrl = '') {
+  return normalizeMediaUrlToCurrentSiteAemPage(rawUrl, {
+    pageBaseUrl,
+    siteAemOrigin,
+    pageSourceUrl,
+  });
 }
 
 function toMarkdownPath(pagePath) {
@@ -1255,7 +1214,18 @@ function toMarkdownPath(pagePath) {
   return `${pagePath}.md`;
 }
 
-async function fetchAemPageLastModified(url, allowGetFallback = false) {
+function normalizeTimestampMs(value) {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : NaN;
+  }
+  if (typeof value === 'string' && value) {
+    const ts = Date.parse(value);
+    return Number.isNaN(ts) ? NaN : ts;
+  }
+  return NaN;
+}
+
+async function fetchLastModified(url, allowGetFallback = false) {
   const methods = allowGetFallback ? ['HEAD', 'GET'] : ['HEAD'];
 
   for (let i = 0; i < methods.length; i += 1) {
@@ -1264,14 +1234,67 @@ async function fetchAemPageLastModified(url, allowGetFallback = false) {
     // eslint-disable-next-line no-await-in-loop
     const response = await fetchWithRetry(url, options, 1);
     if (response.ok) {
-      return response.headers.get('last-modified') || '';
+      return (response.headers.get('last-modified') || '').trim();
     }
   }
 
   return '';
 }
 
-function parseMediaFromMarkdown(markdown, pageBaseUrl) {
+async function fetchContentSourceType(org, site) {
+  const configUrl = `${ADMIN_BASE}/config/${encodeURIComponent(org)}/sites/${encodeURIComponent(site)}.json`;
+
+  try {
+    const response = await fetchWithRetry(configUrl, {}, 1);
+    if (!response.ok) {
+      log(`Site config lookup returned ${response.status}; defaulting contentSourceType to markup.`, 'warn');
+      return 'markup';
+    }
+
+    const config = await response.json();
+    return config?.content?.source?.type || 'markup';
+  } catch (err) {
+    if (err.name === 'AbortError') throw err;
+    log(`Failed to load site config for contentSourceType: ${err.message}. Defaulting to markup.`, 'warn');
+    return 'markup';
+  }
+}
+
+function isHtmlResponse(contentType, body) {
+  if (contentType?.includes('text/html') || contentType?.includes('application/xhtml+xml')) {
+    return true;
+  }
+
+  const trimmed = body?.trimStart().toLowerCase() || '';
+  return trimmed.startsWith('<!doctype html')
+    || trimmed.startsWith('<html')
+    || trimmed.startsWith('<head')
+    || trimmed.startsWith('<body');
+}
+
+function getHtmlBaseUrl(doc, fallbackBaseUrl) {
+  return resolveHtmlMediaBaseUrl(
+    doc.querySelector('base[href]')?.getAttribute('href') || '',
+    fallbackBaseUrl,
+  );
+}
+
+function parseSrcsetUrls(srcset) {
+  if (!srcset) return [];
+
+  return srcset
+    .split(',')
+    .map((entry) => entry.trim().split(/\s+/)[0])
+    .filter(Boolean);
+}
+
+function normalizeCollectedMediaUrls(mediaUrls, baseUrl, siteAemOrigin, pageSourceUrl = '') {
+  return dedupeMediaUrls(mediaUrls
+    .map((url) => normalizeMediaUrl(url, baseUrl, siteAemOrigin, pageSourceUrl))
+    .filter(Boolean));
+}
+
+function parseMediaFromMarkdown(markdown, pageBaseUrl, siteAemOrigin) {
   const mediaUrls = [];
 
   // Inline images: ![alt](url) or ![alt](url "title")
@@ -1309,22 +1332,74 @@ function parseMediaFromMarkdown(markdown, pageBaseUrl) {
     match = linkRegex.exec(markdown);
   }
 
-  const seenPageMedia = new Set();
+  return dedupeMediaUrls(mediaUrls
+    .map((url) => normalizeMediaUrl(url, pageBaseUrl, siteAemOrigin))
+    .filter(Boolean));
+}
 
-  return mediaUrls
-    .map((url) => normalizeMediaUrl(url, pageBaseUrl))
-    .filter(Boolean)
-    .filter((url) => {
-      if (seenPageMedia.has(url)) {
-        return false;
+function parseMediaFromHtml(html, fallbackBaseUrl, siteAemOrigin, responseSourceUrl = '') {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const pageBaseUrl = getHtmlBaseUrl(doc, fallbackBaseUrl);
+  const mediaUrls = [];
+
+  doc.querySelectorAll('img[src]').forEach((img) => {
+    mediaUrls.push(img.getAttribute('src'));
+  });
+
+  doc.querySelectorAll('img[srcset]').forEach((img) => {
+    mediaUrls.push(...parseSrcsetUrls(img.getAttribute('srcset')));
+  });
+
+  doc.querySelectorAll('source[src]').forEach((source) => {
+    const src = source.getAttribute('src');
+    if (src && MEDIA_EXTENSIONS.test(src)) {
+      mediaUrls.push(src);
+    }
+  });
+
+  doc.querySelectorAll('source[srcset]').forEach((source) => {
+    mediaUrls.push(...parseSrcsetUrls(source.getAttribute('srcset')));
+  });
+
+  doc.querySelectorAll('video[src], video[poster]').forEach((video) => {
+    if (video.getAttribute('src')) {
+      mediaUrls.push(video.getAttribute('src'));
+    }
+    if (video.getAttribute('poster')) {
+      mediaUrls.push(video.getAttribute('poster'));
+    }
+  });
+
+  doc.querySelectorAll('meta[property="og:image"], meta[property="og:image:url"], meta[name="twitter:image"], meta[name="twitter:image:src"], meta[property="og:video"], meta[property="og:video:url"]').forEach((meta) => {
+    const value = meta.getAttribute('content');
+    if (value) {
+      mediaUrls.push(value);
+    }
+  });
+
+  doc.querySelectorAll('a[href]').forEach((anchor) => {
+    const href = anchor.getAttribute('href');
+    if (href && VIDEO_EXTENSIONS.test(href)) {
+      mediaUrls.push(href);
+    }
+  });
+
+  doc.querySelectorAll('[style*="background-image"]').forEach((element) => {
+    const style = element.getAttribute('style') || '';
+    const matches = style.match(/url\((['"]?)(.*?)\1\)/gi) || [];
+    matches.forEach((match) => {
+      const urlMatch = match.match(/url\((['"]?)(.*?)\1\)/i);
+      if (urlMatch?.[2]) {
+        mediaUrls.push(urlMatch[2]);
       }
-      seenPageMedia.add(url);
-      return true;
     });
+  });
+
+  return normalizeCollectedMediaUrls(mediaUrls, pageBaseUrl, siteAemOrigin, responseSourceUrl);
 }
 
 function toComparableTimestamp(lastModified) {
-  const ts = Date.parse(lastModified);
+  const ts = normalizeTimestampMs(lastModified);
   return Number.isNaN(ts) ? Number.MAX_SAFE_INTEGER : ts;
 }
 
@@ -1335,6 +1410,8 @@ function createDeterministicEntries(mediaCandidates) {
     if (tsDiff !== 0) return tsDiff;
     const pathDiff = a.page.path.localeCompare(b.page.path);
     if (pathDiff !== 0) return pathDiff;
+    const identityDiff = getMediaIdentity(a.url).localeCompare(getMediaIdentity(b.url));
+    if (identityDiff !== 0) return identityDiff;
     const urlDiff = a.url.localeCompare(b.url);
     if (urlDiff !== 0) return urlDiff;
     return a.order - b.order;
@@ -1343,11 +1420,12 @@ function createDeterministicEntries(mediaCandidates) {
   const seenMedia = new Set();
   let dupes = 0;
   const entries = sorted.map(({ page, url }) => {
-    const operation = seenMedia.has(url) ? 'reuse' : 'ingest';
+    const mediaIdentity = getMediaIdentity(url);
+    const operation = seenMedia.has(mediaIdentity) ? 'reuse' : 'ingest';
     if (operation === 'reuse') {
       dupes += 1;
     }
-    seenMedia.add(url);
+    seenMedia.add(mediaIdentity);
     return {
       entry: {
         operation,
@@ -1361,6 +1439,127 @@ function createDeterministicEntries(mediaCandidates) {
   });
 
   return { entries, dupes };
+}
+
+function compareResolvedEntries(a, b) {
+  const tsDiff = a.timestamp - b.timestamp;
+  if (tsDiff !== 0) return tsDiff;
+  const operationDiff = (a.operation || '').localeCompare(b.operation || '');
+  if (operationDiff !== 0) return operationDiff;
+  const pathDiff = (a.path || '').localeCompare(b.path || '');
+  if (pathDiff !== 0) return pathDiff;
+  const resourcePathDiff = (a.resourcePath || '').localeCompare(b.resourcePath || '');
+  if (resourcePathDiff !== 0) return resourcePathDiff;
+  const contentTypeDiff = (a.contentType || '').localeCompare(b.contentType || '');
+  if (contentTypeDiff !== 0) return contentTypeDiff;
+  const userDiff = (a.user || '').localeCompare(b.user || '');
+  if (userDiff !== 0) return userDiff;
+  return (a.sourceOrder || 0) - (b.sourceOrder || 0);
+}
+
+function createResolvedEntries(entries, fallbackUser, contentSourceType = 'markup') {
+  return entries
+    .map(({ entry, page, ingestLastModified }, sourceOrder) => {
+      const user = page.user || fallbackUser || '';
+      const mediaHash = extractMediaHash(entry.path);
+      const originalFilename = deriveOriginalFilename(entry.path);
+      const timestamp = entry.operation === 'reuse'
+        ? normalizeTimestampMs(page.lastModified)
+        : (() => {
+          const ingestTimestamp = normalizeTimestampMs(ingestLastModified);
+          return Number.isFinite(ingestTimestamp) ? ingestTimestamp : 0;
+        })();
+
+      return {
+        ...entry,
+        ...(mediaHash ? { mediaHash } : {}),
+        originalFilename,
+        contentSourceType,
+        user,
+        timestamp,
+        sourceOrder,
+      };
+    })
+    .sort(compareResolvedEntries);
+}
+
+function buildExportBundle(org, site, resolvedEntries, warningMessages = []) {
+  const entries = resolvedEntries.map(({ sourceOrder, ...entry }) => entry);
+  const ingestCount = entries.filter((entry) => entry.operation === 'ingest').length;
+  const reuseCount = entries.filter((entry) => entry.operation === 'reuse').length;
+
+  return {
+    version: MEDIALOG_IMPORT_BUNDLE_VERSION,
+    generatedAt: new Date().toISOString(),
+    org,
+    site,
+    ref: REF,
+    summary: {
+      pagesCrawled: stats.pages,
+      mediaEntries: entries.length,
+      ingestCount,
+      reuseCount,
+      duplicateCount: stats.dupes,
+      warnings: warningMessages,
+    },
+    entries,
+  };
+}
+
+function downloadJson(filename, payload) {
+  const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+  const href = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = href;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(href);
+}
+
+async function exportBundle(
+  org,
+  site,
+  entries,
+  fallbackUser,
+  contentSourceType,
+  warningMessages = [],
+) {
+  beginProgressPhase('export', {
+    totalEntries: entries.length,
+    totalBatches: 1,
+    processedBatches: 0,
+  });
+  setPhase('Phase 3: Building export bundle...', 70);
+
+  const resolvedEntries = createResolvedEntries(entries, fallbackUser, contentSourceType);
+  const validEntries = resolvedEntries.filter((entry) => Number.isFinite(entry.timestamp));
+  const skippedTimestampCount = resolvedEntries.length - validEntries.length;
+  if (skippedTimestampCount > 0) {
+    log(
+      `Skipping ${skippedTimestampCount} entry/entries that could not be normalized to a numeric timestamp.`,
+      'warn',
+    );
+  }
+
+  const bundle = buildExportBundle(org, site, validEntries, warningMessages);
+  const timestampLabel = new Date().toISOString().replace(/[:.]/g, '-');
+  const filename = `medialog-import-bundle-${org}-${site}-${timestampLabel}.json`;
+
+  setPhase('Phase 3: Downloading export bundle...', 95);
+  downloadJson(filename, bundle);
+
+  stats.sent = validEntries.length;
+  updateStatsDisplay();
+  updateProgressMetrics({ processedBatches: 1, totalEntries: validEntries.length });
+  log(`Downloaded medialog import bundle: ${filename}`);
+
+  return {
+    filename,
+    exportedEntries: validEntries.length,
+    skippedTimestampCount,
+  };
 }
 
 // Phase 2: Fetch and parse markdown for each page
@@ -1378,33 +1577,87 @@ async function processPages(org, site, pages) {
   const mediaCandidates = [];
   let candidateOrder = 0;
   let processed = 0;
+  let htmlPageCount = 0;
+  let redirectSkippedCount = 0;
+  let lastProgressProcessed = 0;
+  let lastProgressUpdateAt = Date.now();
+  const siteAemOrigin = getSiteAemPageOrigin(org, site, REF);
 
-  async function fetchMarkdown(page) {
+  async function fetchPageContent(page) {
     const markdownPath = toMarkdownPath(page.path);
     const pageUrl = `https://${REF}--${site}--${org}.aem.page${markdownPath}`;
-    const pageRes = await fetchWithRetry(pageUrl, {}, 1);
+    const pageRes = await fetchWithRetry(pageUrl, { redirect: 'manual' }, 1);
+    if (pageRes.status === 0 || (pageRes.status >= 300 && pageRes.status < 400)) {
+      return {
+        redirected: true,
+        requestUrl: pageUrl,
+      };
+    }
     if (pageRes.ok) {
       page.fallbackLastModified = pageRes.headers.get('last-modified') || page.fallbackLastModified || '';
-      return pageRes.text();
+      return {
+        body: await pageRes.text(),
+        contentType: pageRes.headers.get('content-type') || '',
+        requestUrl: pageUrl,
+        responseSourceUrl: pageRes.headers.get('x-source-location')
+          || pageRes.headers.get('x-content-source-location')
+          || pageRes.headers.get('location')
+          || '',
+      };
     }
     return null;
+  }
+
+  function flushProcessingProgress(force = false) {
+    const now = Date.now();
+    const processedDelta = processed - lastProgressProcessed;
+    const shouldFlush = force
+      || processed === pages.length
+      || processedDelta >= PROCESSING_PROGRESS_PAGE_INTERVAL
+      || (
+        processedDelta > 0
+        && (now - lastProgressUpdateAt) >= PROCESSING_PROGRESS_MIN_INTERVAL_MS
+      );
+
+    if (!shouldFlush) {
+      return;
+    }
+
+    updateProgressMetrics({ processedPages: processed });
+    const pct = 25 + Math.round((processed / pages.length) * 40);
+    setPhase(`Phase 2: Processing pages... (${processed}/${pages.length})`, pct);
+    stats.media = mediaCandidates.length;
+    updateStatsDisplay();
+    lastProgressProcessed = processed;
+    lastProgressUpdateAt = now;
   }
 
   await runWithConcurrency(pages, async (page) => {
     if (isAborted()) return;
 
-    let markdown;
+    let pageContent;
     try {
-      markdown = await fetchMarkdown(page);
+      pageContent = await fetchPageContent(page);
     } catch (err) {
       if (err.name === 'AbortError') throw err;
       log(`Failed to fetch ${page.path}: ${err.message}`, 'error');
       stats.errors += 1;
     }
 
-    if (markdown) {
-      const pageBaseUrl = `https://${REF}--${site}--${org}.aem.page${page.path}`;
-      const urls = parseMediaFromMarkdown(markdown, pageBaseUrl);
+    if (pageContent?.body) {
+      const pageBaseUrl = pageContent.requestUrl;
+      const isHtml = isHtmlResponse(pageContent.contentType, pageContent.body);
+      if (isHtml) {
+        htmlPageCount += 1;
+      }
+      const urls = isHtml
+        ? parseMediaFromHtml(
+          pageContent.body,
+          pageBaseUrl,
+          siteAemOrigin,
+          pageContent.responseSourceUrl,
+        )
+        : parseMediaFromMarkdown(pageContent.body, pageBaseUrl, siteAemOrigin);
       urls.forEach((url) => {
         mediaCandidates.push({
           order: candidateOrder,
@@ -1413,16 +1666,24 @@ async function processPages(org, site, pages) {
         });
         candidateOrder += 1;
       });
+    } else if (pageContent?.redirected) {
+      redirectSkippedCount += 1;
     }
 
     processed += 1;
-    updateProgressMetrics({ processedPages: processed });
-    const pct = 25 + Math.round((processed / pages.length) * 40);
-    setPhase(`Phase 2: Processing pages... (${processed}/${pages.length})`, pct);
-    stats.media = mediaCandidates.length;
-    updateStatsDisplay();
-  }, CONCURRENCY);
+    flushProcessingProgress();
+  }, PAGE_CRAWL_CONCURRENCY);
 
+  if (pages.length > 0) {
+    flushProcessingProgress(true);
+  }
+
+  if (htmlPageCount > 0) {
+    log(`Scraped media from HTML responses for ${htmlPageCount} page(s) that did not return markdown.`, 'warn');
+  }
+  if (redirectSkippedCount > 0) {
+    log(`Skipped ${redirectSkippedCount} page(s) whose markdown path responded with a redirect instead of direct content.`, 'warn');
+  }
   log(`Collected ${mediaCandidates.length} media candidate(s) across ${pages.length} crawled page(s)`);
   return mediaCandidates;
 }
@@ -1464,7 +1725,7 @@ async function populateStandaloneMediaFallbackLastModified(org, site, standalone
     const mediaUrl = `https://${REF}--${site}--${org}.aem.page${media.path}`;
 
     try {
-      const lastModified = await fetchAemPageLastModified(mediaUrl, true);
+      const lastModified = await fetchLastModified(mediaUrl, true);
       if (lastModified) {
         media.fallbackLastModified = lastModified;
         found += 1;
@@ -1473,7 +1734,7 @@ async function populateStandaloneMediaFallbackLastModified(org, site, standalone
       if (err.name === 'AbortError') throw err;
       log(`Failed to fetch fallback Last-Modified for ${media.path}: ${err.message}`, 'warn');
     }
-  }, CONCURRENCY);
+  }, PAGE_CRAWL_CONCURRENCY);
 
   return {
     attempted: pending.length,
@@ -1481,94 +1742,63 @@ async function populateStandaloneMediaFallbackLastModified(org, site, standalone
   };
 }
 
-// Phase 3: Post entries to medialog
-async function ingestEntries(org, site, entries, fallbackUser, dryRun) {
-  beginProgressPhase('ingest', {
-    totalEntries: entries.length,
-    totalBatches: Math.ceil(entries.length / BATCH_SIZE),
-    processedBatches: 0,
-  });
-  setPhase('Phase 3: Ingesting entries...', 70);
-
-  const enrichedEntries = entries.map(({ entry, page }) => {
-    const user = page.user || fallbackUser || '';
-    return {
-      ...entry,
-      user,
-      timestamp: page.lastModified,
-    };
-  });
-
-  if (dryRun) {
-    log('DRY RUN — entries that would be sent:', 'warn');
-    enrichedEntries.forEach((e) => {
-      log(`  ${e.operation} ${e.contentType} ${e.path} (from ${e.resourcePath}, user: ${e.user || 'unknown'})`);
-    });
-    stats.sent = enrichedEntries.length;
-    updateProgressMetrics({ processedBatches: progressState.totalBatches });
-    updateStatsDisplay();
-    return;
+async function populateIngestLastModified(entries) {
+  const pending = entries.filter(({ entry }) => entry.operation === 'ingest');
+  if (!pending.length) {
+    return { attempted: 0, found: 0 };
   }
 
-  log(`Posting ${enrichedEntries.length} entries in batches of ${BATCH_SIZE}...`);
+  log(`Fetching asset/media Last-Modified for ${pending.length} ingest entry URL(s)...`);
+  let found = 0;
 
-  for (let i = 0; i < enrichedEntries.length; i += BATCH_SIZE) {
-    if (isAborted()) throw new DOMException('Aborted', 'AbortError');
-    const batch = enrichedEntries.slice(i, i + BATCH_SIZE);
-    const batchNum = Math.floor(i / BATCH_SIZE) + 1;
-    const totalBatches = Math.ceil(enrichedEntries.length / BATCH_SIZE);
-
+  await runWithConcurrency(pending, async (item) => {
     try {
-      const url = `${ADMIN_BASE}/medialog/${org}/${site}/${REF}/`;
-      // eslint-disable-next-line no-await-in-loop
-      const res = await fetchWithRetry(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entries: batch }),
-      });
-
-      if (res.ok) {
-        stats.sent += batch.length;
-        log(`Batch ${batchNum}/${totalBatches}: sent ${batch.length} entries`);
-      } else {
-        stats.errors += batch.length;
-        log(`Batch ${batchNum}/${totalBatches}: failed (${res.status})`, 'error');
+      const assetUrl = new URL(item.entry.path);
+      assetUrl.hostname = assetUrl.hostname
+        .replace('.hlx.page', '.aem.page')
+        .replace('.hlx.live', '.aem.page')
+        .replace('.aem.live', '.aem.page');
+      const lastModified = await fetchLastModified(assetUrl.toString(), true);
+      if (lastModified) {
+        item.ingestLastModified = lastModified;
+        found += 1;
       }
     } catch (err) {
       if (err.name === 'AbortError') throw err;
-      stats.errors += batch.length;
-      log(`Batch ${batchNum}/${totalBatches}: error — ${err.message}`, 'error');
+      log(`Failed to fetch asset/media Last-Modified for ${item.entry.path}: ${err.message}`, 'warn');
     }
+  }, PAGE_CRAWL_CONCURRENCY);
 
-    updateStatsDisplay();
-    updateProgressMetrics({ processedBatches: batchNum });
-    const pct = 70 + Math.round(((i + batch.length) / enrichedEntries.length) * 25);
-    setPhase(`Phase 3: Ingesting... (${batchNum}/${totalBatches})`, pct);
-  }
+  return {
+    attempted: pending.length,
+    found,
+  };
 }
 
-function showReport(dryRun, startTime) {
+function showReport(startTime, exportResult) {
   const duration = formatDuration(Date.now() - startTime);
   setPhase('Complete', 100);
-  log('--- Backfill Summary ---', 'success');
+  log('--- Export Summary ---', 'success');
   log(`  Duration: ${duration}`);
   log(`  Pages crawled: ${stats.pages}`);
   log(`  Media entries: ${stats.media}`);
   log(`  Unique (ingest): ${stats.media - stats.dupes}`);
   log(`  Duplicates (reuse): ${stats.dupes}`);
-  if (dryRun) {
-    log('  Mode: DRY RUN (no entries were posted)', 'warn');
-  } else {
-    log(`  Entries sent: ${stats.sent}`);
-    log(`  Errors: ${stats.errors}`);
+  log(`  Bundle entries: ${stats.sent}`);
+  if (exportResult?.skippedTimestampCount > 0) {
+    log(`  Invalid timestamps skipped: ${exportResult.skippedTimestampCount}`, 'warn');
   }
+  if (exportResult?.filename) {
+    log(`  Bundle file: ${exportResult.filename}`);
+  }
+  log('  Next step: run the separate backfill CLI with your bucket and contentBusId.');
+  log(`  Errors: ${stats.errors}`);
   log('Done.', 'success');
 }
 
 async function runBackfill() {
   const org = DOM.org.value.trim();
   const site = DOM.site.value.trim();
-  const dryRun = DOM.dryRun.checked;
   const fallbackUser = DOM.fallbackUser.value.trim();
 
   if (!org || !site) return;
@@ -1588,13 +1818,21 @@ async function runBackfill() {
   disableForm();
   resetStats();
   resetConsole();
-  startProgressTracking(dryRun);
+  startProgressTracking();
   DOM.console.setAttribute('aria-hidden', 'false');
   DOM.progressSection.setAttribute('aria-hidden', 'false');
 
   const startTime = Date.now();
   try {
-    log(`Starting backfill for ${org}/${site}${dryRun ? ' (dry run)' : ''}...`);
+    const bundleWarnings = [];
+    const warnForBundle = (message) => {
+      bundleWarnings.push(message);
+      log(message, 'warn');
+    };
+    const contentSourceType = await fetchContentSourceType(org, site);
+
+    log(`Starting medialog bundle export for ${org}/${site}...`);
+    log(`Using contentSourceType=${contentSourceType} for exported backfill entries.`);
 
     const discovery = await discoverPaths(org, site);
     if (isAborted()) return;
@@ -1650,27 +1888,25 @@ async function runBackfill() {
     const standaloneFallbackStats = applyFallbackLastModified(discovery.standaloneMedia);
 
     if (pageFallbackStats.applied > 0 || standaloneFallbackStats.applied > 0) {
-      log(
+      warnForBundle(
         `Used aem.page Last-Modified fallback for ${pageFallbackStats.applied} page(s) and ${standaloneFallbackStats.applied} standalone media path(s); user will remain empty for those entries.`,
-        'warn',
       );
     }
 
     if (standaloneFallbackFetchStats.attempted > 0 && standaloneFallbackFetchStats.found === 0) {
-      log('Standalone media fallback header fetches completed without any recoverable Last-Modified values.', 'warn');
+      warnForBundle('Standalone media fallback header fetches completed without any recoverable Last-Modified values.');
     }
 
     if (pageFallbackStats.missing > 0 || standaloneFallbackStats.missing > 0) {
-      log(
+      warnForBundle(
         `No Last-Modified metadata was available for ${pageFallbackStats.missing} page(s) and ${standaloneFallbackStats.missing} standalone media path(s) even after fallback; those items will still be skipped.`,
-        'warn',
       );
     }
 
     const eligibleMediaCandidates = mediaCandidates.filter(({ page }) => page.lastModified);
     const skippedCandidateCount = mediaCandidates.length - eligibleMediaCandidates.length;
     if (skippedCandidateCount > 0) {
-      log(`Skipping ${skippedCandidateCount} media candidate(s) whose source page had neither detailed status metadata nor an aem.page Last-Modified fallback.`, 'warn');
+      warnForBundle(`Skipping ${skippedCandidateCount} media candidate(s) whose source page had neither detailed status metadata nor an aem.page Last-Modified fallback.`);
     }
 
     const { entries, dupes } = createDeterministicEntries(eligibleMediaCandidates);
@@ -1680,15 +1916,16 @@ async function runBackfill() {
     log(`Found ${entries.length} media entries across ${discovery.pages.length} crawled page(s) (${dupes} duplicates)`);
 
     const standaloneMedia = discovery.standaloneMedia.filter((media) => media.lastModified);
-    const existingMediaPaths = new Set(entries.map(({ entry }) => entry.path));
+    const existingMediaPaths = new Set(entries.map(({ entry }) => getMediaIdentity(entry.path)));
     standaloneMedia.forEach((media) => {
       const mediaUrl = `https://${REF}--${site}--${org}.aem.page${media.path}`;
+      const mediaIdentity = getMediaIdentity(mediaUrl);
       stats.media += 1;
-      if (existingMediaPaths.has(mediaUrl)) {
+      if (existingMediaPaths.has(mediaIdentity)) {
         stats.dupes += 1;
         return;
       }
-      existingMediaPaths.add(mediaUrl);
+      existingMediaPaths.add(mediaIdentity);
       entries.push({
         entry: {
           operation: 'ingest',
@@ -1699,16 +1936,40 @@ async function runBackfill() {
         page: media,
       });
     });
+    setPhase('Phase 2.6: Resolving ingest asset timestamps...', 69);
+    const ingestLastModifiedStats = await populateIngestLastModified(entries);
+    if (ingestLastModifiedStats.attempted > 0 && ingestLastModifiedStats.found > 0) {
+      log(
+        `Resolved asset/media Last-Modified for ${ingestLastModifiedStats.found} `
+          + `of ${ingestLastModifiedStats.attempted} ingest entry URL(s).`,
+      );
+    }
+    if (
+      ingestLastModifiedStats.attempted > 0
+      && ingestLastModifiedStats.found < ingestLastModifiedStats.attempted
+    ) {
+      warnForBundle(
+        'Some ingest entry URLs did not expose a usable asset/media Last-Modified header; '
+          + 'those ingests will be exported with timestamp 0.',
+      );
+    }
     updateProgressMetrics({
       totalEntries: entries.length,
-      totalBatches: Math.ceil(entries.length / BATCH_SIZE),
+      totalBatches: 1,
     });
     updateStatsDisplay();
 
-    await ingestEntries(org, site, entries, fallbackUser, dryRun);
+    const exportResult = await exportBundle(
+      org,
+      site,
+      entries,
+      fallbackUser,
+      contentSourceType,
+      bundleWarnings,
+    );
     if (isAborted()) return;
 
-    showReport(dryRun, startTime);
+    showReport(startTime, exportResult);
     updateConfig();
   } catch (err) {
     if (err.name === 'AbortError') {

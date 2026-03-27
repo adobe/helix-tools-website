@@ -436,93 +436,89 @@ export function updateState() {
   document.dispatchEvent(new CustomEvent('urlstatechange', { detail: url }));
 }
 
-const section = document.querySelector('main > div');
-const io = new IntersectionObserver((entries) => {
-  // wait for decoration to have happened
-  if (entries[0].isIntersecting) {
-    // const main = document.querySelector('main');
-    // main.innerHTML = mainInnerHTML;
+function init() {
+  const sidebar = document.querySelector('facet-sidebar');
+  sidebar.data = dataChunks;
+  elems.sidebar = sidebar;
 
-    const sidebar = document.querySelector('facet-sidebar');
-    sidebar.data = dataChunks;
-    elems.sidebar = sidebar;
+  sidebar.addEventListener('facetchange', () => {
+    updateState();
+    draw();
+  });
 
-    sidebar.addEventListener('facetchange', () => {
-      // console.log('sidebar change');
-      updateState();
-      draw();
-    });
+  elems.viewSelect = document.getElementById('view');
+  elems.canvas = document.getElementById('time-series');
+  elems.timezoneElement = document.getElementById('timezone');
+  elems.lowDataWarning = document.getElementById('low-data-warning');
+  elems.incognito = document.querySelector('incognito-checkbox');
+  elems.filterInput = sidebar.elems.filterInput;
 
-    elems.viewSelect = document.getElementById('view');
-    elems.canvas = document.getElementById('time-series');
-    elems.timezoneElement = document.getElementById('timezone');
-    elems.lowDataWarning = document.getElementById('low-data-warning');
-    elems.incognito = document.querySelector('incognito-checkbox');
-    elems.filterInput = sidebar.elems.filterInput;
-
-    const params = new URL(window.location).searchParams;
-    let view = params.get('view');
-    if (!view) {
-      view = 'week';
-      params.set('view', view);
-      const url = new URL(window.location.href);
-      url.search = params.toString();
-      window.history.replaceState({}, '', url);
-    }
-
-    const startDate = params.get('startDate') ? `${params.get('startDate')}` : null;
-    const endDate = params.get('endDate') ? `${params.get('endDate')}` : null;
-
-    elems.incognito.addEventListener('change', async () => {
-      loader.domainKey = elems.incognito.getAttribute('domainkey');
-
-      await loadData(elems.viewSelect.value);
-      draw();
-    });
-
-    herochart.render();
-
-    // Sanitize filter parameter to prevent XSS
-    const filterValue = params.get('filter') || '';
-    // Remove any HTML tags and dangerous characters that could cause XSS
-    const sanitizedFilter = filterValue.replace(/[<>"']/g, '');
-    elems.filterInput.value = sanitizedFilter;
-    elems.viewSelect.value = {
-      value: view,
-      from: startDate,
-      to: endDate,
-    };
-
-    setDomain(params.get('domain') || 'www.thinktanked.org', params.get('domainkey') || '');
-
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    elems.timezoneElement.textContent = timezone;
-
-    if (elems.incognito.getAttribute('domainkey')) {
-      loadData(elems.viewSelect.value).then(draw);
-    }
-
-    let filterInputDebounce;
-    const debounceTimeout = 1000;
-    elems.filterInput.addEventListener('input', () => {
-      clearTimeout(filterInputDebounce);
-      filterInputDebounce = setTimeout(() => {
-        updateState();
-        draw();
-      }, debounceTimeout);
-    });
-
-    elems.viewSelect.addEventListener('change', () => {
-      updateState();
-      window.location.reload();
-    });
-
-    if (params.get('metrics') === 'all') {
-      document.querySelector('.key-metrics-more').ariaHidden = false;
-    }
+  const params = new URL(window.location).searchParams;
+  let view = params.get('view');
+  if (!view) {
+    view = 'week';
+    params.set('view', view);
+    const url = new URL(window.location.href);
+    url.search = params.toString();
+    window.history.replaceState({}, '', url);
   }
-});
 
-io.observe(section);
+  const startDate = params.get('startDate') ? `${params.get('startDate')}` : null;
+  const endDate = params.get('endDate') ? `${params.get('endDate')}` : null;
+
+  elems.incognito.addEventListener('change', async () => {
+    loader.domainKey = elems.incognito.getAttribute('domainkey');
+
+    await loadData(elems.viewSelect.value);
+    draw();
+  });
+
+  herochart.render();
+
+  // Sanitize filter parameter to prevent XSS
+  const filterValue = params.get('filter') || '';
+  // Remove any HTML tags and dangerous characters that could cause XSS
+  const sanitizedFilter = filterValue.replace(/[<>"']/g, '');
+  elems.filterInput.value = sanitizedFilter;
+  elems.viewSelect.value = {
+    value: view,
+    from: startDate,
+    to: endDate,
+  };
+
+  setDomain(params.get('domain') || 'www.thinktanked.org', params.get('domainkey') || '');
+
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  elems.timezoneElement.textContent = timezone;
+
+  if (elems.incognito.getAttribute('domainkey')) {
+    loadData(elems.viewSelect.value).then(draw);
+  }
+
+  let filterInputDebounce;
+  const debounceTimeout = 1000;
+  elems.filterInput.addEventListener('input', () => {
+    clearTimeout(filterInputDebounce);
+    filterInputDebounce = setTimeout(() => {
+      updateState();
+      draw();
+    }, debounceTimeout);
+  });
+
+  elems.viewSelect.addEventListener('change', () => {
+    updateState();
+    window.location.reload();
+  });
+
+  if (params.get('metrics') === 'all') {
+    document.querySelector('.key-metrics-more').ariaHidden = false;
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
 
 window.slicerDraw = draw;

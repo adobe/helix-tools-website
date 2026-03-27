@@ -26,22 +26,9 @@ function formatDashboardData(dashboardData) {
     .map(([k, v]) => `- ${k}: ${v}`)
     .join('\n');
 
-  const segments = Object.entries(dashboardData.segments || {})
-    .map(([segment, items]) => {
-      const top5 = items.slice(0, 5)
-        .map((item) => {
-          const itemMetrics = item.metrics && Object.keys(item.metrics).length > 0
-            ? `, metrics: ${JSON.stringify(item.metrics)}`
-            : '';
-          return `${item.value} (${item.count.toLocaleString()}${itemMetrics})`;
-        })
-        .join(', ');
-      const more = items.length > 5 ? ` ... and ${items.length - 5} more` : '';
-      return `${segment}: ${top5}${more}`;
-    })
-    .join('\n');
+  const facetNames = Object.keys(dashboardData.segments || {}).join(', ');
 
-  return `DASHBOARD DATA:\n${metrics}\n\nSEGMENTS DATA (showing top items per facet):\n${segments}`;
+  return `DASHBOARD METRICS:\n${metrics}\n\nAVAILABLE FACETS: ${facetNames}`;
 }
 
 function createBatchMessage(batch, baseMessage, dashboardData, isFirstBatch) {
@@ -169,7 +156,7 @@ async function processBatch(batch, message, dashboardData, systemPrompt, apiKey,
   }
 }
 
-async function performFollowUpAnalysis(analyses, systemPrompt) {
+async function performFollowUpAnalysis(analyses, systemPrompt, progressCallback) {
   if (analyses.length === 0) return null;
   const content = `Based on the comprehensive tool execution results from all batches, provide detailed insights analysis:
 
@@ -187,12 +174,16 @@ Analyze the findings and provide substantial insights covering:
 Provide comprehensive analysis with specific details and actionable insights.`;
 
   try {
-    const { callAI } = await import('../api/api-factory.js');
-    const data = await callAI({
+    const { callAIAsync } = await import('../api/api-factory.js');
+    const data = await callAIAsync({
       max_tokens: API_CONFIG.FOLLOWUP_MAX_TOKENS,
       messages: [{ role: 'user', content }],
       system: systemPrompt,
       temperature: API_CONFIG.FOLLOWUP_TEMPERATURE,
+    }, (progress) => {
+      if (progressCallback && progress.status === 'processing') {
+        progressCallback(2, 'in-progress', 'Synthesizing comprehensive insights', 88);
+      }
     });
 
     if (!data.content?.length) return null;
@@ -224,13 +215,15 @@ export async function processMetricsBatches(
   const updateProgress = () => {
     if (progressCallback && batches.length > 0) {
       const pct = Math.round((completedBatches / batches.length) * BATCH_CONFIG.PROGRESS_WEIGHT);
-      const msg = `Analyzing metrics... ${completedBatches}/${batches.length} complete`;
+      const msg = `Analyzing metrics: (${completedBatches + 1}/${batches.length})`;
       progressCallback(2, 'in-progress', msg, pct);
     }
   };
 
   const results = await batches.reduce(async (prevPromise, batch) => {
     const acc = await prevPromise;
+    updateProgress();
+
     const result = await processBatch(
       batch,
       message,
@@ -241,7 +234,6 @@ export async function processMetricsBatches(
     );
 
     completedBatches += 1;
-    updateProgress();
 
     if (completedBatches < batches.length) {
       await new Promise((resolve) => { setTimeout(resolve, 500); });
@@ -258,7 +250,7 @@ export async function processMetricsBatches(
   let followUp = null;
   if (successful.length > 0) {
     if (progressCallback) progressCallback(2, 'in-progress', 'Synthesizing comprehensive insights...', 85);
-    followUp = await performFollowUpAnalysis(successful, systemPrompt);
+    followUp = await performFollowUpAnalysis(successful, systemPrompt, progressCallback);
     if (progressCallback && followUp) progressCallback(2, 'in-progress', 'Analysis complete', 100);
   }
 
