@@ -344,8 +344,8 @@ function clearModalError(dialog) {
 function showConfirmDialog(message) {
   return new Promise((resolve) => {
     const dlg = document.createElement('dialog');
-    dlg.className = 'user-admin-modal';
-    dlg.style.maxWidth = '400px';
+    dlg.className = 'user-admin-modal confirm-dialog';
+    dlg.setAttribute('aria-label', 'Confirmation');
     const body = document.createElement('div');
     body.className = 'modal-body';
     const msg = document.createElement('p');
@@ -464,10 +464,20 @@ function openAddUsersModal(onSave) {
   presetsDiv.appendChild(presetsLabel);
   const presetsBtnRow = document.createElement('div');
   presetsBtnRow.className = 'presets-btn-row';
+  const syncPresets = () => {
+    presetsBtnRow.querySelectorAll('.role-preset-btn').forEach((btn) => {
+      const { role } = btn.dataset;
+      const cbs = entriesContainer.querySelectorAll(`input[type="checkbox"][value="${role}"]`);
+      const allChecked = cbs.length > 0 && [...cbs].every((cb) => cb.checked);
+      btn.classList.toggle('active', allChecked);
+    });
+  };
+
   ROLES.forEach((role) => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'role-preset-btn';
+    btn.dataset.role = role;
     btn.textContent = ROLE_DESCRIPTIONS[role].label;
     btn.addEventListener('click', () => {
       const cbs = entriesContainer.querySelectorAll(`input[type="checkbox"][value="${role}"]`);
@@ -476,11 +486,15 @@ function openAddUsersModal(onSave) {
       entriesContainer.querySelectorAll('.user-entry.has-error').forEach((entry) => {
         entry.classList.remove('has-error');
       });
+      syncPresets();
     });
     presetsBtnRow.appendChild(btn);
   });
   presetsDiv.appendChild(presetsBtnRow);
   presetsDiv.appendChild(createRolesReference());
+
+  entriesContainer.addEventListener('change', syncPresets);
+  new MutationObserver(syncPresets).observe(entriesContainer, { childList: true });
 
   const {
     dialog, content, bodyDiv, saveBtn, closeModal, setConfirmClose,

@@ -476,12 +476,18 @@ dialog.user-admin-modal .role-preset-btn {
   font-size: var(--body-size-s);
   cursor: pointer;
   color: var(--color-font-grey);
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
 }
 
 dialog.user-admin-modal .role-preset-btn:hover {
   border-color: var(--blue-500);
   border-style: solid;
+  color: var(--blue-700);
+}
+
+dialog.user-admin-modal .role-preset-btn.active {
+  background: var(--blue-100);
+  border: 1px solid var(--blue-500);
   color: var(--blue-700);
 }
 
@@ -537,6 +543,10 @@ dialog.user-admin-modal .role-pill input[type="checkbox"]:checked + span {
 
 dialog.user-admin-modal .add-another-btn {
   margin-top: var(--spacing-s);
+}
+
+dialog.user-admin-modal.confirm-dialog {
+  max-width: 400px;
 }
 
 @media (width >= 600px) {
