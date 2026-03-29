@@ -4,8 +4,14 @@ export const IndexConfig = Object.freeze({
   INCREMENTAL_WINDOW_MS: 10000,
   API_PAGE_SIZE: 1000,
   MAX_CONCURRENT_FETCHES: 10,
+  MAX_CONCURRENT_PAGE_FETCHES: 4,
+  USAGE_MAP_PROGRESSIVE_BATCH_SIZE: 1000,
   STATUS_POLL_INTERVAL_MS: 1000,
   STATUS_POLL_MAX_DURATION_MS: 30 * 60 * 1000,
+  STATUS_POLL_CONCURRENCY: 3,
+  DISCOVERY_SMALL_SITE_THRESHOLD: 20_000,
+  DISCOVERY_TARGET_PATHS_PER_JOB: 20_000,
+  DISCOVERY_MAX_PATHS_PER_JOB: 250,
 });
 
 export const Operation = Object.freeze({
@@ -38,6 +44,13 @@ export const Paths = Object.freeze({
 export const CORS_PROXY_URL = 'https://media-library-cors-proxy.aem-poc-lab.workers.dev/';
 export const MEDIA_UNDERSCORE_PREFIX = 'media_';
 
+// External video detection regexes
+export const YOUTUBE_VIDEO_RE = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)([^&\n?#/]+)|youtu\.be\/([^&\n?#/]+))/;
+export const VIMEO_VIDEO_RE = /(?:player\.)?vimeo\.com\/(?:video\/)?(\d+)(?:$|[/?#])/;
+export const DAILYMOTION_VIDEO_RE = /(?:dailymotion\.com\/video\/|dai\.ly\/)([^&\n?#]+)/;
+export const SCENE7_VIDEO_RE = /scene7\.com\/is\/content\//;
+export const DYNAMIC_MEDIA_VIDEO_RE = /\/is\/content\//;
+
 const mediaExtensions = {
   pdf: ['pdf'],
   svg: ['svg'],
@@ -63,11 +76,6 @@ export const ExternalMedia = Object.freeze({
   EXTENSION_REGEX: mediaExtensionRegex,
   HOST_PATTERNS: [
     { host: /adobeaemcloud\.com$/i, pathContains: 'urn:aaid:aem', typeFromPath: true },
-    { host: /youtube\.com$/i, type: MediaType.VIDEO },
-    { host: /youtu\.be$/i, type: MediaType.VIDEO },
-    { host: /vimeo\.com$/i, type: MediaType.VIDEO },
-    { host: /player\.vimeo\.com$/i, type: MediaType.VIDEO },
-    { host: /unsplash\.com$/i, type: categoryImg },
     { host: /images\.unsplash\.com$/i, type: categoryImg },
   ],
 });

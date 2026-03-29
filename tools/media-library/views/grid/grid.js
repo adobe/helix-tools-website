@@ -64,8 +64,12 @@ function getFilteredMedia(state) {
 
 function getDisplayData(state) {
   const hasProgressive = state.isIndexing && state.progressiveMediaData?.length > 0;
-  const data = hasProgressive ? state.progressiveMediaData : getFilteredMedia(state);
-  return sortMediaData(data);
+  if (hasProgressive) {
+    // Use order as-is during indexing (already sorted by URL in coordinator).
+    // Re-sorting by timestamp/doc/name would move cards as data is updated.
+    return state.progressiveMediaData;
+  }
+  return sortMediaData(getFilteredMedia(state));
 }
 
 function renderMediaPreview(media, org, site) {
