@@ -1225,20 +1225,39 @@ function normalizeTimestampMs(value) {
   return NaN;
 }
 
-async function fetchLastModified(url, allowGetFallback = false) {
-  const methods = allowGetFallback ? ['HEAD', 'GET'] : ['HEAD'];
-
-  for (let i = 0; i < methods.length; i += 1) {
-    const method = methods[i];
-    const options = method === 'HEAD' ? { method } : {};
-    // eslint-disable-next-line no-await-in-loop
-    const response = await fetchWithRetry(url, options, 1);
-    if (response.ok) {
-      return (response.headers.get('last-modified') || '').trim();
+/**
+ * When the CORS proxy (da-etc.adobeaem.workers.dev) passes through a 301 with a relative
+ * Location header, the browser resolves that path against the proxy origin instead of the
+ * original aem.page origin. This produces a bogus URL on the proxy host that returns no
+ * last-modified. This helper detects that case and re-fetches the correctly constructed URL.
+ */
+async function resolveProxyRedirectLastModified(originalUrl, response) {
+  if (!response.redirected) return '';
+  try {
+    const etcHostname = new URL(DA_ETC_ORIGIN).hostname;
+    const responseUrlObj = new URL(response.url);
+    if (responseUrlObj.hostname !== etcHostname) return '';
+    const correctUrl = new URL(originalUrl).origin
+      + responseUrlObj.pathname
+      + responseUrlObj.search;
+    if (correctUrl === originalUrl) return '';
+    const redirectResponse = await fetchWithRetry(correctUrl, { method: 'HEAD' }, 1);
+    if (redirectResponse.ok) {
+      return (redirectResponse.headers.get('last-modified') || '').trim();
     }
+  } catch {
+    // malformed URL or network error — ignore
   }
-
   return '';
+}
+
+async function fetchLastModified(url) {
+  const response = await fetchWithRetry(url, { method: 'HEAD' }, 1);
+  if (response.ok) {
+    const lm = (response.headers.get('last-modified') || '').trim();
+    if (lm) return lm;
+  }
+  return resolveProxyRedirectLastModified(url, response);
 }
 
 async function fetchContentSourceType(org, site) {
@@ -1459,8 +1478,15 @@ function compareResolvedEntries(a, b) {
 
 function createResolvedEntries(entries, fallbackUser, contentSourceType = 'markup') {
   return entries
-    .map(({ entry, page, ingestLastModified }, sourceOrder) => {
-      const user = page.user || fallbackUser || '';
+    .map(({
+      entry,
+      page,
+      ingestLastModified,
+      ingestUser,
+    }, sourceOrder) => {
+      const user = entry.operation === 'ingest'
+        ? (ingestUser || page.user || fallbackUser || '')
+        : (page.user || fallbackUser || '');
       const mediaHash = extractMediaHash(entry.path);
       const originalFilename = deriveOriginalFilename(entry.path);
       const timestamp = entry.operation === 'reuse'
@@ -1710,6 +1736,45 @@ function applyFallbackLastModified(items) {
   return { applied, missing };
 }
 
+function buildStandaloneMediaMetadataByIdentity(org, site, standaloneMedia) {
+  const metadataByIdentity = new Map();
+
+  standaloneMedia.forEach((media) => {
+    const mediaUrl = `https://${REF}--${site}--${org}.aem.page${media.path}`;
+    const mediaIdentity = getMediaIdentity(mediaUrl);
+    if (!mediaIdentity) {
+      return;
+    }
+
+    const existing = metadataByIdentity.get(mediaIdentity);
+    const candidate = {
+      path: media.path,
+      lastModified: media.lastModified || media.fallbackLastModified || '',
+      user: media.user || '',
+    };
+
+    if (!existing) {
+      metadataByIdentity.set(mediaIdentity, candidate);
+      return;
+    }
+
+    const candidateHasUser = Boolean(candidate.user);
+    const existingHasUser = Boolean(existing.user);
+    if (candidateHasUser && !existingHasUser) {
+      metadataByIdentity.set(mediaIdentity, candidate);
+      return;
+    }
+
+    const candidateDepth = candidate.path.split('/').filter(Boolean).length;
+    const existingDepth = existing.path.split('/').filter(Boolean).length;
+    if (candidateDepth > existingDepth) {
+      metadataByIdentity.set(mediaIdentity, candidate);
+    }
+  });
+
+  return metadataByIdentity;
+}
+
 async function populateStandaloneMediaFallbackLastModified(org, site, standaloneMedia) {
   const pending = standaloneMedia.filter(
     (media) => !media.lastModified && !media.fallbackLastModified,
@@ -1725,7 +1790,7 @@ async function populateStandaloneMediaFallbackLastModified(org, site, standalone
     const mediaUrl = `https://${REF}--${site}--${org}.aem.page${media.path}`;
 
     try {
-      const lastModified = await fetchLastModified(mediaUrl, true);
+      const lastModified = await fetchLastModified(mediaUrl);
       if (lastModified) {
         media.fallbackLastModified = lastModified;
         found += 1;
@@ -1742,14 +1807,44 @@ async function populateStandaloneMediaFallbackLastModified(org, site, standalone
   };
 }
 
-async function populateIngestLastModified(entries) {
-  const pending = entries.filter(({ entry }) => entry.operation === 'ingest');
+async function populateIngestLastModified(entries, standaloneMediaMetadataByIdentity = new Map()) {
+  const ingestEntries = entries.filter(({ entry }) => entry.operation === 'ingest');
+  if (!ingestEntries.length) {
+    return {
+      attempted: 0,
+      found: 0,
+      reusedFromStatus: 0,
+      fetched: 0,
+    };
+  }
+
+  let found = 0;
+  let reusedFromStatus = 0;
+
+  ingestEntries.forEach((item) => {
+    const metadata = standaloneMediaMetadataByIdentity.get(getMediaIdentity(item.entry.path));
+    if (!metadata?.lastModified) {
+      return;
+    }
+
+    item.ingestLastModified = metadata.lastModified;
+    item.ingestUser = metadata.user || '';
+    found += 1;
+    reusedFromStatus += 1;
+  });
+
+  const pending = ingestEntries.filter((item) => !item.ingestLastModified);
   if (!pending.length) {
-    return { attempted: 0, found: 0 };
+    return {
+      attempted: ingestEntries.length,
+      found,
+      reusedFromStatus,
+      fetched: 0,
+    };
   }
 
   log(`Fetching asset/media Last-Modified for ${pending.length} ingest entry URL(s)...`);
-  let found = 0;
+  let fetched = 0;
 
   await runWithConcurrency(pending, async (item) => {
     try {
@@ -1758,10 +1853,11 @@ async function populateIngestLastModified(entries) {
         .replace('.hlx.page', '.aem.page')
         .replace('.hlx.live', '.aem.page')
         .replace('.aem.live', '.aem.page');
-      const lastModified = await fetchLastModified(assetUrl.toString(), true);
+      const lastModified = await fetchLastModified(assetUrl.toString());
       if (lastModified) {
         item.ingestLastModified = lastModified;
         found += 1;
+        fetched += 1;
       }
     } catch (err) {
       if (err.name === 'AbortError') throw err;
@@ -1770,8 +1866,10 @@ async function populateIngestLastModified(entries) {
   }, PAGE_CRAWL_CONCURRENCY);
 
   return {
-    attempted: pending.length,
+    attempted: ingestEntries.length,
     found,
+    reusedFromStatus,
+    fetched,
   };
 }
 
@@ -1916,6 +2014,11 @@ async function runBackfill() {
     log(`Found ${entries.length} media entries across ${discovery.pages.length} crawled page(s) (${dupes} duplicates)`);
 
     const standaloneMedia = discovery.standaloneMedia.filter((media) => media.lastModified);
+    const standaloneMediaMetadataByIdentity = buildStandaloneMediaMetadataByIdentity(
+      org,
+      site,
+      standaloneMedia,
+    );
     const existingMediaPaths = new Set(entries.map(({ entry }) => getMediaIdentity(entry.path)));
     standaloneMedia.forEach((media) => {
       const mediaUrl = `https://${REF}--${site}--${org}.aem.page${media.path}`;
@@ -1937,11 +2040,22 @@ async function runBackfill() {
       });
     });
     setPhase('Phase 2.6: Resolving ingest asset timestamps...', 69);
-    const ingestLastModifiedStats = await populateIngestLastModified(entries);
-    if (ingestLastModifiedStats.attempted > 0 && ingestLastModifiedStats.found > 0) {
+    const ingestLastModifiedStats = await populateIngestLastModified(
+      entries,
+      standaloneMediaMetadataByIdentity,
+    );
+    if (ingestLastModifiedStats.reusedFromStatus > 0) {
       log(
-        `Resolved asset/media Last-Modified for ${ingestLastModifiedStats.found} `
-          + `of ${ingestLastModifiedStats.attempted} ingest entry URL(s).`,
+        `Reused detailed status metadata for ${ingestLastModifiedStats.reusedFromStatus} `
+          + 'ingest entry URL(s) before asset header fetches.',
+      );
+    }
+    if (ingestLastModifiedStats.attempted > 0 && ingestLastModifiedStats.fetched > 0) {
+      log(
+        'Resolved asset/media Last-Modified from direct asset header fetches for '
+          + `${ingestLastModifiedStats.fetched} of `
+          + `${ingestLastModifiedStats.attempted - ingestLastModifiedStats.reusedFromStatus} `
+          + 'remaining ingest entry URL(s).',
       );
     }
     if (
