@@ -41,6 +41,54 @@ export function deriveOriginalFilename(pathOrUrl) {
   return pathname || pathOrUrl;
 }
 
+export function deriveRedirectOriginalFilename(initialUrl, finalUrl) {
+  if (!extractMediaHash(finalUrl)) {
+    return '';
+  }
+
+  const initialPathname = deriveOriginalFilename(initialUrl);
+  const finalPathname = deriveOriginalFilename(finalUrl);
+  if (!initialPathname || initialPathname === finalPathname) {
+    return '';
+  }
+
+  return initialPathname;
+}
+
+export function discardBrokenMediaEntries(entries, brokenMediaIdentities = new Set()) {
+  if (!brokenMediaIdentities?.size) {
+    return {
+      entries,
+      discardedEntryCount: 0,
+      discardedMediaCount: 0,
+    };
+  }
+
+  const discardedMedia = new Set();
+  const filteredEntries = entries.filter(({ entry }) => {
+    const mediaIdentity = getMediaIdentity(entry?.path || '');
+    if (!mediaIdentity || !brokenMediaIdentities.has(mediaIdentity)) {
+      return true;
+    }
+
+    discardedMedia.add(mediaIdentity);
+    return false;
+  });
+
+  return {
+    entries: filteredEntries,
+    discardedEntryCount: entries.length - filteredEntries.length,
+    discardedMediaCount: discardedMedia.size,
+  };
+}
+
+export function summarizeMediaEntries(entries) {
+  return {
+    media: entries.length,
+    dupes: entries.filter(({ entry }) => entry?.operation === 'reuse').length,
+  };
+}
+
 export function dedupeMediaUrls(urls) {
   const seenMedia = new Set();
 
