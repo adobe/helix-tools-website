@@ -2,10 +2,13 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import {
+  discardBrokenMediaEntries,
   dedupeMediaUrls,
   deriveOriginalFilename,
+  deriveRedirectOriginalFilename,
   extractMediaHash,
   getMediaIdentity,
+  summarizeMediaEntries,
 } from './media-identity.js';
 import {
   getSiteAemPageOrigin,
@@ -1231,33 +1234,52 @@ function normalizeTimestampMs(value) {
  * original aem.page origin. This produces a bogus URL on the proxy host that returns no
  * last-modified. This helper detects that case and re-fetches the correctly constructed URL.
  */
-async function resolveProxyRedirectLastModified(originalUrl, response) {
-  if (!response.redirected) return '';
+async function resolveProxyRedirectResponse(originalUrl, response) {
+  if (!response.redirected) return null;
   try {
     const etcHostname = new URL(DA_ETC_ORIGIN).hostname;
     const responseUrlObj = new URL(response.url);
-    if (responseUrlObj.hostname !== etcHostname) return '';
+    if (responseUrlObj.hostname !== etcHostname) return null;
     const correctUrl = new URL(originalUrl).origin
       + responseUrlObj.pathname
       + responseUrlObj.search;
-    if (correctUrl === originalUrl) return '';
+    if (correctUrl === originalUrl) return null;
     const redirectResponse = await fetchWithRetry(correctUrl, { method: 'HEAD' }, 1);
-    if (redirectResponse.ok) {
-      return (redirectResponse.headers.get('last-modified') || '').trim();
-    }
+    return redirectResponse;
   } catch {
     // malformed URL or network error — ignore
   }
-  return '';
+  return null;
+}
+
+async function fetchLastModifiedInfo(url) {
+  let response = await fetchWithRetry(url, { method: 'HEAD' }, 1);
+  let originalFilename = deriveRedirectOriginalFilename(url, response.url || '');
+  let lastModified = response.ok
+    ? (response.headers.get('last-modified') || '').trim()
+    : '';
+
+  if (!lastModified) {
+    const redirectResponse = await resolveProxyRedirectResponse(url, response);
+    if (redirectResponse) {
+      response = redirectResponse;
+      originalFilename = deriveRedirectOriginalFilename(url, response.url || '') || originalFilename;
+      lastModified = response.ok
+        ? (response.headers.get('last-modified') || '').trim()
+        : '';
+    }
+  }
+
+  return {
+    lastModified,
+    ok: response.ok,
+    originalFilename,
+  };
 }
 
 async function fetchLastModified(url) {
-  const response = await fetchWithRetry(url, { method: 'HEAD' }, 1);
-  if (response.ok) {
-    const lm = (response.headers.get('last-modified') || '').trim();
-    if (lm) return lm;
-  }
-  return resolveProxyRedirectLastModified(url, response);
+  const result = await fetchLastModifiedInfo(url);
+  return result.lastModified;
 }
 
 async function fetchContentSourceType(org, site) {
@@ -1477,6 +1499,18 @@ function compareResolvedEntries(a, b) {
 }
 
 function createResolvedEntries(entries, fallbackUser, contentSourceType = 'markup') {
+  const originalFilenameByIdentity = new Map();
+  entries.forEach(({ entry, ingestOriginalFilename }) => {
+    if (!ingestOriginalFilename) {
+      return;
+    }
+
+    const mediaIdentity = getMediaIdentity(entry.path);
+    if (mediaIdentity && !originalFilenameByIdentity.has(mediaIdentity)) {
+      originalFilenameByIdentity.set(mediaIdentity, ingestOriginalFilename);
+    }
+  });
+
   return entries
     .map(({
       entry,
@@ -1488,7 +1522,8 @@ function createResolvedEntries(entries, fallbackUser, contentSourceType = 'marku
         ? (ingestUser || page.user || fallbackUser || '')
         : (page.user || fallbackUser || '');
       const mediaHash = extractMediaHash(entry.path);
-      const originalFilename = deriveOriginalFilename(entry.path);
+      const originalFilename = originalFilenameByIdentity.get(getMediaIdentity(entry.path))
+        || deriveOriginalFilename(entry.path);
       const timestamp = entry.operation === 'reuse'
         ? normalizeTimestampMs(page.lastModified)
         : (() => {
@@ -1815,11 +1850,14 @@ async function populateIngestLastModified(entries, standaloneMediaMetadataByIden
       found: 0,
       reusedFromStatus: 0,
       fetched: 0,
+      unresolved: 0,
+      brokenMediaIdentities: new Set(),
     };
   }
 
   let found = 0;
   let reusedFromStatus = 0;
+  const brokenMediaIdentities = new Set();
 
   ingestEntries.forEach((item) => {
     const metadata = standaloneMediaMetadataByIdentity.get(getMediaIdentity(item.entry.path));
@@ -1833,28 +1871,29 @@ async function populateIngestLastModified(entries, standaloneMediaMetadataByIden
     reusedFromStatus += 1;
   });
 
-  const pending = ingestEntries.filter((item) => !item.ingestLastModified);
-  if (!pending.length) {
-    return {
-      attempted: ingestEntries.length,
-      found,
-      reusedFromStatus,
-      fetched: 0,
-    };
-  }
-
-  log(`Fetching asset/media Last-Modified for ${pending.length} ingest entry URL(s)...`);
+  log(`Validating asset/media HEAD responses for ${ingestEntries.length} ingest entry URL(s)...`);
   let fetched = 0;
 
-  await runWithConcurrency(pending, async (item) => {
+  await runWithConcurrency(ingestEntries, async (item) => {
     try {
       const assetUrl = new URL(item.entry.path);
       assetUrl.hostname = assetUrl.hostname
         .replace('.hlx.page', '.aem.page')
         .replace('.hlx.live', '.aem.page')
         .replace('.aem.live', '.aem.page');
-      const lastModified = await fetchLastModified(assetUrl.toString());
-      if (lastModified) {
+      const {
+        lastModified,
+        ok,
+        originalFilename,
+      } = await fetchLastModifiedInfo(assetUrl.toString());
+      if (!ok) {
+        brokenMediaIdentities.add(getMediaIdentity(item.entry.path));
+        return;
+      }
+      if (originalFilename) {
+        item.ingestOriginalFilename = originalFilename;
+      }
+      if (!item.ingestLastModified && lastModified) {
         item.ingestLastModified = lastModified;
         found += 1;
         fetched += 1;
@@ -1870,6 +1909,11 @@ async function populateIngestLastModified(entries, standaloneMediaMetadataByIden
     found,
     reusedFromStatus,
     fetched,
+    unresolved: ingestEntries.filter((item) => (
+      !brokenMediaIdentities.has(getMediaIdentity(item.entry.path))
+      && !item.ingestLastModified
+    )).length,
+    brokenMediaIdentities,
   };
 }
 
@@ -2007,7 +2051,8 @@ async function runBackfill() {
       warnForBundle(`Skipping ${skippedCandidateCount} media candidate(s) whose source page had neither detailed status metadata nor an aem.page Last-Modified fallback.`);
     }
 
-    const { entries, dupes } = createDeterministicEntries(eligibleMediaCandidates);
+    const { entries: initialEntries, dupes } = createDeterministicEntries(eligibleMediaCandidates);
+    let entries = initialEntries;
     stats.media = entries.length;
     stats.dupes = dupes;
     updateStatsDisplay();
@@ -2058,10 +2103,24 @@ async function runBackfill() {
           + 'remaining ingest entry URL(s).',
       );
     }
-    if (
-      ingestLastModifiedStats.attempted > 0
-      && ingestLastModifiedStats.found < ingestLastModifiedStats.attempted
-    ) {
+
+    const discardedBrokenMediaResult = discardBrokenMediaEntries(
+      entries,
+      ingestLastModifiedStats.brokenMediaIdentities,
+    );
+    entries = discardedBrokenMediaResult.entries;
+    if (discardedBrokenMediaResult.discardedEntryCount > 0) {
+      warnForBundle(
+        `Discarded ${discardedBrokenMediaResult.discardedEntryCount} entry/entries `
+          + `across ${discardedBrokenMediaResult.discardedMediaCount} media asset(s) `
+          + 'whose direct asset HEAD check returned a non-OK response.',
+      );
+      const filteredEntrySummary = summarizeMediaEntries(entries);
+      stats.media = filteredEntrySummary.media;
+      stats.dupes = filteredEntrySummary.dupes;
+      updateStatsDisplay();
+    }
+    if (ingestLastModifiedStats.unresolved > 0) {
       warnForBundle(
         'Some ingest entry URLs did not expose a usable asset/media Last-Modified header; '
           + 'those ingests will be exported with timestamp 0.',
