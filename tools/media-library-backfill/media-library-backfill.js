@@ -1273,8 +1273,13 @@ async function fetchLastModifiedInfo(url) {
   return {
     lastModified,
     ok: response.ok,
+    status: response.status,
     originalFilename,
   };
+}
+
+function isMissingAssetStatus(status) {
+  return status === 404 || status === 410;
 }
 
 async function fetchLastModified(url) {
@@ -1884,10 +1889,14 @@ async function populateIngestLastModified(entries, standaloneMediaMetadataByIden
       const {
         lastModified,
         ok,
+        status,
         originalFilename,
       } = await fetchLastModifiedInfo(assetUrl.toString());
-      if (!ok) {
+      if (isMissingAssetStatus(status)) {
         brokenMediaIdentities.add(getMediaIdentity(item.entry.path));
+        return;
+      }
+      if (!ok) {
         return;
       }
       if (originalFilename) {
@@ -2113,7 +2122,7 @@ async function runBackfill() {
       warnForBundle(
         `Discarded ${discardedBrokenMediaResult.discardedEntryCount} entry/entries `
           + `across ${discardedBrokenMediaResult.discardedMediaCount} media asset(s) `
-          + 'whose direct asset HEAD check returned a non-OK response.',
+          + 'whose direct asset HEAD check returned a missing-asset response.',
       );
       const filteredEntrySummary = summarizeMediaEntries(entries);
       stats.media = filteredEntrySummary.media;
