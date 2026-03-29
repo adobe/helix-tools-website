@@ -1228,58 +1228,95 @@ function normalizeTimestampMs(value) {
   return NaN;
 }
 
-/**
- * When the CORS proxy (da-etc.adobeaem.workers.dev) passes through a 301 with a relative
- * Location header, the browser resolves that path against the proxy origin instead of the
- * original aem.page origin. This produces a bogus URL on the proxy host that returns no
- * last-modified. This helper detects that case and re-fetches the correctly constructed URL.
- */
-async function resolveProxyRedirectResponse(originalUrl, response) {
-  if (!response.redirected) return null;
+function resolveProxyRedirectUrl(originalUrl, response) {
   try {
+    const originalUrlObj = new URL(originalUrl);
     const etcHostname = new URL(DA_ETC_ORIGIN).hostname;
+    const location = (response.headers.get('location') || '').trim();
+    if (location && response.status >= 300 && response.status < 400) {
+      const locationUrl = new URL(location, originalUrlObj.origin);
+      if (locationUrl.hostname === etcHostname) {
+        return `${originalUrlObj.origin}${locationUrl.pathname}${locationUrl.search}`;
+      }
+      return locationUrl.toString();
+    }
+
+    if (!response.redirected) return '';
     const responseUrlObj = new URL(response.url);
-    if (responseUrlObj.hostname !== etcHostname) return null;
-    const correctUrl = new URL(originalUrl).origin
-      + responseUrlObj.pathname
-      + responseUrlObj.search;
-    if (correctUrl === originalUrl) return null;
-    const redirectResponse = await fetchWithRetry(correctUrl, { method: 'HEAD' }, 1);
-    return redirectResponse;
+    if (responseUrlObj.hostname !== etcHostname) return '';
+    return `${originalUrlObj.origin}${responseUrlObj.pathname}${responseUrlObj.search}`;
   } catch {
     // malformed URL or network error — ignore
   }
-  return null;
+  return '';
+}
+
+async function followLastModifiedRedirects(requestUrl, response, originalFilename = '', redirectCount = 0) {
+  const redirectUrl = resolveProxyRedirectUrl(requestUrl, response);
+  if (!redirectUrl || redirectUrl === requestUrl || redirectCount >= 5) {
+    return {
+      requestUrl,
+      response,
+      originalFilename,
+    };
+  }
+
+  const nextOriginalFilename = deriveRedirectOriginalFilename(requestUrl, redirectUrl)
+    || originalFilename;
+  const nextResponse = await fetchWithRetry(
+    redirectUrl,
+    { method: 'HEAD', redirect: 'manual' },
+    1,
+  );
+
+  return followLastModifiedRedirects(
+    redirectUrl,
+    nextResponse,
+    nextOriginalFilename,
+    redirectCount + 1,
+  );
 }
 
 async function fetchLastModifiedInfo(url) {
-  let response = await fetchWithRetry(url, { method: 'HEAD' }, 1);
-  let originalFilename = deriveRedirectOriginalFilename(url, response.url || '');
-  let lastModified = response.ok
-    ? (response.headers.get('last-modified') || '').trim()
+  const response = await fetchWithRetry(url, { method: 'HEAD', redirect: 'manual' }, 1);
+  const {
+    requestUrl,
+    response: finalResponse,
+    originalFilename: redirectedOriginalFilename,
+  } = await followLastModifiedRedirects(url, response);
+  const originalFilename = deriveRedirectOriginalFilename(url, requestUrl)
+    || redirectedOriginalFilename;
+  const lastModified = finalResponse.ok
+    ? (finalResponse.headers.get('last-modified') || '').trim()
     : '';
-
-  if (!lastModified) {
-    const redirectResponse = await resolveProxyRedirectResponse(url, response);
-    if (redirectResponse) {
-      response = redirectResponse;
-      originalFilename = deriveRedirectOriginalFilename(url, response.url || '') || originalFilename;
-      lastModified = response.ok
-        ? (response.headers.get('last-modified') || '').trim()
-        : '';
-    }
-  }
 
   return {
     lastModified,
-    ok: response.ok,
-    status: response.status,
+    ok: finalResponse.ok,
+    status: finalResponse.status,
     originalFilename,
   };
 }
 
 function isMissingAssetStatus(status) {
   return status === 404 || status === 410;
+}
+
+function toAssetCheckUrl(pathOrUrl, siteAemOrigin) {
+  const assetUrl = new URL(pathOrUrl);
+
+  if (extractMediaHash(assetUrl.toString()) && siteAemOrigin) {
+    const siteAemUrl = new URL(siteAemOrigin);
+    assetUrl.protocol = siteAemUrl.protocol;
+    assetUrl.host = siteAemUrl.host;
+    return assetUrl.toString();
+  }
+
+  assetUrl.hostname = assetUrl.hostname
+    .replace('.hlx.page', '.aem.page')
+    .replace('.hlx.live', '.aem.page')
+    .replace('.aem.live', '.aem.page');
+  return assetUrl.toString();
 }
 
 async function fetchLastModified(url) {
@@ -1847,7 +1884,11 @@ async function populateStandaloneMediaFallbackLastModified(org, site, standalone
   };
 }
 
-async function populateIngestLastModified(entries, standaloneMediaMetadataByIdentity = new Map()) {
+async function populateIngestLastModified(
+  entries,
+  standaloneMediaMetadataByIdentity = new Map(),
+  siteAemOrigin = '',
+) {
   const ingestEntries = entries.filter(({ entry }) => entry.operation === 'ingest');
   if (!ingestEntries.length) {
     return {
@@ -1881,17 +1922,13 @@ async function populateIngestLastModified(entries, standaloneMediaMetadataByIden
 
   await runWithConcurrency(ingestEntries, async (item) => {
     try {
-      const assetUrl = new URL(item.entry.path);
-      assetUrl.hostname = assetUrl.hostname
-        .replace('.hlx.page', '.aem.page')
-        .replace('.hlx.live', '.aem.page')
-        .replace('.aem.live', '.aem.page');
+      const assetUrl = toAssetCheckUrl(item.entry.path, siteAemOrigin);
       const {
         lastModified,
         ok,
         status,
         originalFilename,
-      } = await fetchLastModifiedInfo(assetUrl.toString());
+      } = await fetchLastModifiedInfo(assetUrl);
       if (isMissingAssetStatus(status)) {
         brokenMediaIdentities.add(getMediaIdentity(item.entry.path));
         return;
@@ -2097,6 +2134,7 @@ async function runBackfill() {
     const ingestLastModifiedStats = await populateIngestLastModified(
       entries,
       standaloneMediaMetadataByIdentity,
+      getSiteAemPageOrigin(org, site, REF),
     );
     if (ingestLastModifiedStats.reusedFromStatus > 0) {
       log(
