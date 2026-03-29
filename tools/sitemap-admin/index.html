@@ -49,6 +49,13 @@
     </div>
 
     <div>
+      <aside id="index-reminder" class="index-reminder" hidden aria-live="polite">
+        <p>Sitemap <span id="index-reminder-action">updated</span>. Remember to update your <code>sitemap-index.xml</code> to reflect this change.</p>
+        <div class="index-reminder-actions">
+          <button type="button" id="index-reminder-build" class="button outline small">Generate sitemap-index.xml</button>
+          <button type="button" id="index-reminder-dismiss" class="dismiss-btn" aria-label="Dismiss">&times;</button>
+        </div>
+      </aside>
       <h2>Sitemaps</h2>
       <p class="button-wrapper">
         <button type="button" id="add-sitemap" class="button outline" disabled>Add Sitemap</button>
@@ -84,10 +91,10 @@
     </li>
   </template>
   <template id="sitemap-details-dialog-template">
-    <dialog class="sitemap-details">
+    <dialog class="sitemap-details" aria-labelledby="sitemap-details-dialog-title">
       <div class="sitemap-details-content">
         <div class="sitemap-details-header">
-          <h3>Edit Sitemap</h3>
+          <h3 id="sitemap-details-dialog-title">Edit Sitemap</h3>
         </div>
         <div class="sitemap-details-body">
           <form>
@@ -163,10 +170,10 @@
     </li>
   </template>
   <template id="sitemap-multilang-dialog-template">
-    <dialog class="sitemap-details multilang-dialog">
+    <dialog class="sitemap-details multilang-dialog" aria-labelledby="sitemap-multilang-dialog-title">
       <div class="sitemap-details-content">
         <div class="sitemap-details-header">
-          <h3>Edit Multi-Language Sitemap</h3>
+          <h3 id="sitemap-multilang-dialog-title">Edit Multi-Language Sitemap</h3>
           <p>Edit top-level settings. Use the language buttons to add or edit individual languages.</p>
         </div>
         <div class="sitemap-details-body">
@@ -220,10 +227,10 @@
     </div>
   </template>
   <template id="language-edit-dialog-template">
-    <dialog class="language-edit-dialog">
+    <dialog class="language-edit-dialog" aria-labelledby="language-edit-dialog-title">
       <div class="language-edit-content">
         <div class="language-edit-header">
-          <h3>Edit Language Configuration</h3>
+          <h3 id="language-edit-dialog-title">Edit Language Configuration</h3>
         </div>
         <div class="language-edit-body">
           <form>
@@ -261,10 +268,10 @@
     </dialog>
   </template>
   <template id="sitemap-type-dialog-template">
-    <dialog class="sitemap-type-dialog">
+    <dialog class="sitemap-type-dialog" aria-labelledby="sitemap-type-dialog-title">
       <div class="sitemap-type-content">
         <div class="sitemap-type-header">
-          <h3>Choose Sitemap Type</h3>
+          <h3 id="sitemap-type-dialog-title">Choose Sitemap Type</h3>
           <p>Select the type of sitemap you want to create:</p>
         </div>
         <div class="sitemap-type-options">
@@ -277,9 +284,28 @@
             <span>Multiple languages with hreflang support</span>
           </button>
         </div>
-        <div class="button-area">
+        <div class="button-area sitemap-type-button-area">
           <p class="button-wrapper">
             <button type="button" id="cancel-type-btn" class="button outline">Cancel</button>
+          </p>
+        </div>
+      </div>
+    </dialog>
+  </template>
+  <template id="sitemap-index-dialog-template">
+    <dialog class="sitemap-index-dialog" aria-labelledby="sitemap-index-dialog-title">
+      <div class="sitemap-index-content">
+        <div class="sitemap-index-header">
+          <h3 id="sitemap-index-dialog-title">Generate sitemap-index.xml</h3>
+          <p>Copy and commit this as <code>sitemap-index.xml</code> in the root of your site's repository. Update it whenever you add or remove sitemaps.</p>
+        </div>
+        <textarea id="sitemap-index-xml" readonly aria-label="Sitemap index XML"></textarea>
+        <div class="button-area">
+          <p class="button-wrapper">
+            <button type="button" id="copy-index" class="button">Copy</button>
+          </p>
+          <p class="button-wrapper">
+            <button type="button" id="close-index" class="button outline">Close</button>
           </p>
         </div>
       </div>
@@ -288,4 +314,3 @@
 </body>
 
 </html>
-
