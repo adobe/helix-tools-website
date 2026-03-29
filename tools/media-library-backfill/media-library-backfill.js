@@ -1282,6 +1282,23 @@ function isMissingAssetStatus(status) {
   return status === 404 || status === 410;
 }
 
+function toAssetCheckUrl(pathOrUrl, siteAemOrigin) {
+  const assetUrl = new URL(pathOrUrl);
+
+  if (extractMediaHash(assetUrl.toString()) && siteAemOrigin) {
+    const siteAemUrl = new URL(siteAemOrigin);
+    assetUrl.protocol = siteAemUrl.protocol;
+    assetUrl.host = siteAemUrl.host;
+    return assetUrl.toString();
+  }
+
+  assetUrl.hostname = assetUrl.hostname
+    .replace('.hlx.page', '.aem.page')
+    .replace('.hlx.live', '.aem.page')
+    .replace('.aem.live', '.aem.page');
+  return assetUrl.toString();
+}
+
 async function fetchLastModified(url) {
   const result = await fetchLastModifiedInfo(url);
   return result.lastModified;
@@ -1847,7 +1864,11 @@ async function populateStandaloneMediaFallbackLastModified(org, site, standalone
   };
 }
 
-async function populateIngestLastModified(entries, standaloneMediaMetadataByIdentity = new Map()) {
+async function populateIngestLastModified(
+  entries,
+  standaloneMediaMetadataByIdentity = new Map(),
+  siteAemOrigin = '',
+) {
   const ingestEntries = entries.filter(({ entry }) => entry.operation === 'ingest');
   if (!ingestEntries.length) {
     return {
@@ -1881,17 +1902,13 @@ async function populateIngestLastModified(entries, standaloneMediaMetadataByIden
 
   await runWithConcurrency(ingestEntries, async (item) => {
     try {
-      const assetUrl = new URL(item.entry.path);
-      assetUrl.hostname = assetUrl.hostname
-        .replace('.hlx.page', '.aem.page')
-        .replace('.hlx.live', '.aem.page')
-        .replace('.aem.live', '.aem.page');
+      const assetUrl = toAssetCheckUrl(item.entry.path, siteAemOrigin);
       const {
         lastModified,
         ok,
         status,
         originalFilename,
-      } = await fetchLastModifiedInfo(assetUrl.toString());
+      } = await fetchLastModifiedInfo(assetUrl);
       if (isMissingAssetStatus(status)) {
         brokenMediaIdentities.add(getMediaIdentity(item.entry.path));
         return;
@@ -2097,6 +2114,7 @@ async function runBackfill() {
     const ingestLastModifiedStats = await populateIngestLastModified(
       entries,
       standaloneMediaMetadataByIdentity,
+      getSiteAemPageOrigin(org, site, REF),
     );
     if (ingestLastModifiedStats.reusedFromStatus > 0) {
       log(
