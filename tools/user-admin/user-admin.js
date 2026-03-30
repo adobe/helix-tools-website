@@ -494,11 +494,14 @@ function openAddUsersModal(onSave) {
   presetsDiv.appendChild(createRolesReference());
 
   entriesContainer.addEventListener('change', syncPresets);
-  new MutationObserver(syncPresets).observe(entriesContainer, { childList: true });
+  const presetsObserver = new MutationObserver(syncPresets);
+  presetsObserver.observe(entriesContainer, { childList: true });
 
   const {
     dialog, content, bodyDiv, saveBtn, closeModal, setConfirmClose,
   } = createModal('Add Users', 'Add 2 Users');
+
+  dialog.addEventListener('close', () => presetsObserver.disconnect());
 
   content.insertBefore(presetsDiv, bodyDiv);
 
