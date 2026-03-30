@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none'; connect-src 'self' https://raw.githubusercontent.com https://unpkg.com https://fcors.org;"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>Should I Use?</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/should-i-use/should-i-use.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/should-i-use/should-i-use.css" />
+</head>
+
+<body class="should-i-use">
+  <header></header>
+  <main>
+    <div>
+      <h1>Should I Use?</h1>
+      <p>Just because AI <em>really</em> wants to use a feature doesn't mean you should.</p>
+      <p>
+        The baseline is <a href="https://caniuse.com/es6-module" target="_blank" rel="noopener">ES6 module support</a>.
+        This tool compares real version-by-version usage: if any slice of traffic has modules but not your feature, consider an alternative.
+      </p>
+    </div>
+
+    <div>
+      <form id="compare-form">
+        <div class="form-field">
+          <label for="feature">Feature</label>
+          <input
+            id="feature"
+            name="feature"
+            type="text"
+            placeholder="e.g. css grid, optional chaining"
+            autocomplete="off"
+            required
+          >
+        </div>
+        <p class="button-wrapper">
+          <button type="submit" class="button" id="compare-btn">Check feature</button>
+        </p>
+      </form>
+    </div>
+
+    <div id="results" aria-live="polite" aria-label="Feature check result">
+      <div id="result-card" hidden>
+        <h2>
+          <a href="" target="_blank" rel="noopener"></a>
+        </h2>
+        <div class="verdict">
+          <span id="verdict-badge" class="verdict-badge"></span>
+          <p></p>
+        </div>
+        <p id="no-gaps" class="no-gaps" hidden>
+          Every version that still shows usage and has ES6 modules also has this feature.
+        </p>
+        <ul id="gap-grid" class="browser-grid" hidden></ul>
+        <table class="coverage-bars"></table>
+        <p id="coverage-footnote" class="field-help-text coverage-footnote" hidden>
+          Both bars are percentages of all users. The baseline shows who can run your site. The feature shows how many of those users also support this feature.
+        </p>
+        <details>
+          <summary>Detailed support data</summary>
+          <ul class="browser-grid-legend">
+            <li class="supported">Every in-use version with ES6 modules also has this feature</li>
+            <li class="unsupported">Some in-use version has ES6 modules but not this feature</li>
+            <li class="neither">No meaningful usage on ES6-module versions</li>
+          </ul>
+          <ul id="full-grid" class="browser-grid"></ul>
+        </details>
+      </div>
+      <div id="result-error" hidden></div>
+    </div>
+
+    <div>
+      <div class="console"></div>
+    </div>
+
+    <div class="section light">
+      <div>
+        <p>
+          Data from <a href="https://caniuse.com/" target="_blank" rel="noopener">caniuse.com</a>
+          (<a href="https://github.com/Fyrd/caniuse/blob/main/LICENSE" target="_blank" rel="noopener">CC BY 4.0</a>)
+          and from <a href="https://github.com/mdn/browser-compat-data" target="_blank" rel="noopener">MDN browser-compat-data</a>
+          via <a href="https://unpkg.com/@mdn/browser-compat-data" target="_blank" rel="noopener">unpkg</a>
+          (<a href="https://github.com/mdn/browser-compat-data/blob/main/LICENSE" target="_blank" rel="noopener">CC0 1.0</a>).
+        </p>
+      </div>
+    </div>
+  </main>
+  <footer></footer>
+</body>
+
+</html>
