@@ -61,20 +61,25 @@ if (BADGE && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
 }
 
 /**
- * Appends a copy button to each code block's pre-wrap container.
+ * Appends a copy button absolutely positioned within the figure.
  */
 function initCopyButtons() {
-  document.querySelectorAll('pre code').forEach((block) => {
+  document.querySelectorAll('.content-score-snippet pre code').forEach((block) => {
+    const figure = block.closest('.content-score-snippet');
+    if (!figure) return;
+    if (figure.querySelector('button.content-score-copy')) return;
     const button = document.createElement('button');
-    button.className = 'button';
+    button.className = 'button content-score-copy';
+    button.type = 'button';
     button.textContent = 'Copy';
     button.addEventListener('click', async () => {
       await navigator.clipboard.writeText(block.textContent);
       button.textContent = 'Copied!';
       setTimeout(() => { button.textContent = 'Copy'; }, 2000);
     });
-    block.closest('.pre-wrap').append(button);
+    figure.append(button);
   });
 }
 
 initCopyButtons();
+window.addEventListener('load', initCopyButtons);
