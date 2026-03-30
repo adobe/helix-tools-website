@@ -53,48 +53,50 @@
 }
 
 /* code blocks */
-.content-score .pre-wrap {
+.content-score .content-score-snippet {
   position: relative;
   border-radius: var(--rounding-l);
   padding: var(--spacing-m);
+  margin: 0;
   background: var(--layer-pasteboard);
 }
 
-.content-score .pre-wrap > p {
+.content-score .content-score-snippet > p {
   margin: 0;
   padding: 0;
+  padding-inline-end: 5.5rem;
   color: var(--color-font-grey);
   font-size: var(--body-size-s);
   text-transform: lowercase;
 }
 
-.content-score .pre-wrap > pre {
+.content-score .content-score-snippet button.content-score-copy {
+  position: absolute;
+  inset-block-start: var(--spacing-m);
+  inset-inline-end: var(--spacing-m);
+  border-radius: var(--rounding-m);
+  font-size: var(--body-size-s);
+  z-index: 1;
+}
+
+.content-score .content-score-snippet pre.pre-wrap {
   overflow-x: auto;
-  margin-bottom: 0;
-  padding: var(--spacing-m) 0;
+  margin: var(--spacing-xs) 0 0;
+  padding: var(--spacing-m) 5.5rem var(--spacing-m) 0;
   background: inherit;
 }
 
-
-.content-score .pre-wrap > pre::-webkit-scrollbar-thumb {
+.content-score .content-score-snippet pre.pre-wrap::-webkit-scrollbar-thumb {
   border-color: var(--layer-pasteboard);
 }
 
-.content-score .pre-wrap > pre code {
+.content-score .content-score-snippet pre.pre-wrap code {
   padding: 0;
   background: inherit;
 }
 
-.content-score .pre-wrap button {
-  position: absolute;
-  inset-block-start: var(--spacing-xs);
-  inset-inline-end: var(--spacing-xs);
-  border-radius: var(--rounding-m);
-  font-size: var(--body-size-s);
-}
-
 /* badge preview */
-.content-score .badge-preview-wrapper {
+.content-score .install > div {
   margin-block-end: 0;
 }
 
@@ -106,6 +108,7 @@
   min-height: 72px;
   width: min(100%, 334px);
   margin-inline: auto;
+  margin-top: 1.75rem;
   border-radius: 10px 10px 0 0;
   padding: 8px 12px;
   box-shadow: 0 2px 8px rgb(0 0 0 / 15%), 0 1px 3px rgb(0 0 0 / 10%);
