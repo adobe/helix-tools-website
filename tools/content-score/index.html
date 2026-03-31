@@ -11,8 +11,8 @@
   <script nonce="aem" src="/scripts/aem.js" type="module"></script>
   <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
   <link rel="stylesheet" href="/styles/styles.css" />
-  <script nonce="aem" src="/tools/content-score/content-score.js" type="module"></script>
   <link rel="stylesheet" href="/tools/content-score/content-score.css" />
+  <script nonce="aem" src="/tools/content-score/content-score.js" type="module"></script>
 </head>
 
 <body class="content-score">
@@ -45,9 +45,9 @@
     <div class="install">
       <h2>Add to Your Project</h2>
       <p>Include this snippet in the <a href="https://www.aem.live/developer/keeping-it-100#three-phase-loading-e-l-d" target="_blank" rel="noopener">delayed phase</a> of your AEM project (e.g. <code>scripts.js</code> → <code>loadDelayed</code>):</p>
-      <div class="pre-wrap">
+      <figure class="content-score-snippet">
         <p>JavaScript</p>
-        <pre><code>const initContentScore = async () => {
+        <pre class="pre-wrap"><code>const initContentScore = async () => {
   const CONTENT_SCORE = 'https://tools.aem.live/tools/content-score/src/scripts.js';
   const { init } = await import(CONTENT_SCORE);
   await init();
@@ -59,15 +59,15 @@ if (sk) initContentScore();
 else {
   document.addEventListener('sidekick-ready', initContentScore, { once: true });
 }</code></pre>
-      </div>
+      </figure>
       <p>Reload the page, then open Sidekick. The content score badge appears next to it.</p>
-      <div class="badge-preview" data-state="needs-improvement">
+      <aside class="badge-preview" data-state="needs-improvement">
         <p class="badge-headline">
           <strong class="badge-message">Content could be improved</strong>
           <span class="badge-action">Review suggestions</span>
         </p>
         <p class="badge-count">0 errors · 3 warnings</p>
-      </div>
+      </aside>
     </div>
 
     <!-- WHAT IT CHECKS -->

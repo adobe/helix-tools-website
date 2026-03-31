@@ -182,6 +182,7 @@ main .section.dark {
 
 main .section.light {
   background-color: var(--gray-100);
+  color: var(--gray-800);
 }
 
 main .section.dark {
