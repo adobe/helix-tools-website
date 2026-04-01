@@ -100,7 +100,7 @@
 }
 
 .deep-psi .psi-significance-wrapper .psi-sig-verdict-yes {
-  color: light-dark(var(--green-800), var(--green-400));
+  color: light-dark(var(--green-1100), var(--green-300));
 }
 
 .deep-psi .psi-significance-wrapper .psi-sig-verdict-no {
@@ -409,15 +409,16 @@
   padding: var(--spacing-s) var(--spacing-m);
   background: light-dark(var(--gray-50), var(--gray-800));
   border-radius: 0.5rem;
-  border-left: 4px solid var(--blue-500);
+  border-left: 4px solid light-dark(var(--blue-1100), var(--blue-400));
   display: flex;
   align-items: center;
   gap: var(--spacing-s);
+  min-height: 5em;
 }
 
 .deep-psi .table-url-header.loading {
   color: var(--color-font-grey);
-  border-left-color: var(--orange-500);
+  border-left-color: light-dark(var(--orange-1100), var(--orange-400));
 }
 
 .deep-psi .table-url-header .loading-spinner {

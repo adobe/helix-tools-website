@@ -14,6 +14,14 @@ const PSI_SAMPLE_COUNT = 20;
 /** Alpha for labeling two-sample t-test results (p less than alpha → significant). */
 const SIGNIFICANCE_ALPHA = 0.05;
 
+/**
+ * Traffic-light colors for metrics and score circles: darker than PSI defaults for contrast
+ * (body text on light table rows and white labels on filled circles).
+ */
+const PERF_COLOR_GOOD = '#025d3c';
+const PERF_COLOR_MEDIUM = '#903300';
+const PERF_COLOR_POOR = '#9c2113';
+
 // Statistical and utility helper functions for PSI data analysis
 
 /**
@@ -104,7 +112,7 @@ function lowestCluster(arr) {
  * Returns color code based on Google PageSpeed Insights performance thresholds.
  * @param {string} metric - Performance metric name (FCP, SI, LCP, TTI, TBT, CLS)
  * @param {number} value - Metric value in seconds (or unitless for CLS)
- * @returns {string} CSS color value following Google's PSI color scheme
+ * @returns {string} CSS color (hex or var()) for accessible contrast on table backgrounds
  */
 function getPerformanceColor(metric, value) {
   const thresholds = {
@@ -117,12 +125,11 @@ function getPerformanceColor(metric, value) {
   };
 
   const threshold = thresholds[metric];
-  if (!threshold) return 'black';
+  if (!threshold) return 'var(--color-font-grey)';
 
-  // Apply Google's official color scheme
-  if (value <= threshold.good) return '#0cce6b'; // Green - Good
-  if (value <= threshold.needsImprovement) return '#ffa400'; // Orange - Needs Improvement
-  return '#f4442f'; // Red - Poor
+  if (value <= threshold.good) return PERF_COLOR_GOOD;
+  if (value <= threshold.needsImprovement) return PERF_COLOR_MEDIUM;
+  return PERF_COLOR_POOR;
 }
 
 /**
@@ -201,13 +208,12 @@ function calculatePerformanceScore(metrics) {
 /**
  * Returns appropriate color and visual indicator for performance score display.
  * @param {number} score - Performance score (0-100)
- * @returns {Object} Object containing color and indicator
+ * @returns {Object} Color (accessible dark traffic-light) and indicator
  */
 function getScoreColor(score) {
-  // Google PSI score ranges with appropriate visual indicators
-  if (score >= 90) return { color: '#0cce6b', indicator: '●' }; // Green circle - Good (90-100)
-  if (score >= 50) return { color: '#ffa400', indicator: '■' }; // Orange square - Needs Improvement (50-89)
-  return { color: '#f4442f', indicator: '▲' }; // Red triangle - Poor (0-49)
+  if (score >= 90) return { color: PERF_COLOR_GOOD, indicator: '●' };
+  if (score >= 50) return { color: PERF_COLOR_MEDIUM, indicator: '■' };
+  return { color: PERF_COLOR_POOR, indicator: '▲' };
 }
 
 // Statistical testing functions for comparing performance between URLs
@@ -286,32 +292,74 @@ async function significancetest(arr1, arr2) {
 // PSI API interaction functions
 
 /**
+ * @param {unknown} json - Parsed JSON from deep-psi proxy
+ * @returns {boolean} True if payload can be mapped to metric rows
+ */
+function isValidPsiPayload(json) {
+  return Boolean(
+    json && typeof json === 'object'
+    && json.lighthouseResult && json.lighthouseResult.audits,
+  );
+}
+
+/**
  * Fetches a single PSI result from proxy API.
- * @param {string} url - URL to analyze with PageSpeed Insights
- * @returns {Promise<Object>} Raw PSI result object from Google's API
+ * @param {string} url - Full URL to analyze (includes cache-buster when needed)
+ * @returns {Promise<Object|null>} Raw PSI result, or null if HTTP error or invalid payload
  */
 async function getResult(url) {
   // eslint-disable-next-line no-console
   console.log(`fetching: ${url}`);
-  const resp = await limit(() => fetch(`https://thinktanked.org/deep-psi?url=${encodeURI(url)}`));
-  const json = await resp.json();
-  return json;
+  try {
+    const resp = await limit(() => fetch(`https://thinktanked.org/deep-psi?url=${encodeURI(url)}`));
+    if (!resp.ok) {
+      // eslint-disable-next-line no-console
+      console.warn('deep-psi: HTTP', resp.status, url);
+      return null;
+    }
+    const json = await resp.json();
+    return isValidPsiPayload(json) ? json : null;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('deep-psi: fetch failed', e);
+    return null;
+  }
 }
 
 /**
- * Fetches multiple PSI results for robust statistical analysis.
+ * Fetches multiple valid PSI results; retries until {@code samples} successes or rounds exhausted.
+ * Failed or invalid responses no longer reduce the table row count when the proxy is flaky.
  * @param {string} url - Base URL to test
- * @param {number} samples - Number of independent PSI tests to run
- * @returns {Promise<Object[]>} Array of PSI result objects
+ * @param {number} samples - Target number of successful PSI payloads
+ * @returns {Promise<Object[]>} Valid raw PSI objects (may be shorter than samples if the API
+ *     keeps failing)
  */
 async function getResults(url, samples) {
-  const reqs = [];
-  for (let i = 0; i < samples; i += 1) {
-    // Add random cache-buster to ensure independent measurements
-    reqs.push(getResult(`${url}${url.includes('?') ? '&' : '?'}ck=${Math.random()}`));
+  const valid = [];
+  const maxRounds = 8;
+
+  async function fetchOne() {
+    const u = `${url}${url.includes('?') ? '&' : '?'}ck=${Math.random()}`;
+    return getResult(u);
   }
-  // Execute all requests in parallel (subject to rate limiting)
-  return Promise.all(reqs);
+
+  let round = 0;
+  while (valid.length < samples && round < maxRounds) {
+    const need = samples - valid.length;
+    // eslint-disable-next-line no-await-in-loop
+    const batch = await Promise.all(Array.from({ length: need }, () => fetchOne()));
+    batch.forEach((json) => {
+      if (json && valid.length < samples) valid.push(json);
+    });
+    round += 1;
+  }
+
+  if (valid.length < samples) {
+    // eslint-disable-next-line no-console
+    console.warn(`deep-psi: only ${valid.length} of ${samples} valid PSI payloads after ${round} round(s)`);
+  }
+
+  return valid;
 }
 
 // UI generation and table management functions
@@ -556,6 +604,14 @@ async function executePSI(num) {
   // Fetch multiple PSI results for statistical analysis
   const rawResults = await getResults(url, sampleCount);
 
+  if (rawResults.length < sampleCount && rawResults.length > 0) {
+    const warn = document.createElement('p');
+    warn.className = 'status-message';
+    warn.setAttribute('role', 'status');
+    warn.textContent = `Only ${rawResults.length} of ${sampleCount} PSI runs returned valid data after retries. If this persists, try again later or add ?parallelism=5 (or lower) to reduce load on the proxy.`;
+    output.appendChild(warn);
+  }
+
   // Map Google PSI audit names to our display names
   const categs = [
     'first-contentful-paint',
@@ -608,7 +664,7 @@ async function executePSI(num) {
   const existingUrlHeader = output.querySelector('.table-url-header');
   if (existingUrlHeader) {
     existingUrlHeader.className = 'table-url-header';
-    existingUrlHeader.textContent = `URL ${num}: ${url}`;
+    existingUrlHeader.textContent = `URL ${num}: ${url} (${results.length} run${results.length === 1 ? '' : 's'})`;
   }
 
   // Create links to Google's official Lighthouse score calculator for verification
