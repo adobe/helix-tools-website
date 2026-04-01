@@ -6,6 +6,14 @@ import { registerToolReady } from '../../scripts/scripts.js';
 const parallelism = new URL(window.location.href).searchParams.get('parallelism');
 const limit = pLimit(parallelism ? parseInt(parallelism, 10) : 10);
 
+/** Independent PSI runs per URL on localhost (faster iteration while developing). */
+const PSI_SAMPLE_COUNT_LOCAL = 2;
+/** Independent PSI runs per URL in non-local environments (statistical reliability). */
+const PSI_SAMPLE_COUNT = 20;
+
+/** Alpha for labeling two-sample t-test results (p less than alpha → significant). */
+const SIGNIFICANCE_ALPHA = 0.05;
+
 // Statistical and utility helper functions for PSI data analysis
 
 /**
@@ -209,6 +217,20 @@ function getScoreColor(score) {
  * @returns {Promise<void>} Promise that resolves when jStat is available
  * @throws {Error} If jStat library fails to load from CDN
  */
+/**
+ * Builds list item HTML for a metric significance row (p-value + verdict vs α).
+ * @param {string} key - Metric name
+ * @param {number} p - P-value from {@link significancetest}
+ * @returns {string} HTML string
+ */
+function formatSignificanceListItemHtml(key, p) {
+  const pFormatted = Intl.NumberFormat({ maximumSignificantDigits: 3 }).format(p);
+  const significant = p < SIGNIFICANCE_ALPHA;
+  const verdictClass = significant ? 'psi-sig-verdict psi-sig-verdict-yes' : 'psi-sig-verdict psi-sig-verdict-no';
+  const verdictText = significant ? 'Significant' : 'Not significant';
+  return `<code>${key}</code>: <span class="psi-sig-p">p = ${pFormatted}</span> — <span class="${verdictClass}">${verdictText}</span> <span class="psi-sig-alpha">(α = ${SIGNIFICANCE_ALPHA})</span>`;
+}
+
 async function loadJStat() {
   return new Promise((resolve, reject) => {
     // Check if jStat is already loaded globally
@@ -295,6 +317,27 @@ async function getResults(url, samples) {
 // UI generation and table management functions
 
 /**
+ * Converts raw PSI values to display units (seconds for paint metrics; CLS unchanged).
+ * @param {string} key - Metric key (FCP, SI, …)
+ * @param {number} raw - Raw Lighthouse numeric value
+ * @returns {number} Value in display units for coloring and formatting
+ */
+function metricRawToDisplay(key, raw) {
+  if (key === 'CLS') return raw;
+  if (['FCP', 'SI', 'LCP', 'TTI', 'TBT'].includes(key)) return raw / 1000;
+  return raw;
+}
+
+/**
+ * Formats a numeric table cell with exactly three digits after the decimal point.
+ * @param {number} n
+ * @returns {string}
+ */
+function formatFixed3(n) {
+  return Number(n).toFixed(3);
+}
+
+/**
  * Creates a comprehensive results table showing individual PSI results and statistical analysis.
  * @param {Object[]} results - Array of processed PSI results
  * @param {Object} averages - Object to populate with calculated representative values
@@ -331,23 +374,12 @@ function createTable(results, averages) {
     const dataRow = document.createElement('tr');
     keys.forEach((key) => {
       const td = document.createElement('td');
-      let value = result[key];
-      totals[key] = totals[key] ? totals[key] + value : value;
+      const raw = result[key];
+      totals[key] = totals[key] ? totals[key] + raw : raw;
 
-      // Format values appropriately for display
-      if (key === 'CLS') {
-        // CLS is unitless, show 3 decimal places for precision
-        value = Math.round(value * 1000) / 1000;
-      } else if (['FCP', 'SI', 'LCP', 'TTI', 'TBT'].includes(key)) {
-        // Convert milliseconds to seconds for time-based metrics (PSI returns ms)
-        value = Math.round((value / 1000) * 100) / 100; // Round to 2 decimal places
-      } else {
-        // Other metrics rounded to nearest integer
-        value = Math.round(value);
-      }
-
-      td.textContent = value;
-      td.style.color = getPerformanceColor(key, value);
+      const displayValue = metricRawToDisplay(key, raw);
+      td.textContent = formatFixed3(displayValue);
+      td.style.color = getPerformanceColor(key, displayValue);
       td.style.fontWeight = 'bold';
       dataRow.append(td);
     });
@@ -368,7 +400,7 @@ function createTable(results, averages) {
     const score = calculatePerformanceScore(scoreMetrics);
     const scoreInfo = getScoreColor(score);
     scoreTd.innerHTML = `<div class="score-container">
-        <div class="score-circle" style="background-color: ${scoreInfo.color}; color: white;">${score}</div>
+        <div class="score-circle" style="background-color: ${scoreInfo.color}; color: white;">${Math.round(score)}</div>
       </div>`;
     scoreTd.style.textAlign = 'center';
     dataRow.append(scoreTd);
@@ -382,38 +414,26 @@ function createTable(results, averages) {
   keys.forEach((key) => {
     const td = document.createElement('td');
     let psiVal = lowestCluster(keyToArray(results, key));
-    let value = mean(keyToArray(results, key));
+    let valueMean = mean(keyToArray(results, key));
     const deviation = stDev(keyToArray(results, key));
-    if (key === 'CLS') {
-      value = Math.round(value * 1000) / 1000;
-      psiVal = Math.round(psiVal * 1000) / 1000;
-    } else if (['FCP', 'SI', 'LCP', 'TTI', 'TBT'].includes(key)) {
-      // Convert milliseconds to seconds for time-based metrics
-      value = Math.round((value / 1000) * 100) / 100;
-      psiVal = Math.round((psiVal / 1000) * 100) / 100;
-    } else {
-      value = Math.round(value);
-      psiVal = Math.round(psiVal);
+    if (['FCP', 'SI', 'LCP', 'TTI', 'TBT'].includes(key)) {
+      psiVal /= 1000;
+      valueMean /= 1000;
     }
 
     // Store representative value for external use (Lighthouse calculator links)
     averages[key] = psiVal;
     const color = getPerformanceColor(key, psiVal);
 
-    // Format standard deviation to be more readable
-    let formattedDeviation;
-    if (key === 'CLS') {
-      formattedDeviation = Intl.NumberFormat({ maximumSignificantDigits: 3 }).format(deviation);
-    } else {
-      // For time-based metrics, format deviation in seconds with appropriate precision
-      const deviationInSeconds = deviation / 1000;
-      const formatOptions = { maximumSignificantDigits: 2 };
-      formattedDeviation = Intl.NumberFormat(formatOptions).format(deviationInSeconds);
+    let deviationDisplay = deviation;
+    if (['FCP', 'SI', 'LCP', 'TTI', 'TBT'].includes(key)) {
+      deviationDisplay = deviation / 1000;
     }
+    const formattedDeviation = formatFixed3(deviationDisplay);
 
     // Display both representative value (bold, colored) and statistical summary (smaller)
-    const valueSpan = `<span style="color: ${color}; font-weight: bold;">${psiVal}</span>`;
-    const deviationSpan = `<small style="color: var(--gray-600); font-size: 0.9em;">(${value} ± ${formattedDeviation})</small>`;
+    const valueSpan = `<span style="color: ${color}; font-weight: bold;">${formatFixed3(psiVal)}</span>`;
+    const deviationSpan = `<small style="color: var(--gray-600); font-size: 0.9em;">(${formatFixed3(valueMean)} ± ${formattedDeviation})</small>`;
     td.innerHTML = `${valueSpan}<br>${deviationSpan}`;
     avg.append(td);
   });
@@ -435,7 +455,7 @@ function createTable(results, averages) {
   const avgScore = calculatePerformanceScore(avgMetrics);
   const avgScoreInfo = getScoreColor(avgScore);
   const scoreCircleHtml = `<div class="score-container">
-      <div class="score-circle" style="background-color: ${avgScoreInfo.color}; color: white;">${avgScore}</div>
+      <div class="score-circle" style="background-color: ${avgScoreInfo.color}; color: white;">${Math.round(avgScore)}</div>
     </div>`;
   avgScoreTd.innerHTML = scoreCircleHtml;
   avgScoreTd.style.textAlign = 'center';
@@ -530,12 +550,11 @@ async function executePSI(num) {
   urlHeader.innerHTML = `<span class="loading-spinner"></span> Loading URL ${num}...`;
   output.appendChild(urlHeader);
 
-  // Determine number of API calls based on environment
   const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  const apiCalls = isLocalhost ? 2 : 20; // Production uses 20 for statistical reliability
+  const sampleCount = isLocalhost ? PSI_SAMPLE_COUNT_LOCAL : PSI_SAMPLE_COUNT;
 
   // Fetch multiple PSI results for statistical analysis
-  const rawResults = await getResults(url, apiCalls);
+  const rawResults = await getResults(url, sampleCount);
 
   // Map Google PSI audit names to our display names
   const categs = [
@@ -710,8 +729,7 @@ async function comparePSI() {
           // Perform two-sample t-test for this metric
           const p = await significancetest(keyToArray(res1, key), keyToArray(res2, key));
           const li = document.createElement('li');
-          // Format p-value with appropriate precision
-          li.innerHTML = `<code>${key}</code>: ${Intl.NumberFormat({ maximumSignificantDigits: 3 }).format(p)}`;
+          li.innerHTML = formatSignificanceListItemHtml(key, p);
           return li;
         } catch (error) {
           // eslint-disable-next-line no-console
