@@ -1,7 +1,18 @@
+function dedupKey(path) {
+  return path.replace(/\/index\.html$/, '/').replace(/^(\/tools\/[^/]+)\.html$/, '$1/');
+}
+
 function labelFromPath(path) {
-  const segment = path.split('/').filter(Boolean).find((s, i, a) => i > 0 && a[i - 1] === 'tools');
-  if (!segment) return path;
-  return segment.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  const parts = path.split('/').filter(Boolean);
+  const toolIdx = parts.indexOf('tools');
+  if (toolIdx < 0 || toolIdx + 1 >= parts.length) return path;
+  const stripExt = (s) => s.replace(/\.[^.]+$/, '');
+  const toolName = stripExt(parts[toolIdx + 1]);
+  const subParts = parts.slice(toolIdx + 2)
+    .map(stripExt)
+    .filter((s) => s && s !== 'index');
+  const label = [toolName, ...subParts].join(' – ');
+  return label.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function findTitle(path) {
@@ -38,7 +49,8 @@ export default async function decorate(block) {
     return { path, ts: Date.now() };
   });
   const merged = [...visits, ...links]
-    .filter((item, index, arr) => arr.findIndex((i) => i.path === item.path) === index)
+    .map((item) => ({ ...item, key: dedupKey(item.path) }))
+    .filter((item, i, arr) => arr.findIndex((v) => v.key === item.key) === i)
     .slice(0, 5);
   const heading = block.querySelector('h2');
   block.replaceChildren(buildRecentNav(merged, heading, visits.length > 0));
