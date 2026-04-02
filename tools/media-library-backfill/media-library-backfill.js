@@ -462,8 +462,7 @@ function getRateLimitedTarget(url) {
   }
 
   try {
-    // eslint-disable-next-line no-unused-vars
-    const validUrl = new URL(url); // validate URL
+    new URL(url); // validate URL
   } catch {
     log(`Invalid URL: ${url}`, 'warn');
     return null;
