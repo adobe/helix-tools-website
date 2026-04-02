@@ -230,7 +230,7 @@ function getScoreColor(score) {
  * @returns {string} HTML string
  */
 function formatSignificanceListItemHtml(key, p) {
-  const pFormatted = Intl.NumberFormat({ maximumSignificantDigits: 3 }).format(p);
+  const pFormatted = Intl.NumberFormat(undefined, { maximumSignificantDigits: 3 }).format(p);
   const significant = p < SIGNIFICANCE_ALPHA;
   const verdictClass = significant ? 'psi-sig-verdict psi-sig-verdict-yes' : 'psi-sig-verdict psi-sig-verdict-no';
   const verdictText = significant ? 'Significant' : 'Not significant';
