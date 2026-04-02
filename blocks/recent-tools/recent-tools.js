@@ -49,8 +49,8 @@ export default async function decorate(block) {
     return { path, ts: Date.now() };
   });
   const merged = [...visits, ...links]
-    .filter((item, i, arr) => arr
-      .findIndex((v) => dedupKey(v.path) === dedupKey(item.path)) === i)
+    .map((item) => ({ ...item, key: dedupKey(item.path) }))
+    .filter((item, i, arr) => arr.findIndex((v) => v.key === item.key) === i)
     .slice(0, 5);
   const heading = block.querySelector('h2');
   block.replaceChildren(buildRecentNav(merged, heading, visits.length > 0));
