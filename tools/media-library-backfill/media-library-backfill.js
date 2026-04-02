@@ -461,9 +461,7 @@ function getRateLimitedTarget(url) {
     };
   }
 
-  try {
-    new URL(url); // validate URL
-  } catch {
+  if (!URL.canParse(url)) {
     log(`Invalid URL: ${url}`, 'warn');
     return null;
   }
