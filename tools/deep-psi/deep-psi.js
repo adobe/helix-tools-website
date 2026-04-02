@@ -1,10 +1,45 @@
-// eslint-disable-next-line import/extensions, import/no-unresolved
-import pLimit from 'https://cdn.skypack.dev/p-limit@4.0.0';
 import { registerToolReady } from '../../scripts/scripts.js';
 
+/**
+ * Limits how many async tasks run at once (same behavior as p-limit).
+ * @param {number} concurrency
+ * @returns {(fn: () => Promise<unknown>) => Promise<unknown>}
+ */
+function createConcurrencyLimit(concurrency) {
+  const max = Math.max(1, Math.floor(concurrency));
+  const queue = [];
+  let active = 0;
+
+  const next = () => {
+    active -= 1;
+    if (queue.length > 0) {
+      queue.shift()();
+    }
+  };
+
+  return (fn) => new Promise((resolve, reject) => {
+    const run = () => {
+      active += 1;
+      Promise.resolve()
+        .then(() => fn())
+        .then(resolve, reject)
+        .finally(next);
+    };
+    if (active < max) {
+      run();
+    } else {
+      queue.push(run);
+    }
+  });
+}
+
 // Parse parallelism parameter from URL to control concurrent PSI requests
-const parallelism = new URL(window.location.href).searchParams.get('parallelism');
-const limit = pLimit(parallelism ? parseInt(parallelism, 10) : 10);
+const parallelismParam = new URL(window.location.href).searchParams.get('parallelism');
+const parsedParallelism = parallelismParam != null ? parseInt(parallelismParam, 10) : 10;
+const parallelism = Number.isFinite(parsedParallelism) && parsedParallelism > 0
+  ? parsedParallelism
+  : 10;
+const limit = createConcurrencyLimit(parallelism);
 
 /** Independent PSI runs per URL on localhost (faster iteration while developing). */
 const PSI_SAMPLE_COUNT_LOCAL = 2;
@@ -218,11 +253,130 @@ function getScoreColor(score) {
 
 // Statistical testing functions for comparing performance between URLs
 
-/**
- * Dynamically loads the jStat library for statistical calculations needed for significance testing.
- * @returns {Promise<void>} Promise that resolves when jStat is available
- * @throws {Error} If jStat library fails to load from CDN
+/*
+ * Log-gamma, incomplete-beta continued fraction, and I_x(a,b) below match jStat 1.9.5
+ * src/special.js (MIT, https://github.com/jstat/jstat). Student-t CDF uses the same
+ * ibeta form as jStat.studentt.cdf in src/distribution.js.
  */
+
+/**
+ * Log-gamma ln(Γ(x)).
+ * @param {number} x
+ * @returns {number}
+ */
+/* eslint-disable no-loss-of-precision -- jStat gammaln numeric coefficients */
+function gammaln(x) {
+  let j = 0;
+  const cof = [
+    76.18009172947146, -86.50532032941677, 24.01409824083091,
+    -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5,
+  ];
+  let ser = 1.000000000190015;
+  const xx = x;
+  let y = x;
+  let tmp = y + 5.5;
+  tmp -= (xx + 0.5) * Math.log(tmp);
+  for (; j < 6; j += 1) {
+    y += 1;
+    ser += cof[j] / y;
+  }
+  const stirling = Math.sqrt(2 * Math.PI);
+  return Math.log((stirling * ser) / xx) - tmp;
+}
+/* eslint-enable no-loss-of-precision */
+
+/**
+ * Continued fraction for incomplete beta (Lentz).
+ * @param {number} x
+ * @param {number} a
+ * @param {number} b
+ * @returns {number}
+ */
+function betacf(x, a, b) {
+  const fpmin = 1e-30;
+  let m = 1;
+  const qab = a + b;
+  const qap = a + 1;
+  const qam = a - 1;
+  let c = 1;
+  let d = 1 - (qab * x) / qap;
+  let m2; let aa; let del; let h;
+
+  if (Math.abs(d) < fpmin) {
+    d = fpmin;
+  }
+  d = 1 / d;
+  h = d;
+
+  for (; m <= 100; m += 1) {
+    m2 = 2 * m;
+    aa = (m * (b - m) * x) / ((qam + m2) * (a + m2));
+    d = 1 + aa * d;
+    if (Math.abs(d) < fpmin) {
+      d = fpmin;
+    }
+    c = 1 + aa / c;
+    if (Math.abs(c) < fpmin) {
+      c = fpmin;
+    }
+    d = 1 / d;
+    h *= d * c;
+    aa = (-(a + m) * (qab + m) * x) / ((a + m2) * (qap + m2));
+    d = 1 + aa * d;
+    if (Math.abs(d) < fpmin) {
+      d = fpmin;
+    }
+    c = 1 + aa / c;
+    if (Math.abs(c) < fpmin) {
+      c = fpmin;
+    }
+    d = 1 / d;
+    del = d * c;
+    h *= del;
+    if (Math.abs(del - 1.0) < 3e-7) {
+      break;
+    }
+  }
+
+  return h;
+}
+
+/**
+ * Regularized incomplete beta I_x(a,b).
+ * @param {number} x
+ * @param {number} a
+ * @param {number} b
+ * @returns {number}
+ */
+function regularizedIncompleteBeta(x, a, b) {
+  const bt = (x === 0 || x === 1) ? 0
+    : Math.exp(
+      gammaln(a + b) - gammaln(a) - gammaln(b) + a * Math.log(x) + b * Math.log(1 - x),
+    );
+  if (x < 0 || x > 1) {
+    return NaN;
+  }
+  if (x < (a + 1) / (a + b + 2)) {
+    return (bt * betacf(x, a, b)) / a;
+  }
+  return 1 - (bt * betacf(1 - x, b, a)) / b;
+}
+
+/**
+ * Student's t cumulative distribution F(t; ν), same construction as jStat.studentt.cdf.
+ * @param {number} t
+ * @param {number} dof Degrees of freedom
+ * @returns {number}
+ */
+function studentTCdf(t, dof) {
+  const dof2 = dof / 2;
+  return regularizedIncompleteBeta(
+    (t + Math.sqrt(t * t + dof)) / (2 * Math.sqrt(t * t + dof)),
+    dof2,
+    dof2,
+  );
+}
+
 /**
  * Builds list item HTML for a metric significance row (p-value + verdict vs α).
  * @param {string} key - Metric name
@@ -237,36 +391,13 @@ function formatSignificanceListItemHtml(key, p) {
   return `<code>${key}</code>: <span class="psi-sig-p">p = ${pFormatted}</span> — <span class="${verdictClass}">${verdictText}</span> <span class="psi-sig-alpha">(α = ${SIGNIFICANCE_ALPHA})</span>`;
 }
 
-async function loadJStat() {
-  return new Promise((resolve, reject) => {
-    // Check if jStat is already loaded globally
-    if (typeof jStat !== 'undefined') {
-      resolve();
-      return;
-    }
-
-    // Create script element to load jStat from CDN
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/jstat@latest/dist/jstat.min.js';
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load jStat'));
-    document.head.appendChild(script);
-  });
-}
-
 /**
  * Performs two-sample t-test to determine if performance differences are statistically significant.
  * @param {number[]} arr1 - Performance measurements from first URL
  * @param {number[]} arr2 - Performance measurements from second URL
- * @returns {Promise<number>} P-value indicating statistical significance (0-1)
+ * @returns {number} P-value (same one-tailed construction as before: 1 - cdf(|t|))
  */
-async function significancetest(arr1, arr2) {
-  // Ensure jStat library is loaded before performing calculations
-  if (typeof jStat === 'undefined') {
-    await loadJStat();
-  }
-
-  // Calculate basic statistics for both samples
+function significancetest(arr1, arr2) {
   const n1 = arr1.length;
   const n2 = arr2.length;
   const mean1 = mean(arr1);
@@ -274,19 +405,14 @@ async function significancetest(arr1, arr2) {
   const stDev1 = stDev(arr1);
   const stDev2 = stDev(arr2);
 
-  // Calculate pooled standard deviation (assumes equal variances)
   const pooledstDev = Math.sqrt(
     ((n1 - 1) * stDev1 * stDev1 + (n2 - 1) * stDev2 * stDev2) / (n1 + n2 - 2),
   );
 
-  // Calculate t-statistic for the difference in means
-  const t = (mean1 - mean2) / (pooledstDev * Math.sqrt(1 / n1 + 1 / n2));
-  const df = n1 + n2 - 2; // degrees of freedom
+  const tStat = (mean1 - mean2) / (pooledstDev * Math.sqrt(1 / n1 + 1 / n2));
+  const df = n1 + n2 - 2;
 
-  // Calculate p-value using jStat's Student's t-distribution CDF
-  // eslint-disable-next-line no-undef
-  const p = 1 - jStat.studentt.cdf(Math.abs(t), df);
-  return p;
+  return 1 - studentTCdf(Math.abs(tStat), df);
 }
 
 // PSI API interaction functions
@@ -779,26 +905,20 @@ async function comparePSI() {
     if (significancetestresults) {
       significancetestresults.innerHTML = ''; // Clear previous results
 
-      // Process significance tests asynchronously
-      const significancePromises = Object.keys(res1[0]).map(async (key) => {
+      Object.keys(res1[0]).forEach((key) => {
         try {
-          // Perform two-sample t-test for this metric
-          const p = await significancetest(keyToArray(res1, key), keyToArray(res2, key));
+          const p = significancetest(keyToArray(res1, key), keyToArray(res2, key));
           const li = document.createElement('li');
           li.innerHTML = formatSignificanceListItemHtml(key, p);
-          return li;
+          significancetestresults.append(li);
         } catch (error) {
           // eslint-disable-next-line no-console
           console.error(`Error calculating significance for ${key}:`, error);
           const li = document.createElement('li');
           li.innerHTML = `<code>${key}</code>: Error calculating significance`;
-          return li;
+          significancetestresults.append(li);
         }
       });
-
-      // Wait for all significance tests to complete
-      const significanceResults = await Promise.all(significancePromises);
-      significanceResults.forEach((li) => significancetestresults.append(li));
     }
   }
 
