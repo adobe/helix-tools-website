@@ -18,7 +18,6 @@ import {
 
 const ADMIN_BASE = 'https://admin.hlx.page';
 const DA_ETC_ORIGIN = 'https://da-etc.adobeaem.workers.dev';
-const AEM_PAGE_SUFFIX = '.aem.page';
 const REF = 'main';
 const MEDIALOG_IMPORT_BUNDLE_VERSION = 1;
 const PAGE_CRAWL_CONCURRENCY = 25;
@@ -463,19 +462,19 @@ function getRateLimitedTarget(url) {
   }
 
   try {
-    if (new URL(url).hostname.endsWith(AEM_PAGE_SUFFIX)) {
-      return {
-        limiter: aemPageLimiter,
-        label: 'aem.page',
-        queue503Backoff: true,
-        fetch: (targetUrl, fetchOptions) => etcFetch(targetUrl, 'cors', fetchOptions),
-      };
-    }
+    // eslint-disable-next-line no-unused-vars
+    const validUrl = new URL(url); // validate URL
   } catch {
+    log(`Invalid URL: ${url}`, 'warn');
     return null;
   }
 
-  return null;
+  return {
+    limiter: aemPageLimiter,
+    label: 'external',
+    queue503Backoff: true,
+    fetch: (targetUrl, fetchOptions) => etcFetch(targetUrl, 'cors', fetchOptions),
+  };
 }
 
 async function fetchWithRetry(url, options = {}, maxRetries = 3) {
