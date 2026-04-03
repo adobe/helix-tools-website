@@ -420,7 +420,7 @@ function resetForm(viewBox) {
       [...palette.children].forEach((swatch) => swatch.remove());
     }
   }
-  const specs = block.querySelector('div.form.specs');
+  const specs = block.querySelector('.form.specs');
   if (specs) {
     specs.setAttribute('aria-hidden', true);
   }
@@ -444,18 +444,17 @@ function disableForm(block) {
   if (controls) {
     controls.removeAttribute('aria-hidden');
   }
-  const specs = block.querySelector('div.form.specs');
+  const specs = block.querySelector('.form.specs');
   if (specs) {
     specs.removeAttribute('aria-hidden');
   }
 }
 
 async function buildForm(url) {
-  const doctor = createTag('div', { class: 'form specs' });
   const form = await createForm(url);
+  form.classList.add('form', 'specs');
   await loadCSS(`${window.hlx.codeBasePath}/blocks/form/form.css`);
-  doctor.append(...form.children);
-  return doctor;
+  return form;
 }
 
 function buildControlButton(specs, viewBox) {
