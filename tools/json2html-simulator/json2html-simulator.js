@@ -666,6 +666,33 @@ function syncSourceHighlights() {
 }
 
 /**
+ * Build a human-readable status message from validation results.
+ * Shows the first (most severe) message with line info, plus a
+ * "+N more" suffix when additional issues exist.
+ * @param {Array} results - Validation result items
+ * @returns {{ type: string, message: string }}
+ */
+function formatValidationStatus(results) {
+  if (results.length === 0) {
+    return { type: 'ok', message: 'Valid EDS HTML' };
+  }
+
+  const errors = results.filter((r) => r.severity === 'error');
+  const worst = errors.length > 0 ? errors[0] : results[0];
+  const type = errors.length > 0 ? 'error' : 'warning';
+
+  let msg = worst.message;
+  if (worst.line) msg += ` (line ${worst.line})`;
+
+  const remaining = results.length - 1;
+  if (remaining > 0) {
+    msg += ` +${remaining} more`;
+  }
+
+  return { type, message: msg };
+}
+
+/**
  * Display HTML validation results from the server.
  * Updates the preview status bar and highlights error lines in the source.
  * @param {object} validation - Validation result from /simulator
@@ -677,25 +704,8 @@ function displayHtmlValidation(validation) {
   }
 
   const { results } = validation;
-  const errors = results.filter((r) => r.severity === 'error');
-  const warnings = results.filter((r) => r.severity === 'warning');
-
-  if (results.length === 0) {
-    updatePreviewStatus('ok', 'Valid EDS HTML');
-  } else if (errors.length > 0) {
-    const parts = [];
-    if (errors.length) {
-      parts.push(`${errors.length} error${errors.length > 1 ? 's' : ''}`);
-    }
-    if (warnings.length) {
-      parts.push(`${warnings.length} warning${warnings.length > 1 ? 's' : ''}`);
-    }
-    updatePreviewStatus('error', `HTML: ${parts.join(', ')}`);
-  } else {
-    const n = warnings.length;
-    updatePreviewStatus('warning', `HTML: ${n} warning${n > 1 ? 's' : ''}`);
-  }
-
+  const { type, message } = formatValidationStatus(results);
+  updatePreviewStatus(type, message);
   renderSourceHighlights(results);
 }
 
