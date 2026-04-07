@@ -40,7 +40,6 @@ const sourceOutput = document.getElementById('source-output');
 const jsonStatus = document.getElementById('json-status');
 const templateStatus = document.getElementById('template-status');
 const previewStatus = document.getElementById('preview-status');
-const htmlStatus = document.getElementById('html-status');
 const sourceErrorHighlights = document.getElementById('source-error-highlights');
 
 // Preview tabs (Rendered vs Source toggle)
@@ -227,14 +226,12 @@ function updateStatus(statusEl, type, message) {
 }
 
 /**
- * Update preview status text
+ * Update preview status bar (icon + text).
+ * @param {string} type - 'ok', 'error', or 'warning'
  * @param {string} message - Status message
  */
-function updatePreviewStatus(message) {
-  const statusText = previewStatus?.querySelector('.status-text');
-  if (statusText) {
-    statusText.textContent = message;
-  }
+function updatePreviewStatus(type, message) {
+  updateStatus(previewStatus, type, message);
 }
 
 /**
@@ -561,7 +558,7 @@ function setLoadingState(show) {
     renderButton.textContent = show ? '⏳ Rendering...' : '▶ Render';
   }
   if (show) {
-    updatePreviewStatus('Rendering...');
+    updatePreviewStatus('ok', 'Rendering…');
   }
 }
 
@@ -618,11 +615,10 @@ function hideValidationError() {
 
 /**
  * Hide HTML validation status and source error highlights.
+ * Shows a neutral message when no preview is available.
  */
 function hideHtmlValidation() {
-  if (htmlStatus) {
-    updateStatus(htmlStatus, 'ok', 'HTML');
-  }
+  updatePreviewStatus('error', 'No preview — fix errors above');
   if (sourceErrorHighlights) {
     sourceErrorHighlights.innerHTML = '';
   }
@@ -671,7 +667,7 @@ function syncSourceHighlights() {
 
 /**
  * Display HTML validation results from the server.
- * Updates the bottom status bar and highlights error lines in the source.
+ * Updates the preview status bar and highlights error lines in the source.
  * @param {object} validation - Validation result from /simulator
  */
 function displayHtmlValidation(validation) {
@@ -681,26 +677,23 @@ function displayHtmlValidation(validation) {
   }
 
   const { results } = validation;
+  const errors = results.filter((r) => r.severity === 'error');
+  const warnings = results.filter((r) => r.severity === 'warning');
 
-  if (htmlStatus) {
-    const errors = results.filter((r) => r.severity === 'error');
-    const warnings = results.filter((r) => r.severity === 'warning');
-
-    if (results.length === 0) {
-      updateStatus(htmlStatus, 'ok', 'Valid EDS HTML');
-    } else if (errors.length > 0) {
-      const parts = [];
-      if (errors.length) {
-        parts.push(`${errors.length} error${errors.length > 1 ? 's' : ''}`);
-      }
-      if (warnings.length) {
-        parts.push(`${warnings.length} warning${warnings.length > 1 ? 's' : ''}`);
-      }
-      updateStatus(htmlStatus, 'error', `HTML: ${parts.join(', ')}`);
-    } else {
-      const n = warnings.length;
-      updateStatus(htmlStatus, 'warning', `HTML: ${n} warning${n > 1 ? 's' : ''}`);
+  if (results.length === 0) {
+    updatePreviewStatus('ok', 'Valid EDS HTML');
+  } else if (errors.length > 0) {
+    const parts = [];
+    if (errors.length) {
+      parts.push(`${errors.length} error${errors.length > 1 ? 's' : ''}`);
     }
+    if (warnings.length) {
+      parts.push(`${warnings.length} warning${warnings.length > 1 ? 's' : ''}`);
+    }
+    updatePreviewStatus('error', `HTML: ${parts.join(', ')}`);
+  } else {
+    const n = warnings.length;
+    updatePreviewStatus('warning', `HTML: ${n} warning${n > 1 ? 's' : ''}`);
   }
 
   renderSourceHighlights(results);
@@ -850,6 +843,7 @@ async function render() {
   const jsonData = validateJson();
   if (!jsonData) {
     updatePreview('');
+    hideHtmlValidation();
     return;
   }
 
@@ -857,6 +851,7 @@ async function render() {
   const validationError = validateOptionsTemplateCompatibility(jsonData, options, template);
   if (validationError) {
     displayValidationError(validationError);
+    hideHtmlValidation();
     return;
   }
   hideValidationError();
@@ -870,7 +865,6 @@ async function render() {
     updatePreview(result.html);
     updateStatus(templateStatus, 'ok', 'Rendered successfully');
     setErrorHighlight(templateInput, templateErrorHighlight);
-    updatePreviewStatus('Last rendered: just now');
     displayHtmlValidation(result.validation);
   } catch (e) {
     if (e.name === 'AbortError') return;

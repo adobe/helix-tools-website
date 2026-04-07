@@ -678,23 +678,27 @@ body.json2html-simulator .error-line-highlight {
 }
 
 /* Error state styling for better visibility */
-.editor-status:has(.status-error) {
+.editor-status:has(.status-error),
+.preview-status:has(.status-error) {
   background: light-dark(var(--red-100), var(--red-900));
   border-top-color: light-dark(var(--red-300), var(--red-700));
 }
 
-.editor-status:has(.status-error) .status-text {
+.editor-status:has(.status-error) .status-text,
+.preview-status:has(.status-error) .status-text {
   color: light-dark(var(--red-900), var(--red-300));
   font-weight: var(--weight-medium);
 }
 
 /* Warning state styling */
-.editor-status:has(.status-warning) {
+.editor-status:has(.status-warning),
+.preview-status:has(.status-warning) {
   background: light-dark(var(--yellow-100), var(--yellow-900));
   border-top-color: light-dark(var(--yellow-300), var(--yellow-700));
 }
 
-.editor-status:has(.status-warning) .status-text {
+.editor-status:has(.status-warning) .status-text,
+.preview-status:has(.status-warning) .status-text {
   color: light-dark(var(--yellow-900), var(--yellow-300));
   font-weight: var(--weight-medium);
 }
@@ -955,16 +959,18 @@ body.json2html-simulator main .resizer-horizontal {
   background-color: transparent;
 }
 
+/* stylelint-disable-next-line no-descending-specificity */
 .preview-status {
   flex: 0 0 auto;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: var(--spacing-300);
+  gap: var(--spacing-100);
   padding: var(--spacing-100) var(--spacing-300);
   background: light-dark(var(--gray-50), var(--gray-800));
   border-top: var(--border-s) solid var(--color-border);
   font-size: var(--detail-size-m);
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* stylelint-disable-next-line no-descending-specificity */
@@ -973,6 +979,7 @@ body.json2html-simulator main .resizer-horizontal {
 }
 
 .preview-status .status-hint {
+  margin-left: auto;
   color: var(--color-font-grey);
   font-size: var(--detail-size-s);
 }
