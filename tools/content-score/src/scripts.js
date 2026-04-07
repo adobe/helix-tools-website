@@ -897,7 +897,7 @@ export default async function analyzeContent(doc = document) {
 /**
  * Updates visibility of badge's dismiss button based on error/warning counts and tray open state.
  * On Needs Improvement, the close button appears only after the user has opened the tray once.
- * @param {HTMLElement} badge - The .content-score wrapper element
+ * @param {HTMLElement} badge - The .content-score-badge wrapper element
  */
 function updateBadgeDismissVisibility(badge) {
   const errors = parseInt(badge.dataset.errors, 10) || 0;
@@ -934,7 +934,7 @@ function renderBadge(result, closeIcon) {
   const countText = getCountText(errors, warnings);
   const badgeCopy = getBadgeCopy()[score];
 
-  const existingBadge = document.querySelector('.content-score');
+  const existingBadge = document.querySelector('.content-score-badge');
   const existingTray = document.querySelector('content-score-tray');
   if (existingBadge) existingBadge.remove();
   if (existingTray) existingTray.remove();
@@ -946,7 +946,7 @@ function renderBadge(result, closeIcon) {
   const headline = badgeCopy.action
     ? `<span class="badge-message">${badgeCopy.message}</span> <span class="badge-action">${badgeCopy.action}</span>`
     : `<span class="badge-message">${badgeCopy.message}</span>`;
-  const badgeHtml = `<div class="content-score score-${score} count-visible" role="group" aria-label="Content score" data-errors="${errors}" data-warnings="${warnings}">
+  const badgeHtml = `<div class="content-score-badge score-${score} count-visible" role="group" aria-label="Content score" data-errors="${errors}" data-warnings="${warnings}">
     <button type="button" class="content-score-toggle" aria-expanded="false" aria-controls="content-score-tray" aria-label="${badgeCopy.message}${badgeCopy.action ? `. ${badgeCopy.action}` : ''}. ${countText}">
       <p class="badge-headline">${headline}</p>
       <p class="badge-count">${countText}</p>
@@ -954,7 +954,7 @@ function renderBadge(result, closeIcon) {
     ${dismissHtml}
   </div>`;
   document.body.insertAdjacentHTML('beforeend', badgeHtml);
-  const badge = document.querySelector('.content-score');
+  const badge = document.querySelector('.content-score-badge');
   const toggle = badge.querySelector('.content-score-toggle');
 
   const tray = document.createElement('content-score-tray');
@@ -985,7 +985,7 @@ function renderBadge(result, closeIcon) {
     }
   }
   function onTrayClose() {
-    const b = document.querySelector('.content-score');
+    const b = document.querySelector('.content-score-badge');
     if (!b) return;
     const t = b.querySelector('.content-score-toggle');
     if (t) t.setAttribute('aria-expanded', 'false');
@@ -1031,7 +1031,7 @@ export async function init() {
     const observer = new MutationObserver(() => {
       if (!sk.open) {
         observer.disconnect();
-        const badge = document.querySelector('.content-score');
+        const badge = document.querySelector('.content-score-badge');
         if (badge) badge.remove();
         const tray = document.querySelector('content-score-tray');
         if (tray) tray.remove();
