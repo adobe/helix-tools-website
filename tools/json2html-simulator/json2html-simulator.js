@@ -675,27 +675,29 @@ function hideHtmlValidation() {
 function renderSourceHighlights(results) {
   if (!sourceErrorHighlights || !sourceOutput) return;
 
+  sourceErrorHighlights.replaceChildren();
+
   const linesWithIssues = results.filter((r) => r.line);
-  if (linesWithIssues.length === 0) {
-    sourceErrorHighlights.innerHTML = '';
-    return;
-  }
+  if (linesWithIssues.length === 0) return;
 
   const style = getComputedStyle(sourceOutput);
   const paddingTop = parseFloat(style.paddingTop);
   const lineHeight = parseFloat(style.lineHeight);
 
   const seen = new Set();
-  sourceErrorHighlights.innerHTML = linesWithIssues.map((r) => {
-    if (seen.has(r.line)) return '';
+  linesWithIssues.forEach((r) => {
+    if (seen.has(r.line)) return;
     seen.add(r.line);
     const top = paddingTop + (r.line - 1) * lineHeight;
     const cls = r.severity === 'error'
       ? 'source-highlight-error' : 'source-highlight-warning';
-    return `<div class="source-highlight ${cls}" `
-      + `style="top:${top}px;height:${lineHeight}px" `
-      + `title="${escapeHtml(r.message)}"></div>`;
-  }).join('');
+    const band = document.createElement('div');
+    band.className = `source-highlight ${cls}`;
+    band.style.top = `${top}px`;
+    band.style.height = `${lineHeight}px`;
+    band.title = r.message;
+    sourceErrorHighlights.appendChild(band);
+  });
 }
 
 /**
@@ -763,24 +765,39 @@ function buildValidationDetails(results) {
     return;
   }
 
-  validationDetails.innerHTML = results.map((r) => {
-    const icon = r.severity === 'error' ? '✗' : '⚠';
-    const lineAttr = r.line ? ` data-line="${r.line}"` : '';
-    const lineLabel = r.line ? `<span class="detail-line">line ${r.line}</span>` : '';
-    return `<div class="validation-detail-row"${lineAttr}>`
-      + `<span class="detail-severity">${icon}</span>`
-      + `<span class="detail-msg">${escapeHtml(r.message)}</span>`
-      + `${lineLabel}</div>`;
-  }).join('');
+  validationDetails.replaceChildren();
 
-  validationDetails.hidden = true;
-  validationDetails.querySelectorAll('.validation-detail-row').forEach((row) => {
+  results.forEach((r) => {
+    const row = document.createElement('div');
+    row.className = 'validation-detail-row';
+    if (r.line) row.dataset.line = r.line;
+
+    const severity = document.createElement('span');
+    severity.className = 'detail-severity';
+    severity.textContent = r.severity === 'error' ? '✗' : '⚠';
+    row.appendChild(severity);
+
+    const msg = document.createElement('span');
+    msg.className = 'detail-msg';
+    msg.textContent = r.message;
+    row.appendChild(msg);
+
+    if (r.line) {
+      const lineLabel = document.createElement('span');
+      lineLabel.className = 'detail-line';
+      lineLabel.textContent = `line ${r.line}`;
+      row.appendChild(lineLabel);
+    }
+
     row.addEventListener('click', () => {
       const line = parseInt(row.dataset.line, 10);
       if (line) scrollSourceToLine(line);
     });
+
+    validationDetails.appendChild(row);
   });
 
+  validationDetails.hidden = true;
   previewStatus?.classList.add('has-details');
 }
 

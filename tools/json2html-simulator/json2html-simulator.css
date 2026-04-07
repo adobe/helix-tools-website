@@ -1597,13 +1597,4 @@ body.json2html-simulator .hidden {
   filter: brightness(0.96);
 }
 
-.preview-status .status-toggle {
-  font-size: var(--detail-size-xs);
-  color: var(--color-font-grey);
-  transition: transform 0.15s ease;
-}
-
-.preview-status.expanded .status-toggle {
-  transform: rotate(180deg);
-}
 
