@@ -1,6 +1,7 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
-import { diffJson } from './diff.js';
+// eslint-disable-next-line import/no-unresolved, import/no-absolute-path
+import { diffJson } from '/vendor/diff.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 

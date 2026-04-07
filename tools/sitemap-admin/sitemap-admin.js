@@ -473,8 +473,8 @@ async function init() {
 
     if (resp.ok) {
       updateConfig();
-      // eslint-disable-next-line import/no-unresolved
-      YAML = YAML || await import('https://unpkg.com/yaml@2.8.1/browser/index.js');
+      // eslint-disable-next-line import/no-unresolved, import/no-absolute-path
+      YAML = YAML || await import('/vendor/yaml.js');
 
       const yamlText = await resp.text();
       loadedSitemaps = YAML.parse(yamlText);
@@ -483,8 +483,8 @@ async function init() {
       addSitemapButton.disabled = false;
     } else if (resp.status === 404) {
       updateConfig();
-      // eslint-disable-next-line import/no-unresolved
-      YAML = YAML || await import('https://unpkg.com/yaml@2.8.1/browser/index.js');
+      // eslint-disable-next-line import/no-unresolved, import/no-absolute-path
+      YAML = YAML || await import('/vendor/yaml.js');
 
       loadedSitemaps = { version: 1, sitemaps: {} };
       populateSitemaps({});

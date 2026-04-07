@@ -1,5 +1,6 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import { diffChars } from './diff.js';
+// eslint-disable-next-line import/no-unresolved, import/no-absolute-path
+import { diffChars } from '/vendor/diff.js';
 
 const scannerForm = document.getElementById('scanner-form');
 const resultsTable = document.querySelector('#results tbody');

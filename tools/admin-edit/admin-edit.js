@@ -24,7 +24,7 @@ async function loadPrism() {
   body.removeEventListener('focus', loadPrism);
   if (!prismReady) {
     prismReady = (async () => {
-      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js');
+      await loadScript('/vendor/prismjs/prism.min.js');
       await loadScript('../admin-edit/line-highlight.js');
     })();
   }

@@ -1,7 +1,7 @@
 /* eslint-disable no-undef */
 import { loadScript, loadCSS } from '../../scripts/aem.js';
 
-const PRISM_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0';
+const PRISM_CDN = '/vendor/prismjs';
 
 /**
  * Highlights <pre><code> element with Prism.js.
