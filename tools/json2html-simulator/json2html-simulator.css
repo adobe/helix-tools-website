@@ -1531,3 +1531,74 @@ body.json2html-simulator .hidden {
   background: light-dark(rgb(200 150 0 / 10%), rgb(255 200 50 / 12%));
 }
 
+/* ========================================
+   VALIDATION DETAILS — EXPANDABLE LIST
+   ======================================== */
+
+.validation-details {
+  flex: 0 0 auto;
+  max-height: 160px;
+  overflow-y: auto;
+  border-top: var(--border-s) solid var(--color-border);
+  background: light-dark(var(--gray-50), var(--gray-800));
+  font-size: var(--detail-size-s);
+}
+
+.validation-details[hidden] {
+  display: none;
+}
+
+.validation-detail-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-100);
+  padding: var(--spacing-75) var(--spacing-300);
+  border-bottom: 1px solid light-dark(var(--gray-100), var(--gray-700));
+  cursor: pointer;
+}
+
+.validation-detail-row:last-child {
+  border-bottom: none;
+}
+
+.validation-detail-row:hover {
+  background: light-dark(var(--gray-100), var(--gray-700));
+}
+
+.validation-detail-row .detail-severity {
+  flex-shrink: 0;
+  font-size: var(--detail-size-xs);
+  line-height: 1;
+}
+
+.validation-detail-row .detail-msg {
+  flex: 1;
+  min-width: 0;
+}
+
+.validation-detail-row .detail-line {
+  flex-shrink: 0;
+  color: var(--color-font-grey);
+  font-family: var(--font-code);
+  font-size: var(--detail-size-xs);
+}
+
+/* Make status bar clickable when there are multiple issues */
+.preview-status.has-details {
+  cursor: pointer;
+}
+
+.preview-status.has-details:hover {
+  filter: brightness(0.96);
+}
+
+.preview-status .status-toggle {
+  font-size: var(--detail-size-xs);
+  color: var(--color-font-grey);
+  transition: transform 0.15s ease;
+}
+
+.preview-status.expanded .status-toggle {
+  transform: rotate(180deg);
+}
+

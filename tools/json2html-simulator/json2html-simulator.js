@@ -42,6 +42,7 @@ const templateStatus = document.getElementById('template-status');
 const previewStatus = document.getElementById('preview-status');
 const sourceErrorHighlights = document.getElementById('source-error-highlights');
 const sourceLineNumbers = document.getElementById('source-line-numbers');
+const validationDetails = document.getElementById('validation-details');
 
 // Preview tabs (Rendered vs Source toggle)
 const previewTabs = document.querySelectorAll('.preview-tab');
@@ -624,11 +625,25 @@ function hideValidationError() {
 }
 
 /**
+ * Hide the validation details panel and reset the status bar toggle state.
+ */
+function collapseValidationDetails() {
+  if (validationDetails) {
+    validationDetails.hidden = true;
+    validationDetails.innerHTML = '';
+  }
+  if (previewStatus) {
+    previewStatus.classList.remove('has-details', 'expanded');
+  }
+}
+
+/**
  * Hide HTML validation status and source error highlights.
  * Shows a neutral message when no preview is available.
  */
 function hideHtmlValidation() {
   updatePreviewStatus('error', 'No preview — fix errors above');
+  collapseValidationDetails();
   if (sourceErrorHighlights) {
     sourceErrorHighlights.innerHTML = '';
   }
@@ -700,10 +715,57 @@ function formatValidationStatus(results) {
 
   const remaining = results.length - 1;
   if (remaining > 0) {
-    msg += ` +${remaining} more`;
+    msg += ` (+${remaining} more)`;
   }
 
   return { type, message: msg };
+}
+
+/**
+ * Scroll the source `<pre>` to bring a specific line into view.
+ * @param {number} line - 1-based line number
+ */
+function scrollSourceToLine(line) {
+  if (!sourceOutput || !line) return;
+  const style = getComputedStyle(sourceOutput);
+  const paddingTop = parseFloat(style.paddingTop);
+  const lineHeight = parseFloat(style.lineHeight);
+  const lineTop = paddingTop + (line - 1) * lineHeight;
+  const center = (sourceOutput.clientHeight - lineHeight) / 2;
+  sourceOutput.scrollTop = Math.max(0, lineTop - center);
+}
+
+/**
+ * Populate the expandable validation detail list.
+ * Each row shows severity icon, message, and line number.
+ * Clicking a row scrolls the source to that line.
+ * @param {Array} results - Validation result items
+ */
+function buildValidationDetails(results) {
+  if (!validationDetails || results.length < 2) {
+    collapseValidationDetails();
+    return;
+  }
+
+  validationDetails.innerHTML = results.map((r) => {
+    const icon = r.severity === 'error' ? '✗' : '⚠';
+    const lineAttr = r.line ? ` data-line="${r.line}"` : '';
+    const lineLabel = r.line ? `<span class="detail-line">line ${r.line}</span>` : '';
+    return `<div class="validation-detail-row"${lineAttr}>`
+      + `<span class="detail-severity">${icon}</span>`
+      + `<span class="detail-msg">${r.message}</span>`
+      + `${lineLabel}</div>`;
+  }).join('');
+
+  validationDetails.hidden = true;
+  validationDetails.querySelectorAll('.validation-detail-row').forEach((row) => {
+    row.addEventListener('click', () => {
+      const line = parseInt(row.dataset.line, 10);
+      if (line) scrollSourceToLine(line);
+    });
+  });
+
+  previewStatus?.classList.add('has-details');
 }
 
 /**
@@ -721,6 +783,7 @@ function displayHtmlValidation(validation) {
   const { type, message } = formatValidationStatus(results);
   updatePreviewStatus(type, message);
   renderSourceHighlights(results);
+  buildValidationDetails(results);
 }
 
 /**
@@ -1773,6 +1836,13 @@ function setupButtons() {
   // Validation close button
   const validationCloseBtn = document.getElementById('validation-close');
   validationCloseBtn?.addEventListener('click', hideValidationError);
+
+  // Toggle validation details when clicking the preview status bar
+  previewStatus?.addEventListener('click', () => {
+    if (!previewStatus.classList.contains('has-details')) return;
+    const isExpanded = previewStatus.classList.toggle('expanded');
+    if (validationDetails) validationDetails.hidden = !isExpanded;
+  });
 }
 
 /**
