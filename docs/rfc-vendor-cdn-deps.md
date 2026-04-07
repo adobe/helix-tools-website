@@ -87,19 +87,6 @@ For each dependency, evaluate whether the specific functions used could be hand-
 
 **Follow-up opportunity:** `chartjs-adapter-luxon` + `luxon` (~70KB combined) could be replaced with a native `Intl.DateTimeFormat`-based adapter in a separate PR. Chart.js 4 supports custom date adapters.
 
-### Option D: download-esm Tool
-
-Use Simon Willison's `download-esm` (https://github.com/simonw/download-esm) to download pre-built ESM bundles from jsDelivr and commit them.
-
-**Assessment:** Not suitable.
-- Alpha quality (`0.1a0`), unmaintained since May 2023
-- No peer dependency handling (critical for chart.js plugin ecosystem)
-- Produces many small files instead of bundles (40+ files for a complex package)
-- Python dependency in a Node.js project
-- Known breakage with duplicate versions and dynamic imports
-
-The concept is sound but esbuild does it better from `node_modules`.
-
 ## CDN Comparison
 
 We evaluated consolidating to a single CDN as part of Option B:
