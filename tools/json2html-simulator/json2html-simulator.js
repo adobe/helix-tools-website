@@ -41,6 +41,7 @@ const jsonStatus = document.getElementById('json-status');
 const templateStatus = document.getElementById('template-status');
 const previewStatus = document.getElementById('preview-status');
 const sourceErrorHighlights = document.getElementById('source-error-highlights');
+const sourceLineNumbers = document.getElementById('source-line-numbers');
 
 // Preview tabs (Rendered vs Source toggle)
 const previewTabs = document.querySelectorAll('.preview-tab');
@@ -306,6 +307,15 @@ function updatePreview(html) {
       codeEl.className = 'language-html';
       highlight(codeEl);
     }
+  }
+
+  // Update source line numbers
+  if (sourceLineNumbers) {
+    const lineCount = html ? (html.match(/\n/g) || []).length + 1 : 0;
+    sourceLineNumbers.textContent = Array.from(
+      { length: lineCount },
+      (_, i) => i + 1,
+    ).join('\n');
   }
 }
 
@@ -658,11 +668,15 @@ function renderSourceHighlights(results) {
 }
 
 /**
- * Keep source error highlights in sync when the source `<pre>` is scrolled.
+ * Keep source line numbers and error highlights in sync when the `<pre>` scrolls.
  */
-function syncSourceHighlights() {
-  if (!sourceErrorHighlights || !sourceOutput) return;
-  sourceErrorHighlights.style.transform = `translateY(-${sourceOutput.scrollTop}px)`;
+function syncSourceOverlays() {
+  if (!sourceOutput) return;
+  const { scrollTop } = sourceOutput;
+  if (sourceLineNumbers) sourceLineNumbers.scrollTop = scrollTop;
+  if (sourceErrorHighlights) {
+    sourceErrorHighlights.style.transform = `translateY(-${scrollTop}px)`;
+  }
 }
 
 /**
@@ -1612,7 +1626,7 @@ function setupEditorListeners() {
     syncErrorHighlight(templateInput, templateErrorHighlight);
   });
 
-  sourceOutput?.addEventListener('scroll', syncSourceHighlights);
+  sourceOutput?.addEventListener('scroll', syncSourceOverlays);
 }
 
 /**
