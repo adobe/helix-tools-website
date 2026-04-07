@@ -930,8 +930,7 @@ body.json2html-simulator main .resizer-horizontal {
   line-height: var(--line-height-l);
   background: light-dark(var(--gray-100), var(--gray-800));
   color: var(--color-text);
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
+  white-space: pre;
   border-radius: 0; /* Override global pre styling */
   box-sizing: border-box;
 }

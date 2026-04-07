@@ -453,6 +453,17 @@ function formatJson() {
 }
 
 /**
+ * Escape HTML special characters so strings can be safely injected via innerHTML.
+ * @param {string} str - Raw string
+ * @returns {string} Escaped string
+ */
+function escapeHtml(str) {
+  const el = document.createElement('span');
+  el.textContent = str;
+  return el.innerHTML;
+}
+
+/**
  * Get nested value from object using dot notation path
  * @param {Object} obj - Object to traverse
  * @param {string} path - Dot notation path (e.g., "data.items")
@@ -524,17 +535,21 @@ function validateOptionsTemplateCompatibility(jsonData, options, template) {
         const hasArrayIteration = /\{\{#\s*\.\s*\}\}/.test(template);
 
         if (!hasArrayIteration) {
+          const safeKey = escapeHtml(options.arrayKey);
           return {
             type: 'array_iteration_missing',
             title: 'Template Missing Array Iteration',
             message: `Your arrayKey "${options.arrayKey}" points to an array with ${arrayData.length} item${arrayData.length === 1 ? '' : 's'}, but your template doesn't iterate over it.`,
-            suggestion: `Wrap your template in <code>{{#.}}...{{/.}}</code> to loop over array items.<br><br>
-<strong>Example:</strong><br>
-<code>{{#.}}<br>
-&nbsp;&nbsp;&lt;h1&gt;{{name}}&lt;/h1&gt;<br>
-&nbsp;&nbsp;&lt;p&gt;{{description}}&lt;/p&gt;<br>
-{{/.}}</code><br><br>
-<strong>Alternative:</strong> Remove arrayKey and use <code>{{#${options.arrayKey}}}...{{/${options.arrayKey}}}</code> in your template instead.`,
+            suggestion: 'Wrap your template in <code>{{#.}}...{{/.}}</code>'
+              + ' to loop over array items.<br><br>'
+              + '<strong>Example:</strong><br>'
+              + '<code>{{#.}}<br>'
+              + '&nbsp;&nbsp;&lt;h1&gt;{{name}}&lt;/h1&gt;<br>'
+              + '&nbsp;&nbsp;&lt;p&gt;{{description}}&lt;/p&gt;<br>'
+              + '{{/.}}</code><br><br>'
+              + '<strong>Alternative:</strong> Remove arrayKey and use '
+              + `<code>{{#${safeKey}}}...{{/${safeKey}}}</code>`
+              + ' in your template instead.',
             arrayLength: arrayData.length,
           };
         }
@@ -648,17 +663,6 @@ function hideHtmlValidation() {
   if (sourceErrorHighlights) {
     sourceErrorHighlights.innerHTML = '';
   }
-}
-
-/**
- * Escape HTML special characters so strings can be safely injected via innerHTML.
- * @param {string} str - Raw string
- * @returns {string} Escaped string
- */
-function escapeHtml(str) {
-  const el = document.createElement('span');
-  el.textContent = str;
-  return el.innerHTML;
 }
 
 /**
