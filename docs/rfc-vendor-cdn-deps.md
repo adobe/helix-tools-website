@@ -113,7 +113,7 @@ Analysis by William Woodruff (https://blog.yossarian.net/2025/11/21/We-should-al
 
 ### SRI via Import Maps
 
-Browser support for import map `integrity` field is now available (Chrome 127+, Safari 18+, Firefox). However, SRI only works with byte-identical responses. CDNs that do on-the-fly ESM transformation (esm.sh, jsDelivr `/+esm`) can change output when they update their build pipeline, silently breaking integrity checks. This makes SRI fragile for the CDN approach. For vendoring, SRI is not applicable — vendored files are served from the same origin as the HTML, so an attacker who could tamper with the JS could equally tamper with the integrity hashes themselves. Same-origin integrity is a function of TLS and infrastructure trust, not SRI.
+Browser support for import map `integrity` field is now available (Chrome 127+, Safari 18+, Firefox). However, SRI only works with byte-identical responses. CDNs that do on-the-fly ESM transformation (esm.sh, jsDelivr `/+esm`) can change output when they update their build pipeline, silently breaking integrity checks. This makes SRI fragile for the CDN approach. SRI doesn't apply to vendored files. The AEM origin is a baseline trust boundary; if it's compromised, the attacker controls both the served JS and the integrity hashes.
 
 ## Dependabot Cooldown Configuration
 
