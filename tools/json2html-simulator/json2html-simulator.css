@@ -797,7 +797,7 @@ body.json2html-simulator main .resizer-horizontal {
   flex-direction: column;
   width: 100%;
   min-height: 80px;
-  min-width: 0; /* Prevent content from affecting flex size */
+  min-width: 0;
   overflow: hidden;
   border-top: var(--border-s) solid var(--color-border);
 }
@@ -1536,12 +1536,17 @@ body.json2html-simulator .hidden {
    ======================================== */
 
 .validation-details {
-  flex: 0 0 auto;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
   max-height: 160px;
   overflow-y: auto;
   border-top: var(--border-s) solid var(--color-border);
   background: light-dark(var(--gray-50), var(--gray-800));
   font-size: var(--detail-size-s);
+  z-index: 3;
+  box-shadow: 0 -2px 8px light-dark(rgb(0 0 0 / 8%), rgb(0 0 0 / 20%));
 }
 
 .validation-details[hidden] {
@@ -1552,9 +1557,10 @@ body.json2html-simulator .hidden {
   display: flex;
   align-items: baseline;
   gap: var(--spacing-100);
-  padding: var(--spacing-75) var(--spacing-300);
+  padding: var(--spacing-100) var(--spacing-300);
   border-bottom: 1px solid light-dark(var(--gray-100), var(--gray-700));
   cursor: pointer;
+  min-height: 28px;
 }
 
 .validation-detail-row:last-child {

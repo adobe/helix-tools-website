@@ -650,6 +650,17 @@ function hideHtmlValidation() {
 }
 
 /**
+ * Escape HTML special characters so strings can be safely injected via innerHTML.
+ * @param {string} str - Raw string
+ * @returns {string} Escaped string
+ */
+function escapeHtml(str) {
+  const el = document.createElement('span');
+  el.textContent = str;
+  return el.innerHTML;
+}
+
+/**
  * Render error/warning line highlights in the source view.
  * Measures actual line height from the source `<pre>` and positions
  * translucent bands over each flagged line, matching the
@@ -678,7 +689,7 @@ function renderSourceHighlights(results) {
       ? 'source-highlight-error' : 'source-highlight-warning';
     return `<div class="source-highlight ${cls}" `
       + `style="top:${top}px;height:${lineHeight}px" `
-      + `title="${r.message}"></div>`;
+      + `title="${escapeHtml(r.message)}"></div>`;
   }).join('');
 }
 
@@ -753,7 +764,7 @@ function buildValidationDetails(results) {
     const lineLabel = r.line ? `<span class="detail-line">line ${r.line}</span>` : '';
     return `<div class="validation-detail-row"${lineAttr}>`
       + `<span class="detail-severity">${icon}</span>`
-      + `<span class="detail-msg">${r.message}</span>`
+      + `<span class="detail-msg">${escapeHtml(r.message)}</span>`
       + `${lineLabel}</div>`;
   }).join('');
 
