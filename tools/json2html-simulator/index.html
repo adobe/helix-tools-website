@@ -161,27 +161,24 @@
               class="code-editor" 
               spellcheck="false" 
               placeholder="Enter your Mustache template here..."
-            ><article class="content-card">
+            ><div>
   <h1>{{title}}</h1>
-  <p class="description">{{description}}</p>
-  
-  <section class="features">
-    <h2>Features</h2>
-    <ul>
-      {{#features}}
-      <li class="feature {{#enabled}}enabled{{/enabled}}">
-        <span class="feature-name">{{name}}</span>
-        {{#enabled}}<span class="badge">Active</span>{{/enabled}}
-      </li>
-      {{/features}}
-    </ul>
-  </section>
-  
-  <footer class="author-info">
-    <p>Created by <strong>{{author.name}}</strong></p>
-    <p class="role">{{author.role}}</p>
-  </footer>
-</article></textarea>
+  <p>{{description}}</p>
+</div>
+<div>
+  <h2>Features</h2>
+  <ul>
+    {{#features}}
+    <li>
+      {{name}}{{#enabled}} ✓{{/enabled}}
+    </li>
+    {{/features}}
+  </ul>
+</div>
+<div>
+  <p>Created by <strong>{{author.name}}</strong></p>
+  <p>{{author.role}}</p>
+</div></textarea>
             <pre class="code-highlight" id="template-highlight" aria-hidden="true"><code class="language-html"></code></pre>
             <div class="error-line-highlight" id="template-error-highlight" aria-hidden="true"></div>
           </div>
