@@ -1494,3 +1494,30 @@ body.json2html-simulator .hidden {
   border: 0;
 }
 
+/* ========================================
+   HTML VALIDATION — SOURCE ERROR HIGHLIGHTS
+   ======================================== */
+
+.source-error-highlights {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.source-highlight {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+
+.source-highlight-error {
+  background: light-dark(rgb(220 50 50 / 10%), rgb(255 80 80 / 14%));
+}
+
+.source-highlight-warning {
+  background: light-dark(rgb(200 150 0 / 10%), rgb(255 200 50 / 12%));
+}
+

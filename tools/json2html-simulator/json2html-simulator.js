@@ -40,6 +40,8 @@ const sourceOutput = document.getElementById('source-output');
 const jsonStatus = document.getElementById('json-status');
 const templateStatus = document.getElementById('template-status');
 const previewStatus = document.getElementById('preview-status');
+const htmlStatus = document.getElementById('html-status');
+const sourceErrorHighlights = document.getElementById('source-error-highlights');
 
 // Preview tabs (Rendered vs Source toggle)
 const previewTabs = document.querySelectorAll('.preview-tab');
@@ -615,13 +617,103 @@ function hideValidationError() {
 }
 
 /**
+ * Hide HTML validation status and source error highlights.
+ */
+function hideHtmlValidation() {
+  if (htmlStatus) {
+    updateStatus(htmlStatus, 'ok', 'HTML');
+  }
+  if (sourceErrorHighlights) {
+    sourceErrorHighlights.innerHTML = '';
+  }
+}
+
+/**
+ * Render error/warning line highlights in the source view.
+ * Measures actual line height from the source `<pre>` and positions
+ * translucent bands over each flagged line, matching the
+ * textarea-based error-line-highlight pattern used by the editors.
+ * @param {Array} results - Validation result items with line and severity
+ */
+function renderSourceHighlights(results) {
+  if (!sourceErrorHighlights || !sourceOutput) return;
+
+  const linesWithIssues = results.filter((r) => r.line);
+  if (linesWithIssues.length === 0) {
+    sourceErrorHighlights.innerHTML = '';
+    return;
+  }
+
+  const style = getComputedStyle(sourceOutput);
+  const paddingTop = parseFloat(style.paddingTop);
+  const lineHeight = parseFloat(style.lineHeight);
+
+  const seen = new Set();
+  sourceErrorHighlights.innerHTML = linesWithIssues.map((r) => {
+    if (seen.has(r.line)) return '';
+    seen.add(r.line);
+    const top = paddingTop + (r.line - 1) * lineHeight;
+    const cls = r.severity === 'error'
+      ? 'source-highlight-error' : 'source-highlight-warning';
+    return `<div class="source-highlight ${cls}" `
+      + `style="top:${top}px;height:${lineHeight}px" `
+      + `title="${r.message}"></div>`;
+  }).join('');
+}
+
+/**
+ * Keep source error highlights in sync when the source `<pre>` is scrolled.
+ */
+function syncSourceHighlights() {
+  if (!sourceErrorHighlights || !sourceOutput) return;
+  sourceErrorHighlights.style.transform = `translateY(-${sourceOutput.scrollTop}px)`;
+}
+
+/**
+ * Display HTML validation results from the server.
+ * Updates the bottom status bar and highlights error lines in the source.
+ * @param {object} validation - Validation result from /simulator
+ */
+function displayHtmlValidation(validation) {
+  if (!validation) {
+    hideHtmlValidation();
+    return;
+  }
+
+  const { results } = validation;
+
+  if (htmlStatus) {
+    const errors = results.filter((r) => r.severity === 'error');
+    const warnings = results.filter((r) => r.severity === 'warning');
+
+    if (results.length === 0) {
+      updateStatus(htmlStatus, 'ok', 'Valid EDS HTML');
+    } else if (errors.length > 0) {
+      const parts = [];
+      if (errors.length) {
+        parts.push(`${errors.length} error${errors.length > 1 ? 's' : ''}`);
+      }
+      if (warnings.length) {
+        parts.push(`${warnings.length} warning${warnings.length > 1 ? 's' : ''}`);
+      }
+      updateStatus(htmlStatus, 'error', `HTML: ${parts.join(', ')}`);
+    } else {
+      const n = warnings.length;
+      updateStatus(htmlStatus, 'warning', `HTML: ${n} warning${n > 1 ? 's' : ''}`);
+    }
+  }
+
+  renderSourceHighlights(results);
+}
+
+/**
  * POST to the simulator endpoint and return the rendered HTML.
  * Throws with a human-readable message on HTTP or server errors.
  * @param {string} jsonValue - Raw JSON string
  * @param {string} template - Mustache template string
  * @param {Object} options - Simulator options
  * @param {AbortSignal} signal - Abort signal for cancellation
- * @returns {Promise<string>} Rendered HTML
+ * @returns {Promise<{html: string, validation: object}>} Rendered HTML with validation
  */
 async function fetchRenderedHtml(jsonValue, template, options, signal) {
   const requestBody = {
@@ -651,7 +743,7 @@ async function fetchRenderedHtml(jsonValue, template, options, signal) {
     throw new Error(errorMessage);
   }
 
-  return response.text();
+  return response.json();
 }
 
 /**
@@ -774,14 +866,16 @@ async function render() {
   setLoadingState(true);
 
   try {
-    const html = await fetchRenderedHtml(jsonValue, template, options, abortController.signal);
-    updatePreview(html);
+    const result = await fetchRenderedHtml(jsonValue, template, options, abortController.signal);
+    updatePreview(result.html);
     updateStatus(templateStatus, 'ok', 'Rendered successfully');
     setErrorHighlight(templateInput, templateErrorHighlight);
     updatePreviewStatus('Last rendered: just now');
+    displayHtmlValidation(result.validation);
   } catch (e) {
     if (e.name === 'AbortError') return;
 
+    hideHtmlValidation();
     if (e.message === 'Failed to fetch') {
       updatePreview('');
       updateStatus(templateStatus, 'error', 'Connection failed');
@@ -1513,6 +1607,8 @@ function setupEditorListeners() {
     if (templateLineNumbers) templateLineNumbers.scrollTop = templateInput.scrollTop;
     syncErrorHighlight(templateInput, templateErrorHighlight);
   });
+
+  sourceOutput?.addEventListener('scroll', syncSourceHighlights);
 }
 
 /**
