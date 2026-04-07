@@ -40,7 +40,7 @@ function displaySitemapDetails(sitemapName, sitemapDef, newSitemap = false) {
   const isMultiLang = isMultiLanguageSitemap(sitemapDef);
   const templateId = isMultiLang ? '#sitemap-multilang-dialog-template' : '#sitemap-details-dialog-template';
   document.body.append(document.querySelector(templateId).content.cloneNode(true));
-  const sitemapDetails = document.body.querySelector('dialog.sitemap-details:last-of-type');
+  const sitemapDetails = document.querySelector('dialog.sitemap-details');
   registerDialogCleanup(sitemapDetails);
 
   sitemapDetails.querySelector('#sitemap-name').value = sitemapName;
@@ -156,7 +156,7 @@ function displaySitemapDetails(sitemapName, sitemapDef, newSitemap = false) {
 
 function showTypeSelectionDialog() {
   document.body.append(document.querySelector('#sitemap-type-dialog-template').content.cloneNode(true));
-  const typeDialog = document.body.querySelector('dialog.sitemap-type-dialog:last-of-type');
+  const typeDialog = document.querySelector('dialog.sitemap-type-dialog');
   registerDialogCleanup(typeDialog);
   typeDialog.showModal();
 
@@ -197,7 +197,7 @@ function showTypeSelectionDialog() {
 
 function displayLanguageEditDialog(sitemapName, langCode, langDef, isNew = false) {
   document.body.append(document.querySelector('#language-edit-dialog-template').content.cloneNode(true));
-  const langDialog = document.body.querySelector('dialog.language-edit-dialog:last-of-type');
+  const langDialog = document.querySelector('dialog.language-edit-dialog');
   registerDialogCleanup(langDialog);
 
   const langCodeInput = langDialog.querySelector('#lang-code');
