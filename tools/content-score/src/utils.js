@@ -82,15 +82,3 @@ export function outcomeRank(outcome) {
 export function getBase() {
   return new URL('./', import.meta.url).href;
 }
-
-/**
- * Loads the close icon SVG (cached).
- * @returns {Promise<string>} SVG markup for the close icon
- */
-export async function loadCloseSvg() {
-  if (!loadCloseSvg.cache) {
-    const resp = await fetch(new URL('close.svg', getBase()));
-    loadCloseSvg.cache = await resp.text();
-  }
-  return loadCloseSvg.cache;
-}

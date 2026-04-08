@@ -167,10 +167,22 @@ h2 {
   outline-offset: 2px;
 }
 
-.tray-close-icon {
-  display: block;
+.tray-close::before,
+.tray-close::after {
+  content: '';
+  position: absolute;
   width: 12px;
-  height: 12px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: currentcolor;
+}
+
+.tray-close::before {
+  transform: rotate(45deg);
+}
+
+.tray-close::after {
+  transform: rotate(-45deg);
 }
 
 :host([score="needs-improvement"]):not([data-has-opened-tray]) .tray-close {
