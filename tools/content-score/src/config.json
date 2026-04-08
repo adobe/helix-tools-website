@@ -7,7 +7,8 @@
     { "id": "row-col-spans", "heading": "Row/Column Spans" },
     { "id": "column-counts", "heading": "Column Counts" },
     { "id": "list-like", "heading": "List-Like Content" },
-    { "id": "block-sprawl", "heading": "Block Sprawl" }
+    { "id": "block-sprawl", "heading": "Block Sprawl" },
+    { "id": "config-like", "heading": "Inline Config" }
   ],
   "rules": [
     {
@@ -110,23 +111,23 @@
     {
       "id": "row-col-spans",
       "category": "row-col-spans",
-      "target": "td, th",
+      "target": "div[class]",
       "label": "Row/column spans",
       "messages": {
-        "problem": "Block {tableIndex}: {spanCount} merged {cellWord} ({locations})",
-        "recommendation": "Avoid merged cells when possible"
+        "problem": "\"{blockName}\" block has merged cells",
+        "recommendation": "Avoid merged cells to improve authorability"
       },
       "fixableBy": "author",
-      "thresholds": { "warning": 2, "error": 5 }
+      "thresholds": { "warning": 1 }
     },
     {
       "id": "column-counts",
       "category": "column-counts",
-      "target": "table",
+      "target": "div[class]",
       "label": "Too many columns",
       "messages": {
-        "problem": "Block {tableIndex}: {maxColumns} columns",
-        "recommendation": "Reduce column count to improve readability (recommended: <{threshold})"
+        "problem": "\"{blockName}\" block has {maxColumns} columns in one row",
+        "recommendation": "Reduce column count to improve authorability (recommended: ≤{threshold})"
       },
       "fixableBy": "author",
       "thresholds": { "recommended": 4, "warning": 5, "error": 6 }
@@ -138,7 +139,7 @@
       "label": "Too many block types",
       "messages": {
         "problem": "{count} unique block types",
-        "recommendation": "Reduce block types to simplify user experience (recommended: <{threshold})"
+        "recommendation": "Reduce block types to simplify user experience (recommended: ≤{threshold})"
       },
       "fixableBy": "author",
       "thresholds": { "recommended": 8, "warning": 9, "error": 13 }
@@ -150,7 +151,7 @@
       "label": "Too many variants",
       "messages": {
         "problem": "{count} unique variants",
-        "recommendation": "Reduce variants to simplify user experience (recommended: <{threshold})"
+        "recommendation": "Reduce variants to simplify user experience (recommended: ≤{threshold})"
       },
       "fixableBy": "author",
       "thresholds": { "recommended": 12, "warning": 13, "error": 19 }
@@ -165,7 +166,7 @@
         "recommendation": "Use a list to improve readability"
       },
       "fixableBy": "author",
-      "thresholds": { "warning": 1, "error": 2 }
+      "thresholds": { "warning": 2, "error": 3 }
     },
     {
       "id": "list-like-numbers",
@@ -177,7 +178,19 @@
         "recommendation": "Use an ordered list to improve readability"
       },
       "fixableBy": "author",
-      "thresholds": { "warning": 1, "error": 2 }
+      "thresholds": { "warning": 2, "error": 3 }
+    },
+    {
+      "id": "inline-config",
+      "category": "config-like",
+      "target": "div[data-block-name]",
+      "label": "Inline config",
+      "messages": {
+        "problem": "{count} authored values in \"{block}\" block never appear on page",
+        "recommendation": "Move hidden config values out of authored content"
+      },
+      "fixableBy": "developer",
+      "thresholds": { "warning": 2, "error": 5 }
     }
   ]
 }

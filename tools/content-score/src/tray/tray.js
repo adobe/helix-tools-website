@@ -5,7 +5,6 @@ import {
   getCountText,
   getNoIssuesText,
   getScoreLabels,
-  loadCloseSvg,
   outcomeRank,
 } from '../utils.js';
 
@@ -275,12 +274,6 @@ export default class ContentScoreTray extends HTMLElement {
 
     const sortToggle = doc.querySelector('.sort-toggle');
     if (sortToggle) sortToggle.value = this.sortMode;
-
-    const closeBtn = doc.querySelector('.tray-close');
-    if (closeBtn) {
-      const closeSvg = (await loadCloseSvg()).replace('<svg ', '<svg class="tray-close-icon" aria-hidden="true" ');
-      closeBtn.innerHTML = closeSvg;
-    }
 
     this.shadowRoot.innerHTML = '';
     this.shadowRoot.append(...doc.head.childNodes, ...doc.body.childNodes);
