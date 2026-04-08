@@ -28,21 +28,21 @@
   visibility: hidden;
 }
 
-.svg-doctor form label {
+.svg-doctor .viewbox label {
   color: black;
   transition: color .3s;
 }
 
-.svg-doctor form .viewbox[data-mode='dark'] label {
+.svg-doctor .viewbox[data-mode='dark'] label {
   color: white;
 }
 
-.svg-doctor form label p {
+.svg-doctor .viewbox label p {
   color: inherit;
   text-align: center;
 }
 
-.svg-doctor form label span + p {
+.svg-doctor .viewbox label span + p {
   margin-top: .5em;
 }
 
