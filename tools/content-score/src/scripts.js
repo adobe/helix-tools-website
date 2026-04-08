@@ -3,7 +3,6 @@ import {
   getBadgeCopy,
   getCountText,
   getBase,
-  loadCloseSvg,
 } from './utils.js';
 import './tray/tray.js'; // register <content-score-tray> custom element
 
@@ -1074,10 +1073,9 @@ function updateBadgeDismissVisibility(badge) {
 /**
  * Renders content score UI (badge + tray).
  * @param {Object} result - Analysis result from analyzeContent()
- * @param {string} closeIcon - SVG markup for the close icon (from loadCloseSvg)
  * @returns {{ badge: HTMLElement, tray: ContentScoreTray }}
  */
-function renderBadge(result, closeIcon) {
+function renderBadge(result) {
   const { score, details } = result;
   let errors = 0;
   let warnings = 0;
@@ -1096,9 +1094,8 @@ function renderBadge(result, closeIcon) {
   if (existingBadge) existingBadge.remove();
   if (existingTray) existingTray.remove();
 
-  const dismissSvg = closeIcon.replace('<svg ', '<svg class="content-score-dismiss-icon" aria-hidden="true" ');
   const dismissHtml = errors === 0
-    ? `<button type="button" class="content-score-dismiss" aria-label="Close" ${warnings >= 1 ? 'hidden' : ''}>${dismissSvg}</button>`
+    ? `<button type="button" class="content-score-dismiss" aria-label="Close" ${warnings >= 1 ? 'hidden' : ''}></button>`
     : '';
   const headline = badgeCopy.action
     ? `<span class="badge-message">${badgeCopy.message}</span> <span class="badge-action">${badgeCopy.action}</span>`
@@ -1180,8 +1177,7 @@ export async function init() {
 
   const result = await analyzeContent(document);
   window.contentScore = result;
-  const closeIcon = await loadCloseSvg();
-  renderBadge(result, closeIcon);
+  renderBadge(result);
 
   const sk = document.querySelector('aem-sidekick');
   if (sk) {

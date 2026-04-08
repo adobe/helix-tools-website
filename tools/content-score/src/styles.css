@@ -131,6 +131,7 @@
   flex-shrink: 0;
   place-items: center;
   display: grid;
+  position: relative;
   box-sizing: border-box;
   width: 22px;
   height: 22px;
@@ -161,10 +162,22 @@
   outline-offset: 1px;
 }
 
-.content-score-dismiss-icon {
-  display: block;
+.content-score-dismiss::before,
+.content-score-dismiss::after {
+  content: '';
+  position: absolute;
   width: 10px;
-  height: 10px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: currentcolor;
+}
+
+.content-score-dismiss::before {
+  transform: rotate(45deg);
+}
+
+.content-score-dismiss::after {
+  transform: rotate(-45deg);
 }
 
 /* --- Page highlight (element focus) --- */
