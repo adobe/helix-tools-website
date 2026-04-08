@@ -74,6 +74,20 @@ function getOutcomeFromThresholds(value, rule) {
 }
 
 /**
+ * Replaces {key} placeholders in a template with values from an object.
+ * @param {string} template - Message template
+ * @param {Object} values - Key-value pairs for substitution
+ * @returns {string}
+ */
+function formatMessage(template, values) {
+  return template.replace(/\{(\w+)\}/g, (_, key) => {
+    const value = values[key];
+    if (value === undefined || value === null) return '';
+    return value.toString();
+  });
+}
+
+/**
  * Builds base issue fields from a rule so every issue has type, label, fixableBy from config.
  * @param {Object} rule - Rule from getRule()
  * @param {string} issue - Message string
@@ -83,6 +97,12 @@ function getOutcomeFromThresholds(value, rule) {
  * @returns {Object} Issue object
  */
 function issueFromRule(rule, issue, outcome, element = null, extra = {}) {
+  const recTemplate = rule.messages && rule.messages.recommendation;
+  let recommendation = recTemplate;
+  if (recTemplate && extra.recommendationContext && typeof extra.recommendationContext === 'object') {
+    recommendation = formatMessage(recTemplate, extra.recommendationContext);
+  }
+  const { recommendationContext, ...rest } = extra;
   return {
     category: rule.category || 'unknown',
     ruleId: rule.id,
@@ -91,8 +111,8 @@ function issueFromRule(rule, issue, outcome, element = null, extra = {}) {
     outcome,
     fixableBy: rule.fixableBy,
     element: element ?? null,
-    recommendation: rule.messages && rule.messages.recommendation,
-    ...extra,
+    recommendation,
+    ...rest,
   };
 }
 
@@ -107,20 +127,6 @@ function getSelectorFromRule(rule) {
   const idx = raw.indexOf(' (');
   const selector = idx >= 0 ? raw.slice(0, idx).trim() : raw;
   return selector.length > 0 ? selector : null;
-}
-
-/**
- * Replaces {key} placeholders in a template with values from an object.
- * @param {string} template - Message template
- * @param {Object} values - Key-value pairs for substitution
- * @returns {string}
- */
-function formatMessage(template, values) {
-  return template.replace(/\{(\w+)\}/g, (_, key) => {
-    const value = values[key];
-    if (value === undefined || value === null) return '';
-    return value.toString();
-  });
 }
 
 /**
@@ -208,6 +214,106 @@ async function fetchPlainDom() {
   } catch (error) {
     return null;
   }
+}
+
+/**
+ * Finds the `.plain.html` block root for the same section index and block index as `block`.
+ * @param {Element} block - Decorated block (`data-block-name` set)
+ * @param {Document} doc - Live document
+ * @param {Document} plainDom - Parsed `.plain.html`
+ * @param {Set<string>} skip - Block names to skip (must match live and plain lists)
+ * @returns {Element|null}
+ */
+function plainBlockEquivalent(block, doc, plainDom, skip) {
+  const main = doc.querySelector('main') || doc.body;
+  const section = block.closest('.section');
+  if (!main || !section) return null;
+
+  const sections = [...main.children].filter((el) => el.classList.contains('section'));
+  const si = sections.indexOf(section);
+  if (si < 0) return null;
+
+  const plainSection = plainDom.body.children[si];
+  if (!plainSection) return null;
+
+  const liveOrder = [...section.querySelectorAll('[data-block-name]')].filter(
+    (b) => b.dataset.blockName && !skip.has(b.dataset.blockName),
+  );
+  const bi = liveOrder.indexOf(block);
+  if (bi < 0) return null;
+
+  let n = 0;
+  const { children } = plainSection;
+  for (let i = 0; i < children.length; i += 1) {
+    const el = children[i];
+    if (el.tagName !== 'DIV' || el.classList.length === 0) {
+      /* skip */
+    } else if (skip.has(el.classList[0])) {
+      /* skip */
+    } else if (n === bi) {
+      return el.classList[0] === block.dataset.blockName ? el : null;
+    } else {
+      n += 1;
+    }
+  }
+  return null;
+}
+
+/**
+ * Finds the decorated live block (`[data-block-name]`) for a node in `.plain.html`.
+ * @param {Element} plainNode - Any element inside an authored block in `.plain.html`
+ * @param {Document} doc - Live document
+ * @param {Document} plainDom - Parsed `.plain.html`
+ * @param {Set<string>} skip - Block names to skip in ordering (must match `plainBlockEquivalent`)
+ * @returns {Element|null}
+ */
+function liveBlockEquivalent(plainNode, doc, plainDom, skip) {
+  if (!plainNode || !doc || !plainDom || !plainDom.body) return null;
+
+  let cur = plainNode;
+  while (cur.parentElement && cur.parentElement.parentElement !== plainDom.body) {
+    cur = cur.parentElement;
+  }
+  const blockRoot = cur;
+  const plainSection = cur && cur.parentElement;
+  if (!blockRoot || !plainSection || plainSection.parentElement !== plainDom.body) return null;
+  if (blockRoot.tagName !== 'DIV' || !blockRoot.classList || blockRoot.classList.length === 0) {
+    return null;
+  }
+
+  const plainName = blockRoot.classList[0];
+  const si = [...plainDom.body.children].indexOf(plainSection);
+  if (si < 0) return null;
+
+  let bi = -1;
+  let n = 0;
+  const { children } = plainSection;
+  for (let i = 0; i < children.length; i += 1) {
+    const el = children[i];
+    if (el.tagName !== 'DIV' || !el.classList || el.classList.length === 0) {
+      /* skip */
+    } else if (skip.has(el.classList[0])) {
+      /* skip */
+    } else if (el === blockRoot) {
+      bi = n;
+      break;
+    } else {
+      n += 1;
+    }
+  }
+  if (bi < 0) return null;
+
+  const main = doc.querySelector('main') || doc.body;
+  const sections = [...main.children].filter((el) => el.classList.contains('section'));
+  const section = sections[si];
+  if (!section) return null;
+
+  const liveOrder = [...section.querySelectorAll('[data-block-name]')].filter(
+    (b) => b.dataset.blockName && !skip.has(b.dataset.blockName),
+  );
+  const live = liveOrder[bi];
+  if (!live || live.dataset.blockName !== plainName) return null;
+  return live;
 }
 
 // structural wrappers are NOT scope boundaries
@@ -334,6 +440,7 @@ const CATEGORY_EMOJI = {
   'column-counts': '📊',
   'list-like': '📋',
   'block-sprawl': '📦',
+  'config-like': '⚙️',
 };
 
 /**
@@ -629,57 +736,43 @@ function checkNestedBlocks(config, plainDom) {
  * Checks for complex rowspan/colspan patterns using config.
  * @param {Object} config - Config from loadConfig()
  * @param {Document|null} plainDom - Parsed `.plain.html` document, or `null` if unavailable
+ * @param {Document} doc - Live document
  * @returns {Array} Row/column span issues
  */
-function checkRowColSpans(config, plainDom) {
+function checkRowColSpans(config, plainDom, doc) {
   const issues = [];
   const rule = getRule(config, 'row-col-spans');
 
   if (!plainDom || !rule) return issues;
 
-  const tables = plainDom.querySelectorAll('table');
-  tables.forEach((table, tableIndex) => {
-    const rows = [...table.querySelectorAll('tr')];
+  const tableSelector = getSelectorFromRule(rule);
+  if (!tableSelector) return issues;
+
+  const skipBlocks = new Set(['metadata', 'section-metadata', 'header', 'footer']);
+  const liveDoc = doc || document;
+
+  plainDom.querySelectorAll(tableSelector).forEach((block) => {
+    const rows = [...block.children];
     if (rows.length === 0) return;
 
-    let spanCount = 0;
-    let spansOutsideFirstRow = 0;
-    const spanLocations = [];
+    const cellCounts = rows.map((row) => row.children.length);
+    const uniform = cellCounts.every((n) => n === cellCounts[0]);
+    if (uniform) return;
 
-    rows.forEach((row, rowIndex) => {
-      const cells = [...row.querySelectorAll('td, th')];
-      cells.forEach((cell) => {
-        const rowspan = cell.getAttribute('rowspan');
-        const colspan = cell.getAttribute('colspan');
+    let root = block;
+    while (root.parentElement && root.parentElement.parentElement !== plainDom.body) {
+      root = root.parentElement;
+    }
+    const blockName = root && root.classList && root.classList.length
+      ? root.classList[0]
+      : 'unknown';
 
-        if (rowspan && parseInt(rowspan, 10) > 1) {
-          spanCount += 1;
-          if (rowIndex > 0) spansOutsideFirstRow += 1;
-          spanLocations.push(`rowspan=${rowspan} at row ${rowIndex + 1}`);
-        }
-
-        if (colspan && parseInt(colspan, 10) > 1) {
-          spanCount += 1;
-          if (rowIndex > 0) spansOutsideFirstRow += 1;
-          spanLocations.push(`colspan=${colspan} at row ${rowIndex + 1}`);
-        }
-      });
-    });
-
-    if (spanCount === 0) return;
-    if (spanCount === 1 && spansOutsideFirstRow === 0) return;
-    if (spansOutsideFirstRow === 0 && spanCount <= 2) return;
-
-    const cellWord = spanCount === 1 ? 'cell' : 'cells';
-    const locations = spanLocations.slice(0, 3).join(', ') + (spanLocations.length > 3 ? '...' : '');
-    const msg = formatMessage(getProblemMessage(rule), {
-      tableIndex: tableIndex + 1,
-      spanCount,
-      cellWord,
-      locations,
-    });
-    const outcome = getOutcomeFromThresholds(spanCount, rule);
-    issues.push(issueFromRule(rule, msg, outcome, null));
+    const msg = formatMessage(getProblemMessage(rule), { blockName });
+    const first = cellCounts[0];
+    const offendingRows = cellCounts.filter((n) => n !== first).length;
+    const outcome = getOutcomeFromThresholds(offendingRows, rule);
+    const element = liveBlockEquivalent(block, liveDoc, plainDom, skipBlocks);
+    issues.push(issueFromRule(rule, msg, outcome, element));
   });
 
   return issues;
@@ -689,9 +782,10 @@ function checkRowColSpans(config, plainDom) {
  * Checks for tables with too many columns using config.
  * @param {Object} config - Config from loadConfig()
  * @param {Document|null} plainDom - Parsed `.plain.html` document, or `null` if unavailable
+ * @param {Document} doc - Live document
  * @returns {Array} Column count issues
  */
-function checkColumnCounts(config, plainDom) {
+function checkColumnCounts(config, plainDom, doc) {
   const issues = [];
   const rule = getRule(config, 'column-counts');
 
@@ -701,37 +795,37 @@ function checkColumnCounts(config, plainDom) {
   const tableSelector = getSelectorFromRule(rule);
   if (!tableSelector) return issues;
 
+  const threshold = typeof recommended === 'number' ? recommended : warning;
+  if (typeof threshold !== 'number') return issues;
+
+  const skipBlocks = new Set(['metadata', 'section-metadata', 'header', 'footer']);
+  const liveDoc = doc || document;
+
   const tables = plainDom.querySelectorAll(tableSelector);
-  tables.forEach((table, tableIndex) => {
-    const rows = [...table.querySelectorAll('tr')];
-    if (rows.length === 0) return;
+  tables.forEach((block) => {
+    const rows = [...block.children];
+    const cols = rows.map((row) => [...row.children].length);
+    if (!cols.length) return;
 
-    let maxColumns = 0;
-
-    rows.forEach((row) => {
-      const cells = [...row.querySelectorAll('td, th')];
-      let columnCount = 0;
-
-      cells.forEach((cell) => {
-        const colspan = cell.getAttribute('colspan');
-        const span = colspan ? parseInt(colspan, 10) : 1;
-        columnCount += span;
-      });
-
-      if (columnCount > maxColumns) {
-        maxColumns = columnCount;
+    const maxCols = Math.max(...cols);
+    if (maxCols > threshold) {
+      let root = block;
+      while (root.parentElement && root.parentElement.parentElement !== plainDom.body) {
+        root = root.parentElement;
       }
-    });
-
-    const threshold = typeof recommended === 'number' ? recommended : warning;
-    if (maxColumns >= threshold) {
+      const blockName = root && root.classList && root.classList.length
+        ? root.classList[0]
+        : 'unknown';
       const msg = formatMessage(getProblemMessage(rule), {
-        tableIndex: tableIndex + 1,
-        maxColumns,
+        blockName,
+        maxColumns: maxCols,
         threshold,
       });
-      const outcome = getOutcomeFromThresholds(maxColumns, rule);
-      issues.push(issueFromRule(rule, msg, outcome, null));
+      const outcome = getOutcomeFromThresholds(maxCols, rule);
+      const element = liveBlockEquivalent(block, liveDoc, plainDom, skipBlocks);
+      issues.push(issueFromRule(rule, msg, outcome, element, {
+        recommendationContext: { threshold },
+      }));
     }
   });
 
@@ -831,7 +925,9 @@ function checkBlockSprawl(config, plainDom) {
     if (typeof threshold === 'number' && blockCount > threshold) {
       const msg = formatMessage(getProblemMessage(typesRule), { count: blockCount, threshold });
       const outcome = getOutcomeFromThresholds(blockCount, typesRule);
-      issues.push(issueFromRule(typesRule, msg, outcome, null));
+      issues.push(issueFromRule(typesRule, msg, outcome, null, {
+        recommendationContext: { threshold },
+      }));
     }
   }
 
@@ -844,9 +940,68 @@ function checkBlockSprawl(config, plainDom) {
         threshold,
       });
       const outcome = getOutcomeFromThresholds(variantCount, variantsRule);
-      issues.push(issueFromRule(variantsRule, msg, outcome, null));
+      issues.push(issueFromRule(variantsRule, msg, outcome, null, {
+        recommendationContext: { threshold },
+      }));
     }
   }
+
+  return issues;
+}
+
+/**
+ * Compares paired plain vs live blocks.
+ * @param {Document} doc - Rendered document
+ * @param {Object} config - Config from loadConfig()
+ * @param {Document|null} plainDom - Parsed .plain.html document, or null if unavailable
+ * @returns {Array} Inline config issues
+ */
+function checkInlineConfig(doc, config, plainDom) {
+  const rule = getRule(config, 'inline-config');
+  if (!rule || !plainDom) return [];
+
+  const SKIP_BLOCKS = new Set(['metadata', 'section-metadata', 'header', 'footer']);
+  const selector = getSelectorFromRule(rule);
+  if (!selector) return [];
+
+  const { warning: warnThresh, error: errThresh } = rule.thresholds || {};
+  const issues = [];
+
+  doc.querySelectorAll(selector).forEach((block) => {
+    const { blockName } = block.dataset;
+    if (!blockName || SKIP_BLOCKS.has(blockName)) return;
+
+    const plainBlock = plainBlockEquivalent(block, doc, plainDom, SKIP_BLOCKS);
+    if (!plainBlock) return;
+
+    const renderedNorm = normalizeText(block.textContent || '');
+    let neverOnPage = 0;
+
+    const leafDivs = plainBlock.querySelectorAll('div');
+    for (let i = 0; i < leafDivs.length; i += 1) {
+      const cell = leafDivs[i];
+      if (!cell.querySelector(':scope > div')) {
+        const raw = (cell.textContent || '').replace(/\s+/g, ' ').trim();
+        if (raw.length > 0) {
+          const cellNorm = normalizeText(raw);
+          if (cellNorm.length > 0 && !renderedNorm.includes(cellNorm)) {
+            neverOnPage += 1;
+          }
+        }
+      }
+    }
+
+    const meetsWarn = typeof warnThresh === 'number' && neverOnPage >= warnThresh;
+    const meetsErr = typeof errThresh === 'number' && neverOnPage >= errThresh;
+    if (!meetsWarn && !meetsErr) return;
+
+    const msg = formatMessage(getProblemMessage(rule), {
+      count: neverOnPage,
+      block: blockName,
+    });
+    const outcome = getOutcomeFromThresholds(neverOnPage, rule);
+    issues.push(issueFromRule(rule, msg, outcome, block));
+  });
 
   return issues;
 }
@@ -860,10 +1015,11 @@ const DETECTORS = {
   headingIssues: (doc, config) => checkHeadings(doc, config),
   linkIssues: (doc, config) => checkLinks(doc, config),
   nestedBlocksIssues: (_doc, config, plainDom) => checkNestedBlocks(config, plainDom),
-  rowColSpansIssues: (_doc, config, plainDom) => checkRowColSpans(config, plainDom),
-  columnCountsIssues: (_doc, config, plainDom) => checkColumnCounts(config, plainDom),
+  rowColSpansIssues: (doc, config, plainDom) => checkRowColSpans(config, plainDom, doc),
+  columnCountsIssues: (doc, config, plainDom) => checkColumnCounts(config, plainDom, doc),
   listLikeIssues: (doc, config) => checkListLikeContent(doc, config),
   blockSprawlIssues: (_doc, config, plainDom) => checkBlockSprawl(config, plainDom),
+  configLikeIssues: (doc, config, plainDom) => checkInlineConfig(doc, config, plainDom),
 };
 
 /**
@@ -879,7 +1035,8 @@ export default async function analyzeContent(doc = document) {
     (key) => key === 'nestedBlocksIssues'
       || key === 'rowColSpansIssues'
       || key === 'columnCountsIssues'
-      || key === 'blockSprawlIssues',
+      || key === 'blockSprawlIssues'
+      || key === 'configLikeIssues',
   );
   const plainDom = needsPlainDom ? await fetchPlainDom() : null;
   const results = await Promise.all(
