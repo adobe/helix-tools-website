@@ -436,7 +436,10 @@ export default function createMediaInfoModal() {
   function doRender() {
     if (!media) return;
 
-    const displayName = escapeHtml(media.name || getFileName(media.url) || 'Media Details');
+    // Strip hash/query params from display name (e.g., #width=3000&height=3000)
+    const rawName = media.name || getFileName(media.url) || 'Media Details';
+    const cleanName = rawName.split('#')[0].split('?')[0];
+    const displayName = escapeHtml(cleanName);
     const refCount = usageData?.length ?? 0;
     const refLabel = refCount !== 1 ? 'References' : 'Reference';
 

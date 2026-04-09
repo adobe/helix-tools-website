@@ -1,4 +1,13 @@
-import { MediaType } from './constants.js';
+import {
+  MediaType,
+  ExternalMedia,
+  Domains,
+  YOUTUBE_VIDEO_RE,
+  VIMEO_VIDEO_RE,
+  DAILYMOTION_VIDEO_RE,
+  SCENE7_VIDEO_RE,
+  DYNAMIC_MEDIA_VIDEO_RE,
+} from './constants.js';
 
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif'];
 const VIDEO_EXTENSIONS = ['mp4', 'webm', 'mov', 'avi'];
@@ -55,12 +64,11 @@ export function isExternalVideoUrl(url) {
   if (!url || typeof url !== 'string') return false;
 
   const supportedPatterns = [
-    /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|)[^&\n?#/]+|youtu\.be\/[^&\n?#/]+)/,
-    /(?:^https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)(?:\/|$)/,
-    /vimeo\.com\/(\d+)/,
-    /(?:dailymotion\.com\/video\/|dai\.ly\/)/,
-    /scene7\.com\/is\/content\//,
-    /marketing\.adobe\.com\/is\/content\//,
+    YOUTUBE_VIDEO_RE,
+    VIMEO_VIDEO_RE,
+    DAILYMOTION_VIDEO_RE,
+    SCENE7_VIDEO_RE,
+    DYNAMIC_MEDIA_VIDEO_RE,
   ];
 
   return supportedPatterns.some((pattern) => pattern.test(url));
@@ -102,29 +110,27 @@ export function isFragmentMedia(media) {
 export function getVideoThumbnail(videoUrl) {
   if (!videoUrl) return null;
 
-  const youtubeMatch = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|)([^&\n?#/]+)|youtu\.be\/([^&\n?#/]+))/);
+  const youtubeMatch = videoUrl.match(YOUTUBE_VIDEO_RE);
   if (youtubeMatch) {
     const id = youtubeMatch[1] || youtubeMatch[2];
     return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null;
   }
 
-  // Vimeo thumbnails require oEmbed API, not supported client-side
-  // Falls through to null, shows placeholder
+  const vimeoMatch = videoUrl.match(/vimeo\.com\/(\d+)/);
+  if (vimeoMatch) {
+    const videoId = vimeoMatch[1];
+    return `https://i.vimeocdn.com/video/${videoId}_640.jpg`;
+  }
 
-  const dailymotionMatch = videoUrl.match(/(?:dailymotion\.com\/video\/|dai\.ly\/)([^&\n?#/]+)/);
+  const dailymotionMatch = videoUrl.match(DAILYMOTION_VIDEO_RE);
   if (dailymotionMatch) {
     const videoId = dailymotionMatch[1];
     return `https://www.dailymotion.com/thumbnail/video/${videoId}`;
   }
 
-  const dynamicMediaMatch = videoUrl.match(/(scene7\.com\/is\/content\/[^?]+)/);
-  if (dynamicMediaMatch) {
-    return `${dynamicMediaMatch[1]}?fmt=jpeg&wid=300&hei=200`;
-  }
-
-  const marketingMatch = videoUrl.match(/(marketing\.adobe\.com\/is\/content\/[^?]+)/);
-  if (marketingMatch) {
-    return `${marketingMatch[1]}?fmt=jpeg&wid=300&hei=200`;
+  if (DYNAMIC_MEDIA_VIDEO_RE.test(videoUrl)) {
+    const dynamicMediaBase = videoUrl.split('?')[0];
+    return `${dynamicMediaBase}?fmt=jpeg&wid=300&hei=200`;
   }
 
   return null;
@@ -133,20 +139,86 @@ export function getVideoThumbnail(videoUrl) {
 export function getVideoEmbedUrl(videoUrl) {
   if (!videoUrl) return null;
 
-  const youtubeMatch = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|)([^&\n?#/]+)|youtu\.be\/([^&\n?#/]+))/);
+  const youtubeMatch = videoUrl.match(YOUTUBE_VIDEO_RE);
   if (youtubeMatch) {
     const id = youtubeMatch[1] || youtubeMatch[2];
     return id ? `https://www.youtube.com/embed/${id}` : null;
   }
 
-  const vimeoMatch = videoUrl.match(/vimeo\.com\/(\d+)/);
+  const vimeoMatch = videoUrl.match(VIMEO_VIDEO_RE);
   if (vimeoMatch) {
     return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
   }
 
-  const dailymotionMatch = videoUrl.match(/(?:dailymotion\.com\/video\/|dai\.ly\/)([^&\n?#/]+)/);
+  const dailymotionMatch = videoUrl.match(DAILYMOTION_VIDEO_RE);
   if (dailymotionMatch) {
     return `https://www.dailymotion.com/embed/video/${dailymotionMatch[1]}`;
+  }
+
+  return null;
+}
+
+function isExternalUrl(url) {
+  if (!url || !url.startsWith('http')) return false;
+  return !Domains.SAME_ORIGIN.some((domain) => url.includes(domain));
+}
+
+export function getExternalMediaTypeInfo(url) {
+  if (!url || !url.startsWith('http') || !isExternalUrl(url)) return null;
+
+  try {
+    const parsed = new URL(url);
+    const pathPart = parsed.pathname.split('?')[0].split('#')[0];
+    const pathLower = pathPart.toLowerCase();
+
+    const extMatch = pathLower.match(ExternalMedia.EXTENSION_REGEX);
+    if (extMatch) {
+      const ext = extMatch[1].toLowerCase();
+      let type = MediaType.LINK;
+      if (ExternalMedia.EXTENSIONS.pdf.includes(ext)) type = MediaType.DOCUMENT;
+      else if (ExternalMedia.EXTENSIONS.svg.includes(ext)) type = MediaType.IMAGE;
+      else if (ExternalMedia.EXTENSIONS.image.includes(ext)) type = MediaType.IMAGE;
+      else if (ExternalMedia.EXTENSIONS.video.includes(ext)) type = MediaType.VIDEO;
+      const name = pathPart.split('/').pop() || parsed.hostname;
+      return { type, name };
+    }
+
+    if (isExternalVideoUrl(url)) {
+      const lastSegment = pathPart.split('/').pop() || parsed.hostname;
+      return { type: MediaType.VIDEO, name: lastSegment };
+    }
+
+    const host = parsed.hostname;
+    const matched = ExternalMedia.HOST_PATTERNS.find(
+      (pattern) => pattern.host.test(host)
+        && (!pattern.pathContains || parsed.pathname.includes(pattern.pathContains)),
+    );
+    if (matched) {
+      const { type: patternType } = matched;
+
+      if (matched.typeFromPath) {
+        const lastSegment = pathPart.split('/').pop() || '';
+        const segExt = lastSegment.split('.').pop()?.toLowerCase();
+        const imageExts = [...ExternalMedia.EXTENSIONS.image, ...ExternalMedia.EXTENSIONS.svg];
+        if (segExt && ExternalMedia.EXTENSIONS.video.includes(segExt)) {
+          return { type: MediaType.VIDEO, name: lastSegment };
+        }
+        if (segExt && ExternalMedia.EXTENSIONS.pdf.includes(segExt)) {
+          return { type: MediaType.DOCUMENT, name: lastSegment };
+        }
+        if (segExt && imageExts.includes(segExt)) {
+          return { type: MediaType.IMAGE, name: lastSegment };
+        }
+      }
+
+      if (patternType === ExternalMedia.CATEGORY_IMG) {
+        return { type: MediaType.IMAGE, name: pathPart.split('/').pop() || host };
+      }
+
+      return { type: MediaType.LINK, name: host };
+    }
+  } catch {
+    /* parse error */
   }
 
   return null;

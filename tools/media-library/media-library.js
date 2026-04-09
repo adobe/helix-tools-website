@@ -36,6 +36,7 @@ import {
   fetchAndBuildMediaData,
   validatePathWithStatus,
 } from './indexing/build.js';
+import isPerfEnabled from './core/params.js';
 
 import createMediaInfoModal from './views/mediainfo/mediainfo.js';
 import { setMediaLibraryContext } from './core/context.js';
@@ -311,7 +312,8 @@ async function init() {
 
     let cancelProgressiveThrottle = () => {};
     try {
-      if (!(await ensureLogin(orgKey, siteKey))) {
+      const isLoggedIn = await ensureLogin(orgKey, siteKey);
+      if (!isLoggedIn) {
         logMediaLibraryError(ErrorCodes.AUTH_REQUIRED, { context: 'build' });
         showNotification(t('NOTIFY_ERROR'), t('AUTH_REQUIRED'), 'danger');
         updateAppState({
@@ -357,17 +359,30 @@ async function init() {
 
       updateAppState({ isValidating: false, isIndexing: true, progressiveMediaData: [] });
 
+      const indexStartTime = Date.now();
+
       const progressiveMap = new Map();
       let throttleTimer = null;
+      let progressiveDirty = false;
       cancelProgressiveThrottle = () => {
         if (throttleTimer) {
           clearTimeout(throttleTimer);
           throttleTimer = null;
         }
       };
+      let lastProgressiveCount = 0;
       const flushProgressive = () => {
         cancelProgressiveThrottle();
         const toEmit = Array.from(progressiveMap.values());
+
+        // Use insertion order during indexing to avoid cards jumping when new items arrive.
+        // Final build will apply proper sort.
+        if (!progressiveDirty && toEmit.length === lastProgressiveCount && toEmit.length > 0) {
+          return;
+        }
+        lastProgressiveCount = toEmit.length;
+        progressiveDirty = false;
+
         const capped = toEmit.length > PROGRESSIVE_DISPLAY_CAP
           ? toEmit.slice(0, PROGRESSIVE_DISPLAY_CAP)
           : toEmit;
@@ -376,10 +391,12 @@ async function init() {
       const onProgressiveData = (items) => {
         if (!items?.length) return;
         items.forEach((item) => {
-          const key = getDedupeKey(item.url);
+          const key = getDedupeKey(item?.url || item?.path || '');
+          if (!key || key.length < 2) return; // Skip invalid/empty keys (e.g. url='"')
           const existing = progressiveMap.get(key);
           if (!existing || (item.timestamp ?? 0) >= (existing.timestamp ?? 0)) {
             progressiveMap.set(key, item);
+            progressiveDirty = true;
           }
         });
         if (throttleTimer) clearTimeout(throttleTimer);
@@ -390,7 +407,7 @@ async function init() {
         onProgressiveData(cachedData);
       }
 
-      const { mediaData, buildMode } = await fetchAndBuildMediaData(orgKey, siteKey, {
+      const { mediaData, buildMode, perf } = await fetchAndBuildMediaData(orgKey, siteKey, {
         incremental,
         metadata,
         path: pathKey,
@@ -398,6 +415,15 @@ async function init() {
         onProgressiveData,
         statusResources: statusResourcesForBuild,
       });
+
+      const indexEndTime = Date.now();
+      const indexDurationSec = Math.round((indexEndTime - indexStartTime) / 1000);
+      const pagesParsed = perf?.markdownParse?.pages ?? 0;
+
+      if (isPerfEnabled()) {
+        // eslint-disable-next-line no-console -- perf debug when ?debug=perf
+        console.log(`[Media Library] Index done: ${indexDurationSec}s, ${pagesParsed} pages (started: ${new Date(indexStartTime).toISOString()}, ended: ${new Date(indexEndTime).toISOString()})`);
+      }
 
       const finalMediaData = incremental && hasCache
         ? (() => {
@@ -594,6 +620,22 @@ async function init() {
   );
 
   registerToolReady(Promise.resolve(unsubscribe));
+
+  // Auto-load if org and site are in URL params
+  const orgParam = searchParams.get('org');
+  const siteParam = searchParams.get('site');
+  if (orgParam && siteParam) {
+    // Pre-populate form fields
+    orgInput.value = orgParam;
+    siteInput.value = siteParam;
+    if (pathParam && pathInput) {
+      pathInput.value = pathParam;
+    }
+
+    // Auto-load immediately (DOM is ready since module scripts are deferred)
+    const path = getPathFromInput();
+    loadMediaData(orgParam, siteParam, path);
+  }
 }
 
 init();

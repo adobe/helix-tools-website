@@ -1,5 +1,12 @@
 import { Domains, MEDIA_UNDERSCORE_PREFIX } from './constants.js';
 
+function toAemRuntimeHostname(hostname) {
+  if (!hostname) return hostname;
+  return hostname
+    .replace('.hlx.page', Domains.AEM_PAGE)
+    .replace('.hlx.live', Domains.AEM_LIVE);
+}
+
 export function isExternalUrl(url) {
   if (!url) return false;
   return !url.includes(Domains.AEM_LIVE) && !url.includes(Domains.AEM_PAGE);
@@ -10,6 +17,7 @@ export function resolveMediaUrl(mediaUrl, org, repo) {
 
   try {
     const url = new URL(mediaUrl);
+    url.hostname = toAemRuntimeHostname(url.hostname);
     return url.href;
   } catch {
     if (org && repo) {
@@ -133,7 +141,9 @@ export function getDedupeKey(url) {
   if (!url) return '';
 
   try {
-    const urlObj = new URL(url);
+    // Normalize hostname (.hlx → .aem) before extracting pathname for deduplication
+    const normalizedUrl = resolveMediaUrl(url);
+    const urlObj = new URL(normalizedUrl);
     const { pathname } = urlObj;
     const filename = pathname.split('/').pop();
 

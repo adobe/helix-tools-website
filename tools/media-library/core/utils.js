@@ -21,7 +21,9 @@ export function escapeAttr(str) {
 export function safeUrlForAttr(url) {
   if (!url || typeof url !== 'string') return '';
   const t = url.trim();
-  if (t.startsWith('https://') || t.startsWith('http://') || (t.startsWith('/') && !t.startsWith('//'))) {
+  const hasValidScheme = t.startsWith('https://') || t.startsWith('http://');
+  const isRelPath = t.startsWith('/') && !t.startsWith('//');
+  if (hasValidScheme || isRelPath) {
     return escapeAttr(t);
   }
   return '';
@@ -50,7 +52,7 @@ export function pluralize(singular, plural, count) {
 }
 
 /**
- * Sorts media items for display: newest first by timestamp, then by doc path depth, then by name.
+ * Sorts media items for display: newest by timestamp, then doc depth, name, URL.
  */
 export function sortMediaData(mediaData) {
   if (!mediaData || mediaData.length === 0) return mediaData ?? [];
@@ -69,6 +71,12 @@ export function sortMediaData(mediaData) {
 
     const nameA = (a.name || '').toLowerCase();
     const nameB = (b.name || '').toLowerCase();
-    return nameA.localeCompare(nameB);
+    const nameDiff = nameA.localeCompare(nameB);
+    if (nameDiff !== 0) return nameDiff;
+
+    // Final tiebreaker: URL/hash for absolute stability
+    const urlA = (a.url || a.hash || '').toLowerCase();
+    const urlB = (b.url || b.hash || '').toLowerCase();
+    return urlA.localeCompare(urlB);
   });
 }
