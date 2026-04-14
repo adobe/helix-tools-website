@@ -14,7 +14,7 @@
   box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
   font-size: var(--body-size-s);
   opacity: 0;
-  transition: all 0.3s ease;
+  transition: opacity 0.3s ease, transform 0.3s ease;
   z-index: 10000;
 
   &.show {

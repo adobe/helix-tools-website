@@ -584,9 +584,12 @@ async function showIndexDialog() {
   dialog.showModal();
 
   dialog.querySelector('#copy-index').addEventListener('click', (e) => {
-    navigator.clipboard.writeText(xml);
-    e.target.textContent = 'Copied';
-    e.target.disabled = true;
+    navigator.clipboard.writeText(xml).then(() => {
+      e.target.textContent = 'Copied';
+      e.target.disabled = true;
+    }).catch(() => {
+      e.target.textContent = 'Failed';
+    });
   });
 
   dialog.querySelector('#close-index').addEventListener('click', () => {
