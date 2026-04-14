@@ -70,6 +70,7 @@ await Promise.all(DEPS.map(async ({ pkg, out, external = [] }) => {
     format: 'esm',
     outfile: join(vendorDir, out),
     platform: 'browser',
+    minify: true,
     external,
   });
   console.log(`vendored: ${pkg} → vendor/${out}`);
