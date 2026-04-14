@@ -22,7 +22,7 @@
 
 import { createHash } from 'crypto';
 import { build } from 'esbuild';
-import { mkdir, readFile, writeFile } from 'fs/promises';
+import { mkdir, readdir, readFile, rm, writeFile } from 'fs/promises';
 import { join } from 'path';
 
 // =============================================================================
@@ -61,7 +61,11 @@ if (currentHash === storedHash) {
 }
 
 await mkdir(vendorDir, { recursive: true });
-await writeFile(hashFile, currentHash);
+
+const existing = await readdir(vendorDir, { withFileTypes: true });
+await Promise.all(
+  existing.filter((e) => e.isDirectory()).map((e) => rm(join(vendorDir, e.name), { recursive: true })),
+);
 
 await Promise.all(DEPS.map(async ({ pkg, out, external = [] }) => {
   await build({
@@ -75,3 +79,5 @@ await Promise.all(DEPS.map(async ({ pkg, out, external = [] }) => {
   });
   console.log(`vendored: ${pkg} → vendor/${out}`);
 }));
+
+await writeFile(hashFile, currentHash);
