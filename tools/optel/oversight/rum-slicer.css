@@ -1330,3 +1330,182 @@ html[data-theme="dark"] .ai-optel-report-generator-button {
   background: var(--spectrum-gray-800);
   border-color: var(--ai-claude-orange);
 }
+
+/* table drilldown */
+
+#table-container {
+  overflow-x: auto;
+}
+
+#table-container table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: var(--type-body-s-size);
+}
+
+#table-container thead th {
+  background-color: var(--light-indigo);
+  color: var(--dark-indigo);
+  border: 2px solid currentcolor;
+  padding: 8px 12px;
+  text-align: left;
+  white-space: nowrap;
+  position: relative;
+}
+
+#table-container thead th[data-sort] {
+  cursor: pointer;
+  user-select: none;
+  padding-right: 28px;
+}
+
+/* down arrow for unsorted / descending */
+#table-container thead th[data-sort]::after {
+  content: "";
+  display: block;
+  box-sizing: border-box;
+  position: absolute;
+  width: 0;
+  height: 0;
+  border: 5px solid transparent;
+  border-top-color: currentcolor;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-2px);
+}
+
+/* up arrow for ascending */
+#table-container thead th[data-sort][aria-sort="ascending"]::after {
+  border-top-color: transparent;
+  border-bottom-color: currentcolor;
+  transform: translateY(-8px);
+}
+
+#table-container thead th[data-sort][aria-sort="none"]::after {
+  opacity: 0.4;
+}
+
+#table-container tbody tr:nth-child(even) {
+  background-color: var(--gray-100);
+}
+
+#table-container tbody tr:hover {
+  background-color: var(--light-indigo);
+}
+
+#table-container td {
+  padding: 6px 12px;
+  vertical-align: middle;
+  word-break: break-all;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+#table-container .count-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 1em;
+  font-size: var(--type-body-xs-size);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+#table-container .count-badge.critical {
+  background-color: var(--light-red);
+  color: var(--dark-red);
+}
+
+#table-container .count-badge.high {
+  background-color: var(--light-orange);
+  color: var(--dark-orange);
+}
+
+#table-container .count-badge.medium {
+  background-color: var(--light-orange);
+  color: var(--medium-orange);
+}
+
+#table-container .count-badge.low {
+  background-color: var(--light-green);
+  color: var(--dark-green);
+}
+
+#table-container .count-bar {
+  height: 4px;
+  background-color: var(--gray-300);
+  border-radius: 2px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+#table-container .count-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+#table-container .count-bar-fill.critical {
+  background-color: var(--dark-red);
+}
+
+#table-container .count-bar-fill.high {
+  background-color: var(--dark-orange);
+}
+
+#table-container .count-bar-fill.medium {
+  background-color: var(--medium-orange);
+}
+
+#table-container .count-bar-fill.low {
+  background-color: var(--dark-green);
+}
+
+@media (width >= 900px) {
+  #table-container td,
+  #table-container thead th {
+    padding: 10px 16px;
+  }
+
+  #table-container thead th[data-sort] {
+    padding-right: 32px;
+  }
+
+  #table-container thead th[data-sort]::after {
+    right: 12px;
+  }
+
+  #table-container table {
+    font-size: var(--type-body-m-size);
+  }
+}
+
+html[data-theme="dark"] #table-container tbody tr:nth-child(even) {
+  background-color: var(--gray-700);
+}
+
+html[data-theme="dark"] #table-container tbody tr:hover {
+  background-color: var(--dark-indigo);
+}
+
+html[data-theme="dark"] #table-container td {
+  border-bottom-color: var(--gray-600);
+}
+
+html[data-theme="dark"] #table-container .count-badge.critical {
+  background-color: var(--dark-red);
+  color: var(--light-red);
+}
+
+html[data-theme="dark"] #table-container .count-badge.high {
+  background-color: var(--dark-orange);
+  color: var(--light-orange);
+}
+
+html[data-theme="dark"] #table-container .count-badge.medium {
+  background-color: var(--medium-orange);
+  color: var(--light-orange);
+}
+
+html[data-theme="dark"] #table-container .count-badge.low {
+  background-color: var(--dark-green);
+  color: var(--light-green);
+}
