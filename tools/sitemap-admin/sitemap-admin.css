@@ -1,83 +1,83 @@
-/* Toast is appended to body, so styles must be outside .sitemap-admin */
-.sitemap-index-toast {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%) translateY(100px);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-m);
-  padding: var(--spacing-s) var(--spacing-m);
-  background: light-dark(var(--orange-100), var(--orange-900));
-  border: 1px solid light-dark(var(--orange-300), var(--orange-700));
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
-  font-size: var(--body-size-s);
-  opacity: 0;
-  transition: opacity 0.3s ease, transform 0.3s ease;
-  z-index: 10000;
-
-  &.show {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-
-  .toast-message {
-    color: light-dark(var(--orange-900), var(--orange-200));
-
-    code {
-      font-size: inherit;
-      background: light-dark(var(--orange-200), var(--orange-800));
-      padding: 2px 4px;
-      border-radius: 3px;
-    }
-  }
-
-  .toast-actions {
-    display: flex;
-    gap: var(--spacing-xs);
-    flex-shrink: 0;
-    align-items: center;
-  }
-
-  .toast-generate-btn {
-    padding: var(--spacing-xs) var(--spacing-s);
-    font-size: var(--body-size-s);
-    background: light-dark(var(--orange-700), var(--orange-300));
-    color: light-dark(white, var(--orange-900));
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    white-space: nowrap;
-    font-weight: 500;
-
-    &:hover {
-      background: light-dark(var(--orange-800), var(--orange-200));
-    }
-  }
-
-  .toast-dismiss-btn {
-    background: none;
-    border: none;
-    padding: var(--spacing-xs);
-    font-size: 1.25rem;
-    line-height: 1;
-    color: light-dark(var(--orange-700), var(--orange-300));
-    cursor: pointer;
-    border-radius: 4px;
-
-    &:hover {
-      color: light-dark(var(--orange-900), var(--orange-100));
-    }
-
-    &:focus-visible {
-      outline: 2px solid light-dark(var(--orange-700), var(--orange-300));
-      outline-offset: 2px;
-    }
-  }
-}
-
 .sitemap-admin {
+  .sitemap-index-toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-m);
+    padding: var(--spacing-s) var(--spacing-m);
+    background: light-dark(var(--orange-100), var(--orange-900));
+    border: 1px solid light-dark(var(--orange-300), var(--orange-700));
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+    font-size: var(--body-size-s);
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    z-index: 10000;
+
+    &.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .toast-message {
+      color: light-dark(var(--orange-900), var(--orange-200));
+
+      code {
+        font-size: inherit;
+        background: light-dark(var(--orange-200), var(--orange-800));
+        padding: 2px 4px;
+        border-radius: 3px;
+      }
+    }
+
+    .toast-actions {
+      display: flex;
+      gap: var(--spacing-xs);
+      flex-shrink: 0;
+      align-items: center;
+    }
+
+    .toast-generate-btn {
+      padding: var(--spacing-xs) var(--spacing-s);
+      font-size: var(--body-size-s);
+      background: light-dark(var(--orange-700), var(--orange-300));
+      color: light-dark(white, var(--orange-900));
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      white-space: nowrap;
+      font-weight: 500;
+
+      &:hover {
+        background: light-dark(var(--orange-800), var(--orange-200));
+      }
+    }
+
+    .toast-dismiss-btn {
+      background: none;
+      border: none;
+      padding: var(--spacing-xs);
+      font-size: 1.25rem;
+      line-height: 1;
+      color: light-dark(var(--orange-700), var(--orange-300));
+      cursor: pointer;
+      border-radius: 4px;
+
+      &:hover {
+        color: light-dark(var(--orange-900), var(--orange-100));
+      }
+
+      &:focus-visible {
+        outline: 2px solid light-dark(var(--orange-700), var(--orange-300));
+        outline-offset: 2px;
+      }
+    }
+  }
+
+
   .language-item .language-actions .button {
     padding: var(--spacing-xs) var(--spacing-s);
     font-size: 0.75rem;
