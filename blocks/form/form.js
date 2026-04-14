@@ -52,10 +52,12 @@ async function submitForm(form) {
 function createButton(fd) {
   const button = document.createElement('button');
   button.textContent = fd.Label;
+  button.type = fd.Type;
   button.classList.add('button');
   if (fd.Type === 'submit') {
     button.addEventListener('click', async (event) => {
       const form = button.closest('form');
+      if (!form) return;
       if (fd.Placeholder) form.dataset.action = fd.Placeholder;
       if (form.checkValidity()) {
         event.preventDefault();
@@ -165,6 +167,7 @@ export async function createForm(formURL) {
         fieldWrapper.append(createLabel(fd));
         fieldWrapper.append(createTextArea(fd));
         break;
+      case 'button':
       case 'submit':
         fieldWrapper.append(createButton(fd));
         break;
