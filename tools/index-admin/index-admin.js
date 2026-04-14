@@ -15,7 +15,8 @@ let loadedIndices;
 let YAML;
 
 async function ensureYaml() {
-  YAML = YAML || await import('../../vendor/yaml/yaml.js');
+  // eslint-disable-next-line import/no-unresolved
+  YAML = YAML || await import('../../vendor/yaml.js');
 }
 
 function displayIndexDetails(indexName, indexDef, newIndex = false) {
