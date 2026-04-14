@@ -145,25 +145,31 @@ export const createSecret = async (orgValue, siteName, logFn = null) => {
 };
 
 /**
- * Create a named secret with a specific value
+ * Create a named secret with an optional value
  */
 export const createNamedSecret = async (
   orgValue,
   siteName,
   secretName,
-  secretValue,
+  secretValue = null,
   logFn = null,
 ) => {
+  const options = { method: 'POST' };
+  if (secretValue) {
+    options.headers = { 'content-type': 'application/json' };
+    options.body = JSON.stringify({ value: secretValue });
+  }
   const resp = await adminFetch(
     `${getSitesPath(orgValue)}/${siteName}/secrets/${encodeURIComponent(secretName)}.json`,
-    {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ value: secretValue }),
-    },
+    options,
     logFn,
   );
-  return resp.ok;
+  if (!resp.ok) return null;
+  try {
+    return await resp.json();
+  } catch {
+    return { id: secretName };
+  }
 };
 
 /**
