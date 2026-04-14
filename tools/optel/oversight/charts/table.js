@@ -120,17 +120,20 @@ export default class TableRenderer extends AbstractChart {
       const severity = getSeverity(row.weight, maxWeight);
       const pct = maxWeight > 0 ? Math.round((row.weight / maxWeight) * 100) : 0;
 
-      // Source cell — render as <a> when value is a URL, plain text otherwise
+      // Source cell — render as <a> for http/https URLs only, plain text otherwise
       const tdSource = document.createElement('td');
       try {
-        // eslint-disable-next-line no-new
-        new URL(row.source);
-        const a = document.createElement('a');
-        a.href = row.source;
-        a.textContent = row.source;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        tdSource.appendChild(a);
+        const parsedSource = new URL(row.source);
+        if (parsedSource.protocol === 'https:' || parsedSource.protocol === 'http:') {
+          const a = document.createElement('a');
+          a.href = parsedSource.href;
+          a.textContent = row.source;
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          tdSource.appendChild(a);
+        } else {
+          tdSource.textContent = row.source;
+        }
       } catch {
         tdSource.textContent = row.source;
       }
