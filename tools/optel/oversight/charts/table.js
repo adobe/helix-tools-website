@@ -18,6 +18,7 @@ export default class TableRenderer extends AbstractChart {
 
   render() {
     const container = document.getElementById('table-container');
+    if (container.querySelector('table')) return;
     const table = document.createElement('table');
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');

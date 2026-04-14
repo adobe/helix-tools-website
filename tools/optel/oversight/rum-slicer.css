@@ -1339,6 +1339,7 @@ html[data-theme="dark"] .ai-optel-report-generator-button {
 
 #table-container table {
   width: 100%;
+  min-width: 600px;
   border-collapse: collapse;
   table-layout: fixed;
   font-size: var(--type-body-s-size);
