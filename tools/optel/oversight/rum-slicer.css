@@ -1509,3 +1509,8 @@ html[data-theme="dark"] #table-container .count-badge.low {
   background-color: var(--dark-green);
   color: var(--light-green);
 }
+
+html[data-theme="dark"] #table-container thead th {
+  background-color: var(--dark-indigo);
+  color: var(--light-indigo);
+}
