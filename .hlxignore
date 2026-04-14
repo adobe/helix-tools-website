@@ -2,6 +2,7 @@
 *.md
 karma.config.js
 vendor/vendor.mjs
+vendor/.vendor-hash
 LICENSE
 package.json
 package-lock.json
