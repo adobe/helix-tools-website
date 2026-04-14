@@ -15,7 +15,7 @@ let loadedIndices;
 let YAML;
 
 async function ensureYaml() {
-  YAML = YAML || await import('../../vendor/yaml/index.js');
+  YAML = YAML || await import('../../vendor/yaml/yaml.js');
 }
 
 function displayIndexDetails(indexName, indexDef, newIndex = false) {
