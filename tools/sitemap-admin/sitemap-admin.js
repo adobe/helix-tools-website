@@ -589,7 +589,7 @@ async function showIndexDialog() {
       btn.textContent = 'Copied';
       btn.disabled = true;
     }).catch(() => {
-      btn.textContent = 'Copy failed — try again';
+      btn.textContent = 'Copy failed';
     });
   });
 
