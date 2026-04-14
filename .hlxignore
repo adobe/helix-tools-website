@@ -1,7 +1,7 @@
 .*
 *.md
 karma.config.js
-*.mjs
+vendor/vendor.mjs
 LICENSE
 package.json
 package-lock.json
