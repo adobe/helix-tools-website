@@ -29,7 +29,7 @@ function registerDialogCleanup(dialog) {
 }
 
 async function ensureYaml() {
-  YAML = YAML || await import('../../vendor/yaml/index.js');
+  YAML = YAML || await import('../../vendor/yaml.js');
 }
 
 function isMultiLanguageSitemap(sitemapDef) {
