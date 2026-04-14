@@ -6579,7 +6579,7 @@ function stringify3(value, replacer, options) {
 }
 
 // node_modules/yaml/browser/index.js
-var index_default = dist_exports;
+var browser_default = dist_exports;
 export {
   Alias,
   cst_exports as CST,
@@ -6596,7 +6596,7 @@ export {
   YAMLParseError,
   YAMLSeq,
   YAMLWarning,
-  index_default as default,
+  browser_default as default,
   isAlias,
   isCollection,
   isDocument,

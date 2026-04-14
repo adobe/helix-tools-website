@@ -29,18 +29,18 @@ import { join } from 'path';
 // DEPS — update this when adding or changing vendored dependencies
 // =============================================================================
 const DEPS = [
-  { pkg: 'yaml', out: 'yaml.js' },
+  { pkg: 'yaml', out: 'yaml/yaml.js' },
 
   // Chart.js must be listed before its plugins so the output file exists when
   // the plugins are loaded. Plugins declare chart.js as external so all bundles
   // share the same Chart instance; the import map in each HTML file resolves it.
-  // { pkg: 'chart.js', out: 'chartjs.js' },
-  // { pkg: 'luxon', out: 'luxon.js' },
-  // { pkg: 'chartjs-adapter-luxon', out: 'chartjs-adapter-luxon.js', external: ['chart.js', 'luxon'] },
-  // { pkg: 'chartjs-plugin-datalabels', out: 'chartjs-plugin-datalabels.js', external: ['chart.js'] },
-  // { pkg: 'chartjs-chart-sankey', out: 'chartjs-chart-sankey.js', external: ['chart.js'] },
-  // { pkg: '@adobe/rum-distiller', out: 'rum-distiller.js' },
-  // { pkg: 'echarts', out: 'echarts.js' },
+  // { pkg: 'chart.js', out: 'chartjs/chartjs.js' },
+  // { pkg: 'luxon', out: 'luxon/luxon.js' },
+  // { pkg: 'chartjs-adapter-luxon', out: 'chartjs-adapter-luxon/chartjs-adapter-luxon.js', external: ['chart.js', 'luxon'] },
+  // { pkg: 'chartjs-plugin-datalabels', out: 'chartjs-plugin-datalabels/chartjs-plugin-datalabels.js', external: ['chart.js'] },
+  // { pkg: 'chartjs-chart-sankey', out: 'chartjs-chart-sankey/chartjs-chart-sankey.js', external: ['chart.js'] },
+  // { pkg: '@adobe/rum-distiller', out: 'rum-distiller/rum-distiller.js' },
+  // { pkg: 'echarts', out: 'echarts/echarts.js' },
 ];
 // =============================================================================
 
