@@ -8,7 +8,7 @@
 import { cpSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
-const root = new URL('.', import.meta.url).pathname;
+const root = new URL('..', import.meta.url).pathname;
 
 function vendor(src, dest) {
   const from = join(root, 'node_modules', src);

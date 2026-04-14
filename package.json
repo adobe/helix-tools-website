@@ -4,7 +4,7 @@
   "version": "1.3.0",
   "description": "Tools Site for AEM Edge Delivery Services",
   "scripts": {
-    "vendor": "node vendor.mjs",
+    "vendor": "node vendor/vendor.mjs",
     "lint:js": "eslint .",
     "lint:js:fix": "eslint . --fix",
     "lint:css": "stylelint \"blocks/**/*.css\" \"styles/*.css\" \"tools/**/*.css\"",
