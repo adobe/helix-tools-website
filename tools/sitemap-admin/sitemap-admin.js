@@ -28,8 +28,7 @@ function registerDialogCleanup(dialog) {
 }
 
 async function ensureYaml() {
-  // eslint-disable-next-line import/no-unresolved
-  YAML = YAML || await import('https://unpkg.com/yaml@2.8.1/browser/index.js');
+  YAML = YAML || await import('../../vendor/yaml/index.js');
 }
 
 function isMultiLanguageSitemap(sitemapDef) {
