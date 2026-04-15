@@ -29,6 +29,7 @@ const filterByWeek = (reports) => {
 export async function getSavedReports() {
   try {
     const domain = getCurrentAnalyzedUrl();
+    if (!domain) return [];
     return await fetchReportsFromDA(domain);
   } catch (err) {
     if (err.message?.includes('Failed to fetch') || err.message?.includes('CORS')) {

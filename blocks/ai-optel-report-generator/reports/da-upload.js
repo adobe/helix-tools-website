@@ -219,10 +219,11 @@ function mapFolderItemsToReports(items, folder, domain = null) {
 /** List folder contents via CF Worker */
 async function listFolder(path) {
   try {
+    const domainkey = new URL(window.location.href).searchParams.get('domainkey') || '';
     const res = await fetch(DA_CONFIG.WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'list', path }),
+      body: JSON.stringify({ action: 'list', path, domainkey }),
     });
     if (!res.ok) return [];
     const data = await res.json();
