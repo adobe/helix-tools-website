@@ -87,8 +87,9 @@ function makeVersionsReq(resourcePath, logFn) {
 /**
  * Creates an Admin API client bound to an org/site context.
  *
- * The client covers the /config/ and /profile/ namespaces. For other routes
- * (preview, live, status, job, etc.) use the escape hatch: admin.fetch(path, options).
+ * The client covers the /config/, /profile/, /index/, and /sitemap/ namespaces.
+ * For other routes (preview, live, status, job, etc.) use the escape hatch:
+ * admin.fetch(path, options).
  *
  * @param {object} cfg
  * @param {string} cfg.org - Organization name
@@ -121,6 +122,16 @@ function makeVersionsReq(resourcePath, logFn) {
  * // Override site for a single call
  * const resp = await admin.site('other-site').read();
  *
+ * // Index config (query.yaml) and trigger
+ * const resp = await admin.site().index().read();
+ * const resp = await admin.site().index().update(yamlText);
+ * const resp = await admin.site().index().reindex({ paths: ['/*'], indexNames: ['default'] });
+ *
+ * // Sitemap config (sitemap.yaml) and generation
+ * const resp = await admin.site().sitemap().read();
+ * const resp = await admin.site().sitemap().update(yamlText);
+ * const resp = await admin.site().sitemap().generate('/sitemap.xml');
+ *
  * // Escape hatch for routes not covered above
  * const resp = await admin.fetch(`/status/${org}/${site}/main`, {});
  */
@@ -136,7 +147,6 @@ export function createAdminClient({ org, site: defaultSite, logFn = null }) {
       access: () => makeSingletonReq(`${base}/access.json`, logFn),
       cdn: () => makeSingletonReq(`${base}/cdn.json`, logFn),
       code: () => makeSingletonReq(`${base}/code.json`, logFn),
-      content: (filename) => makeSingletonReq(`${base}/content/${filename}`, logFn),
       headers: () => makeSingletonReq(`${base}/headers.json`, logFn),
       robots: () => makeSingletonReq(`${base}/robots.txt`, logFn),
       secrets: (id) => makeReq(
@@ -151,6 +161,44 @@ export function createAdminClient({ org, site: defaultSite, logFn = null }) {
           : `${base}/apiKeys.json`,
         logFn,
       ),
+
+      /**
+       * Index config (query.yaml) and index trigger.
+       * - read()  → GET  /config/{org}/sites/{site}/content/query.yaml
+       * - update(yamlText) → POST /config/{org}/sites/{site}/content/query.yaml
+       * - trigger(opts) → POST /index/{org}/{site}/main/*
+       */
+      index: () => ({
+        read: () => adminFetch(`${base}/content/query.yaml`, {}, logFn),
+        update: (yamlText) => adminFetch(`${base}/content/query.yaml`, {
+          method: 'POST',
+          headers: { 'content-type': 'text/yaml' },
+          body: yamlText,
+        }, logFn),
+        reindex: (opts = {}) => adminFetch(`/index/${org}/${siteName}/main/*`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(opts),
+        }, logFn),
+      }),
+
+      /**
+       * Sitemap config (sitemap.yaml) and sitemap generation.
+       * - read()  → GET  /config/{org}/sites/{site}/content/sitemap.yaml
+       * - update(yamlText) → POST /config/{org}/sites/{site}/content/sitemap.yaml
+       * - generate(destination) → POST /sitemap/{org}/{site}/main{destination}
+       */
+      sitemap: () => ({
+        read: () => adminFetch(`${base}/content/sitemap.yaml`, {}, logFn),
+        update: (yamlText) => adminFetch(`${base}/content/sitemap.yaml`, {
+          method: 'POST',
+          headers: { 'content-type': 'text/yaml' },
+          body: yamlText,
+        }, logFn),
+        generate: (destination) => adminFetch(`/sitemap/${org}/${siteName}/main${destination}`, {
+          method: 'POST',
+        }, logFn),
+      }),
     };
   }
 
@@ -187,7 +235,13 @@ export function createAdminClient({ org, site: defaultSite, logFn = null }) {
       /** Config profiles collection: /config/{org}/profiles.json */
       profiles: () => makeReq(`${configBase}/profiles.json`, logFn),
       /** Config profile: /config/{org}/profiles/{name}.json */
-      profile: (name) => makeSingletonReq(`${configBase}/profiles/${name}.json`, logFn),
+      profile: (name) => {
+        const path = `${configBase}/profiles/${name}.json`;
+        return {
+          ...makeSingletonReq(path, logFn),
+          versions: makeVersionsReq(path, logFn),
+        };
+      },
     },
 
     /**

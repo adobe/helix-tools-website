@@ -3,7 +3,7 @@ import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { toClassName } from '../../scripts/aem.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { logResponse } from '../../blocks/console/console.js';
-import { createAdminClient, adminFetch } from '../../utils/admin-fetch.js';
+import { createAdminClient } from '../../utils/admin-fetch.js';
 
 const adminForm = document.getElementById('admin-form');
 const site = document.getElementById('site');
@@ -167,11 +167,7 @@ function displayIndexDetails(indexName, indexDef, newIndex = false) {
 
     await ensureYaml();
     const yamlText = YAML.stringify(loadedIndices);
-    const resp = await getIndexAdmin().fetch(`/config/${org.value}/sites/${site.value}/content/query.yaml`, {
-      method: 'POST',
-      headers: { 'content-type': 'text/yaml' },
-      body: yamlText,
-    });
+    const resp = await getIndexAdmin().site().index().update(yamlText);
 
     if (resp.ok) {
       indexDetails.close();
@@ -234,22 +230,8 @@ function showJobStatus(jobDetails) {
 }
 
 async function reIndex(indexNames, paths) {
-  const indexPath = `/index/${org.value}/${site.value}/main/*`;
-  const payload = {
-    paths,
-    indexNames,
-  };
-
   try {
-    const resp = await adminFetch(indexPath, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    }, logFn);
-
-    const errorMsg = resp.headers.get('x-error') || '';
+    const resp = await getIndexAdmin().site().index().reindex({ paths, indexNames });
 
     // If 202 status, return job info
     if (resp.status === 202) {
@@ -262,9 +244,9 @@ async function reIndex(indexNames, paths) {
       return { success: true, detailsUrl: null };
     }
 
-    return { success: false, status: resp.status, error: errorMsg };
+    return { success: false, status: resp.status, error: resp.headers.get('x-error') || '' };
   } catch (error) {
-    logResponse(consoleBlock, 0, ['POST', indexPath, error.message]);
+    logResponse(consoleBlock, 0, ['POST', `/index/${org.value}/${site.value}/main/*`, error.message]);
     return { success: false, error: error.message };
   }
 }
@@ -340,11 +322,7 @@ async function removeIndex(name) {
 
   await ensureYaml();
   const yamlText = YAML.stringify(loadedIndices);
-  const resp = await getIndexAdmin().fetch(`/config/${org.value}/sites/${site.value}/content/query.yaml`, {
-    method: 'POST',
-    headers: { 'content-type': 'text/yaml' },
-    body: yamlText,
-  });
+  const resp = await getIndexAdmin().site().index().update(yamlText);
 
   if (resp.ok) {
     const indexesList = document.getElementById('indexes-list');
@@ -521,7 +499,7 @@ async function init() {
     fetchButton.disabled = true;
 
     try {
-      const resp = await getIndexAdmin().site().content('query.yaml').read();
+      const resp = await getIndexAdmin().site().index().read();
 
       if (resp.ok) {
         updateConfig();

@@ -79,6 +79,8 @@ describe('createAdminClient URLs', () => {
     it('org.sites().url', () => assert.strictEqual(admin.org.sites().url, `${BASE}/sites.json`));
     it('org.users().url', () => assert.strictEqual(admin.org.users().url, `${BASE}/users.json`));
     it('org.profiles().url', () => assert.strictEqual(admin.org.profiles().url, `${BASE}/profiles.json`));
+    it('org.profile(name).url', () => assert.strictEqual(admin.org.profile('myprofile').url, `${BASE}/profiles/myprofile.json`));
+    it('org.profile(name).versions().url', () => assert.strictEqual(admin.org.profile('myprofile').versions().url, `${BASE}/profiles/myprofile/versions.json`));
     it('org.aggregated().url uses default site', () => assert.strictEqual(admin.org.aggregated().url, `${BASE}/aggregated/${SITE}.json`));
     it('org.aggregated(name).url', () => assert.strictEqual(admin.org.aggregated('other').url, `${BASE}/aggregated/other.json`));
   });
@@ -106,6 +108,73 @@ describe('createAdminClient URLs', () => {
     it('site() throws without a site name', () => {
       assert.throws(() => adminNoSite.site());
     });
+  });
+});
+
+// --- site().index() and site().sitemap() ---
+
+describe('createAdminClient index and sitemap', () => {
+  let fetchCalls;
+  let savedFetch;
+
+  beforeEach(() => {
+    fetchCalls = [];
+    savedFetch = globalThis.fetch;
+    globalThis.fetch = async (url, opts) => {
+      fetchCalls.push([url, opts ?? {}]);
+      return new Response(null, { status: 200 });
+    };
+  });
+
+  afterEach(() => {
+    globalThis.fetch = savedFetch;
+  });
+
+  const admin = () => createAdminClient({ org: ORG, site: SITE });
+
+  it('index().read() GETs query.yaml', async () => {
+    await admin().site().index().read();
+    assert.strictEqual(fetchCalls[0][0], `${SITE_BASE}/content/query.yaml`);
+    assert.strictEqual(fetchCalls[0][1].method ?? 'GET', 'GET');
+  });
+
+  it('index().update() POSTs query.yaml with text/yaml', async () => {
+    await admin().site().index().update('indices: {}');
+    assert.strictEqual(fetchCalls[0][0], `${SITE_BASE}/content/query.yaml`);
+    assert.strictEqual(fetchCalls[0][1].method, 'POST');
+    assert.strictEqual(fetchCalls[0][1].headers['content-type'], 'text/yaml');
+    assert.strictEqual(fetchCalls[0][1].body, 'indices: {}');
+  });
+
+  it('index().reindex() POSTs to /index/{org}/{site}/main/*', async () => {
+    await admin().site().index().reindex({ paths: ['/*'], indexNames: ['default'] });
+    assert.strictEqual(fetchCalls[0][0], `${ADMIN_API_BASE}/index/${ORG}/${SITE}/main/*`);
+    assert.strictEqual(fetchCalls[0][1].method, 'POST');
+    assert.strictEqual(fetchCalls[0][1].headers['content-type'], 'application/json');
+  });
+
+  it('sitemap().read() GETs sitemap.yaml', async () => {
+    await admin().site().sitemap().read();
+    assert.strictEqual(fetchCalls[0][0], `${SITE_BASE}/content/sitemap.yaml`);
+    assert.strictEqual(fetchCalls[0][1].method ?? 'GET', 'GET');
+  });
+
+  it('sitemap().update() POSTs sitemap.yaml with text/yaml', async () => {
+    await admin().site().sitemap().update('sitemaps: {}');
+    assert.strictEqual(fetchCalls[0][0], `${SITE_BASE}/content/sitemap.yaml`);
+    assert.strictEqual(fetchCalls[0][1].method, 'POST');
+    assert.strictEqual(fetchCalls[0][1].headers['content-type'], 'text/yaml');
+  });
+
+  it('sitemap().generate() POSTs to /sitemap/{org}/{site}/main{destination}', async () => {
+    await admin().site().sitemap().generate('/sitemap.xml');
+    assert.strictEqual(fetchCalls[0][0], `${ADMIN_API_BASE}/sitemap/${ORG}/${SITE}/main/sitemap.xml`);
+    assert.strictEqual(fetchCalls[0][1].method, 'POST');
+  });
+
+  it('site(name).index() uses overridden site name', async () => {
+    await admin().site('other').index().reindex({ paths: ['/*'] });
+    assert.ok(fetchCalls[0][0].includes(`/index/${ORG}/other/main/*`));
   });
 });
 

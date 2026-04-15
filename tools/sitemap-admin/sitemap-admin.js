@@ -2,7 +2,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { logResponse } from '../../blocks/console/console.js';
-import { createAdminClient, adminFetch } from '../../utils/admin-fetch.js';
+import { createAdminClient } from '../../utils/admin-fetch.js';
 
 const adminForm = document.getElementById('admin-form');
 const site = document.getElementById('site');
@@ -160,11 +160,7 @@ function displaySitemapDetails(sitemapName, sitemapDef, newSitemap = false) {
     }
 
     const yamlText = YAML.stringify(loadedSitemaps);
-    const resp = await getSitemapAdmin().fetch(`/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, {
-      method: 'POST',
-      headers: { 'content-type': 'text/yaml' },
-      body: yamlText,
-    });
+    const resp = await getSitemapAdmin().site().sitemap().update(yamlText);
 
     if (resp.ok) {
       cleanupDialog(sitemapDetails);
@@ -298,11 +294,7 @@ function displayLanguageEditDialog(sitemapName, langCode, langDef, isNew = false
     }
 
     const yamlText = YAML.stringify(loadedSitemaps);
-    const resp = await getSitemapAdmin().fetch(`/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, {
-      method: 'POST',
-      headers: { 'content-type': 'text/yaml' },
-      body: yamlText,
-    });
+    const resp = await getSitemapAdmin().site().sitemap().update(yamlText);
 
     if (resp.ok) {
       cleanupDialog(langDialog);
@@ -342,11 +334,7 @@ async function removeLanguage(sitemapName, langCode) {
   delete loadedSitemaps.sitemaps[sitemapName].languages[langCode];
 
   const yamlText = YAML.stringify(loadedSitemaps);
-  const resp = await getSitemapAdmin().fetch(`/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, {
-    method: 'POST',
-    headers: { 'content-type': 'text/yaml' },
-    body: yamlText,
-  });
+  const resp = await getSitemapAdmin().site().sitemap().update(yamlText);
 
   if (resp.ok) {
     showIndexToast('Language removed');
@@ -360,16 +348,10 @@ async function removeLanguage(sitemapName, langCode) {
 }
 
 async function generateSitemap(destination) {
-  const path = `/sitemap/${org.value}/${site.value}/main${destination}`;
-  const resp = await adminFetch(path, { method: 'POST' });
-
-  if (resp.status === 204) {
-    logResponse(consoleBlock, 204, ['POST', `https://admin.hlx.page${path}`, 'Path is not a destination for any configured sitemap']);
-  } else if (resp.ok) {
+  const resp = await getSitemapAdmin().site().sitemap().generate(destination);
+  if (resp.ok && resp.status !== 204) {
     const result = await resp.json();
-    logResponse(consoleBlock, 200, ['POST', `https://admin.hlx.page${path}`, `Generated sitemap(s): ${result.paths?.join(', ') || destination}`]);
-  } else {
-    logResponse(consoleBlock, resp.status, ['POST', `https://admin.hlx.page${path}`, resp.headers.get('x-error') || '']);
+    logResponse(consoleBlock, resp.status, ['POST', resp.url, `Generated sitemap(s): ${result.paths?.join(', ') || destination}`]);
   }
 }
 
@@ -382,11 +364,7 @@ async function removeSitemap(name) {
   delete loadedSitemaps.sitemaps[name];
 
   const yamlText = YAML.stringify(loadedSitemaps);
-  const resp = await getSitemapAdmin().fetch(`/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, {
-    method: 'POST',
-    headers: { 'content-type': 'text/yaml' },
-    body: yamlText,
-  });
+  const resp = await getSitemapAdmin().site().sitemap().update(yamlText);
 
   if (resp.ok) {
     showIndexToast('Sitemap removed');
@@ -613,7 +591,7 @@ async function init() {
       return;
     }
 
-    const resp = await getSitemapAdmin().site().content('sitemap.yaml').read();
+    const resp = await getSitemapAdmin().site().sitemap().read();
 
     if (resp.ok) {
       updateConfig();

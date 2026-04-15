@@ -3,7 +3,7 @@ import { ensureLogin } from '../../blocks/profile/profile.js';
 import { diffJson } from './diff.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
-import { adminFetch } from '../../utils/admin-fetch.js';
+import { createAdminClient } from '../../utils/admin-fetch.js';
 
 const adminForm = document.getElementById('admin-form');
 const typeSelect = document.getElementById('type');
@@ -24,20 +24,14 @@ const currentConfig = { type: '', versions: [], currentVersion: null };
 const logFn = (status, details) => logResponse(consoleBlock, status, details);
 
 /**
- * Build the API path based on the current configuration
- * @param {string} endpoint - The endpoint path (e.g., 'versions.json', 'versions/1.json')
- * @returns {string} The API path
+ * Returns the versions-capable resource for the currently selected type.
+ * All three types (org, profile, site) expose the same .versions(id?) interface.
  */
-function buildApiPath(endpoint) {
-  let path = `/config/${org.value}`;
-
-  if (currentConfig.type === 'profile') {
-    path += `/profiles/${profile.value}`;
-  } else if (currentConfig.type === 'site') {
-    path += `/sites/${site.value}`;
-  }
-
-  return `${path}/${endpoint}`;
+function getVersionsResource() {
+  const admin = createAdminClient({ org: org.value, site: site.value, logFn });
+  if (currentConfig.type === 'profile') return admin.org.profile(profile.value);
+  if (currentConfig.type === 'site') return admin.site();
+  return admin.org;
 }
 
 /**
@@ -50,12 +44,8 @@ function formatDate(dateString) {
   return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
 }
 
-/**
- * Fetch versions list from the API
- */
 async function fetchVersions() {
-  const path = buildApiPath('versions.json');
-  const resp = await adminFetch(path, {}, logFn);
+  const resp = await getVersionsResource().versions().read();
 
   if (resp.status === 200) {
     const data = await resp.json();
@@ -69,13 +59,8 @@ async function fetchVersions() {
   return null;
 }
 
-/**
- * Fetch specific version data
- * @param {number} versionId - Version ID to fetch
- */
 async function fetchVersionData(versionId) {
-  const path = buildApiPath(`versions/${versionId}.json`);
-  const resp = await adminFetch(path, {}, logFn);
+  const resp = await getVersionsResource().versions(versionId).read();
 
   if (resp.status === 200) return resp.json();
   if (resp.status === 401) {
@@ -84,19 +69,8 @@ async function fetchVersionData(versionId) {
   return null;
 }
 
-/**
- * Update version name
- * @param {number} versionId - Version ID to update
- * @param {string} newName - New name for the version
- */
 async function updateVersionName(versionId, newName) {
-  const path = buildApiPath(`versions/${versionId}.json`);
-  const resp = await adminFetch(path, {
-    method: 'POST',
-    params: { name: newName },
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ name: newName }),
-  }, logFn);
+  const resp = await getVersionsResource().versions(versionId).rename(newName);
 
   if (resp.status === 401) {
     await ensureLogin(org.value, site.value);
@@ -104,17 +78,8 @@ async function updateVersionName(versionId, newName) {
   return resp.status === 200;
 }
 
-/**
- * Restore a version
- * @param {number} versionId - Version ID to restore
- */
 async function restoreVersion(versionId) {
-  let path;
-  if (currentConfig.type === 'org') path = `/config/${org.value}.json`;
-  else if (currentConfig.type === 'profile') path = `/config/${org.value}/profiles/${profile.value}.json`;
-  else path = `/config/${org.value}/sites/${site.value}.json`;
-
-  const resp = await adminFetch(path, { method: 'POST', params: { restoreVersion: versionId } }, logFn);
+  const resp = await getVersionsResource().versions(versionId).restore();
 
   if (resp.status === 401) {
     await ensureLogin(org.value, site.value);
@@ -122,13 +87,8 @@ async function restoreVersion(versionId) {
   return resp.status === 200;
 }
 
-/**
- * Delete a version
- * @param {number} versionId - Version ID to delete
- */
 async function deleteVersion(versionId) {
-  const path = buildApiPath(`versions/${versionId}.json`);
-  const resp = await adminFetch(path, { method: 'DELETE' }, logFn);
+  const resp = await getVersionsResource().versions(versionId).delete();
 
   if (resp.status === 401) {
     await ensureLogin(org.value, site.value);
