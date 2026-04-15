@@ -1,3 +1,5 @@
 helix-importer-ui
 tools/sidekick
 tools/media-library/deps/media-library.iife.js
+vendor/
+!vendor/vendor.mjs
