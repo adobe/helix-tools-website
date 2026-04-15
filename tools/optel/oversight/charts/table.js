@@ -66,12 +66,16 @@ export default class TableRenderer extends AbstractChart {
     const params = new URL(window.location.href).searchParams;
     const drilldown = params.get('drilldown') || '';
     const checkpoint = drilldown.split('.')[0];
+    const sourceFilter = params.get(`${checkpoint}.source`) || null;
+    const targetFilter = params.get(`${checkpoint}.target`) || null;
 
     // aggregate source+target pairs across filtered bundles
     const pairs = new Map();
     this.dataChunks.filtered.forEach((bundle) => {
       bundle.events
-        .filter((event) => event.checkpoint === checkpoint)
+        .filter((event) => event.checkpoint === checkpoint
+          && (!sourceFilter || event.source === sourceFilter)
+          && (!targetFilter || event.target === targetFilter))
         .forEach((event) => {
           const source = event.source || '';
           const target = event.target || '';
