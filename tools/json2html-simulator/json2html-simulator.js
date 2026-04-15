@@ -804,6 +804,7 @@ function buildValidationDetails(results) {
 
   validationDetails.hidden = true;
   if (previewStatus) {
+    previewStatus.classList.remove('expanded');
     previewStatus.classList.add('has-details');
     previewStatus.setAttribute('role', 'button');
     previewStatus.setAttribute('tabindex', '0');
@@ -818,7 +819,7 @@ function buildValidationDetails(results) {
  * @param {object} validation - Validation result from /simulator
  */
 function displayHtmlValidation(validation) {
-  if (!validation) {
+  if (!validation || !Array.isArray(validation.results)) {
     hideHtmlValidation();
     return;
   }
