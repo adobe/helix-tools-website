@@ -1334,8 +1334,7 @@ html[data-theme="dark"] .ai-optel-report-generator-button {
 /* table drilldown */
 
 #table-container {
-  overflow-x: auto;
-  overflow-y: auto;
+  overflow: auto;
   max-height: calc(100vh - var(--nav-height) - 349px);
   min-height: 150px;
 }
