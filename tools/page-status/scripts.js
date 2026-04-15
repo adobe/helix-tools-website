@@ -3,6 +3,7 @@ import { decorateIcons } from '../../scripts/aem.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import loadingMessages from './loading-messages.js';
+import { adminFetch, ADMIN_API_BASE } from '../../utils/admin-fetch.js';
 
 const FORM = document.getElementById('status-form');
 const TABLE = document.querySelector('table');
@@ -446,8 +447,7 @@ function displayResources(resources, live, preview) {
  */
 async function fetchHosts(org, site) {
   try {
-    const url = `https://admin.hlx.page/status/${org}/${site}/main`;
-    const res = await fetch(url);
+    const res = await adminFetch(`/status/${org}/${site}/main`);
     if (!res.ok) throw res;
     const json = await res.json();
     return {
@@ -498,10 +498,7 @@ async function fetchJobUrl(org, site, path) {
       redirect: 'follow',
       referrerPolicy: 'no-referrer',
     };
-    const res = await fetch(
-      `https://admin.hlx.page/status/${org}/${site}/main/*`,
-      options,
-    );
+    const res = await adminFetch(`/status/${org}/${site}/main/*`, options);
     if (!res.ok) throw res;
     const json = await res.json();
     if (!json.job || json.job.state !== 'created') {
@@ -524,16 +521,17 @@ async function fetchJobUrl(org, site, path) {
  * @param {number} [retry=10000] - Delay (in ms) between polling attempts.
  * @returns {Promise<Object[]>} Array of resources.
  */
-async function runJob(url, retry = 10000) {
+async function runJob(urlOrPath, retry = 10000) {
+  const path = urlOrPath.startsWith('http') ? urlOrPath.replace(ADMIN_API_BASE, '') : urlOrPath;
   try {
-    const jobRes = await fetch(url, { mode: 'cors' });
+    const jobRes = await adminFetch(path, { mode: 'cors' });
     if (!jobRes.ok) throw jobRes;
     const { state } = await jobRes.json();
     if (state !== 'completed' && state !== 'stopped') {
       await new Promise((resolve) => { setTimeout(resolve, retry); }); // wait before repolling
-      return runJob(url, retry); // poll again
+      return runJob(path, retry); // poll again
     }
-    const detailsRes = await fetch(`${url}/details`, { mode: 'cors' });
+    const detailsRes = await adminFetch(`${path}/details`, { mode: 'cors' });
     if (!detailsRes.ok) throw detailsRes;
     const { data, createTime } = await detailsRes.json();
     // update table caption with create time
@@ -607,7 +605,7 @@ async function runFromParams(search) {
         const { live, preview } = await validateHosts(org, site);
         updateConfig();
         // fetch page status and display results
-        const jobUrl = `https://admin.hlx.page/job/${org}/${site}/main/status/${job}`;
+        const jobUrl = `/job/${org}/${site}/main/status/${job}`;
         await runAndDisplayJob(jobUrl, live, preview);
         updateJobParam(job);
       } catch (error) {

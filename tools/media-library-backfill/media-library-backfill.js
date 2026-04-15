@@ -15,8 +15,8 @@ import {
   normalizeMediaUrlToCurrentSiteAemPage,
   resolveHtmlMediaBaseUrl,
 } from './media-origin.js';
+import { ADMIN_API_BASE } from '../../utils/admin-fetch.js';
 
-const ADMIN_BASE = 'https://admin.hlx.page';
 const DA_ETC_ORIGIN = 'https://da-etc.adobeaem.workers.dev';
 const REF = 'main';
 const MEDIALOG_IMPORT_BUNDLE_VERSION = 1;
@@ -452,7 +452,7 @@ function etcFetch(href, api, options) {
 }
 
 function getRateLimitedTarget(url) {
-  if (url.startsWith(ADMIN_BASE)) {
+  if (url.startsWith(ADMIN_API_BASE)) {
     return {
       limiter: adminLimiter,
       label: 'admin API',
@@ -823,7 +823,7 @@ async function runStatusJob(org, site, paths, {
 } = {}) {
   const normalizedPaths = Array.isArray(paths) ? paths : [paths];
   const label = jobLabel || `status job (${normalizedPaths.join(', ')})`;
-  const statusUrl = `${ADMIN_BASE}/status/${org}/${site}/${REF}/*`;
+  const statusUrl = `${ADMIN_API_BASE}/status/${org}/${site}/${REF}/*`;
 
   const createRes = await fetchWithRetry(statusUrl, {
     method: 'POST',
@@ -1321,7 +1321,7 @@ async function fetchLastModified(url) {
 }
 
 async function fetchContentSourceType(org, site) {
-  const configUrl = `${ADMIN_BASE}/config/${encodeURIComponent(org)}/sites/${encodeURIComponent(site)}.json`;
+  const configUrl = `${ADMIN_API_BASE}/config/${encodeURIComponent(org)}/sites/${encodeURIComponent(site)}.json`;
 
   try {
     const response = await fetchWithRetry(configUrl, {}, 1);

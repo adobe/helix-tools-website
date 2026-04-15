@@ -1,4 +1,6 @@
 /* eslint-disable no-console */
+import { adminFetch } from '../../utils/admin-fetch.js';
+
 const RUN_REPORT_BUTTON = document.getElementById('run-report');
 const ORPHANED_PAGES_LIST = document.getElementById('orphaned-pages-list');
 const SPINNER = document.getElementById('spinner');
@@ -20,8 +22,7 @@ let LIVE_HOST = null;
  */
 async function fetchHosts(org, site) {
   try {
-    const url = `https://admin.hlx.page/status/${org}/${site}/main`;
-    const res = await fetch(url);
+    const res = await adminFetch(`/status/${org}/${site}/main`);
     if (!res.ok) throw res;
     const json = await res.json();
     return {
@@ -51,10 +52,7 @@ async function fetchJobUrl() {
       redirect: 'follow',
       referrerPolicy: 'no-referrer',
     };
-    const res = await fetch(
-      `https://admin.hlx.page/status/${ORG}/${SITE}/main/*`,
-      options,
-    );
+    const res = await adminFetch(`/status/${ORG}/${SITE}/main/*`, options);
     if (!res.ok) throw res;
     const json = await res.json();
     if (!json.job || json.job.state !== 'created') {
@@ -116,16 +114,10 @@ async function unpublishOrphanedPages(paths) {
       'Content-Type': 'application/json',
     },
   };
-  const liveResp = await fetch(
-    `https://admin.hlx.page/live/${ORG}/${SITE}/main/*`,
-    options,
-  );
+  const liveResp = await adminFetch(`/live/${ORG}/${SITE}/main/*`, options);
   if (!liveResp.ok) throw liveResp;
   const liveJson = await liveResp.json();
-  const previewResp = await fetch(
-    `https://admin.hlx.page/preview/${ORG}/${SITE}/main/*`,
-    options,
-  );
+  const previewResp = await adminFetch(`/preview/${ORG}/${SITE}/main/*`, options);
   if (!previewResp.ok) throw previewResp;
   const previewJson = await previewResp.json();
   console.log('Unpublished', liveJson, previewJson);

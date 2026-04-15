@@ -74,12 +74,10 @@ export const saveSiteAndRefresh = async (
   const admin = createAdminClient({ org: orgValue, site: siteName, logFn });
   const siteConfig = buildSiteConfig(existingConfig, codeSrc, contentSrc, byogit);
 
-  let resp = await admin.site().update(siteConfig);
-  await resp.text();
-  let success = resp.ok;
+  let { ok: success } = await admin.site().update(siteConfig);
 
   if (success && byogit) {
-    resp = await admin.site().code().update({
+    ({ ok: success } = await admin.site().code().update({
       source: {
         type: 'byogit',
         url: 'https://cm-repo.adobe.io/api',
@@ -88,9 +86,7 @@ export const saveSiteAndRefresh = async (
         repo: byogit.repo,
         secretId: 'cm-byog',
       },
-    });
-    await resp.text();
-    success = resp.ok;
+    }));
   }
 
   if (success && dialogCloseCallback) {
@@ -107,9 +103,7 @@ export const deleteSiteAndRefresh = async (
   logFn = null,
 ) => {
   const admin = createAdminClient({ org: orgValue, site: siteName, logFn });
-  const resp = await admin.site().delete();
-  await resp.text();
-  const success = resp.ok;
+  const { ok: success } = await admin.site().delete();
 
   if (success) {
     if (dialogCloseCallback) dialogCloseCallback();

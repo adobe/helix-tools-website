@@ -3,6 +3,7 @@ import { logResponse, logMessage } from '../../blocks/console/console.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { createModal } from '../../blocks/modal/modal.js';
+import { adminFetch } from '../../utils/admin-fetch.js';
 
 let currentConfig = {};
 // eslint-disable-next-line no-unused-vars
@@ -990,24 +991,15 @@ async function showMigrationConfirmation(migratedConfig) {
  */
 async function performMigration(configToMigrate) {
   try {
-    const adminURL = `https://admin.hlx.page${configPath}`;
-
     logMessage(consoleBlock, 'info', ['MIGRATE', 'Performing migration...', '']);
 
-    const response = await fetch(adminURL, {
+    const response = await adminFetch(configPath, {
       method: 'PUT',
       headers: {
         'content-type': 'application/json',
       },
       body: JSON.stringify(configToMigrate),
-    });
-
-    // Log the PUT request
-    logResponse(consoleBlock, response.status, [
-      'PUT',
-      adminURL,
-      response.headers.get('x-error') || '',
-    ]);
+    }, (status, args) => logResponse(consoleBlock, status, args));
 
     if (response.status === 401) {
       await ensureLogin(org.value, site.value);
@@ -1039,28 +1031,14 @@ async function loadConfig() {
 
   try {
     configPath = `/config/${org.value}/sites/${site.value}.json`;
-    const adminURL = `https://admin.hlx.page${configPath}`;
-    const aggregateURL = `https://admin.hlx.page/config/${org.value}/aggregated/${site.value}.json`;
+    const aggregatePath = `/config/${org.value}/aggregated/${site.value}.json`;
 
     logMessage(consoleBlock, 'info', ['LOAD', `Loading config from: ${configPath}`, '']);
 
     // Fetch both current config and aggregate config
     const [configResponse, aggregateResponse] = await Promise.all([
-      fetch(adminURL),
-      fetch(aggregateURL),
-    ]);
-
-    // Log the HTTP responses
-    logResponse(consoleBlock, configResponse.status, [
-      'GET',
-      adminURL,
-      configResponse.headers.get('x-error') || '',
-    ]);
-
-    logResponse(consoleBlock, aggregateResponse.status, [
-      'GET',
-      aggregateURL,
-      aggregateResponse.headers.get('x-error') || '',
+      adminFetch(configPath, {}, (status, args) => logResponse(consoleBlock, status, args)),
+      adminFetch(aggregatePath, {}, (status, args) => logResponse(consoleBlock, status, args)),
     ]);
 
     if (configResponse.status === 401) {
@@ -1073,14 +1051,11 @@ async function loadConfig() {
       logMessage(consoleBlock, 'warning', ['LOAD', 'No configuration file found. Checking for migration options...', '']);
 
       // Try to fetch config with migrate=true to see if migration is possible
-      const migrateURL = `https://admin.hlx.page${configPath}?migrate=true`;
-      const migrateResponse = await fetch(migrateURL);
-
-      logResponse(consoleBlock, migrateResponse.status, [
-        'GET',
-        migrateURL,
-        migrateResponse.headers.get('x-error') || '',
-      ]);
+      const migrateResponse = await adminFetch(
+        configPath,
+        { params: { migrate: 'true' } },
+        (status, args) => logResponse(consoleBlock, status, args),
+      );
 
       if (migrateResponse.status === 401) {
         await ensureLogin(org.value, site.value);
@@ -1150,15 +1125,11 @@ async function saveAllChanges() {
 
   try {
     // Fetch current config from server to get latest state
-    const adminURL = `https://admin.hlx.page${configPath}`;
-    const response = await fetch(adminURL);
-
-    // Log the GET request
-    logResponse(consoleBlock, response.status, [
-      'GET',
-      adminURL,
-      response.headers.get('x-error') || '',
-    ]);
+    const response = await adminFetch(
+      configPath,
+      {},
+      (status, args) => logResponse(consoleBlock, status, args),
+    );
 
     if (response.status === 401) {
       await ensureLogin(org.value, site.value);
@@ -1188,20 +1159,13 @@ async function saveAllChanges() {
     });
 
     // POST the updated config back
-    const saveResponse = await fetch(adminURL, {
+    const saveResponse = await adminFetch(configPath, {
       method: 'POST',
       body: JSON.stringify(serverConfig),
       headers: {
         'content-type': 'application/json',
       },
-    });
-
-    // Log the POST request
-    logResponse(consoleBlock, saveResponse.status, [
-      'POST',
-      adminURL,
-      saveResponse.headers.get('x-error') || '',
-    ]);
+    }, (status, args) => logResponse(consoleBlock, status, args));
 
     if (saveResponse.status === 401) {
       await ensureLogin(org.value, site.value);

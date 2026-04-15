@@ -3,6 +3,7 @@ import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { toClassName } from '../../scripts/aem.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { logResponse } from '../../blocks/console/console.js';
+import { createAdminClient, adminFetch } from '../../utils/admin-fetch.js';
 
 const adminForm = document.getElementById('admin-form');
 const site = document.getElementById('site');
@@ -13,6 +14,12 @@ const fetchButton = document.getElementById('fetch');
 
 let loadedIndices;
 let YAML;
+
+const logFn = (status, details) => logResponse(consoleBlock, status, details);
+
+function getIndexAdmin() {
+  return createAdminClient({ org: org.value, site: site.value, logFn });
+}
 
 async function ensureYaml() {
   // eslint-disable-next-line import/no-unresolved
@@ -160,15 +167,11 @@ function displayIndexDetails(indexName, indexDef, newIndex = false) {
 
     await ensureYaml();
     const yamlText = YAML.stringify(loadedIndices);
-    const resp = await fetch(`https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`, {
+    const resp = await getIndexAdmin().fetch(`/config/${org.value}/sites/${site.value}/content/query.yaml`, {
       method: 'POST',
-      headers: {
-        'content-type': 'text/yaml',
-      },
+      headers: { 'content-type': 'text/yaml' },
       body: yamlText,
     });
-
-    logResponse(consoleBlock, resp.status, ['POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`, resp.headers.get('x-error') || '']);
 
     if (resp.ok) {
       indexDetails.close();
@@ -231,23 +234,22 @@ function showJobStatus(jobDetails) {
 }
 
 async function reIndex(indexNames, paths) {
-  const indexUrl = `https://admin.hlx.page/index/${org.value}/${site.value}/main/*`;
+  const indexPath = `/index/${org.value}/${site.value}/main/*`;
   const payload = {
     paths,
     indexNames,
   };
 
   try {
-    const resp = await fetch(indexUrl, {
+    const resp = await adminFetch(indexPath, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
-    });
+    }, logFn);
 
     const errorMsg = resp.headers.get('x-error') || '';
-    logResponse(consoleBlock, resp.status, ['POST', indexUrl, errorMsg]);
 
     // If 202 status, return job info
     if (resp.status === 202) {
@@ -262,7 +264,7 @@ async function reIndex(indexNames, paths) {
 
     return { success: false, status: resp.status, error: errorMsg };
   } catch (error) {
-    logResponse(consoleBlock, 0, ['POST', indexUrl, error.message]);
+    logResponse(consoleBlock, 0, ['POST', indexPath, error.message]);
     return { success: false, error: error.message };
   }
 }
@@ -338,15 +340,11 @@ async function removeIndex(name) {
 
   await ensureYaml();
   const yamlText = YAML.stringify(loadedIndices);
-  const resp = await fetch(`https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`, {
+  const resp = await getIndexAdmin().fetch(`/config/${org.value}/sites/${site.value}/content/query.yaml`, {
     method: 'POST',
-    headers: {
-      'content-type': 'text/yaml',
-    },
+    headers: { 'content-type': 'text/yaml' },
     body: yamlText,
   });
-
-  logResponse(consoleBlock, resp.status, ['POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`, resp.headers.get('x-error') || '']);
 
   if (resp.ok) {
     const indexesList = document.getElementById('indexes-list');
@@ -523,9 +521,7 @@ async function init() {
     fetchButton.disabled = true;
 
     try {
-      const indexUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`;
-      const resp = await fetch(indexUrl);
-      logResponse(consoleBlock, resp.status, ['GET', indexUrl, resp.headers.get('x-error') || '']);
+      const resp = await getIndexAdmin().site().content('query.yaml').read();
 
       if (resp.ok) {
         updateConfig();

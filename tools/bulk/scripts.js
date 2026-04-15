@@ -1,4 +1,5 @@
 import { ensureLogin } from '../../blocks/profile/profile.js';
+import { adminFetch, ADMIN_API_BASE } from '../../utils/admin-fetch.js';
 
 const log = document.getElementById('logger');
 const adminVersion = new URLSearchParams(window.location.search).get('hlx-admin-version');
@@ -373,15 +374,11 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
     };
     const endpoint = endpoints[operation] || operation;
     const method = methods[operation] || 'POST';
-    const adminURL = `https://admin.hlx.page/${endpoint}/${owner}/${repo}/${branch}${pathname}${adminVersionSuffix}`;
-    const resp = await fetch(adminURL, {
-      method,
-    });
-    resp.text().then(() => {
-      counter += 1;
-      append(`${counter}/${total}: ${adminURL}`, resp.status);
-      document.getElementById('total').textContent = `${counter}/${total}`;
-    });
+    const path = `/${endpoint}/${owner}/${repo}/${branch}${pathname}${adminVersionSuffix}`;
+    const resp = await adminFetch(path, { method });
+    counter += 1;
+    append(`${counter}/${total}: ${ADMIN_API_BASE}${path}`, resp.status);
+    document.getElementById('total').textContent = `${counter}/${total}`;
   };
 
   const dequeue = async () => {
@@ -405,7 +402,7 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
       const bulkText = `$1/${total} URL(s) bulk ${VERB[operation]}ed on ${owner}/${repo} ${forceUpdate ? '(force update)' : ''}`;
       const bulkLog = append(bulkText.replace('$1', 0));
       const paths = urlsToUse.map((url) => new URL(url).pathname);
-      const bulkResp = await fetch(`https://admin.hlx.page/${operation}/${owner}/${repo}/${branch}/*${adminVersionSuffix}`, {
+      const bulkResp = await adminFetch(`/${operation}/${owner}/${repo}/${branch}/*${adminVersionSuffix}`, {
         method: 'POST',
         body: JSON.stringify({
           paths,
@@ -422,7 +419,7 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
         const { name } = job;
         const jobStatusPoll = window.setInterval(async () => {
           try {
-            const jobResp = await fetch(`https://admin.hlx.page/job/${owner}/${repo}/${branch}/${VERB[operation]}/${name}/details`);
+            const jobResp = await adminFetch(`/job/${owner}/${repo}/${branch}/${VERB[operation]}/${name}/details`);
             const jobStatus = await jobResp.json();
             const {
               state,

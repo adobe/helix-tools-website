@@ -3,6 +3,7 @@ import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { loadIcon, icon, showToast } from '../../utils/card-ui/card-ui.js';
+import { createAdminClient } from '../../utils/admin-fetch.js';
 
 const VIEW_STORAGE_KEY = 'user-admin-view';
 
@@ -59,26 +60,20 @@ const ROLE_DESCRIPTIONS = {
   },
 };
 
+const logFn = (status, details) => logResponse(consoleBlock, status, details);
+
 async function getOrgConfig() {
-  const adminURL = `https://admin.hlx.page/config/${org.value}.json`;
-  const resp = await fetch(adminURL);
-  logResponse(consoleBlock, resp.status, ['GET', adminURL, resp.headers.get('x-error') || '']);
-  if (resp.status === 200) {
-    return resp.json();
-  }
+  const admin = createAdminClient({ org: org.value, logFn });
+  const resp = await admin.org.read();
+  if (resp.status === 200) return resp.json();
   return null;
 }
 
 async function getSiteAccessConfig() {
-  const adminURL = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/access.json`;
-  const resp = await fetch(adminURL);
-  logResponse(consoleBlock, resp.status, ['GET', adminURL, resp.headers.get('x-error') || '']);
-  if (resp.status === 200) {
-    return resp.json();
-  }
-  if (resp.status === 404) {
-    return { admin: { role: {} } };
-  }
+  const admin = createAdminClient({ org: org.value, site: site.value, logFn });
+  const resp = await admin.site().access().read();
+  if (resp.status === 200) return resp.json();
+  if (resp.status === 404) return { admin: { role: {} } };
   return null;
 }
 
@@ -98,25 +93,15 @@ async function updateSiteAccess() {
     return access;
   };
   const access = toAccess();
-  const adminURL = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/access.json`;
-  const resp = await fetch(adminURL, {
-    method: 'POST',
-    body: JSON.stringify(access),
-    headers: { 'Content-Type': 'application/json' },
-  });
-  logResponse(consoleBlock, resp.status, ['POST', adminURL, resp.headers.get('x-error') || '']);
-  return resp.ok;
+  const admin = createAdminClient({ org: org.value, site: site.value, logFn });
+  const { ok } = await admin.site().access().update(access);
+  return ok;
 }
 
 async function updateOrgUserRoles(user) {
-  const adminURL = `https://admin.hlx.page/config/${org.value}/users/${user.id}.json`;
-  const resp = await fetch(adminURL, {
-    method: 'POST',
-    body: JSON.stringify(user),
-    headers: { 'Content-Type': 'application/json' },
-  });
-  logResponse(consoleBlock, resp.status, ['POST', adminURL, resp.headers.get('x-error') || '']);
-  return resp.ok;
+  const admin = createAdminClient({ org: org.value, logFn });
+  const { ok } = await admin.org.users(user.id).update(user);
+  return ok;
 }
 
 async function deleteUserFromSite(user) {
@@ -125,10 +110,9 @@ async function deleteUserFromSite(user) {
 }
 
 async function deleteUserFromOrg(user) {
-  const adminURL = `https://admin.hlx.page/config/${org.value}/users/${user.id}.json`;
-  const resp = await fetch(adminURL, { method: 'DELETE' });
-  logResponse(consoleBlock, resp.status, ['DELETE', adminURL, resp.headers.get('x-error') || '']);
-  return resp.ok;
+  const admin = createAdminClient({ org: org.value, logFn });
+  const { ok } = await admin.org.users(user.id).delete();
+  return ok;
 }
 
 async function addUsersToSite(users) {
@@ -145,18 +129,13 @@ async function addUsersToSite(users) {
 }
 
 async function addUsersToOrg(users) {
-  const adminURL = `https://admin.hlx.page/config/${org.value}/users.json`;
+  const admin = createAdminClient({ org: org.value, logFn });
   let added = 0;
   try {
     await users.reduce(async (prevPromise, user) => {
       await prevPromise;
-      const resp = await fetch(adminURL, {
-        method: 'POST',
-        body: JSON.stringify(user),
-        headers: { 'Content-Type': 'application/json' },
-      });
-      logResponse(consoleBlock, resp.status, ['POST', adminURL, resp.headers.get('x-error') || '']);
-      if (resp.ok) {
+      const { ok } = await admin.org.users().create(user);
+      if (ok) {
         added += 1;
         accessConfig.users.push(user);
       } else {

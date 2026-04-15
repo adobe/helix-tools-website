@@ -3,6 +3,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { logResponse } from '../../blocks/console/console.js';
+import { createAdminClient } from '../../utils/admin-fetch.js';
 
 const adminForm = document.getElementById('admin-form');
 const cdnForm = document.getElementById('cdn-form');
@@ -16,6 +17,8 @@ const consoleBlock = document.querySelector('.console');
 const site = document.getElementById('site');
 const org = document.getElementById('org');
 const host = document.getElementById('host');
+
+const logFn = (status, details) => logResponse(consoleBlock, status, details);
 
 let originalConfig;
 let validationPassed = false;
@@ -399,22 +402,17 @@ async function saveConfig() {
     return;
   }
 
-  const cdnUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/cdn/prod.json`;
   const cdnConfig = getFormData();
+  const admin = createAdminClient({ org: org.value, site: site.value, logFn });
 
   saveBtn.disabled = true;
 
   try {
-    const resp = await fetch(cdnUrl, {
+    await admin.fetch(`/config/${org.value}/sites/${site.value}/cdn/prod.json`, {
       method: 'POST',
       body: JSON.stringify(cdnConfig),
-      headers: {
-        'content-type': 'application/json',
-      },
+      headers: { 'content-type': 'application/json' },
     });
-
-    await resp.text();
-    logResponse(consoleBlock, resp.status, ['POST', cdnUrl, resp.headers.get('x-error') || '']);
   } finally {
     saveBtn.disabled = false;
   }
@@ -464,15 +462,15 @@ async function init() {
       return;
     }
 
-    const aggregateConfig = await fetch(`https://admin.hlx.page/config/${org.value}/aggregated/${site.value}.json`);
+    const admin = createAdminClient({ org: org.value, site: site.value, logFn });
+    const aggregateResp = await admin.org.aggregated(site.value).read();
     let aggConfig = {};
-    if (aggregateConfig.ok) {
-      const aggregate = await aggregateConfig.json();
+    if (aggregateResp.ok) {
+      const aggregate = await aggregateResp.json();
       aggConfig = aggregate.cdn?.prod || {};
     }
 
-    const cdnUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}.json`;
-    const resp = await fetch(cdnUrl);
+    const resp = await admin.site().read();
 
     if (resp.status === 200) {
       const siteConfig = await resp.json();
@@ -534,8 +532,6 @@ async function init() {
       cdnFields.innerHTML = '';
       host.value = '';
     }
-
-    logResponse(consoleBlock, resp.status, ['GET', cdnUrl, resp.headers.get('x-error') || '']);
   });
 
   host.addEventListener('input', () => {

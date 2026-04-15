@@ -1,9 +1,9 @@
 import { ensureLogin } from '../../../blocks/profile/profile.js';
 import { MediaLibraryError, ErrorCodes, logMediaLibraryError } from '../core/errors.js';
 import t from '../core/messages.js';
+import { adminFetch } from '../../../utils/admin-fetch.js';
 
 const CONFIG = {
-  API_URL: 'https://admin.hlx.page/log',
   DEFAULT_LIMIT: 1000,
 };
 
@@ -16,23 +16,24 @@ const CONFIG = {
  * @param {string} [nextToken] - Pagination token
  */
 export async function fetchAuditLog(org, site, timeParams, nextToken = null) {
-  const params = new URLSearchParams();
+  const queryParams = {};
   if (timeParams.from && timeParams.to) {
-    params.set('from', timeParams.from);
-    params.set('to', timeParams.to);
+    queryParams.from = timeParams.from;
+    queryParams.to = timeParams.to;
   }
-  params.set('limit', CONFIG.DEFAULT_LIMIT);
+  queryParams.limit = CONFIG.DEFAULT_LIMIT;
 
   if (nextToken) {
-    params.set('nextToken', nextToken);
+    queryParams.nextToken = nextToken;
   }
 
-  const url = `${CONFIG.API_URL}/${org}/${site}/main?${params}`;
-
-  const response = await fetch(url, { credentials: 'include' });
+  const response = await adminFetch(`/log/${org}/${site}/main`, {
+    params: queryParams,
+    credentials: 'include',
+  });
 
   if (!response.ok) {
-    const endpoint = `${CONFIG.API_URL}/${org}/${site}/main`;
+    const endpoint = `/log/${org}/${site}/main`;
     if (response.status === 401) {
       logMediaLibraryError(ErrorCodes.EDS_AUTH_EXPIRED, { status: 401, endpoint });
       throw new MediaLibraryError(ErrorCodes.EDS_AUTH_EXPIRED, t('EDS_AUTH_EXPIRED'), { status: 401 });

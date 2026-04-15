@@ -2,6 +2,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
+import { createAdminClient } from '../../utils/admin-fetch.js';
 
 const adminForm = document.getElementById('admin-form');
 const headersForm = document.getElementById('headers-form');
@@ -16,6 +17,8 @@ const removePathBtn = document.getElementById('remove-path');
 
 let originalHeaders;
 let currentPath = null;
+
+const logFn = (status, details) => logResponse(consoleBlock, status, details);
 
 function createHeaderItem(header = '', value = '') {
   const div = document.createElement('div');
@@ -180,7 +183,6 @@ async function init() {
 
     saveCurrentPathHeaders();
 
-    const headersUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/headers.json`;
     const patchedHeaders = JSON.parse(JSON.stringify(originalHeaders));
 
     Object.keys(patchedHeaders).forEach((path) => {
@@ -190,17 +192,12 @@ async function init() {
     });
 
     const isEmpty = Object.keys(patchedHeaders).length === 0;
-    const resp = await fetch(headersUrl, {
-      method: isEmpty ? 'DELETE' : 'POST',
-      body: isEmpty ? undefined : JSON.stringify(patchedHeaders),
-      headers: isEmpty ? undefined : {
-        'content-type': 'application/json',
-      },
-    });
-
-    resp.text().then(() => {
-      logResponse(consoleBlock, resp.status, [isEmpty ? 'DELETE' : 'POST', headersUrl, resp.headers.get('x-error') || '']);
-    });
+    const admin = createAdminClient({ org: org.value, site: site.value, logFn });
+    if (isEmpty) {
+      await admin.site().headers().delete();
+    } else {
+      await admin.site().headers().update(patchedHeaders);
+    }
   });
 
   adminForm.addEventListener('submit', async (e) => {
@@ -220,8 +217,8 @@ async function init() {
       return;
     }
 
-    const headersUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/headers.json`;
-    const resp = await fetch(headersUrl);
+    const admin = createAdminClient({ org: org.value, site: site.value, logFn });
+    const resp = await admin.site().headers().read();
     headersList.innerHTML = '';
     const buttonBar = document.querySelector('.button-bar');
     const pathSelector = document.querySelector('.path-selector');
@@ -241,8 +238,6 @@ async function init() {
       pathSelector.setAttribute('aria-hidden', 'false');
       buttonBar.setAttribute('aria-hidden', 'false');
     }
-
-    logResponse(consoleBlock, resp.status, ['GET', headersUrl, resp.headers.get('x-error') || '']);
   });
 }
 

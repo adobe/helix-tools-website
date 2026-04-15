@@ -1,7 +1,6 @@
 import { ensureLogin } from '../../../blocks/profile/profile.js';
 import { IndexConfig } from '../core/constants.js';
-
-const STATUS_BASE = 'https://admin.hlx.page/status';
+import { adminFetch } from '../../../utils/admin-fetch.js';
 
 function fetchWithAuth(url, options = {}) {
   return fetch(url, {
@@ -17,13 +16,14 @@ function fetchWithAuth(url, options = {}) {
 export async function createBulkStatusJob(org, repo, ref = 'main') {
   await ensureLogin(org, repo);
 
-  const url = `${STATUS_BASE}/${org}/${repo}/${ref}/*`;
-  const resp = await fetchWithAuth(url, {
+  const resp = await adminFetch(`/status/${org}/${repo}/${ref}/*`, {
     method: 'POST',
     body: JSON.stringify({
       paths: ['/*'],
       select: ['preview'],
     }),
+    headers: { 'content-type': 'application/json' },
+    credentials: 'include',
   });
 
   if (!resp.ok) {

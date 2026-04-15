@@ -10,6 +10,7 @@ import {
   addPasswordFieldListeners,
 } from './utils.js';
 import { updateScheduledPublish, isRegisteredForSnapshotScheduler } from './snapshot-utils.js';
+import { adminFetch } from '../../utils/admin-fetch.js';
 
 // DOM Elements
 const snapshotDetailsContainer = document.getElementById('snapshot-details-container');
@@ -152,7 +153,7 @@ function parseSnapshotUrl(snapshotUrl) {
 async function createSnapshotDetailsHTML(snapshot, manifest) {
   const getCustomReviewHost = async () => {
     try {
-      const resp = await fetch(`https://admin.hlx.page/sidekick/${currentOrg}/${currentSite}/main/config.json`);
+      const resp = await adminFetch(`/sidekick/${currentOrg}/${currentSite}/main/config.json`);
       const json = await resp.json();
       return json.reviewHost;
     } catch (error) {

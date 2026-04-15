@@ -1,6 +1,6 @@
 // Snapshot admin utilities
 
-const AEM_ORIGIN = 'https://admin.hlx.page';
+import { adminFetch } from '../../utils/admin-fetch.js';
 
 let org;
 let site;
@@ -63,7 +63,7 @@ export async function saveManifest(name, manifestToSave) {
     opts.body = JSON.stringify(manifestToSave);
   }
 
-  const resp = await fetch(`${AEM_ORIGIN}/snapshot/${org}/${site}/main/${name}`, opts);
+  const resp = await adminFetch(`/snapshot/${org}/${site}/main/${name}`, opts);
   if (!resp.ok) return formatError(resp);
   const { manifest } = await resp.json();
   manifest.resources = formatResources(name, manifest.resources);
@@ -84,13 +84,13 @@ export async function reviewSnapshot(name, state) {
   };
   // Review status
   const review = `?review=${state}`;
-  const resp = await fetch(`${AEM_ORIGIN}/snapshot/${org}/${site}/main/${name}${review}`, opts);
+  const resp = await adminFetch(`/snapshot/${org}/${site}/main/${name}${review}`, opts);
   if (!resp.ok) return formatError(resp);
   return { success: true, status: resp.status };
 }
 
 export async function fetchManifest(name) {
-  const resp = await fetch(`${AEM_ORIGIN}/snapshot/${org}/${site}/main/${name}`, {
+  const resp = await adminFetch(`/snapshot/${org}/${site}/main/${name}`, {
     headers: {
       'Content-Type': 'application/json',
     },
@@ -102,7 +102,7 @@ export async function fetchManifest(name) {
 }
 
 export async function fetchSnapshots() {
-  const resp = await fetch(`${AEM_ORIGIN}/snapshot/${org}/${site}/main`, {
+  const resp = await adminFetch(`/snapshot/${org}/${site}/main`, {
     headers: {
       'Content-Type': 'application/json',
     },
@@ -125,7 +125,7 @@ export async function deleteSnapshotUrls(name, paths = ['/*']) {
         'Content-Type': 'application/json',
       },
     };
-    const resp = await fetch(`${AEM_ORIGIN}/snapshot/${org}/${site}/main/${name}${path}`, opts);
+    const resp = await adminFetch(`/snapshot/${org}/${site}/main/${name}${path}`, opts);
     if (!resp.ok) return formatError(resp);
     return { success: resp.status };
   }));
@@ -141,7 +141,7 @@ export async function deleteSnapshot(name) {
       'Content-Type': 'application/json',
     },
   };
-  const resp = await fetch(`${AEM_ORIGIN}/snapshot/${org}/${site}/main/${name}`, opts);
+  const resp = await adminFetch(`/snapshot/${org}/${site}/main/${name}`, opts);
   if (!resp.ok) return formatError(resp);
   return { status: resp.status };
 }
@@ -170,7 +170,7 @@ export async function updatePaths(name, currPaths, editedHrefs) {
     };
 
     // This is technically a bulk ops request
-    const resp = await fetch(`${AEM_ORIGIN}/snapshot/${org}/${site}/main/${name}/*`, opts);
+    const resp = await adminFetch(`/snapshot/${org}/${site}/main/${name}/*`, opts);
     if (!resp.ok) return formatError(resp);
   }
 

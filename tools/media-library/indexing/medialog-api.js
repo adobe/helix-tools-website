@@ -4,9 +4,9 @@
 import { getDedupeKey } from '../core/urls.js';
 import { MediaLibraryError, ErrorCodes, logMediaLibraryError } from '../core/errors.js';
 import t from '../core/messages.js';
+import { adminFetch } from '../../../utils/admin-fetch.js';
 
 const CONFIG = {
-  API_URL: 'https://admin.hlx.page/medialog',
   DEFAULT_LIMIT: 1000,
 };
 
@@ -18,18 +18,21 @@ const CONFIG = {
  * @param {string} [nextToken] - Pagination token
  */
 export async function fetchMediaLog(org, site, timeParams, nextToken) {
-  const url = new URL(`${CONFIG.API_URL}/${org}/${site}/main`);
+  const queryParams = {};
   if (timeParams.from && timeParams.to) {
-    url.searchParams.set('from', timeParams.from);
-    url.searchParams.set('to', timeParams.to);
+    queryParams.from = timeParams.from;
+    queryParams.to = timeParams.to;
   }
-  if (nextToken) url.searchParams.set('nextToken', nextToken);
-  url.searchParams.set('limit', CONFIG.DEFAULT_LIMIT);
+  if (nextToken) queryParams.nextToken = nextToken;
+  queryParams.limit = CONFIG.DEFAULT_LIMIT;
 
-  const response = await fetch(url.toString(), { credentials: 'include' });
+  const response = await adminFetch(`/medialog/${org}/${site}/main`, {
+    params: queryParams,
+    credentials: 'include',
+  });
 
   if (!response.ok) {
-    const endpoint = url.toString();
+    const endpoint = `${org}/${site}/main`;
     if (response.status === 401) {
       logMediaLibraryError(ErrorCodes.EDS_AUTH_EXPIRED, { status: 401, endpoint });
       throw new MediaLibraryError(ErrorCodes.EDS_AUTH_EXPIRED, t('EDS_AUTH_EXPIRED'), { status: 401 });

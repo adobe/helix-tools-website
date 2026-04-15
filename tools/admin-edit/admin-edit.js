@@ -2,6 +2,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { loadScript } from '../../scripts/aem.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { logResponse } from '../../blocks/console/console.js';
+import { adminFetch, ADMIN_API_BASE, createAdminClient } from '../../utils/admin-fetch.js';
 
 const adminForm = document.getElementById('admin-form');
 const adminURL = document.getElementById('admin-url');
@@ -170,43 +171,62 @@ function syncScroll(target, el) {
  * @param {string} url - URL to extract org from
  * @returns {string|null} The organization name or null if not found
  */
-function extractOrgFromURL(url) {
+function extractOrgSiteFromURL(url) {
   try {
-    const urlObj = new URL(url);
-    const pathParts = urlObj.pathname.split('/').filter((part) => part);
-    if (pathParts[0] === 'config' && pathParts.length > 1) {
-      // config URL: /config/org.json or /config/org/...
-      let org = pathParts[1];
-      if (org.endsWith('.json')) {
-        org = org.slice(0, -5);
-      }
-      return org;
+    const parts = new URL(url).pathname.split('/').filter(Boolean);
+    if (parts[0] === 'config') {
+      const org = parts[1]?.replace(/\.json$/, '') || null;
+      // /config/org/sites/siteName[.json or /...]
+      const site = (parts[2] === 'sites' && parts[3])
+        ? parts[3].replace(/\.json$/, '') : null;
+      return { org, site };
     }
-    if (pathParts.length > 1) {
-      // admin API URL: /status/org/site/ref or similar
-      return pathParts[1];
-    }
+    // /status/org/site/ref, /job/org/site/ref, etc.
+    return { org: parts[1] || null, site: parts[2] || null };
   } catch (e) {
-    // invalid URL
+    return { org: null, site: null };
   }
-  return null;
 }
 
 /**
- * Updates the admin URL datalist with well-known config locations.
- * @param {string} org - Organization name to use in the suggestions
+ * Updates the admin URL datalist using the admin client structure as the source of truth.
+ * @param {string} org - Organization name
+ * @param {string|null} site - Site name (enables site-scoped suggestions when present)
  */
-function updateAdminURLSuggestions(org) {
+function updateAdminURLSuggestions(org, site) {
   if (!org) {
     adminURLList.innerHTML = '';
     return;
   }
 
+  const admin = createAdminClient({ org, site });
+  const configBase = `${ADMIN_API_BASE}/config/${org}`;
   const suggestions = [
-    { url: `https://admin.hlx.page/config/${org}.json`, label: 'Org Config' },
-    { url: `https://admin.hlx.page/config/${org}/profiles.json`, label: 'Profiles' },
-    { url: `https://admin.hlx.page/config/${org}/sites.json`, label: 'Sites' },
+    { url: admin.org.url, label: 'Org Config' },
+    { url: admin.org.versions().url, label: 'Org Versions' },
+    { url: admin.org.sites().url, label: 'Org Sites' },
+    { url: admin.org.users().url, label: 'Org Users' },
+    { url: `${configBase}/users/{id}.json`, label: 'Org User' },
+    { url: admin.org.profiles().url, label: 'Org Profiles' },
+    { url: `${configBase}/profiles/{name}.json`, label: 'Org Profile' },
+    { url: site ? admin.org.aggregated().url : `${configBase}/aggregated/{site}.json`, label: 'Org Aggregated' },
   ];
+
+  if (site) {
+    const siteBase = `${configBase}/sites/${site}`;
+    suggestions.push(
+      { url: admin.site().url, label: 'Site Config' },
+      { url: admin.site().versions().url, label: 'Site Versions' },
+      { url: admin.site().access().url, label: 'Site Access' },
+      { url: admin.site().cdn().url, label: 'Site CDN' },
+      { url: admin.site().code().url, label: 'Site Code' },
+      { url: admin.site().headers().url, label: 'Site Headers' },
+      { url: admin.site().secrets().url, label: 'Site Secrets' },
+      { url: `${siteBase}/secrets/{id}.json`, label: 'Site Secret' },
+      { url: admin.site().apiKeys().url, label: 'Site API Keys' },
+      { url: `${siteBase}/apiKeys/{id}.json`, label: 'Site API Key' },
+    );
+  }
 
   adminURLList.innerHTML = suggestions
     .map(({ url, label }) => `<option value="${url}" label="${label}"></option>`)
@@ -217,13 +237,13 @@ async function init() {
   adminURL.value = localStorage.getItem('admin-url') || 'https://admin.hlx.page/status/adobe/aem-boilerplate/main/';
 
   // populate datalist with well-known config locations on load
-  const initialOrg = extractOrgFromURL(adminURL.value);
-  updateAdminURLSuggestions(initialOrg);
+  const { org: initialOrg, site: initialSite } = extractOrgSiteFromURL(adminURL.value);
+  updateAdminURLSuggestions(initialOrg, initialSite);
 
   // update datalist when admin URL changes
   adminURL.addEventListener('input', () => {
-    const org = extractOrgFromURL(adminURL.value);
-    updateAdminURLSuggestions(org);
+    const { org, site } = extractOrgSiteFromURL(adminURL.value);
+    updateAdminURLSuggestions(org, site);
   });
 
   /**
@@ -239,15 +259,12 @@ async function init() {
       headers['content-type'] = adminURL.value.endsWith('.yaml') ? 'text/yaml' : 'application/json';
     }
 
-    const resp = await fetch(adminURL.value, {
+    const resp = await adminFetch(adminURL.value.replace(ADMIN_API_BASE, ''), {
       method: reqMethod.value,
       body: body.value,
       headers,
     });
-
-    resp.text().then(() => {
-      logResponse(consoleBlock, resp.status, [reqMethod.value, adminURL.value, resp.headers.get('x-error') || '']);
-    });
+    logResponse(consoleBlock, resp.status, [reqMethod.value, adminURL.value, resp.headers.get('x-error') || '']);
   });
 
   // loads Prism.js libraries when #body focus event is fired for the first time
@@ -306,26 +323,7 @@ async function init() {
    */
   adminForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const extractOrgAndSite = (url) => {
-      const urlObj = new URL(url);
-      const pathParts = urlObj.pathname.split('/');
-      if (pathParts[1] === 'config') {
-        let org = pathParts[2];
-        if (org.endsWith('.json')) {
-          org = org.slice(0, -5);
-        }
-        let site = pathParts[4] ? pathParts[4] : null;
-        if (site && site.endsWith('.json')) {
-          site = site.slice(0, -5);
-        }
-        return { org, site };
-      }
-      const org = pathParts[2];
-      const site = pathParts[3];
-      return { org, site };
-    };
-
-    const { org, site } = extractOrgAndSite(adminURL.value);
+    const { org, site } = extractOrgSiteFromURL(adminURL.value);
     if (!await ensureLogin(org, site)) {
       // not logged in yet, listen for profile-update event
       window.addEventListener('profile-update', ({ detail: loginInfo }) => {
@@ -341,7 +339,7 @@ async function init() {
 
     localStorage.setItem('admin-url', adminURL.value);
 
-    const resp = await fetch(adminURL.value);
+    const resp = await adminFetch(adminURL.value.replace(ADMIN_API_BASE, ''));
     const text = await resp.text();
     body.value = text;
     formatCode(preview, text);

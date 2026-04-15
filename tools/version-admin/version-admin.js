@@ -3,6 +3,7 @@ import { ensureLogin } from '../../blocks/profile/profile.js';
 import { diffJson } from './diff.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
+import { adminFetch } from '../../utils/admin-fetch.js';
 
 const adminForm = document.getElementById('admin-form');
 const typeSelect = document.getElementById('type');
@@ -20,21 +21,23 @@ const fetchButton = document.getElementById('fetch');
 
 const currentConfig = { type: '', versions: [], currentVersion: null };
 
+const logFn = (status, details) => logResponse(consoleBlock, status, details);
+
 /**
- * Build the API URL based on the current configuration
+ * Build the API path based on the current configuration
  * @param {string} endpoint - The endpoint path (e.g., 'versions.json', 'versions/1.json')
- * @returns {string} The complete API URL
+ * @returns {string} The API path
  */
-function buildApiUrl(endpoint) {
-  let url = `https://admin.hlx.page/config/${org.value}`;
+function buildApiPath(endpoint) {
+  let path = `/config/${org.value}`;
 
   if (currentConfig.type === 'profile') {
-    url += `/profiles/${profile.value}`;
+    path += `/profiles/${profile.value}`;
   } else if (currentConfig.type === 'site') {
-    url += `/sites/${site.value}`;
+    path += `/sites/${site.value}`;
   }
 
-  return `${url}/${endpoint}`;
+  return `${path}/${endpoint}`;
 }
 
 /**
@@ -51,9 +54,8 @@ function formatDate(dateString) {
  * Fetch versions list from the API
  */
 async function fetchVersions() {
-  const url = buildApiUrl('versions.json');
-  const resp = await fetch(url);
-  logResponse(consoleBlock, resp.status, ['GET', url, resp.headers.get('x-error') || '']);
+  const path = buildApiPath('versions.json');
+  const resp = await adminFetch(path, {}, logFn);
 
   if (resp.status === 200) {
     const data = await resp.json();
@@ -72,13 +74,10 @@ async function fetchVersions() {
  * @param {number} versionId - Version ID to fetch
  */
 async function fetchVersionData(versionId) {
-  const url = buildApiUrl(`versions/${versionId}.json`);
-  const resp = await fetch(url);
-  logResponse(consoleBlock, resp.status, ['GET', url, resp.headers.get('x-error') || '']);
+  const path = buildApiPath(`versions/${versionId}.json`);
+  const resp = await adminFetch(path, {}, logFn);
 
-  if (resp.status === 200) {
-    return resp.json();
-  }
+  if (resp.status === 200) return resp.json();
   if (resp.status === 401) {
     await ensureLogin(org.value, site.value);
   }
@@ -91,15 +90,13 @@ async function fetchVersionData(versionId) {
  * @param {string} newName - New name for the version
  */
 async function updateVersionName(versionId, newName) {
-  const url = buildApiUrl(`versions/${versionId}.json?name=${encodeURIComponent(newName)}`);
-  const resp = await fetch(url, {
+  const path = buildApiPath(`versions/${versionId}.json`);
+  const resp = await adminFetch(path, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    params: { name: newName },
+    headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ name: newName }),
-  });
-  logResponse(consoleBlock, resp.status, ['POST', url, resp.headers.get('x-error') || '']);
+  }, logFn);
 
   if (resp.status === 401) {
     await ensureLogin(org.value, site.value);
@@ -112,19 +109,12 @@ async function updateVersionName(versionId, newName) {
  * @param {number} versionId - Version ID to restore
  */
 async function restoreVersion(versionId) {
-  let url;
-  if (currentConfig.type === 'org') {
-    url = `https://admin.hlx.page/config/${org.value}.json?restoreVersion=${versionId}`;
-  } else if (currentConfig.type === 'profile') {
-    url = `https://admin.hlx.page/config/${org.value}/profiles/${profile.value}.json?restoreVersion=${versionId}`;
-  } else if (currentConfig.type === 'site') {
-    url = `https://admin.hlx.page/config/${org.value}/sites/${site.value}.json?restoreVersion=${versionId}`;
-  }
+  let path;
+  if (currentConfig.type === 'org') path = `/config/${org.value}.json`;
+  else if (currentConfig.type === 'profile') path = `/config/${org.value}/profiles/${profile.value}.json`;
+  else path = `/config/${org.value}/sites/${site.value}.json`;
 
-  const resp = await fetch(url, {
-    method: 'POST',
-  });
-  logResponse(consoleBlock, resp.status, ['POST', url, resp.headers.get('x-error') || '']);
+  const resp = await adminFetch(path, { method: 'POST', params: { restoreVersion: versionId } }, logFn);
 
   if (resp.status === 401) {
     await ensureLogin(org.value, site.value);
@@ -137,11 +127,8 @@ async function restoreVersion(versionId) {
  * @param {number} versionId - Version ID to delete
  */
 async function deleteVersion(versionId) {
-  const url = buildApiUrl(`versions/${versionId}.json`);
-  const resp = await fetch(url, {
-    method: 'DELETE',
-  });
-  logResponse(consoleBlock, resp.status, ['DELETE', url, resp.headers.get('x-error') || '']);
+  const path = buildApiPath(`versions/${versionId}.json`);
+  const resp = await adminFetch(path, { method: 'DELETE' }, logFn);
 
   if (resp.status === 401) {
     await ensureLogin(org.value, site.value);

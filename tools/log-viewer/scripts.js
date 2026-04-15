@@ -3,6 +3,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { loadPrism, highlight } from '../../utils/prism/prism.js';
+import { adminFetch, ADMIN_API_BASE } from '../../utils/admin-fetch.js';
 
 // field ids
 const FIELDS = ['date-from', 'date-to'];
@@ -590,21 +591,21 @@ function writeTimeParams(timeframe) {
 async function fetchAllLogs(org, site, timeframe) {
   const logs = [];
   const timeParams = writeTimeParams(timeframe);
-  let nextUrl = `https://admin.hlx.page/log/${org}/${site}/main?${timeParams}`;
+  let nextPath = `/log/${org}/${site}/main?${timeParams}`;
 
   do {
     try {
       // eslint-disable-next-line no-await-in-loop
-      const res = await fetch(nextUrl);
+      const res = await adminFetch(nextPath);
       if (!res.ok) throw res;
       // eslint-disable-next-line no-await-in-loop
       const json = await res.json();
       logs.push(...json.entries);
-      nextUrl = json.links ? json.links.next : null;
+      nextPath = json.links?.next ? json.links.next.replace(ADMIN_API_BASE, '') : null;
     } catch (error) {
       return { logs, error };
     }
-  } while (nextUrl);
+  } while (nextPath);
 
   return { logs, error: null };
 }
@@ -635,8 +636,7 @@ async function fetchLogs(org, site, timeframe) {
  */
 async function fetchHosts(org, site) {
   try {
-    const url = `https://admin.hlx.page/status/${org}/${site}/main`;
-    const res = await fetch(url);
+    const res = await adminFetch(`/status/${org}/${site}/main`);
     if (!res.ok) throw res;
     const json = await res.json();
     return {
@@ -879,9 +879,9 @@ async function registerListeners() {
     if (target.dataset.url) {
       showLoadingButton(target);
       try {
-        const url = new URL(target.dataset.url);
+        const adminPath = target.dataset.url.replace(ADMIN_API_BASE, '');
         const { createModal } = await import('../../blocks/modal/modal.js');
-        const res = await fetch(url);
+        const res = await adminFetch(adminPath);
         const json = await res.json();
         const modal = document.createElement('div');
         modal.innerHTML = `<pre><code class="language-js">${JSON.stringify(json, null, 2)}

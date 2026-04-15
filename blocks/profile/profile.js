@@ -5,6 +5,7 @@ import {
   messageSidekick,
   NO_SIDEKICK,
 } from '../../utils/sidekick.js';
+import { adminFetch } from '../../utils/admin-fetch.js';
 
 async function getLoginInfo() {
   return messageSidekick({ action: 'getAuthInfo' });
@@ -96,7 +97,7 @@ async function removeSite(org, site) {
 async function fetchUserInfo(userInfoElem, org, site, loginInfo) {
   let userInfo = '';
   if (Array.isArray(loginInfo) && loginInfo.includes(org)) {
-    const resp = await fetch(`https://admin.hlx.page/profile/${org}/${site}`);
+    const resp = await adminFetch(`/profile/${org}/${site}`);
     if (resp.ok) {
       const { profile } = await resp.json();
       if (profile) {
