@@ -47,7 +47,7 @@ function makeReq(path, logFn) {
 // Includes restore() and versions() for config version management.
 function makeSingletonReq(path, logFn) {
   const go = (opts) => adminFetch(path, opts, logFn);
-  // Strip extension to build version sub-paths (e.g. .json, .txt)
+  // Strip extension to build version sub-paths (e.g. /config/{org}.json → /config/{org})
   const base = path.replace(/\.[^./]+$/, '');
   return {
     url: `${ADMIN_API_BASE}${path}`,
@@ -58,7 +58,7 @@ function makeSingletonReq(path, logFn) {
     restore: (versionId) => go({ method: 'POST', params: { restoreVersion: versionId } }),
     versions: (id) => {
       if (id !== undefined) {
-        const vpath = `${base}.versions/${id}.json`;
+        const vpath = `${base}/versions/${id}.json`;
         const gv = (opts) => adminFetch(vpath, opts, logFn);
         return {
           read: () => gv({}),
@@ -67,8 +67,8 @@ function makeSingletonReq(path, logFn) {
         };
       }
       return {
-        url: `${ADMIN_API_BASE}${base}.versions.json`,
-        read: () => adminFetch(`${base}.versions.json`, {}, logFn),
+        url: `${ADMIN_API_BASE}${base}/versions.json`,
+        read: () => adminFetch(`${base}/versions.json`, {}, logFn),
       };
     },
   };
@@ -198,10 +198,10 @@ export function extractOrgSiteFromURL(url) {
   try {
     const parts = new URL(url).pathname.split('/').filter(Boolean);
     if (parts[0] === 'config') {
-      const org = parts[1]?.replace(/(?:\.versions)?\.json$/, '') || null;
-      // /config/org/sites/siteName[.json|.versions.json|/...]
+      const org = parts[1]?.replace(/\.json$/, '') || null;
+      // /config/org/sites/siteName[.json|/...]
       const site = (parts[2] === 'sites' && parts[3])
-        ? parts[3].replace(/(?:\.versions)?\.json$/, '') : null;
+        ? parts[3].replace(/\.json$/, '') : null;
       return { org, site };
     }
     // /status/org/site/ref, /job/org/site/ref, etc.

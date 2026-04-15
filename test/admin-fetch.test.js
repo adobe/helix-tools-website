@@ -66,7 +66,7 @@ describe('createAdminClient URLs', () => {
 
   describe('org', () => {
     it('org.url', () => assert.strictEqual(admin.org.url, `${BASE}.json`));
-    it('org.versions().url', () => assert.strictEqual(admin.org.versions().url, `${BASE}.versions.json`));
+    it('org.versions().url', () => assert.strictEqual(admin.org.versions().url, `${BASE}/versions.json`));
     it('org.sites().url', () => assert.strictEqual(admin.org.sites().url, `${BASE}/sites.json`));
     it('org.users().url', () => assert.strictEqual(admin.org.users().url, `${BASE}/users.json`));
     it('org.profiles().url', () => assert.strictEqual(admin.org.profiles().url, `${BASE}/profiles.json`));
@@ -81,7 +81,7 @@ describe('createAdminClient URLs', () => {
 
   describe('site', () => {
     it('site().url', () => assert.strictEqual(admin.site().url, `${SITE_BASE}.json`));
-    it('site().versions().url', () => assert.strictEqual(admin.site().versions().url, `${SITE_BASE}.versions.json`));
+    it('site().versions().url', () => assert.strictEqual(admin.site().versions().url, `${SITE_BASE}/versions.json`));
     it('site().access().url', () => assert.strictEqual(admin.site().access().url, `${SITE_BASE}/access.json`));
     it('site().cdn().url', () => assert.strictEqual(admin.site().cdn().url, `${SITE_BASE}/cdn.json`));
     it('site().code().url', () => assert.strictEqual(admin.site().code().url, `${SITE_BASE}/code.json`));
@@ -112,14 +112,14 @@ describe('extractOrgSiteFromURL', () => {
 
   it('org versions URL', () => {
     assert.deepStrictEqual(
-      extractOrgSiteFromURL(`${ADMIN_API_BASE}/config/${ORG}.versions.json`),
+      extractOrgSiteFromURL(`${ADMIN_API_BASE}/config/${ORG}/versions.json`),
       { org: ORG, site: null },
     );
   });
 
   it('site versions URL', () => {
     assert.deepStrictEqual(
-      extractOrgSiteFromURL(`${ADMIN_API_BASE}/config/${ORG}/sites/${SITE}.versions.json`),
+      extractOrgSiteFromURL(`${ADMIN_API_BASE}/config/${ORG}/sites/${SITE}/versions.json`),
       { org: ORG, site: SITE },
     );
   });
