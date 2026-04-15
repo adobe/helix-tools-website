@@ -216,5 +216,57 @@ header.header-wrapper {
         transform: rotate(-45deg);
       }
     }
+
+    .experimental-tooltip {
+      position: fixed;
+      top: 42px;
+      left: 12px;
+      width: min(22rem, calc(100vw - 2rem));
+      padding: var(--spacing-s) var(--spacing-m);
+      border: 1px solid var(--gray-300);
+      border-radius: var(--rounding-m);
+      background: var(--gray-25);
+      color: var(--gray-900);
+      box-shadow: var(--shadow-default);
+      font-size: var(--detail-size-s);
+      font-weight: var(--weight-regular);
+      line-height: 1.45;
+      text-transform: none;
+      letter-spacing: normal;
+      opacity: 0;
+      pointer-events: none;
+      visibility: hidden;
+      transition: opacity 160ms ease;
+      z-index: 3;
+
+      @media (width >= 1200px) {
+        top: 84px;
+        left: 24px;
+      }
+    }
+
+    .experimental-tooltip::before,
+    .experimental-tooltip::after {
+      content: '';
+      position: absolute;
+      top: -9px;
+      left: 18px;
+      border-right: 9px solid transparent;
+      border-bottom: 9px solid var(--gray-300);
+      border-left: 9px solid transparent;
+    }
+
+    .experimental-tooltip::after {
+      top: -8px;
+      left: 19px;
+      border-right-width: 8px;
+      border-bottom: 8px solid var(--gray-25);
+      border-left-width: 8px;
+    }
+
+    .experimental-tooltip.is-visible {
+      opacity: 1;
+      visibility: visible;
+    }
   }
 }

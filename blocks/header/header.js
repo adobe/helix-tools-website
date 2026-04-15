@@ -34,6 +34,16 @@ function getThemeLabel(current) {
   return `Theme: ${THEME_NAMES[current]} (click for ${THEME_NAMES[next]})`;
 }
 
+function attachTooltip(ribbon, tooltip) {
+  const show = () => tooltip.classList.add('is-visible');
+  const hide = () => tooltip.classList.remove('is-visible');
+
+  ribbon.addEventListener('mouseenter', show);
+  ribbon.addEventListener('mouseleave', hide);
+  ribbon.addEventListener('focus', show);
+  ribbon.addEventListener('blur', hide);
+}
+
 async function fetchThemeIcon(theme) {
   if (themeIconsCache[theme]) return themeIconsCache[theme];
   try {
@@ -252,11 +262,17 @@ export default async function decorate(block) {
   const isLab = getMetadata('lab') === 'true';
   if (isLab) {
     const ribbon = document.createElement('div');
+    const tooltip = document.createElement('span');
     ribbon.className = 'experimental-ribbon';
     ribbon.textContent = 'Experimental';
-    ribbon.title = EXPERIMENTAL_TOOLTIP;
+    tooltip.className = 'experimental-tooltip';
+    tooltip.textContent = EXPERIMENTAL_TOOLTIP;
+    tooltip.setAttribute('aria-hidden', 'true');
+    tooltip.setAttribute('role', 'tooltip');
     ribbon.setAttribute('aria-label', `Experimental. ${EXPERIMENTAL_TOOLTIP}`);
     ribbon.tabIndex = 0;
+    attachTooltip(ribbon, tooltip);
+    block.prepend(tooltip);
     block.prepend(ribbon);
   }
 
