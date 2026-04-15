@@ -820,7 +820,9 @@ function buildValidationDetails(results) {
  */
 function displayHtmlValidation(validation) {
   if (!validation || !Array.isArray(validation.results)) {
-    hideHtmlValidation();
+    collapseValidationDetails();
+    if (sourceErrorHighlights) sourceErrorHighlights.innerHTML = '';
+    if (!validation) updatePreviewStatus('ok', 'HTML');
     return;
   }
 
@@ -868,7 +870,12 @@ async function fetchRenderedHtml(jsonValue, template, options, signal) {
     throw new Error(errorMessage);
   }
 
-  return response.json();
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    return response.json();
+  }
+  const html = await response.text();
+  return { html };
 }
 
 /**
