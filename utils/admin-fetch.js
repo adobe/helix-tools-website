@@ -44,33 +44,37 @@ function makeReq(path, logFn) {
 }
 
 // Singleton resource (org/site config, access, cdn, code, etc.): create=PUT, update=POST.
-// Includes restore() and versions() for config version management.
 function makeSingletonReq(path, logFn) {
   const go = (opts) => adminFetch(path, opts, logFn);
-  // Strip extension to build version sub-paths (e.g. /config/{org}.json → /config/{org})
-  const base = path.replace(/\.[^./]+$/, '');
   return {
     url: `${ADMIN_API_BASE}${path}`,
     read: () => go({}),
     create: (body) => go(writeOpts('PUT', body)),
     update: (body) => go(writeOpts('POST', body)),
     delete: () => go({ method: 'DELETE' }),
-    restore: (versionId) => go({ method: 'POST', params: { restoreVersion: versionId } }),
-    versions: (id) => {
-      if (id !== undefined) {
-        const vpath = `${base}/versions/${id}.json`;
-        const gv = (opts) => adminFetch(vpath, opts, logFn);
-        return {
-          read: () => gv({}),
-          delete: () => gv({ method: 'DELETE' }),
-          rename: (name) => gv({ method: 'POST', params: { name } }),
-        };
-      }
+  };
+}
+
+// Versions sub-resource for a config singleton.
+// resourcePath is the full path including extension (e.g. /config/{org}.json).
+// versions() lists all versions; versions(id) operates on a specific version.
+function makeVersionsReq(resourcePath, logFn) {
+  const base = resourcePath.replace(/\.[^./]+$/, '');
+  return (id) => {
+    if (id !== undefined) {
+      const vpath = `${base}/versions/${id}.json`;
+      const gv = (opts) => adminFetch(vpath, opts, logFn);
       return {
-        url: `${ADMIN_API_BASE}${base}/versions.json`,
-        read: () => adminFetch(`${base}/versions.json`, {}, logFn),
+        read: () => gv({}),
+        delete: () => gv({ method: 'DELETE' }),
+        rename: (name) => gv({ method: 'POST', params: { name } }),
+        restore: () => adminFetch(resourcePath, { method: 'POST', params: { restoreVersion: id } }, logFn),
       };
-    },
+    }
+    return {
+      url: `${ADMIN_API_BASE}${base}/versions.json`,
+      read: () => adminFetch(`${base}/versions.json`, {}, logFn),
+    };
   };
 }
 
@@ -98,7 +102,7 @@ function makeSingletonReq(path, logFn) {
  * const resp = await admin.org.users('user@example.com').delete();
  * const resp = await admin.org.profile('myprofile').read();
  * const resp = await admin.org.versions().read();
- * const resp = await admin.org.restore('abc123');
+ * const resp = await admin.org.versions('abc123').restore();
  *
  * // Site-scoped config (uses site from context)
  * const resp = await admin.site().read();
@@ -106,7 +110,7 @@ function makeSingletonReq(path, logFn) {
  * const resp = await admin.site().secrets('my-secret').delete();
  * const resp = await admin.site().versions().read();
  * const resp = await admin.site().versions('abc123').rename('new-name');
- * const resp = await admin.site().restore('abc123');
+ * const resp = await admin.site().versions('abc123').restore();
  *
  * // Override site for a single call
  * const resp = await admin.site('other-site').read();
@@ -122,6 +126,7 @@ export function createAdminClient({ org, site: defaultSite, logFn = null }) {
     const base = `${configBase}/sites/${siteName}`;
     return {
       ...makeSingletonReq(`${base}.json`, logFn),
+      versions: makeVersionsReq(`${base}.json`, logFn),
       access: () => makeSingletonReq(`${base}/access.json`, logFn),
       cdn: () => makeSingletonReq(`${base}/cdn.json`, logFn),
       code: () => makeSingletonReq(`${base}/code.json`, logFn),
@@ -158,10 +163,10 @@ export function createAdminClient({ org, site: defaultSite, logFn = null }) {
 
     /**
      * Org-scoped config: /config/{org}/...
-     * .read/create/update/delete/restore/versions() act on /config/{org}.json
      */
     org: {
       ...makeSingletonReq(`${configBase}.json`, logFn),
+      versions: makeVersionsReq(`${configBase}.json`, logFn),
       sites: () => makeReq(`${configBase}/sites.json`, logFn),
       users: (id) => makeReq(
         id !== undefined
@@ -182,7 +187,6 @@ export function createAdminClient({ org, site: defaultSite, logFn = null }) {
     /**
      * Site-scoped config: /config/{org}/sites/{site}/...
      * Defaults to the site passed to createAdminClient; pass a name to override.
-     * .read/create/update/delete/restore/versions() act on /config/{org}/sites/{site}.json
      */
     site: (siteName = defaultSite) => siteReq(siteName),
   };
