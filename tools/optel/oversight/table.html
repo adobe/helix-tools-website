@@ -101,7 +101,7 @@
             </ul>
             <div class="key-metrics-more" aria-hidden="true">
               <ul>
-                <li id="cls" title="Time to First Byte">
+                <li id="ttfb" title="Time to First Byte">
                   <h2>TTFB</h2>
                   <p><number-format>0</number-format></p>
                 </li>
@@ -184,6 +184,10 @@
                 <dd>Consent</dd>
                 <dt>navigate</dt>
                 <dd>Internal Navigation</dd>
+                <dt>language</dt>
+                <dd>Language Preference</dd>
+                <dt>redirect</dt>
+                <dd>Redirect</dd>
               </dl>
             </list-facet>
             <literal-facet facet="click.source" drilldown="list.html">
@@ -281,10 +285,6 @@
             <vitals-facet drilldown="cwvperf.html" facet="vitals">
               <legend>Experience Quality</legend>
             </vitals-facet>
-            <dt>language</dt>
-            <dd>Language Preference</dd>
-            <dt>redirect</dt>
-            <dd>Redirect</dd>
           </facet-sidebar>
         </div>
         </div>
