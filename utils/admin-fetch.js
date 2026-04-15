@@ -198,10 +198,10 @@ export function extractOrgSiteFromURL(url) {
   try {
     const parts = new URL(url).pathname.split('/').filter(Boolean);
     if (parts[0] === 'config') {
-      const org = parts[1]?.replace(/\.json$/, '') || null;
-      // /config/org/sites/siteName[.json|/...]
+      const org = parts[1]?.replace(/(?:\.versions)?\.json$/, '') || null;
+      // /config/org/sites/siteName[.json|.versions.json|/...]
       const site = (parts[2] === 'sites' && parts[3])
-        ? parts[3].replace(/\.json$/, '') : null;
+        ? parts[3].replace(/(?:\.versions)?\.json$/, '') : null;
       return { org, site };
     }
     // /status/org/site/ref, /job/org/site/ref, etc.

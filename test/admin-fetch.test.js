@@ -110,6 +110,20 @@ describe('extractOrgSiteFromURL', () => {
     );
   });
 
+  it('org versions URL', () => {
+    assert.deepStrictEqual(
+      extractOrgSiteFromURL(`${ADMIN_API_BASE}/config/${ORG}.versions.json`),
+      { org: ORG, site: null },
+    );
+  });
+
+  it('site versions URL', () => {
+    assert.deepStrictEqual(
+      extractOrgSiteFromURL(`${ADMIN_API_BASE}/config/${ORG}/sites/${SITE}.versions.json`),
+      { org: ORG, site: SITE },
+    );
+  });
+
   it('org sites collection — no site', () => {
     assert.deepStrictEqual(
       extractOrgSiteFromURL(`${ADMIN_API_BASE}/config/${ORG}/sites.json`),

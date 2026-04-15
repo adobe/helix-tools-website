@@ -189,12 +189,12 @@ function updateAdminURLSuggestions(org, site) {
     { url: `${configBase}/users/{id}.json`, label: 'Org User' },
     { url: admin.org.profiles().url, label: 'Org Profiles' },
     { url: `${configBase}/profiles/{name}.json`, label: 'Org Profile' },
-    { url: site ? admin.org.aggregated().url : `${configBase}/aggregated/{site}.json`, label: 'Org Aggregated' },
   ];
 
   if (site) {
     const siteBase = `${configBase}/sites/${site}`;
     suggestions.push(
+      { url: admin.org.aggregated().url, label: 'Site Aggregated Config' },
       { url: admin.site().url, label: 'Site Config' },
       { url: admin.site().versions().url, label: 'Site Versions' },
       { url: admin.site().access().url, label: 'Site Access' },
