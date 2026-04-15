@@ -1,20 +1,6 @@
 import { createModal } from '../../../blocks/modal/modal.js';
+import { createAdminClient } from '../../../utils/admin-fetch.js';
 import { AUTH_STATUS_MAP } from './constants.js';
-import {
-  fetchSiteDetails,
-  fetchSiteAccess,
-  updateSiteAccess,
-  saveSiteConfig,
-  saveSiteCodeConfig,
-  deleteSiteConfig,
-  fetchSecrets,
-  createSecret,
-  createNamedSecret,
-  deleteSecret,
-  fetchApiKeys,
-  createApiKey,
-  deleteApiKey,
-} from './api-helper.js';
 import {
   icon, showToast, formatDate, isExpired, escapeHtml,
 } from './utils.js';
@@ -85,11 +71,15 @@ export const saveSiteAndRefresh = async (
   action = 'update',
   byogit = null,
 ) => {
+  const admin = createAdminClient({ org: orgValue, site: siteName, logFn });
   const siteConfig = buildSiteConfig(existingConfig, codeSrc, contentSrc, byogit);
-  let success = await saveSiteConfig(orgValue, siteName, siteConfig, logFn);
+
+  let resp = await admin.site().update(siteConfig);
+  await resp.text();
+  let success = resp.ok;
 
   if (success && byogit) {
-    success = await saveSiteCodeConfig(orgValue, siteName, {
+    resp = await admin.site().code().update({
       source: {
         type: 'byogit',
         url: 'https://cm-repo.adobe.io/api',
@@ -98,7 +88,9 @@ export const saveSiteAndRefresh = async (
         repo: byogit.repo,
         secretId: 'cm-byog',
       },
-    }, logFn);
+    });
+    await resp.text();
+    success = resp.ok;
   }
 
   if (success && dialogCloseCallback) {
@@ -114,7 +106,10 @@ export const deleteSiteAndRefresh = async (
   dialogCloseCallback,
   logFn = null,
 ) => {
-  const success = await deleteSiteConfig(orgValue, siteName, logFn);
+  const admin = createAdminClient({ org: orgValue, site: siteName, logFn });
+  const resp = await admin.site().delete();
+  await resp.text();
+  const success = resp.ok;
 
   if (success) {
     if (dialogCloseCallback) dialogCloseCallback();
@@ -223,7 +218,8 @@ export const openEditSourceModal = async (
       };
     }
 
-    const siteDetails = await fetchSiteDetails(orgValue, siteName) || {};
+    const detailsResp = await createAdminClient({ org: orgValue, site: siteName }).site().read();
+    const siteDetails = detailsResp.ok ? await detailsResp.json() : {};
     const closeDialog = () => dialog.close();
     const success = await saveSiteAndRefresh(
       orgValue,
@@ -259,10 +255,17 @@ export const openAuthModal = async (siteName, orgValue) => {
     </div>
   `);
 
-  const [secrets, access] = await Promise.all([
-    fetchSecrets(orgValue, siteName),
-    fetchSiteAccess(orgValue, siteName),
+  const admin = createAdminClient({ org: orgValue, site: siteName });
+  const [secretsResp, siteResp] = await Promise.all([
+    admin.site().secrets().read(),
+    admin.site().read(),
   ]);
+  let secrets;
+  if (secretsResp.ok) secrets = Object.values(await secretsResp.json());
+  else if (secretsResp.status === 404) secrets = [];
+  else secrets = null;
+  const siteConfig = siteResp.ok ? await siteResp.json() : {};
+  const access = siteConfig.access || {};
 
   let currentScope = 'none';
   if (access.site) currentScope = 'site';
@@ -357,8 +360,11 @@ export const openAuthModal = async (siteName, orgValue) => {
     let tokenId = currentAccess.secretId?.[0] || '';
 
     if (scope !== 'none' && !tokenId && (!secrets || secrets.length === 0)) {
-      const result = await createSecret(orgValue, siteName);
-      if (result) tokenId = result.id;
+      const secretResp = await admin.site().secrets().create();
+      if (secretResp.ok) {
+        const result = await secretResp.json();
+        tokenId = result.id;
+      }
     }
 
     if (scope !== 'none') {
@@ -370,7 +376,11 @@ export const openAuthModal = async (siteName, orgValue) => {
 
     if (access.admin) newAccess.admin = access.admin;
 
-    const success = await updateSiteAccess(orgValue, siteName, newAccess);
+    const readResp = await admin.site().read();
+    const currentConfig = readResp.ok ? await readResp.json() : {};
+    currentConfig.access = newAccess;
+    const updateResp = await admin.site().update(currentConfig);
+    const success = updateResp.ok;
     btn.disabled = false;
     btn.textContent = success ? 'Saved!' : 'Save';
     if (success) {
@@ -444,7 +454,7 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
   const loadItems = async () => {
     itemsList.classList.add('loading');
     itemsList.textContent = 'Loading...';
-    const items = await fetchFn(orgValue, siteName) || [];
+    const items = await fetchFn() || [];
     itemsList.classList.remove('loading');
 
     if (items.length === 0) {
@@ -460,7 +470,7 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
         const itemId = row.dataset.id;
         if (confirm(`Delete ${itemName.toLowerCase()} "${itemId}"?`)) {
           btn.disabled = true;
-          const success = await deleteFn(orgValue, siteName, itemId);
+          const success = await deleteFn(itemId);
           if (success) {
             await loadItems();
             showToast(`${itemName} deleted successfully`, 'success');
@@ -485,7 +495,7 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
     btn.textContent = 'Creating...';
 
     const body = getCreateBody ? getCreateBody(container) : undefined;
-    const result = await createFn(orgValue, siteName, body);
+    const result = await createFn(body);
     if (result?.value) {
       container.querySelector('.item-value').value = result.value;
       container.querySelector('.new-item-result').classList.add('visible');
@@ -505,16 +515,30 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
   showModal();
 };
 
-export const openSecretModal = (siteName, orgValue) => openManageItemsModal(siteName, orgValue, {
-  title: 'Manage Secrets',
-  itemName: 'Secret',
-  itemNamePlural: 'Secrets',
-  iconName: 'lock',
-  fetchFn: fetchSecrets,
-  createFn: createSecret,
-  deleteFn: deleteSecret,
-  showExpiration: false,
-});
+export const openSecretModal = (siteName, orgValue) => {
+  const admin = createAdminClient({ org: orgValue, site: siteName });
+  return openManageItemsModal(siteName, orgValue, {
+    title: 'Manage Secrets',
+    itemName: 'Secret',
+    itemNamePlural: 'Secrets',
+    iconName: 'lock',
+    fetchFn: async () => {
+      const resp = await admin.site().secrets().read();
+      if (resp.ok) return Object.values(await resp.json());
+      if (resp.status === 404) return [];
+      return null;
+    },
+    createFn: async () => {
+      const resp = await admin.site().secrets().create();
+      return resp.ok ? resp.json() : null;
+    },
+    deleteFn: async (id) => {
+      const resp = await admin.site().secrets(id).delete();
+      return resp.ok;
+    },
+    showExpiration: false,
+  });
+};
 
 const API_KEY_ROLES = [
   { id: 'author', label: 'Author', description: 'Read/write content' },
@@ -522,16 +546,29 @@ const API_KEY_ROLES = [
   { id: 'admin', label: 'Admin', description: 'Full access' },
 ];
 
-export const openApiKeyModal = (siteName, orgValue) => openManageItemsModal(siteName, orgValue, {
-  title: 'Manage API Keys',
-  itemName: 'API Key',
-  itemNamePlural: 'API Keys',
-  iconName: 'key',
-  fetchFn: fetchApiKeys,
-  createFn: createApiKey,
-  deleteFn: deleteApiKey,
-  showExpiration: true,
-  formHtml: `
+export const openApiKeyModal = (siteName, orgValue) => {
+  const admin = createAdminClient({ org: orgValue, site: siteName });
+  return openManageItemsModal(siteName, orgValue, {
+    title: 'Manage API Keys',
+    itemName: 'API Key',
+    itemNamePlural: 'API Keys',
+    iconName: 'key',
+    fetchFn: async () => {
+      const resp = await admin.site().apiKeys().read();
+      if (!resp.ok) return resp.status === 404 ? [] : null;
+      const data = await resp.json();
+      return Object.entries(data).map(([id, val]) => ({ id, ...val }));
+    },
+    createFn: async (body) => {
+      const resp = await admin.site().apiKeys().create(body);
+      return resp.ok ? resp.json() : null;
+    },
+    deleteFn: async (id) => {
+      const resp = await admin.site().apiKeys(id).delete();
+      return resp.ok;
+    },
+    showExpiration: true,
+    formHtml: `
     <div class="form-field">
       <label for="apikey-description">Description (optional)</label>
       <input type="text" id="apikey-description" placeholder="e.g. CI/CD pipeline key" />
@@ -544,21 +581,22 @@ export const openApiKeyModal = (siteName, orgValue) => openManageItemsModal(site
       <p class="field-hint role-hint">${API_KEY_ROLES.find((r) => r.id === 'admin').description}</p>
     </div>
   `,
-  onFormInit: (el) => {
-    const roleSelect = el.querySelector('#apikey-role');
-    const roleHint = el.querySelector('.role-hint');
-    roleSelect.addEventListener('change', () => {
-      const role = API_KEY_ROLES.find((r) => r.id === roleSelect.value);
-      roleHint.textContent = role?.description ?? '';
-    });
-  },
-  getCreateBody: (el) => {
-    const body = { roles: [el.querySelector('#apikey-role').value] };
-    const desc = el.querySelector('#apikey-description').value.trim();
-    if (desc) body.description = desc;
-    return body;
-  },
-});
+    onFormInit: (el) => {
+      const roleSelect = el.querySelector('#apikey-role');
+      const roleHint = el.querySelector('.role-hint');
+      roleSelect.addEventListener('change', () => {
+        const role = API_KEY_ROLES.find((r) => r.id === roleSelect.value);
+        roleHint.textContent = role?.description ?? '';
+      });
+    },
+    getCreateBody: (el) => {
+      const body = { roles: [el.querySelector('#apikey-role').value] };
+      const desc = el.querySelector('#apikey-description').value.trim();
+      if (desc) body.description = desc;
+      return body;
+    },
+  });
+};
 
 export const openAddSiteModal = async (
   orgValue,
@@ -670,7 +708,9 @@ export const openAddSiteModal = async (
     const btn = secretStep.querySelector('.save-secret-btn');
     btn.disabled = true;
     btn.textContent = 'Saving...';
-    const saved = await createNamedSecret(orgValue, createdSiteName, 'cm-byog', secretValue, logFn);
+    const secretResp = await createAdminClient({ org: orgValue, site: createdSiteName, logFn })
+      .site().secrets('cm-byog').create({ value: secretValue });
+    const saved = secretResp.ok;
     if (saved) {
       btn.textContent = 'Saved!';
       showToast('Cloud Manager secret saved', 'success');

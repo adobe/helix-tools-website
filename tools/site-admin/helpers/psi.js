@@ -1,4 +1,4 @@
-import { fetchPsiScores } from './api-helper.js';
+import { adminFetch } from '../../../utils/admin-fetch.js';
 import {
   getPsiScores,
   savePsiScores,
@@ -49,7 +49,19 @@ export const runPsiForCard = async (card, siteName, orgValue) => {
     </div>
   `;
 
-  const result = await fetchPsiScores(orgValue, siteName);
+  const liveUrl = `https://main--${siteName}--${orgValue}.aem.live/`;
+  const resp = await adminFetch(`/psi/${orgValue}/${siteName}/main?url=${encodeURIComponent(liveUrl)}`);
+  let result = null;
+  if (resp.ok) {
+    const data = await resp.json();
+    const categories = data.lighthouseResult?.categories || {};
+    result = {
+      performance: Math.round((categories.performance?.score || 0) * 100),
+      accessibility: Math.round((categories.accessibility?.score || 0) * 100),
+      bestPractices: Math.round((categories['best-practices']?.score || 0) * 100),
+      timestamp: Date.now(),
+    };
+  }
 
   if (result) {
     const scores = getPsiScores();

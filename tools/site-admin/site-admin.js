@@ -3,7 +3,7 @@ import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { VIEW_STORAGE_KEY } from './helpers/constants.js';
-import { fetchSites, fetchSiteDetails } from './helpers/api-helper.js';
+import { createAdminClient } from '../../utils/admin-fetch.js';
 import {
   loadIcon,
   icon,
@@ -23,8 +23,10 @@ const logFn = (status, details) => logResponse(consoleBlock, status, details);
 
 const populateCardDetails = (card, orgValue) => {
   const siteName = card.dataset.site;
-  fetchSiteDetails(orgValue, siteName).then((details) => {
-    if (!details) return;
+  const admin = createAdminClient({ org: orgValue });
+  admin.site(siteName).read().then(async (resp) => {
+    if (!resp.ok) return;
+    const details = await resp.json();
 
     const contentUrl = details.content?.source?.url || '';
     const contentSourceType = details.content?.source?.type || '';
@@ -196,11 +198,13 @@ const displaySitesForOrg = async (orgValue) => {
   sitesElem.setAttribute('aria-hidden', 'true');
   sitesElem.replaceChildren();
 
-  const { sites, status } = await fetchSites(orgValue, logFn);
+  const admin = createAdminClient({ org: orgValue, logFn });
+  const resp = await admin.org.sites().read();
 
-  if (status === 200 && sites) {
-    displaySites(sites);
-  } else if (status === 401) {
+  if (resp.ok) {
+    const data = await resp.json();
+    if (data.sites) displaySites(data.sites);
+  } else if (resp.status === 401) {
     const loggedIn = await ensureLogin(orgValue);
     if (loggedIn) {
       return displaySitesForOrg(orgValue);
