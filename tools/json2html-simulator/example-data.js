@@ -3,7 +3,7 @@
  * Each example includes JSON data, a Mustache template, and optional rendering options.
  */
 
-// eslint-disable-next-line import/prefer-default-export
+// eslint-disable-next-line import/prefer-default-export -- named export for future additions
 export const examples = {
   basic: {
     json: {
