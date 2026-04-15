@@ -2,7 +2,9 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { loadScript } from '../../scripts/aem.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { logResponse } from '../../blocks/console/console.js';
-import { adminFetch, ADMIN_API_BASE, createAdminClient, extractOrgSiteFromURL } from '../../utils/admin-fetch.js';
+import {
+  adminFetch, ADMIN_API_BASE, createAdminClient, extractOrgSiteFromURL,
+} from '../../utils/admin-fetch.js';
 
 const adminForm = document.getElementById('admin-form');
 const adminURL = document.getElementById('admin-url');
@@ -165,7 +167,6 @@ function syncScroll(target, el) {
   target.scrollTop = el.scrollTop;
   target.scrollLeft = el.scrollLeft;
 }
-
 
 /**
  * Updates the admin URL datalist using the admin client structure as the source of truth.
