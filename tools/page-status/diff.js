@@ -2,6 +2,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { adminFetch } from '../../utils/admin-fetch.js';
+import { filterPendingPages } from './utils.js';
 
 // Lazy-load Dark Alley converter module
 const CONVERTERS_URL = 'https://main--da-nx--adobe.aem.live/nx/utils/converters.js';
@@ -109,30 +110,6 @@ async function fetchJobDetails(org, site, jobId) {
   return data?.resources || [];
 }
 
-/**
- * Filters resources to find pages with pending changes (preview newer than publish).
- * @param {Array} resources - Array of resource objects
- * @returns {Array} Filtered array of pages with pending changes
- */
-function filterPendingPages(resources) {
-  const ignore = ['/helix-env.json', '/sitemap.json'];
-
-  return resources.filter((resource) => {
-    const { path, previewLastModified, publishLastModified } = resource;
-
-    // Skip ignored paths
-    if (!path || ignore.includes(path)) return false;
-
-    // Must have both preview and publish dates
-    if (!previewLastModified || !publishLastModified) return false;
-
-    const previewDate = new Date(previewLastModified);
-    const publishDate = new Date(publishLastModified);
-
-    // Preview must be newer than publish
-    return previewDate > publishDate;
-  });
-}
 
 /**
  * Escapes HTML entities for safe display.

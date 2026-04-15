@@ -105,7 +105,9 @@ export const getDAEditorURL = (contentUrl) => {
   if (!contentUrl) return null;
 
   if (contentUrl.startsWith('https://content.da.live/') || contentUrl.startsWith('https://stage-content.da.live/')) {
-    const path = contentUrl.replace('https://content.da.live/', '');
+    const path = contentUrl
+      .replace('https://content.da.live/', '')
+      .replace('https://stage-content.da.live/', '');
     return `https://da.live/#/${path}`;
   }
 
