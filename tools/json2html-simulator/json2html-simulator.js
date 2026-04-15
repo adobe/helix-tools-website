@@ -650,6 +650,10 @@ function collapseValidationDetails() {
   }
   if (previewStatus) {
     previewStatus.classList.remove('has-details', 'expanded');
+    previewStatus.removeAttribute('role');
+    previewStatus.removeAttribute('tabindex');
+    previewStatus.removeAttribute('aria-expanded');
+    previewStatus.removeAttribute('aria-controls');
   }
 }
 
@@ -799,7 +803,13 @@ function buildValidationDetails(results) {
   });
 
   validationDetails.hidden = true;
-  previewStatus?.classList.add('has-details');
+  if (previewStatus) {
+    previewStatus.classList.add('has-details');
+    previewStatus.setAttribute('role', 'button');
+    previewStatus.setAttribute('tabindex', '0');
+    previewStatus.setAttribute('aria-expanded', 'false');
+    previewStatus.setAttribute('aria-controls', 'validation-details');
+  }
 }
 
 /**
@@ -1325,6 +1335,7 @@ function setupButtons() {
   previewStatus?.addEventListener('click', () => {
     if (!previewStatus.classList.contains('has-details')) return;
     const isExpanded = previewStatus.classList.toggle('expanded');
+    previewStatus.setAttribute('aria-expanded', String(isExpanded));
     if (validationDetails) validationDetails.hidden = !isExpanded;
   });
 }

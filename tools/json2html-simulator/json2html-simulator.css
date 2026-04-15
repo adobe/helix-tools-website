@@ -1506,7 +1506,7 @@ body.json2html-simulator .hidden {
    HTML VALIDATION — SOURCE ERROR HIGHLIGHTS
    ======================================== */
 
-.source-error-highlights {
+body.json2html-simulator .source-error-highlights {
   position: absolute;
   inset: 0;
   left: 36px;
@@ -1515,18 +1515,18 @@ body.json2html-simulator .hidden {
   overflow: hidden;
 }
 
-.source-highlight {
+body.json2html-simulator .source-highlight {
   position: absolute;
   left: 0;
   right: 0;
   pointer-events: none;
 }
 
-.source-highlight-error {
+body.json2html-simulator .source-highlight-error {
   background: light-dark(rgb(220 50 50 / 10%), rgb(255 80 80 / 14%));
 }
 
-.source-highlight-warning {
+body.json2html-simulator .source-highlight-warning {
   background: light-dark(rgb(200 150 0 / 10%), rgb(255 200 50 / 12%));
 }
 
@@ -1534,7 +1534,7 @@ body.json2html-simulator .hidden {
    VALIDATION DETAILS — EXPANDABLE LIST
    ======================================== */
 
-.validation-details {
+body.json2html-simulator .validation-details {
   position: absolute;
   bottom: 0;
   left: 0;
@@ -1548,11 +1548,11 @@ body.json2html-simulator .hidden {
   box-shadow: 0 -2px 8px light-dark(rgb(0 0 0 / 8%), rgb(0 0 0 / 20%));
 }
 
-.validation-details[hidden] {
+body.json2html-simulator .validation-details[hidden] {
   display: none;
 }
 
-.validation-detail-row {
+body.json2html-simulator .validation-detail-row {
   display: flex;
   align-items: baseline;
   gap: var(--spacing-100);
@@ -1570,26 +1570,26 @@ body.json2html-simulator .hidden {
   width: 100%;
 }
 
-.validation-detail-row:last-child {
+body.json2html-simulator .validation-detail-row:last-child {
   border-bottom: none;
 }
 
-.validation-detail-row:hover {
+body.json2html-simulator .validation-detail-row:hover {
   background: light-dark(var(--gray-100), var(--gray-700));
 }
 
-.validation-detail-row .detail-severity {
+body.json2html-simulator .validation-detail-row .detail-severity {
   flex-shrink: 0;
   font-size: var(--detail-size-xs);
   line-height: 1;
 }
 
-.validation-detail-row .detail-msg {
+body.json2html-simulator .validation-detail-row .detail-msg {
   flex: 1;
   min-width: 0;
 }
 
-.validation-detail-row .detail-line {
+body.json2html-simulator .validation-detail-row .detail-line {
   flex-shrink: 0;
   color: var(--color-font-grey);
   font-family: var(--font-code);
@@ -1597,11 +1597,11 @@ body.json2html-simulator .hidden {
 }
 
 /* Make status bar clickable when there are multiple issues */
-.preview-status.has-details {
+body.json2html-simulator .preview-status.has-details {
   cursor: pointer;
 }
 
-.preview-status.has-details:hover {
+body.json2html-simulator .preview-status.has-details:hover {
   filter: brightness(0.96);
 }
 
