@@ -199,8 +199,14 @@ header.header-wrapper {
       font-weight: var(--weight-bold);
       text-align: center;
       text-transform: uppercase;
+      cursor: help;
       box-shadow: var(--shadow-default);
       z-index: 2;
+
+      &:focus-visible {
+        outline: 2px solid var(--color-link);
+        outline-offset: 2px;
+      }
 
       @media (width >= 1200px) {
         top: 30px;

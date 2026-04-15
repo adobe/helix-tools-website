@@ -71,8 +71,13 @@ html[data-theme="dark"] .tool-catalog .cards-card-image img {
   text-transform: uppercase;
   transform: rotate(-45deg);
   transform-origin: center center;
-  pointer-events: none;
+  cursor: help;
   z-index: 1;
+}
+
+.tool-catalog .cards-card-lab:focus-visible {
+  outline: 2px solid var(--color-link);
+  outline-offset: 2px;
 }
 
 .tool-catalog .cards-card-body {
@@ -82,4 +87,3 @@ html[data-theme="dark"] .tool-catalog .cards-card-image img {
 .tool-catalog .cards-card-body > :first-child {
   margin-top: 0;
 }
-

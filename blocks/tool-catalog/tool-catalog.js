@@ -1,6 +1,7 @@
 import { createOptimizedPicture } from '../../scripts/aem.js';
 
 const labCache = new Map();
+const EXPERIMENTAL_TOOLTIP = 'Experimental means this tool was developed for a production use case and is marked experimental until we observe wider adoption. These tools should be used for your project when they make sense and are encouraged for production workflows.';
 
 async function isLabTool(url) {
   if (labCache.has(url)) return labCache.get(url);
@@ -30,6 +31,9 @@ function observeLabStatus(ul) {
           const ribbon = document.createElement('span');
           ribbon.className = 'cards-card-lab';
           ribbon.textContent = 'Experimental';
+          ribbon.title = EXPERIMENTAL_TOOLTIP;
+          ribbon.setAttribute('aria-label', `Experimental. ${EXPERIMENTAL_TOOLTIP}`);
+          ribbon.tabIndex = 0;
           li.prepend(ribbon);
         }
       });

@@ -17,6 +17,8 @@ const THEME_NAMES = {
   dark: 'Dark',
 };
 
+const EXPERIMENTAL_TOOLTIP = 'Experimental means this tool was developed for a production use case and is marked experimental until we observe wider adoption. These tools should be used for your project when they make sense and are encouraged for production workflows.';
+
 function getNextTheme(current) {
   const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
   const systemResolved = prefersDark ? 'dark' : 'light';
@@ -252,6 +254,9 @@ export default async function decorate(block) {
     const ribbon = document.createElement('div');
     ribbon.className = 'experimental-ribbon';
     ribbon.textContent = 'Experimental';
+    ribbon.title = EXPERIMENTAL_TOOLTIP;
+    ribbon.setAttribute('aria-label', `Experimental. ${EXPERIMENTAL_TOOLTIP}`);
+    ribbon.tabIndex = 0;
     block.prepend(ribbon);
   }
 
