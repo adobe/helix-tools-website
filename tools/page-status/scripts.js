@@ -3,7 +3,7 @@ import { decorateIcons } from '../../scripts/aem.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import loadingMessages from './loading-messages.js';
-import { adminFetch, ADMIN_API_BASE } from '../../utils/admin-fetch.js';
+import { adminFetch } from '../../utils/admin-fetch.js';
 
 const FORM = document.getElementById('status-form');
 const TABLE = document.querySelector('table');
@@ -522,16 +522,15 @@ async function fetchJobUrl(org, site, path) {
  * @returns {Promise<Object[]>} Array of resources.
  */
 async function runJob(urlOrPath, retry = 10000) {
-  const path = urlOrPath.startsWith('http') ? urlOrPath.replace(ADMIN_API_BASE, '') : urlOrPath;
   try {
-    const jobRes = await adminFetch(path, { mode: 'cors' });
+    const jobRes = await adminFetch(urlOrPath, { mode: 'cors' });
     if (!jobRes.ok) throw jobRes;
     const { state } = await jobRes.json();
     if (state !== 'completed' && state !== 'stopped') {
       await new Promise((resolve) => { setTimeout(resolve, retry); }); // wait before repolling
-      return runJob(path, retry); // poll again
+      return runJob(urlOrPath, retry); // poll again
     }
-    const detailsRes = await adminFetch(`${path}/details`, { mode: 'cors' });
+    const detailsRes = await adminFetch(`${urlOrPath}/details`, { mode: 'cors' });
     if (!detailsRes.ok) throw detailsRes;
     const { data, createTime } = await detailsRes.json();
     // update table caption with create time

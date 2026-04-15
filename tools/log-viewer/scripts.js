@@ -3,7 +3,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { loadPrism, highlight } from '../../utils/prism/prism.js';
-import { adminFetch, ADMIN_API_BASE } from '../../utils/admin-fetch.js';
+import { adminFetch } from '../../utils/admin-fetch.js';
 
 // field ids
 const FIELDS = ['date-from', 'date-to'];
@@ -601,7 +601,7 @@ async function fetchAllLogs(org, site, timeframe) {
       // eslint-disable-next-line no-await-in-loop
       const json = await res.json();
       logs.push(...json.entries);
-      nextPath = json.links?.next ? json.links.next.replace(ADMIN_API_BASE, '') : null;
+      nextPath = json.links?.next || null;
     } catch (error) {
       return { logs, error };
     }
@@ -879,9 +879,8 @@ async function registerListeners() {
     if (target.dataset.url) {
       showLoadingButton(target);
       try {
-        const adminPath = target.dataset.url.replace(ADMIN_API_BASE, '');
         const { createModal } = await import('../../blocks/modal/modal.js');
-        const res = await adminFetch(adminPath);
+        const res = await adminFetch(target.dataset.url);
         const json = await res.json();
         const modal = document.createElement('div');
         modal.innerHTML = `<pre><code class="language-js">${JSON.stringify(json, null, 2)}

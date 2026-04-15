@@ -1,16 +1,22 @@
 export const ADMIN_API_BASE = 'https://admin.hlx.page';
 
+function resolveAdminURL(pathOrURL) {
+  return pathOrURL.startsWith('http://') || pathOrURL.startsWith('https://')
+    ? pathOrURL
+    : `${ADMIN_API_BASE}${pathOrURL}`;
+}
+
 /**
  * Base fetch for all Admin API calls.
- * @param {string} path - API path appended to ADMIN_API_BASE
+ * @param {string} pathOrURL - API path appended to ADMIN_API_BASE, or a full URL
  * @param {RequestInit & { params?: Record<string, string> }} [options] - Fetch options.
  *   `params` is extracted and appended as a query string; not passed to fetch().
  * @param {Function} [logFn] - Optional logging: logFn(status, [method, url, xError])
  * @returns {Promise<Response>}
  */
-export async function adminFetch(path, options = {}, logFn = null) {
+export async function adminFetch(pathOrURL, options = {}, logFn = null) {
   const { params, ...fetchOptions } = options;
-  let url = `${ADMIN_API_BASE}${path}`;
+  let url = resolveAdminURL(pathOrURL);
   if (params) url = `${url}?${new URLSearchParams(params)}`;
   const method = fetchOptions.method || 'GET';
   const resp = await fetch(url, fetchOptions);
@@ -204,7 +210,8 @@ export function extractOrgSiteFromURL(url) {
     if (parts[0] === 'config') {
       const org = parts[1]?.replace(/\.json$/, '') || null;
       // /config/org/sites/siteName[.json|/...]
-      const site = (parts[2] === 'sites' && parts[3])
+      // /config/org/aggregated/siteName.json
+      const site = ((parts[2] === 'sites' || parts[2] === 'aggregated') && parts[3])
         ? parts[3].replace(/\.json$/, '') : null;
       return { org, site };
     }
