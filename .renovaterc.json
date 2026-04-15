@@ -2,6 +2,18 @@
   "extends": ["config:recommended"],
   "packageRules": [
     {
+      "matchUpdateTypes": ["patch"],
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "matchUpdateTypes": ["minor"],
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "minimumReleaseAge": "30 days"
+    },
+    {
       "matchDepTypes": ["devDependencies"],
       "labels": ["ignore-psi-check"],
       "automerge": true,
@@ -12,5 +24,10 @@
       "allowedVersions": "^8.0.0",
       "description": "Pin ESLint to v8 until airbnb-base supports v9+"
     }
-  ]
+  ],
+  "postUpgradeTasks": {
+    "commands": ["npm run vendor"],
+    "fileFilters": ["vendor/**"],
+    "executionMode": "branch"
+  }
 }

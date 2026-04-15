@@ -1,4 +1,83 @@
 .sitemap-admin {
+  .sitemap-index-toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-m);
+    padding: var(--spacing-s) var(--spacing-m);
+    background: light-dark(var(--orange-100), var(--orange-900));
+    border: 1px solid light-dark(var(--orange-300), var(--orange-700));
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+    font-size: var(--body-size-s);
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    z-index: 10000;
+
+    &.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .toast-message {
+      color: light-dark(var(--orange-900), var(--orange-200));
+
+      code {
+        font-size: inherit;
+        background: light-dark(var(--orange-200), var(--orange-800));
+        padding: 2px 4px;
+        border-radius: 3px;
+      }
+    }
+
+    .toast-actions {
+      display: flex;
+      gap: var(--spacing-xs);
+      flex-shrink: 0;
+      align-items: center;
+    }
+
+    .toast-generate-btn {
+      padding: var(--spacing-xs) var(--spacing-s);
+      font-size: var(--body-size-s);
+      background: light-dark(var(--orange-700), var(--orange-300));
+      color: light-dark(white, var(--orange-900));
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      white-space: nowrap;
+      font-weight: 500;
+
+      &:hover {
+        background: light-dark(var(--orange-800), var(--orange-200));
+      }
+    }
+
+    .toast-dismiss-btn {
+      background: none;
+      border: none;
+      padding: var(--spacing-xs);
+      font-size: 1.25rem;
+      line-height: 1;
+      color: light-dark(var(--orange-700), var(--orange-300));
+      cursor: pointer;
+      border-radius: 4px;
+
+      &:hover {
+        color: light-dark(var(--orange-900), var(--orange-100));
+      }
+
+      &:focus-visible {
+        outline: 2px solid light-dark(var(--orange-700), var(--orange-300));
+        outline-offset: 2px;
+      }
+    }
+  }
+
+
   .language-item .language-actions .button {
     padding: var(--spacing-xs) var(--spacing-s);
     font-size: 0.75rem;
@@ -287,6 +366,71 @@
     }
   }
 
+  .sitemap-index-dialog {
+    max-width: 700px;
+    border: none;
+    border-radius: 12px;
+    padding: 0;
+    box-shadow: var(--shadow-hover);
+    background: var(--color-background);
+
+    &::backdrop {
+      background: rgb(0 0 0 / 50%);
+    }
+
+    .sitemap-index-content {
+      padding: var(--spacing-l);
+
+      .sitemap-index-header {
+        margin-bottom: var(--spacing-l);
+
+        h3 {
+          margin: 0;
+          color: var(--color-text);
+          font-size: var(--heading-size-l);
+        }
+
+        p {
+          margin: var(--spacing-s) 0 0;
+          font-size: var(--body-size-s);
+          color: var(--color-font-grey);
+        }
+
+        code {
+          font-size: inherit;
+          background: light-dark(var(--gray-100), var(--gray-700));
+          padding: 2px 4px;
+          border-radius: 3px;
+        }
+      }
+
+      #sitemap-index-xml {
+        width: 100%;
+        min-height: 250px;
+        font-family: var(--code-font-family);
+        font-size: 0.8rem;
+        line-height: 1.5;
+        padding: var(--spacing-m);
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        background: light-dark(var(--gray-50), var(--gray-800));
+        color: var(--color-text);
+        resize: vertical;
+      }
+
+      .button-area {
+        display: flex;
+        gap: var(--spacing-m);
+        justify-content: flex-end;
+        margin-top: var(--spacing-m);
+
+        button {
+          font-size: var(--body-size-s);
+        }
+      }
+    }
+  }
+
   .language-edit-dialog {
     max-width: 700px;
     border: none;
@@ -438,7 +582,7 @@
         }
       }
 
-      .sitemap-type-content .button-area {
+      .sitemap-type-button-area {
         display: flex;
         justify-content: center;
         margin-top: var(--spacing-m);
