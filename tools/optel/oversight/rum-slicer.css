@@ -1335,6 +1335,9 @@ html[data-theme="dark"] .ai-optel-report-generator-button {
 
 #table-container {
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: calc(100vh - var(--nav-height) - 349px);
+  min-height: 150px;
 }
 
 #table-container table {
