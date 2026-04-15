@@ -1342,9 +1342,8 @@ html[data-theme="dark"] .ai-optel-report-generator-button {
   min-width: 600px;
   border-collapse: separate;
   border-spacing: 0;
-  border-radius: 8px;
-  border: 2px solid var(--dark-indigo);
-  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid var(--gray-300);
   table-layout: fixed;
   font-size: var(--type-body-s-size);
 }
@@ -1352,11 +1351,19 @@ html[data-theme="dark"] .ai-optel-report-generator-button {
 #table-container thead th {
   background-color: var(--light-indigo);
   color: var(--dark-indigo);
-  border-bottom: 2px solid var(--dark-indigo);
+  border-bottom: 1px solid var(--gray-400);
   padding: 8px 12px;
   text-align: left;
   white-space: nowrap;
   position: relative;
+}
+
+#table-container thead th:first-child {
+  border-top-left-radius: 15px;
+}
+
+#table-container thead th:last-child {
+  border-top-right-radius: 15px;
 }
 
 #table-container thead th:nth-child(1) { width: 25%; }
@@ -1528,11 +1535,11 @@ html[data-theme="dark"] #table-container .count-badge.low {
 }
 
 html[data-theme="dark"] #table-container table {
-  border-color: var(--light-indigo);
+  border-color: var(--gray-600);
 }
 
 html[data-theme="dark"] #table-container thead th {
   background-color: var(--dark-indigo);
   color: var(--light-indigo);
-  border-bottom-color: var(--light-indigo);
+  border-bottom-color: var(--gray-600);
 }
