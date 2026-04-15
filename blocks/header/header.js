@@ -17,7 +17,6 @@ const THEME_NAMES = {
   dark: 'Dark',
 };
 
-const labCache = new Map();
 const EXPERIMENTAL_TOOLTIP = 'Experimental means this tool was developed for a production use case and is marked experimental until we observe wider adoption. These tools should be used for your project when they make sense and are encouraged for production workflows.';
 
 function getNextTheme(current) {
@@ -46,15 +45,12 @@ function attachTooltip(ribbon, tooltip) {
 }
 
 async function isLabTool(url) {
-  if (labCache.has(url)) return labCache.get(url);
   try {
     const resp = await fetch(url);
     if (!resp.ok) return false;
     const html = await resp.text();
     const doc = new DOMParser().parseFromString(html, 'text/html');
-    const isLab = doc.querySelector('meta[name="lab"][content="true"]') !== null;
-    labCache.set(url, isLab);
-    return isLab;
+    return doc.querySelector('meta[name="lab"][content="true"]') !== null;
   } catch {
     return false;
   }
@@ -66,6 +62,14 @@ function removeAuthoredLabMarker(li) {
       node.remove();
     }
   });
+  const link = li.querySelector('a');
+  if (link) {
+    [...link.childNodes].forEach((node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        node.textContent = node.textContent.replace(/\s*🧪\s*/g, '');
+      }
+    });
+  }
 }
 
 async function decorateLabToolLinks(container) {
