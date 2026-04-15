@@ -2,7 +2,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { loadScript } from '../../scripts/aem.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { logResponse } from '../../blocks/console/console.js';
-import { adminFetch, ADMIN_API_BASE, createAdminClient } from '../../utils/admin-fetch.js';
+import { adminFetch, ADMIN_API_BASE, createAdminClient, extractOrgSiteFromURL } from '../../utils/admin-fetch.js';
 
 const adminForm = document.getElementById('admin-form');
 const adminURL = document.getElementById('admin-url');
@@ -166,27 +166,6 @@ function syncScroll(target, el) {
   target.scrollLeft = el.scrollLeft;
 }
 
-/**
- * Extracts the organization from an admin URL.
- * @param {string} url - URL to extract org from
- * @returns {string|null} The organization name or null if not found
- */
-function extractOrgSiteFromURL(url) {
-  try {
-    const parts = new URL(url).pathname.split('/').filter(Boolean);
-    if (parts[0] === 'config') {
-      const org = parts[1]?.replace(/\.json$/, '') || null;
-      // /config/org/sites/siteName[.json or /...]
-      const site = (parts[2] === 'sites' && parts[3])
-        ? parts[3].replace(/\.json$/, '') : null;
-      return { org, site };
-    }
-    // /status/org/site/ref, /job/org/site/ref, etc.
-    return { org: parts[1] || null, site: parts[2] || null };
-  } catch (e) {
-    return { org: null, site: null };
-  }
-}
 
 /**
  * Updates the admin URL datalist using the admin client structure as the source of truth.

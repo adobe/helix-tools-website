@@ -11,7 +11,9 @@
     "lint:css": "stylelint \"blocks/**/*.css\" \"styles/*.css\" \"tools/**/*.css\"",
     "lint:css:fix": "stylelint \"blocks/**/*.css\" \"styles/*.css\" \"tools/**/*.css\" --fix",
     "lint": "npm run lint:js && npm run lint:css",
-    "lint:fix": "npm run lint:js:fix && npm run lint:css:fix"
+    "lint:fix": "npm run lint:js:fix && npm run lint:css:fix",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "repository": {
     "type": "git",
@@ -30,8 +32,10 @@
     "eslint": "8.57.1",
     "eslint-config-airbnb-base": "15.0.0",
     "eslint-plugin-import": "2.32.0",
+    "jsdom": "^29.0.2",
     "stylelint": "17.7.0",
-    "stylelint-config-standard": "40.0.0"
+    "stylelint-config-standard": "40.0.0",
+    "vitest": "^4.1.4"
   },
   "dependencies": {
     "yaml": "2.8.3"

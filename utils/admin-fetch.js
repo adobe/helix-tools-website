@@ -187,3 +187,26 @@ export function createAdminClient({ org, site: defaultSite, logFn = null }) {
     site: (siteName = defaultSite) => siteReq(siteName),
   };
 }
+
+/**
+ * Extracts org and site from an admin API URL.
+ * Handles both /config/... and other admin routes (/status/, /job/, etc.).
+ * @param {string} url - Full admin API URL
+ * @returns {{ org: string|null, site: string|null }}
+ */
+export function extractOrgSiteFromURL(url) {
+  try {
+    const parts = new URL(url).pathname.split('/').filter(Boolean);
+    if (parts[0] === 'config') {
+      const org = parts[1]?.replace(/\.json$/, '') || null;
+      // /config/org/sites/siteName[.json|/...]
+      const site = (parts[2] === 'sites' && parts[3])
+        ? parts[3].replace(/\.json$/, '') : null;
+      return { org, site };
+    }
+    // /status/org/site/ref, /job/org/site/ref, etc.
+    return { org: parts[1] || null, site: parts[2] || null };
+  } catch (e) {
+    return { org: null, site: null };
+  }
+}
