@@ -1560,6 +1560,14 @@ body.json2html-simulator .hidden {
   border-bottom: 1px solid light-dark(var(--gray-100), var(--gray-700));
   cursor: pointer;
   min-height: 28px;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  width: 100%;
 }
 
 .validation-detail-row:last-child {

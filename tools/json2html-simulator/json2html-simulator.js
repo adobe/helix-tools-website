@@ -768,8 +768,9 @@ function buildValidationDetails(results) {
   validationDetails.replaceChildren();
 
   results.forEach((r) => {
-    const row = document.createElement('div');
+    const row = document.createElement('button');
     row.className = 'validation-detail-row';
+    row.type = 'button';
     if (r.line) row.dataset.line = r.line;
 
     const severity = document.createElement('span');
