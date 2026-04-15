@@ -1,4 +1,6 @@
-import { describe, it, beforeEach, afterEach } from 'node:test';
+import {
+  describe, it, beforeEach, afterEach,
+} from 'node:test';
 import assert from 'node:assert/strict';
 import {
   adminFetch,
@@ -34,6 +36,13 @@ describe('adminFetch', () => {
   it('prepends ADMIN_API_BASE to path', async () => {
     await adminFetch('/config/myorg.json');
     assert.strictEqual(fetchCalls[0][0], `${ADMIN_API_BASE}/config/myorg.json`);
+  });
+
+  it('accepts a full admin URL without double-prefixing', async () => {
+    await adminFetch(`${ADMIN_API_BASE}/job/myorg/mysite/main/status/123`, {
+      params: { verbose: 'true' },
+    });
+    assert.strictEqual(fetchCalls[0][0], `${ADMIN_API_BASE}/job/myorg/mysite/main/status/123?verbose=true`);
   });
 
   it('appends params as query string', async () => {
@@ -141,6 +150,13 @@ describe('extractOrgSiteFromURL', () => {
   it('site sub-resource', () => {
     assert.deepStrictEqual(
       extractOrgSiteFromURL(`${ADMIN_API_BASE}/config/${ORG}/sites/${SITE}/access.json`),
+      { org: ORG, site: SITE },
+    );
+  });
+
+  it('aggregated site config URL', () => {
+    assert.deepStrictEqual(
+      extractOrgSiteFromURL(`${ADMIN_API_BASE}/config/${ORG}/aggregated/${SITE}.json`),
       { org: ORG, site: SITE },
     );
   });
