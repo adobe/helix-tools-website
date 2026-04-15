@@ -17,6 +17,7 @@ const THEME_NAMES = {
   dark: 'Dark',
 };
 
+const labCache = new Map();
 const EXPERIMENTAL_TOOLTIP = 'Experimental means this tool was developed for a production use case and is marked experimental until we observe wider adoption. These tools should be used for your project when they make sense and are encouraged for production workflows.';
 
 function getNextTheme(current) {
@@ -42,6 +43,44 @@ function attachTooltip(ribbon, tooltip) {
   ribbon.addEventListener('mouseleave', hide);
   ribbon.addEventListener('focus', show);
   ribbon.addEventListener('blur', hide);
+}
+
+async function isLabTool(url) {
+  if (labCache.has(url)) return labCache.get(url);
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return false;
+    const html = await resp.text();
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const isLab = doc.querySelector('meta[name="lab"][content="true"]') !== null;
+    labCache.set(url, isLab);
+    return isLab;
+  } catch {
+    return false;
+  }
+}
+
+function removeAuthoredLabMarker(li) {
+  [...li.childNodes].forEach((node) => {
+    if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() === '🧪') {
+      node.remove();
+    }
+  });
+}
+
+async function decorateLabToolLinks(container) {
+  const links = [...container.querySelectorAll('a[href]')];
+  await Promise.all(links.map(async (link) => {
+    const li = link.closest('li');
+    if (li) removeAuthoredLabMarker(li);
+    const isLab = await isLabTool(link.href);
+    if (!isLab || link.querySelector('.experimental-icon')) return;
+    const icon = document.createElement('span');
+    icon.className = 'experimental-icon';
+    icon.textContent = '🧪';
+    icon.setAttribute('aria-hidden', 'true');
+    link.append(icon);
+  }));
 }
 
 async function fetchThemeIcon(theme) {
@@ -207,6 +246,7 @@ export default async function decorate(block) {
         }
       }
     });
+    await decorateLabToolLinks(wrapper);
   }
 
   // add login button
