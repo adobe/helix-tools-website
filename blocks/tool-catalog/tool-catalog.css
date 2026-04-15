@@ -71,59 +71,7 @@ html[data-theme="dark"] .tool-catalog .cards-card-image img {
   text-transform: uppercase;
   transform: rotate(-45deg);
   transform-origin: center center;
-  cursor: help;
   z-index: 1;
-}
-
-.tool-catalog .cards-card-lab:focus-visible {
-  outline: 2px solid var(--color-link);
-  outline-offset: 2px;
-}
-
-.tool-catalog .cards-card-lab .experimental-tooltip {
-  position: absolute;
-  top: calc(100% + 10px);
-  left: -4px;
-  width: min(22rem, calc(100vw - 2rem));
-  padding: var(--spacing-s) var(--spacing-m);
-  border: 1px solid var(--gray-300);
-  border-radius: var(--rounding-m);
-  background: var(--gray-25);
-  color: var(--gray-900);
-  box-shadow: var(--shadow-default);
-  font-size: var(--detail-size-s);
-  font-weight: var(--weight-regular);
-  line-height: 1.45;
-  text-transform: none;
-  letter-spacing: normal;
-  opacity: 0;
-  pointer-events: none;
-  visibility: hidden;
-  transition: opacity 160ms ease;
-}
-
-.tool-catalog .cards-card-lab .experimental-tooltip::before,
-.tool-catalog .cards-card-lab .experimental-tooltip::after {
-  content: '';
-  position: absolute;
-  top: -9px;
-  left: 18px;
-  border-right: 9px solid transparent;
-  border-bottom: 9px solid var(--gray-300);
-  border-left: 9px solid transparent;
-}
-
-.tool-catalog .cards-card-lab .experimental-tooltip::after {
-  top: -8px;
-  left: 19px;
-  border-right-width: 8px;
-  border-bottom: 8px solid var(--gray-25);
-  border-left-width: 8px;
-}
-
-.tool-catalog .cards-card-lab .experimental-tooltip.is-visible {
-  opacity: 1;
-  visibility: visible;
 }
 
 .tool-catalog .cards-card-body {
