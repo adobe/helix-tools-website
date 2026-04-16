@@ -1377,9 +1377,25 @@ html[data-theme="dark"] .ai-optel-report-generator-button {
 #table-container thead th:nth-child(4) { width: 25%; }
 
 #table-container thead th[data-sort] {
-  cursor: pointer;
   user-select: none;
   padding-right: 28px;
+}
+
+#table-container thead th[data-sort] button {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+
+#table-container thead th[data-sort] button:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid currentcolor;
+  outline-offset: 2px;
 }
 
 /* down arrow for unsorted / descending */

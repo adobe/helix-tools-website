@@ -32,7 +32,6 @@ export default class TableRenderer extends AbstractChart {
 
     headers.forEach(({ label, sort }) => {
       const th = document.createElement('th');
-      th.textContent = label;
       if (sort) {
         th.dataset.sort = sort;
         let ariaSort = 'none';
@@ -40,7 +39,10 @@ export default class TableRenderer extends AbstractChart {
           ariaSort = this.sortDirection === 'asc' ? 'ascending' : 'descending';
         }
         th.setAttribute('aria-sort', ariaSort);
-        th.addEventListener('click', () => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = label;
+        btn.addEventListener('click', () => {
           if (this.sortColumn === sort) {
             this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
           } else {
@@ -49,6 +51,9 @@ export default class TableRenderer extends AbstractChart {
           }
           this.draw();
         });
+        th.appendChild(btn);
+      } else {
+        th.textContent = label;
       }
       headerRow.appendChild(th);
     });
