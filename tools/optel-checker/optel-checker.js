@@ -33,6 +33,28 @@ const cspSection = document.getElementById('csp-section');
 const cspResult = document.getElementById('csp-result');
 const rumProbeSection = document.getElementById('rum-probe-section');
 const rumProbeResult = document.getElementById('rum-probe-result');
+const rumProbeFailHint = document.getElementById('rum-probe-fail-hint');
+
+/**
+ * If the value does not already start with https://, prepend it (or upgrade http://).
+ * The URL field uses type="text" so hostnames without a scheme still submit; browser
+ * validation on type="url" would block submit before this runs.
+ * @param {string} raw
+ * @returns {string}
+ */
+function normalizeUrlInputToHttps(raw) {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return trimmed;
+  }
+  if (/^https:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  if (/^http:\/\//i.test(trimmed)) {
+    return `https://${trimmed.replace(/^http:\/\//i, '')}`;
+  }
+  return `https://${trimmed}`;
+}
 
 /**
  * Parses user input into an absolute URL (adds https:// when scheme is omitted).
@@ -65,21 +87,6 @@ function setOutputState(state) {
 function setLoading(isLoading) {
   submitBtn.disabled = isLoading;
   urlInput.readOnly = isLoading;
-}
-
-/**
- * Normalizes quotes for display: strips JSON-style \\" and collapses doubled ASCII quotes.
- * @param {string} str
- * @returns {string}
- */
-function normalizeDisplayText(str) {
-  let s = str.replace(/\\"/g, '"');
-  let prev;
-  do {
-    prev = s;
-    s = s.replace(/""/g, '"');
-  } while (s !== prev);
-  return s;
 }
 
 /** Boolean-like script attributes; always shown as name="name" (e.g. defer="defer"). */
@@ -228,15 +235,18 @@ function extractHtmlFromWorkerResponse(raw) {
  */
 function extractCspPolicyString(raw) {
   const t = raw.trim();
-  if (!t) return '';
+  if (!t || t === 'null') return '';
   if (t.startsWith('{')) {
     try {
       const j = JSON.parse(t);
-      if (typeof j['content-security-policy'] === 'string') {
-        return j['content-security-policy'];
+      const pick = [j['content-security-policy'], j.csp, j.policy].find(
+        (v) => typeof v === 'string' && v.trim(),
+      );
+      if (pick) {
+        return pick.trim();
       }
-      if (typeof j.csp === 'string') return j.csp;
-      if (typeof j.policy === 'string') return j.policy;
+      /* JSON with null / missing CSP — do not fall back to the raw JSON string. */
+      return '';
     } catch {
       /* use raw */
     }
@@ -498,9 +508,44 @@ function evaluateRumConnectDestinations(pageUrl, directives) {
   lines.push('');
   lines.push(allOk
     ? 'Verdict: these RUM endpoints match the connect policy (or its default-src fallback).'
-    : 'Verdict: at least one RUM endpoint is not allowed — OpTel/telemetry can fail in the browser even when the script tag is allowed by script-src.');
+    : 'Verdict: The connect-src directive in the Content-Security-Policy partially blocks OpTel collection.');
 
   return { allowed: allOk, lines };
+}
+
+/**
+ * When to evaluate RUM hosts against connect-src / default-src:
+ * - Script loads from rum.hlx.page or ot.aem.live (always), or
+ * - OpTel matched via `/scripts.js`, unless the tag has a nonce that appears in script-src
+ *   (script-src-elem / script-src / default-src) — nonce-guarded /scripts.js is exempt.
+ * @param {{ signal: string, script: HTMLScriptElement }[]} matches
+ * @param {URL} pageUrl
+ * @param {Record<string, string[]>} directives
+ * @returns {boolean}
+ */
+function shouldCheckConnectSrcForOptel(matches, pageUrl, directives) {
+  const { tokens: scriptTokens } = getEffectiveScriptTokens(directives);
+
+  return matches.some((m) => {
+    try {
+      const src = normalizeCanonicalAttrValue(m.script.getAttribute('src') || '');
+      const { href } = new URL(src, pageUrl.href);
+      if (href.includes('rum.hlx.page') || href.includes('ot.aem.live')) {
+        return true;
+      }
+      if (m.signal === '/scripts.js') {
+        const nonceVal = m.script.getAttribute('nonce')?.trim() ?? null;
+        const nonceCheck = checkNonceInPolicy(scriptTokens, nonceVal);
+        if (nonceCheck.hasNonceAttr && nonceCheck.nonceInPolicy) {
+          return false;
+        }
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  });
 }
 
 /**
@@ -576,6 +621,48 @@ function evaluateScriptAgainstCsp(script, pageUrl, tokens, policyLabel) {
 }
 
 /**
+ * @param {{ script: HTMLScriptElement }[]} matches
+ * @param {string[]} scriptTokens
+ * @returns {boolean}
+ */
+function anyOpTelScriptNonceMatchesPolicy(matches, scriptTokens) {
+  return matches.some((m) => {
+    const n = m.script.getAttribute('nonce')?.trim();
+    if (!n) return false;
+    return checkNonceInPolicy(scriptTokens, n).nonceInPolicy;
+  });
+}
+
+/**
+ * @param {{ allowed: boolean, lines: string[] }} result
+ * @returns {string}
+ */
+function summarizeScriptCspFailure(result) {
+  const verdict = result.lines.find((l) => l.startsWith('Verdict:'));
+  if (verdict) {
+    return verdict.replace(/^Verdict:\s*/i, '').trim();
+  }
+  const first = result.lines[0];
+  if (first) return first;
+  return 'CSP blocked the OpTel script.';
+}
+
+/**
+ * @param {string[]} lines
+ * @returns {string}
+ */
+function summarizeConnectCspFailure(lines) {
+  const verdict = lines.find((l) => l.startsWith('Verdict:'));
+  if (verdict) {
+    return verdict.replace(/^Verdict:\s*/i, '').trim();
+  }
+  const detail = lines.find((l) => l.includes('NOT allowed'));
+  if (detail) return detail;
+  return 'CSP connect-src blocked RUM or telemetry requests.';
+}
+
+/**
+ * Short CSP summary for the UI; keeps the same pass/fail rules as the full evaluators.
  * @param {{ signal: string, tag: string, script: HTMLScriptElement }[]} matches
  * @param {URL} pageUrl
  * @param {string} cspRaw
@@ -584,86 +671,67 @@ function evaluateScriptAgainstCsp(script, pageUrl, tokens, policyLabel) {
 function buildCspScriptAnalysis(matches, pageUrl, cspRaw) {
   const policyStr = extractCspPolicyString(cspRaw);
   if (!policyStr.trim()) {
-    const noPolicyText = [
-      'CSP analysis: no Content-Security-Policy text was returned for this URL.',
-      'Treating that as no CSP-based restriction for script-src / connect-src checks — the POST probe may still run if an OpTel script matched.',
-    ].join('\n');
     return {
-      text: noPolicyText,
+      text: 'No CSP restrictions.',
       cspFullyPasses: matches.length > 0,
     };
   }
 
   const directives = parseCspDirectives(policyStr);
-  const parts = [];
-
+  const checkConnect = shouldCheckConnectSrcForOptel(matches, pageUrl, directives);
   const { label: scriptLabel, tokens: scriptTokens } = getEffectiveScriptTokens(directives);
 
   /** @type {{ allowed: boolean, lines: string[] }[]} */
   const scriptResults = [];
-
-  parts.push('--- CSP vs OpTel script ---');
-  if (!scriptLabel) {
-    parts.push(
-      'No script-src-elem, script-src, or default-src for scripts — script URLs are not restricted by those directives.',
-      '(Other mechanisms may still apply.)',
-      '',
-    );
-  } else {
-    parts.push(`${scriptLabel}: ${scriptTokens.join(' ')}`, '');
-
-    matches.forEach((m, i) => {
-      const result = evaluateScriptAgainstCsp(
-        m.script,
-        pageUrl,
-        scriptTokens,
-        scriptLabel,
+  if (scriptLabel) {
+    matches.forEach((m) => {
+      scriptResults.push(
+        evaluateScriptAgainstCsp(m.script, pageUrl, scriptTokens, scriptLabel),
       );
-      scriptResults.push(result);
-      parts.push(`Script #${i + 1} (matched: ${m.signal}) — ${result.allowed ? 'allowed' : 'not allowed'}:`);
-      parts.push(...result.lines);
-      parts.push('');
     });
   }
 
-  const connectEval = evaluateRumConnectDestinations(pageUrl, directives);
-  parts.push('--- CSP vs RUM / telemetry (connect-src) ---');
-  parts.push(...connectEval.lines);
-  parts.push('');
+  const connectEval = checkConnect
+    ? evaluateRumConnectDestinations(pageUrl, directives)
+    : { allowed: true, lines: [] };
 
-  /** No script-src family → no CSP script restriction from those directives (vacuous pass). */
   const scriptsOkForProbe = !scriptLabel
     ? matches.length > 0
-    : (scriptResults.length === matches.length
+    : scriptResults.length === matches.length
       && scriptResults.length > 0
-      && scriptResults.every((r) => r.allowed));
-
-  if (matches.length > 0) {
-    parts.push('--- OpTel summary ---');
-    if (scriptsOkForProbe && connectEval.allowed) {
-      if (scriptLabel) {
-        parts.push('Script loading and RUM connect destinations both look allowed by this policy snapshot.');
-      } else {
-        parts.push(
-          'No script-src / default-src in the policy for scripts; connect-src check passed or not applicable.',
-          'Nothing in this CSP snapshot blocks the OpTel script or RUM hosts via those directives.',
-        );
-      }
-    } else if (scriptsOkForProbe && !connectEval.allowed) {
-      parts.push('The script tag may load, but RUM/telemetry requests (e.g. to rum.hlx.page) look blocked by connect-src / default-src.');
-    } else if (!scriptsOkForProbe && connectEval.allowed) {
-      parts.push('The OpTel script looks blocked or restricted by script-src; connect-src is a separate issue.');
-    } else {
-      parts.push('Both script-src and connect-src checks show issues — OpTel is unlikely to work end-to-end.');
-    }
-    parts.push('');
-  }
+      && scriptResults.every((r) => r.allowed);
 
   const cspFullyPasses = scriptsOkForProbe && connectEval.allowed;
 
+  if (!cspFullyPasses) {
+    const failedScript = scriptResults.find((r) => !r.allowed);
+    if (failedScript) {
+      return { text: summarizeScriptCspFailure(failedScript), cspFullyPasses: false };
+    }
+    if (!connectEval.allowed) {
+      return {
+        text: summarizeConnectCspFailure(connectEval.lines),
+        cspFullyPasses: false,
+      };
+    }
+    return { text: 'CSP did not pass for this page.', cspFullyPasses: false };
+  }
+
+  /** @type {string[]} */
+  const linesOut = [];
+  if (anyOpTelScriptNonceMatchesPolicy(matches, scriptTokens)) {
+    linesOut.push('CSP nonce match.');
+  }
+  if (scriptsOkForProbe) {
+    linesOut.push('CSP script-src match.');
+  }
+  if (checkConnect && connectEval.allowed) {
+    linesOut.push('CSP connect-src match.');
+  }
+
   return {
-    text: parts.join('\n').trimEnd(),
-    cspFullyPasses,
+    text: linesOut.join('\n'),
+    cspFullyPasses: true,
   };
 }
 
@@ -747,10 +815,7 @@ async function postOpTelProbe(endpoint) {
   }
   const statusBits = [response.status, response.statusText].filter(Boolean).join(' ');
   const xErr = response.headers.get('x-error');
-  const lines = [`HTTP ${statusBits}`];
-  if (xErr) {
-    lines.push(`X-Error: ${xErr}`);
-  }
+  const lines = [`HTTP ${statusBits} ${xErr}`];
   if (bodySnippet) {
     lines.push(bodySnippet);
   }
@@ -799,14 +864,38 @@ function clearPanels() {
   opelMatched.hidden = true;
   cspResult.textContent = '';
   cspSection.hidden = true;
+  cspSection.removeAttribute('data-csp-result');
   rumProbeResult.textContent = '';
+  rumProbeFailHint.hidden = true;
   rumProbeSection.hidden = true;
+  rumProbeSection.removeAttribute('data-rum-probe-result');
+}
+
+/**
+ * Puts `?url=` on the current tool page (no reload) so the check is shareable.
+ * @param {string} urlValue normalized URL string
+ */
+function syncUrlQueryParam(urlValue) {
+  const pageUrl = new URL(window.location.href);
+  pageUrl.searchParams.set('url', urlValue);
+  window.history.replaceState(null, '', `${pageUrl.pathname}${pageUrl.search}${pageUrl.hash}`);
 }
 
 function init() {
+  try {
+    const fromQuery = new URL(window.location.href).searchParams.get('url');
+    if (fromQuery) {
+      urlInput.value = fromQuery;
+    }
+  } catch {
+    /* ignore malformed window.location */
+  }
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     clearPanels();
+    urlInput.value = normalizeUrlInputToHttps(urlInput.value);
+    syncUrlQueryParam(urlInput.value);
 
     let target;
     try {
@@ -828,12 +917,11 @@ function init() {
       if (matches.length === 0) {
         setOutputState('opel-disabled');
         opelStatus.innerHTML = `
-          The OpTel script is not included.
-          <ul>
-            <li>If AEM CS, <a target="_blank" href="https://www.aem.live/docs/operational-telemetry#disabling-operational-telemetry">OpTel might be disabled</a>.</li>
-            <li>If headless or not AEM, <a target="_blank" href="https://www.aem.live/developer/operational-telemetry#how-to-add-operational-telemetry-instrumentation-to-your-site">the script might need to be added manually</a>.</li>
-          </ul>
-        `;
+The OpTel script is not included.
+<ul>
+<li>If AEM CS, <a target="_blank" href="https://www.aem.live/docs/operational-telemetry#disabling-operational-telemetry">OpTel might be disabled</a>.</li>
+<li>If headless or not AEM, <a target="_blank" href="https://www.aem.live/developer/operational-telemetry#how-to-add-operational-telemetry-instrumentation-to-your-site">the script might need to be added manually</a>.</li>
+</ul>`.trim();
         opelMatched.hidden = true;
         cspSection.hidden = true;
         return;
@@ -850,43 +938,46 @@ function init() {
       opelMatched.hidden = false;
 
       cspSection.hidden = false;
+      cspSection.dataset.cspResult = 'pending';
       cspResult.textContent = 'Loading Content-Security-Policy…';
       try {
         const cspText = await fetchCspReport(target);
-        const normalizedCsp = normalizeDisplayText(cspText.trim() || '(empty response)');
         const cspAnalysis = buildCspScriptAnalysis(matches, target, cspText);
-        cspResult.textContent = [normalizedCsp, '', cspAnalysis.text].join('\n');
+        cspResult.textContent = cspAnalysis.text;
+        cspSection.dataset.cspResult = cspAnalysis.cspFullyPasses ? 'pass' : 'fail';
 
-        rumProbeSection.hidden = false;
         if (cspAnalysis.cspFullyPasses && shouldRunPostProbe(matches)) {
+          rumProbeSection.hidden = false;
           const probeEndpoint = getOpTelRumProbeEndpoint(target, matches);
-          const proxyUrl = buildPostOptelProxyUrl(probeEndpoint);
-          rumProbeResult.textContent = `GET (worker) ${proxyUrl} …`;
+          rumProbeSection.dataset.rumProbeResult = 'pending';
+          rumProbeFailHint.hidden = true;
+          rumProbeResult.textContent = 'Running POST probe…';
           const probe = await postOpTelProbe(probeEndpoint);
+          rumProbeSection.dataset.rumProbeResult = probe.ok ? 'pass' : 'fail';
           if (probe.ok) {
+            rumProbeFailHint.hidden = true;
             rumProbeResult.textContent = [
-              `Worker: ${proxyUrl}`,
-              `Target POST: ${probeEndpoint.href}`,
-              `Success: HTTP ${probe.status} (OK response from worker).`,
+              `POST: ${probeEndpoint.href}`,
+              `Success: HTTP ${probe.status} OK`,
             ].join('\n');
           } else {
             rumProbeResult.textContent = [
-              `Worker: ${proxyUrl}`,
-              `Target POST: ${probeEndpoint.href}`,
-              'Error:',
-              probe.message,
+              `POST: ${probeEndpoint.href}`,
+              `Error: ${probe.message}`,
             ].join('\n');
+            rumProbeFailHint.hidden = false;
           }
-        } else if (cspAnalysis.cspFullyPasses && !shouldRunPostProbe(matches)) {
-          rumProbeResult.textContent = [
-            'Skipped — POST probe runs only when OpTel is detected via helix-rum-js or /scripts.js,',
-            'not when the only match is a script URL on rum.hlx.page or ot.aem.live.',
-          ].join('\n');
         } else {
-          rumProbeResult.textContent = 'Skipped — run this probe only when both script-src and connect-src checks pass.';
+          rumProbeFailHint.hidden = true;
+          rumProbeResult.textContent = '';
+          rumProbeSection.hidden = true;
+          rumProbeSection.removeAttribute('data-rum-probe-result');
         }
       } catch (cspErr) {
+        rumProbeFailHint.hidden = true;
         rumProbeSection.hidden = true;
+        rumProbeSection.removeAttribute('data-rum-probe-result');
+        cspSection.dataset.cspResult = 'fail';
         const msg = cspErr instanceof Error ? cspErr.message : String(cspErr);
         cspResult.textContent = `Could not load Content-Security-Policy: ${msg}`;
       }

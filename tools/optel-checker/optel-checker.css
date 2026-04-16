@@ -1,6 +1,16 @@
 .optel-checker #check-form {
   display: grid;
-  gap: var(--spacing-s);
+  gap: var(--spacing-m);
+}
+
+.optel-checker #check-form .optel-checker-form-lead {
+  margin: 0;
+  max-width: 65ch;
+}
+
+/* Avoid stacking default `p` margins with grid gap; Submit stays aligned to the grid rhythm. */
+.optel-checker #check-form .button-wrapper {
+  margin: 0;
 }
 
 @media (width >= 720px) {
@@ -16,7 +26,6 @@
 
   .optel-checker #check-form .button-wrapper {
     grid-column: 2;
-    margin: 0;
   }
 }
 
@@ -32,8 +41,6 @@
 .optel-checker .optel-checker-output {
   margin-top: var(--spacing-l);
   display: none;
-  flex-direction: column;
-  gap: var(--spacing-l);
 }
 
 .optel-checker .optel-checker-output[data-state='loading'],
@@ -41,18 +48,79 @@
 .optel-checker .optel-checker-output[data-state='opel-error'],
 .optel-checker .optel-checker-output[data-state='done'] {
   display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xxl);
 }
 
 .optel-checker .optel-checker-section {
   padding: var(--spacing-m);
+  margin-bottom: var(--spacing-m);
   border: var(--border-m) solid var(--color-border);
   border-radius: var(--rounding-m);
 }
 
 .optel-checker .optel-checker-h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
   margin: 0 0 var(--spacing-s);
   font-size: var(--body-size-l);
   font-weight: bold;
+}
+
+.optel-checker .optel-checker-title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15em;
+  height: 1.15em;
+  font-size: 1.05em;
+  font-weight: bold;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.optel-checker .optel-checker-output[data-state='loading'] #opel-heading .optel-checker-title-icon {
+  display: none;
+}
+
+.optel-checker .optel-checker-output[data-state='done'] #opel-heading .optel-checker-title-icon::before {
+  content: '\2713';
+  color: light-dark(var(--green-800), var(--green-400));
+}
+
+.optel-checker .optel-checker-output[data-state='opel-disabled'] #opel-heading .optel-checker-title-icon::before,
+.optel-checker .optel-checker-output[data-state='opel-error'] #opel-heading .optel-checker-title-icon::before {
+  content: '\2717';
+  color: light-dark(var(--red-800), var(--red-400));
+}
+
+.optel-checker #csp-section[data-csp-result='pending'] #csp-heading .optel-checker-title-icon {
+  display: none;
+}
+
+.optel-checker #csp-section[data-csp-result='pass'] #csp-heading .optel-checker-title-icon::before {
+  content: '\2713';
+  color: light-dark(var(--green-800), var(--green-400));
+}
+
+.optel-checker #csp-section[data-csp-result='fail'] #csp-heading .optel-checker-title-icon::before {
+  content: '\2717';
+  color: light-dark(var(--red-800), var(--red-400));
+}
+
+.optel-checker #rum-probe-section[data-rum-probe-result='pending'] #rum-probe-heading .optel-checker-title-icon {
+  display: none;
+}
+
+.optel-checker #rum-probe-section[data-rum-probe-result='pass'] #rum-probe-heading .optel-checker-title-icon::before {
+  content: '\2713';
+  color: light-dark(var(--green-800), var(--green-400));
+}
+
+.optel-checker #rum-probe-section[data-rum-probe-result='fail'] #rum-probe-heading .optel-checker-title-icon::before {
+  content: '\2717';
+  color: light-dark(var(--red-800), var(--red-400));
 }
 
 .optel-checker .optel-checker-status {
@@ -61,8 +129,32 @@
   line-height: var(--line-height-l);
 }
 
-.optel-checker .optel-checker-pre {
+.optel-checker .optel-checker-status ul {
   margin: var(--spacing-s) 0 0;
+  padding-left: 1.25em;
+}
+
+.optel-checker .optel-checker-status ul li + li {
+  margin-top: var(--spacing-xs);
+}
+
+.optel-checker .optel-checker-rum-probe-fail-hint {
+  margin: var(--spacing-m) 0 0;
+  font-size: var(--body-size-s);
+  line-height: var(--line-height-l);
+  color: var(--color-text-secondary, var(--color-font-grey));
+}
+
+.optel-checker .optel-checker-csp-body {
+  margin: var(--spacing-m) 0 0;
+  font-family: var(--body-font-family);
+  font-size: var(--body-size-s);
+  line-height: var(--line-height-l);
+  white-space: pre-line;
+}
+
+.optel-checker .optel-checker-pre {
+  margin: var(--spacing-m) 0 0;
   padding: var(--spacing-s);
   border-radius: var(--rounding-s);
   font-family: var(--code-font-family);
@@ -84,8 +176,4 @@
 
 .optel-checker .optel-checker-output[data-state='opel-error'] .optel-checker-status {
   color: light-dark(var(--red-900), var(--red-200));
-}
-
-.optel-checker .optel-checker-output[data-state='opel-disabled'] .optel-checker-section:first-child {
-  border-style: dashed;
 }
