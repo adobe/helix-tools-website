@@ -382,7 +382,11 @@ function sourceExpressionMatchesUrl(expr, resourceUrl, documentUrl) {
     }
     return true;
   }
-
+    if (pathPart && pathPart !== '/') {
+      return pathPart.endsWith('/')
+        ? resourceUrl.pathname.startsWith(pathPart)
+        : resourceUrl.pathname === pathPart;
+    }
   if (!raw.includes('/') && !raw.includes(':')) {
     return hostMatchesSource(raw, resourceUrl.hostname);
   }
