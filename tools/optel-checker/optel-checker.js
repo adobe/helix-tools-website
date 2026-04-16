@@ -370,7 +370,7 @@ function sourceExpressionMatchesUrl(expr, resourceUrl, documentUrl) {
 
   const urlLike = raw.match(/^(https?:)\/\/([^/]*)([^\s?#]*)/i);
   if (urlLike) {
-    const scheme = `${urlLike[1].toLowerCase()}:`;
+    const scheme = urlLike[1].toLowerCase();
     if (resourceUrl.protocol.toLowerCase() !== scheme) return false;
     const hostPart = urlLike[2];
     const pathPart = urlLike[3] || '';
