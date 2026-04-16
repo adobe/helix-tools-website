@@ -123,6 +123,29 @@ function sectionSigilAt(text, charIndex) {
 }
 
 /**
+ * Build a newline-delimited string of line numbers "1\n2\n…\nN".
+ * @param {number} count - Total number of lines
+ * @returns {string}
+ */
+function lineNumbersText(count) {
+  return Array.from({ length: count }, (_, i) => i + 1).join('\n');
+}
+
+/**
+ * Get the pixel offset of a 1-based line number within an element,
+ * using the element's computed paddingTop and lineHeight.
+ * @param {Element} element - The element whose styles determine the layout
+ * @param {number} line - 1-based line number
+ * @returns {{ top: number, lineHeight: number }}
+ */
+function getLinePosition(element, line) {
+  const style = getComputedStyle(element);
+  const paddingTop = parseFloat(style.paddingTop);
+  const lineHeight = parseFloat(style.lineHeight);
+  return { top: paddingTop + (line - 1) * lineHeight, lineHeight };
+}
+
+/**
  * Update line number gutter for an editor
  * @param {HTMLTextAreaElement} textarea - Source textarea
  * @param {HTMLElement} lineNumbersEl - Line numbers element
@@ -130,7 +153,7 @@ function sectionSigilAt(text, charIndex) {
 function updateLineNumbers(textarea, lineNumbersEl) {
   if (!lineNumbersEl) return;
   const lineCount = (textarea.value.match(/\n/g) || []).length + 1;
-  lineNumbersEl.textContent = Array.from({ length: lineCount }, (_, i) => i + 1).join('\n');
+  lineNumbersEl.textContent = lineNumbersText(lineCount);
 }
 
 /**
@@ -142,10 +165,8 @@ function updateLineNumbers(textarea, lineNumbersEl) {
 function syncErrorHighlight(textarea, highlightEl) {
   const line = parseInt(highlightEl.dataset.errorLine, 10);
   if (!line) return;
-  const style = getComputedStyle(textarea);
-  const paddingTop = parseFloat(style.paddingTop);
-  const lineHeight = parseFloat(style.lineHeight);
-  highlightEl.style.top = `${paddingTop + (line - 1) * lineHeight - textarea.scrollTop}px`;
+  const { top } = getLinePosition(textarea, line);
+  highlightEl.style.top = `${top - textarea.scrollTop}px`;
 }
 
 /**
@@ -162,14 +183,10 @@ function setErrorHighlight(textarea, highlightEl, line) {
     highlightEl.dataset.errorLine = '';
     return;
   }
-  const style = getComputedStyle(textarea);
-  const paddingTop = parseFloat(style.paddingTop);
-  const lineHeight = parseFloat(style.lineHeight);
+  const { top: lineTop, lineHeight } = getLinePosition(textarea, line);
   highlightEl.dataset.errorLine = line;
   highlightEl.style.height = `${lineHeight}px`;
   highlightEl.style.display = 'block';
-  // Only scroll if the error line is not already visible in the viewport
-  const lineTop = paddingTop + (line - 1) * lineHeight;
   const lineBottom = lineTop + lineHeight;
   const { scrollTop, clientHeight } = textarea;
   const isVisible = lineTop >= scrollTop && lineBottom <= scrollTop + clientHeight;
@@ -311,13 +328,9 @@ function updatePreview(html) {
     }
   }
 
-  // Update source line numbers
   if (sourceLineNumbers) {
     const lineCount = html ? (html.match(/\n/g) || []).length + 1 : 0;
-    sourceLineNumbers.textContent = Array.from(
-      { length: lineCount },
-      (_, i) => i + 1,
-    ).join('\n');
+    sourceLineNumbers.textContent = lineNumbersText(lineCount);
   }
 }
 
@@ -665,7 +678,7 @@ function hideHtmlValidation() {
   updatePreviewStatus('error', 'No preview — fix errors above');
   collapseValidationDetails();
   if (sourceErrorHighlights) {
-    sourceErrorHighlights.innerHTML = '';
+    sourceErrorHighlights.replaceChildren();
   }
 }
 
@@ -681,18 +694,14 @@ function renderSourceHighlights(results) {
 
   sourceErrorHighlights.replaceChildren();
 
-  const linesWithIssues = results.filter((r) => r.line);
-  if (linesWithIssues.length === 0) return;
+  // Deduplicate by line, keeping the first (most severe) entry per line
+  const uniqueByLine = [...new Map(
+    results.filter((r) => r.line).map((r) => [r.line, r]),
+  ).values()];
+  if (uniqueByLine.length === 0) return;
 
-  const style = getComputedStyle(sourceOutput);
-  const paddingTop = parseFloat(style.paddingTop);
-  const lineHeight = parseFloat(style.lineHeight);
-
-  const seen = new Set();
-  linesWithIssues.forEach((r) => {
-    if (seen.has(r.line)) return;
-    seen.add(r.line);
-    const top = paddingTop + (r.line - 1) * lineHeight;
+  uniqueByLine.forEach((r) => {
+    const { top, lineHeight } = getLinePosition(sourceOutput, r.line);
     const cls = r.severity === 'error'
       ? 'source-highlight-error' : 'source-highlight-warning';
     const band = document.createElement('div');
@@ -749,10 +758,7 @@ function formatValidationStatus(results) {
  */
 function scrollSourceToLine(line) {
   if (!sourceOutput || !line) return;
-  const style = getComputedStyle(sourceOutput);
-  const paddingTop = parseFloat(style.paddingTop);
-  const lineHeight = parseFloat(style.lineHeight);
-  const lineTop = paddingTop + (line - 1) * lineHeight;
+  const { top: lineTop, lineHeight } = getLinePosition(sourceOutput, line);
   const center = (sourceOutput.clientHeight - lineHeight) / 2;
   sourceOutput.scrollTop = Math.max(0, lineTop - center);
 }
@@ -775,7 +781,6 @@ function buildValidationDetails(results) {
     const row = document.createElement('button');
     row.className = 'validation-detail-row';
     row.type = 'button';
-    if (r.line) row.dataset.line = r.line;
 
     const severity = document.createElement('span');
     severity.className = 'detail-severity';
@@ -792,12 +797,8 @@ function buildValidationDetails(results) {
       lineLabel.className = 'detail-line';
       lineLabel.textContent = `line ${r.line}`;
       row.appendChild(lineLabel);
+      row.addEventListener('click', () => scrollSourceToLine(r.line));
     }
-
-    row.addEventListener('click', () => {
-      const line = parseInt(row.dataset.line, 10);
-      if (line) scrollSourceToLine(line);
-    });
 
     validationDetails.appendChild(row);
   });
@@ -821,7 +822,7 @@ function buildValidationDetails(results) {
 function displayHtmlValidation(validation) {
   if (!validation || !Array.isArray(validation.results)) {
     collapseValidationDetails();
-    if (sourceErrorHighlights) sourceErrorHighlights.innerHTML = '';
+    if (sourceErrorHighlights) sourceErrorHighlights.replaceChildren();
     if (!validation) updatePreviewStatus('ok', 'HTML');
     return;
   }
