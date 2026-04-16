@@ -853,8 +853,8 @@ function init() {
         opelStatus.innerHTML = `
 The OpTel script is not included.
 <ul>
-<li>If AEM CS, <a target="_blank" href="https://www.aem.live/docs/operational-telemetry#disabling-operational-telemetry">OpTel might be disabled</a>.</li>
-<li>If headless or not AEM, <a target="_blank" href="https://www.aem.live/developer/operational-telemetry#how-to-add-operational-telemetry-instrumentation-to-your-site">the script might need to be added manually</a>.</li>
+<li>If AEM CS, <a target="_blank" rel="noopener noreferrer" href="https://www.aem.live/docs/operational-telemetry#disabling-operational-telemetry">OpTel might be disabled</a>.</li>
+<li>If headless or not AEM, <a target="_blank" rel="noopener noreferrer" href="https://www.aem.live/developer/operational-telemetry#how-to-add-operational-telemetry-instrumentation-to-your-site">the script might need to be added manually</a>.</li>
 </ul>`.trim();
         opelMatched.hidden = true;
         cspSection.hidden = true;
