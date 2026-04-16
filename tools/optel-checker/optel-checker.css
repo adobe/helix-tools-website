@@ -3,14 +3,14 @@
   gap: var(--spacing-m);
 }
 
-.optel-checker #check-form .optel-checker-form-lead {
-  margin: 0;
-  max-width: 65ch;
-}
-
 /* Avoid stacking default `p` margins with grid gap; Submit stays aligned to the grid rhythm. */
 .optel-checker .optel-checker-form-lead {
   margin: 0;
+}
+
+.optel-checker #check-form .optel-checker-form-lead {
+  margin: 0;
+  max-width: 65ch;
 }
 
 @media (width >= 900px) {
