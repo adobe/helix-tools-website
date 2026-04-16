@@ -8,7 +8,6 @@ import AbstractChart from './chart.js';
 import {
   truncate,
   cssVariable,
-  INTERPOLATION_THRESHOLD,
   isDarkTheme,
 } from '../utils.js';
 
