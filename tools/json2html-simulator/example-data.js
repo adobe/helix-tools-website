@@ -1,6 +1,10 @@
 /**
  * Example templates for the JSON2HTML Simulator.
  * Each example includes JSON data, a Mustache template, and optional rendering options.
+ *
+ * Templates must be full HTML documents (DOCTYPE, html, head, body) with
+ * <header></header>, <main>, and <footer></footer> structure so that the
+ * EDS html2md pipeline can process them correctly during preview.
  */
 
 // eslint-disable-next-line import/prefer-default-export -- named export for future additions
@@ -11,11 +15,23 @@ export const examples = {
       email: 'john@example.com',
       message: 'Hello, World!',
     },
-    template: `<div>
-  <h1>Hello, {{name}}!</h1>
-  <p>Email: {{email}}</p>
-  <blockquote>{{message}}</blockquote>
-</div>`,
+    template: `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Hello, {{name}}!</title>
+  </head>
+  <body>
+    <header></header>
+    <main>
+      <div>
+        <h1>Hello, {{name}}!</h1>
+        <p>Email: {{email}}</p>
+        <blockquote>{{message}}</blockquote>
+      </div>
+    </main>
+    <footer></footer>
+  </body>
+</html>`,
   },
   array: {
     json: {
@@ -31,14 +47,26 @@ export const examples = {
         ],
       },
     },
-    template: `<div>
-  <h1>Shopping List</h1>
-  <ul>
-    {{#.}}
-    <li>{{name}} (x{{quantity}})</li>
-    {{/.}}
-  </ul>
-</div>`,
+    template: `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Shopping List</title>
+  </head>
+  <body>
+    <header></header>
+    <main>
+      <div>
+        <h1>Shopping List</h1>
+        <ul>
+          {{#.}}
+          <li>{{name}} (x{{quantity}})</li>
+          {{/.}}
+        </ul>
+      </div>
+    </main>
+    <footer></footer>
+  </body>
+</html>`,
     options: {
       arrayKey: 'data.items',
     },
@@ -50,18 +78,30 @@ export const examples = {
       notifications: 3,
       hasNotifications: true,
     },
-    template: `<div>
-  <h1>Welcome, {{user}}!</h1>
-  {{#isPremium}}
-  <p>⭐ Premium Member</p>
-  {{/isPremium}}
-  {{^isPremium}}
-  <p><a href="#">Upgrade to Premium</a></p>
-  {{/isPremium}}
-  {{#hasNotifications}}
-  <p>You have {{notifications}} new notifications.</p>
-  {{/hasNotifications}}
-</div>`,
+    template: `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Welcome, {{user}}!</title>
+  </head>
+  <body>
+    <header></header>
+    <main>
+      <div>
+        <h1>Welcome, {{user}}!</h1>
+        {{#isPremium}}
+        <p>⭐ Premium Member</p>
+        {{/isPremium}}
+        {{^isPremium}}
+        <p><a href="#">Upgrade to Premium</a></p>
+        {{/isPremium}}
+        {{#hasNotifications}}
+        <p>You have {{notifications}} new notifications.</p>
+        {{/hasNotifications}}
+      </div>
+    </main>
+    <footer></footer>
+  </body>
+</html>`,
   },
   nested: {
     json: {
@@ -86,11 +126,23 @@ export const examples = {
         },
       ],
     },
-    template: `<div>
-  <h1>{{title}}</h1>
-  <p>{{description}}</p>
-  <p>Created by {{author}} | Path: {{path}}</p>
-</div>`,
+    template: `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>{{title}}</title>
+  </head>
+  <body>
+    <header></header>
+    <main>
+      <div>
+        <h1>{{title}}</h1>
+        <p>{{description}}</p>
+        <p>Created by {{author}} | Path: {{path}}</p>
+      </div>
+    </main>
+    <footer></footer>
+  </body>
+</html>`,
     options: {
       arrayKey: 'pages',
       pathKey: 'path',
@@ -108,25 +160,37 @@ export const examples = {
       image: '/media/products/headphones.jpg',
       thumbnail: '/media/products/headphones-thumb.jpg',
     },
-    template: `<div>
-  <img src="{{image}}" alt="{{name}}">
-  <h1>{{name}}</h1>
-  <p>{{currency}} {{price}}</p>
-  {{#inStock}}
-  <p>✓ In Stock</p>
-  {{/inStock}}
-  {{^inStock}}
-  <p>Out of Stock</p>
-  {{/inStock}}
-  <p>Rating: {{rating}} / 5</p>
-  <h2>Features</h2>
-  <ul>
-    {{#features}}
-    <li>{{.}}</li>
-    {{/features}}
-  </ul>
-  <img src="{{thumbnail}}" alt="{{name}} thumbnail">
-</div>`,
+    template: `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>{{name}}</title>
+  </head>
+  <body>
+    <header></header>
+    <main>
+      <div>
+        <img src="{{image}}" alt="{{name}}">
+        <h1>{{name}}</h1>
+        <p>{{currency}} {{price}}</p>
+        {{#inStock}}
+        <p>✓ In Stock</p>
+        {{/inStock}}
+        {{^inStock}}
+        <p>Out of Stock</p>
+        {{/inStock}}
+        <p>Rating: {{rating}} / 5</p>
+        <h2>Features</h2>
+        <ul>
+          {{#features}}
+          <li>{{.}}</li>
+          {{/features}}
+        </ul>
+        <img src="{{thumbnail}}" alt="{{name}} thumbnail">
+      </div>
+    </main>
+    <footer></footer>
+  </body>
+</html>`,
     options: {
       relativeURLPrefix: 'https://cdn.example.com',
     },
@@ -144,18 +208,31 @@ export const examples = {
       ],
       registrationOpen: true,
     },
-    template: `<div>
-  <h1>{{title}}</h1>
-  <p>📅 {{date}} | 📍 {{location}}</p>
-  <p>{{description}}</p>
-  <h2>Speakers</h2>
-  {{#speakers}}
-  <p><strong>{{name}}</strong> — {{topic}}</p>
-  {{/speakers}}
-  {{#registrationOpen}}
-  <p><a href="#">Register Now</a></p>
-  {{/registrationOpen}}
-</div>`,
+    template: `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>{{title}}</title>
+    <meta name="description" content="{{description}}">
+  </head>
+  <body>
+    <header></header>
+    <main>
+      <div>
+        <h1>{{title}}</h1>
+        <p>📅 {{date}} | 📍 {{location}}</p>
+        <p>{{description}}</p>
+        <h2>Speakers</h2>
+        {{#speakers}}
+        <p><strong>{{name}}</strong> — {{topic}}</p>
+        {{/speakers}}
+        {{#registrationOpen}}
+        <p><a href="#">Register Now</a></p>
+        {{/registrationOpen}}
+      </div>
+    </main>
+    <footer></footer>
+  </body>
+</html>`,
   },
   contentIndex: {
     json: {
@@ -189,15 +266,27 @@ export const examples = {
         },
       ],
     },
-    template: `<div>
-  <p>Showing {{limit}} of {{total}} articles</p>
-  {{#.}}
-  <h2><a href="{{path}}">{{title}}</a></h2>
-  <p>{{description}}</p>
-  <p>By {{author}} | {{date}}</p>
-  <img src="{{image}}" alt="{{title}}">
-  {{/.}}
-</div>`,
+    template: `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Content Index</title>
+  </head>
+  <body>
+    <header></header>
+    <main>
+      <div>
+        <p>Showing {{limit}} of {{total}} articles</p>
+        {{#.}}
+        <h2><a href="{{path}}">{{title}}</a></h2>
+        <p>{{description}}</p>
+        <p>By {{author}} | {{date}}</p>
+        <img src="{{image}}" alt="{{title}}">
+        {{/.}}
+      </div>
+    </main>
+    <footer></footer>
+  </body>
+</html>`,
     options: {
       arrayKey: 'data',
     },
@@ -262,28 +351,40 @@ export const examples = {
         },
       ],
     },
-    template: `<div>
-  <h1>{{name}}</h1>
-  {{#isOpen}}
-  <p>✓ Open Now</p>
-  {{/isOpen}}
-  {{^isOpen}}
-  <p>Currently Closed</p>
-  {{/isOpen}}
-  <h2>Address</h2>
-  <p>{{address.street}}</p>
-  <p>{{address.city}}, {{address.state}} {{address.zip}}</p>
-  <p>📞 {{phone}}</p>
-  <h2>Hours</h2>
-  <p><strong>Mon-Fri:</strong> {{hours.weekday}}</p>
-  <p><strong>Sat-Sun:</strong> {{hours.weekend}}</p>
-  <h2>Available Services</h2>
-  <ul>
-    {{#services}}
-    <li>{{.}}</li>
-    {{/services}}
-  </ul>
-</div>`,
+    template: `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>{{name}}</title>
+  </head>
+  <body>
+    <header></header>
+    <main>
+      <div>
+        <h1>{{name}}</h1>
+        {{#isOpen}}
+        <p>✓ Open Now</p>
+        {{/isOpen}}
+        {{^isOpen}}
+        <p>Currently Closed</p>
+        {{/isOpen}}
+        <h2>Address</h2>
+        <p>{{address.street}}</p>
+        <p>{{address.city}}, {{address.state}} {{address.zip}}</p>
+        <p>📞 {{phone}}</p>
+        <h2>Hours</h2>
+        <p><strong>Mon-Fri:</strong> {{hours.weekday}}</p>
+        <p><strong>Sat-Sun:</strong> {{hours.weekend}}</p>
+        <h2>Available Services</h2>
+        <ul>
+          {{#services}}
+          <li>{{.}}</li>
+          {{/services}}
+        </ul>
+      </div>
+    </main>
+    <footer></footer>
+  </body>
+</html>`,
     options: {
       arrayKey: 'stores',
       pathKey: 'path',
@@ -354,21 +455,34 @@ export const examples = {
         },
       ],
     },
-    template: `<div>
-  {{#images}}
-  <img src="{{.}}" alt="{{name}}">
-  {{/images}}
-  <h1>{{name}}</h1>
-  <p>SKU: {{sku}}</p>
-  {{#price.onSale}}
-  <p><s>{{price.currency}} {{price.amount}}</s> <strong>{{price.currency}} {{price.salePrice}}</strong></p>
-  {{/price.onSale}}
-  {{^price.onSale}}
-  <p>{{price.currency}} {{price.amount}}</p>
-  {{/price.onSale}}
-  <p>⭐ {{rating.score}} / 5 ({{rating.reviewCount}} reviews)</p>
-  <p>{{availability}}</p>
-</div>`,
+    template: `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>{{name}}</title>
+    <meta name="sku" content="{{sku}}">
+  </head>
+  <body>
+    <header></header>
+    <main>
+      <div>
+        {{#images}}
+        <img src="{{.}}" alt="{{name}}">
+        {{/images}}
+        <h1>{{name}}</h1>
+        <p>SKU: {{sku}}</p>
+        {{#price.onSale}}
+        <p><s>{{price.currency}} {{price.amount}}</s> <strong>{{price.currency}} {{price.salePrice}}</strong></p>
+        {{/price.onSale}}
+        {{^price.onSale}}
+        <p>{{price.currency}} {{price.amount}}</p>
+        {{/price.onSale}}
+        <p>⭐ {{rating.score}} / 5 ({{rating.reviewCount}} reviews)</p>
+        <p>{{availability}}</p>
+      </div>
+    </main>
+    <footer></footer>
+  </body>
+</html>`,
     options: {
       arrayKey: 'products',
       pathKey: 'path',
@@ -427,23 +541,35 @@ export const examples = {
         },
       ],
     },
-    template: `<div>
-  <p>{{type}}</p>
-  <h1>{{title}}</h1>
-  <p>📅 {{date}} | 🕐 {{time}}</p>
-  <p>📍 {{location}}</p>
-  <p>{{description}}</p>
-  <h2>Registration</h2>
-  <p>{{registered}} / {{capacity}} registered</p>
-  {{#spotsLeft}}
-  <p>{{spotsLeft}} spots remaining</p>
-  <p><a href="#">Register Now</a></p>
-  {{/spotsLeft}}
-  {{^spotsLeft}}
-  <p>This event is sold out</p>
-  <p><a href="#">Join Waitlist</a></p>
-  {{/spotsLeft}}
-</div>`,
+    template: `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>{{title}}</title>
+  </head>
+  <body>
+    <header></header>
+    <main>
+      <div>
+        <p>{{type}}</p>
+        <h1>{{title}}</h1>
+        <p>📅 {{date}} | 🕐 {{time}}</p>
+        <p>📍 {{location}}</p>
+        <p>{{description}}</p>
+        <h2>Registration</h2>
+        <p>{{registered}} / {{capacity}} registered</p>
+        {{#spotsLeft}}
+        <p>{{spotsLeft}} spots remaining</p>
+        <p><a href="#">Register Now</a></p>
+        {{/spotsLeft}}
+        {{^spotsLeft}}
+        <p>This event is sold out</p>
+        <p><a href="#">Join Waitlist</a></p>
+        {{/spotsLeft}}
+      </div>
+    </main>
+    <footer></footer>
+  </body>
+</html>`,
     options: {
       arrayKey: 'events',
       pathKey: 'path',
