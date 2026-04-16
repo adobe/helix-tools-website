@@ -324,7 +324,7 @@ function hostMatchesSource(patternHost, actualHost) {
   if (patternHost === actualHost) return true;
   if (patternHost.startsWith('*.')) {
     const suffix = patternHost.slice(2);
-    return actualHost === suffix || actualHost.endsWith(`.${suffix}`);
+    return actualHost.endsWith(`.${suffix}`);
   }
   return false;
 }
