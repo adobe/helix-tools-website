@@ -26,7 +26,6 @@
   },
   "homepage": "https://github.com/adobe/aem-boilerplate#readme",
   "devDependencies": {
-    "@adobe/rum-distiller": "1.23.0",
     "@babel/eslint-parser": "7.28.6",
     "esbuild": "0.28.0",
     "eslint": "8.57.1",
@@ -36,6 +35,7 @@
     "stylelint-config-standard": "40.0.0"
   },
   "dependencies": {
+    "@adobe/rum-distiller": "1.23.0",
     "yaml": "2.8.3"
   }
 }
