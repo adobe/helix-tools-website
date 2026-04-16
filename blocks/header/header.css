@@ -200,14 +200,12 @@ header.header-wrapper {
       text-align: center;
       text-transform: uppercase;
       box-shadow: var(--shadow-default);
-      z-index: 2;
 
-      @media (width >= 1200px) {
-        top: 30px;
-        left: -105px;
-        width: 300px;
-        border-radius: 0;
-        transform: rotate(-45deg);
+      @media (width < 900px) {
+        position: static;
+        transform: none;
+        margin: 0 auto var(--spacing-xs);
+        padding: 4px 12px;
       }
     }
   }
