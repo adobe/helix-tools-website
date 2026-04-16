@@ -2,6 +2,14 @@
 header.header-wrapper {
   padding: var(--spacing-xs) var(--horizontal-spacing);
 
+  &:has(.experimental-ribbon) {
+    padding-top: 0;
+
+    @media (width >= 900px) {
+      padding-top: var(--spacing-xs);
+    }
+  }
+
   .header {
     a:any-link:not(.button) {
       color: currentcolor;
@@ -185,11 +193,9 @@ header.header-wrapper {
     }
 
     .experimental-ribbon {
-      position: fixed;
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%);
+      position: static;
       width: fit-content;
+      margin: 0 auto var(--spacing-xs);
       border-bottom-left-radius: var(--rounding-l);
       border-bottom-right-radius: var(--rounding-l);
       padding: var(--spacing-xs) var(--spacing-m);
@@ -201,11 +207,13 @@ header.header-wrapper {
       text-transform: uppercase;
       box-shadow: var(--shadow-default);
 
-      @media (width < 900px) {
-        position: static;
-        transform: none;
-        margin: 0 auto var(--spacing-xs);
-        padding: 4px 12px;
+      @media (width >= 900px) {
+        position: fixed;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        margin: 0;
+        padding: var(--spacing-xs) var(--spacing-m);
       }
     }
   }
