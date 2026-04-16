@@ -20,6 +20,7 @@ export default class TableRenderer extends AbstractChart {
     const container = document.getElementById('table-container');
     if (container.querySelector('table')) return;
     const table = document.createElement('table');
+    table.setAttribute('aria-label', 'Error source breakdown');
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
 
@@ -32,6 +33,7 @@ export default class TableRenderer extends AbstractChart {
 
     headers.forEach(({ label, sort }) => {
       const th = document.createElement('th');
+      th.setAttribute('scope', 'col');
       if (sort) {
         th.dataset.sort = sort;
         let ariaSort = 'none';
