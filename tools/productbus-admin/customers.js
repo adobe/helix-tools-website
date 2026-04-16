@@ -3,7 +3,9 @@
  */
 
 import { apiFetch } from './api.js';
-import { showToast, createModal, createFormField } from './ui.js';
+import {
+  showToast, createModal, createFormField, getUrlParam, setUrlParam,
+} from './ui.js';
 
 function renderTable(container, customers, ctx) {
   const tableWrap = container.querySelector('#customers-table');
@@ -154,12 +156,13 @@ function openCreateModal(ctx, onCreated) {
 }
 
 export async function render(container, ctx) {
+  const initialQ = getUrlParam('q');
   container.innerHTML = `
     <div class="page-header">
       <h1>Customers</h1>
     </div>
     <div class="page-actions">
-      <input type="text" class="search-input" placeholder="Search customers..." id="search-customers">
+      <input type="text" class="search-input" placeholder="Search customers..." id="search-customers" value="${initialQ.replace(/"/g, '&quot;')}">
       <button class="button" id="add-customer-btn">+ Create Customer</button>
     </div>
     <div id="customers-table">
@@ -167,19 +170,25 @@ export async function render(container, ctx) {
     </div>
   `;
 
+  function filterCustomers(customers, q) {
+    if (!q) return customers;
+    const needle = q.toLowerCase();
+    return customers.filter((c) => c.email.toLowerCase().includes(needle)
+      || (c.firstName || '').toLowerCase().includes(needle)
+      || (c.lastName || '').toLowerCase().includes(needle));
+  }
+
   try {
     const resp = await apiFetch(ctx.org, ctx.site, 'customers', { method: 'GET' });
     const data = await resp.json();
     const customers = data.customers || data || [];
 
-    renderTable(container, customers, ctx);
+    renderTable(container, filterCustomers(customers, initialQ), ctx);
 
     container.querySelector('#search-customers').addEventListener('input', (e) => {
-      const q = e.target.value.toLowerCase();
-      const filtered = customers.filter((c) => c.email.toLowerCase().includes(q)
-        || (c.firstName || '').toLowerCase().includes(q)
-        || (c.lastName || '').toLowerCase().includes(q));
-      renderTable(container, filtered, ctx);
+      const q = e.target.value;
+      setUrlParam('q', q);
+      renderTable(container, filterCustomers(customers, q), ctx);
     });
 
     container.querySelector('#add-customer-btn').addEventListener('click', () => {

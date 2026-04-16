@@ -3,7 +3,9 @@
  */
 
 import { apiFetch } from './api.js';
-import { showToast, createModal, createFormField } from './ui.js';
+import {
+  showToast, createModal, createFormField, getUrlParam, setUrlParam,
+} from './ui.js';
 
 const DIR_PATH_PATTERN = /^\/[a-z0-9-/]+$/;
 
@@ -119,12 +121,13 @@ function openCreateModal(ctx, onCreated) {
 }
 
 export async function render(container, ctx) {
+  const initialQ = getUrlParam('q');
   container.innerHTML = `
     <div class="page-header">
       <h1>Indices</h1>
     </div>
     <div class="page-actions">
-      <input type="text" class="search-input" placeholder="Search indices..." id="search-indices">
+      <input type="text" class="search-input" placeholder="Search indices..." id="search-indices" value="${initialQ.replace(/"/g, '&quot;')}">
       <button class="button" id="add-index-btn">+ Create Index</button>
     </div>
     <div id="indices-table">
@@ -132,17 +135,23 @@ export async function render(container, ctx) {
     </div>
   `;
 
+  function filterIndices(indices, q) {
+    if (!q) return indices;
+    const needle = q.toLowerCase();
+    return indices.filter((idx) => idx.path.toLowerCase().includes(needle));
+  }
+
   try {
     const resp = await apiFetch(ctx.org, ctx.site, 'index', { method: 'GET' });
     const data = await resp.json();
     const indices = data.indices || [];
 
-    renderTable(container, indices, ctx);
+    renderTable(container, filterIndices(indices, initialQ), ctx);
 
     container.querySelector('#search-indices').addEventListener('input', (e) => {
-      const q = e.target.value.toLowerCase();
-      const filtered = indices.filter((idx) => idx.path.toLowerCase().includes(q));
-      renderTable(container, filtered, ctx);
+      const q = e.target.value;
+      setUrlParam('q', q);
+      renderTable(container, filterIndices(indices, q), ctx);
     });
 
     container.querySelector('#add-index-btn').addEventListener('click', () => {

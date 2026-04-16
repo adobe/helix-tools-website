@@ -3,7 +3,9 @@
  */
 
 import { apiFetch } from './api.js';
-import { showToast, createModal, createFormField } from './ui.js';
+import {
+  showToast, createModal, createFormField, getUrlParam, setUrlParam,
+} from './ui.js';
 
 function renderTable(container, orders, ctx) {
   const tableWrap = container.querySelector('#orders-table');
@@ -236,12 +238,13 @@ function openCreateModal(ctx, onCreated) {
 }
 
 export async function render(container, ctx) {
+  const initialQ = getUrlParam('q');
   container.innerHTML = `
     <div class="page-header">
       <h1>Orders</h1>
     </div>
     <div class="page-actions">
-      <input type="text" class="search-input" placeholder="Search orders..." id="search-orders">
+      <input type="text" class="search-input" placeholder="Search orders..." id="search-orders" value="${initialQ.replace(/"/g, '&quot;')}">
       <button class="button" id="add-order-btn">+ Create Order</button>
     </div>
     <div id="orders-table">
@@ -249,19 +252,25 @@ export async function render(container, ctx) {
     </div>
   `;
 
+  function filterOrders(orders, q) {
+    if (!q) return orders;
+    const needle = q.toLowerCase();
+    return orders.filter((o) => (o.id || '').toLowerCase().includes(needle)
+      || (o.customer?.email || '').toLowerCase().includes(needle)
+      || (o.state || '').toLowerCase().includes(needle));
+  }
+
   try {
     const resp = await apiFetch(ctx.org, ctx.site, 'orders', { method: 'GET' });
     const data = await resp.json();
     const orders = data.orders || data || [];
 
-    renderTable(container, orders, ctx);
+    renderTable(container, filterOrders(orders, initialQ), ctx);
 
     container.querySelector('#search-orders').addEventListener('input', (e) => {
-      const q = e.target.value.toLowerCase();
-      const filtered = orders.filter((o) => (o.id || '').toLowerCase().includes(q)
-        || (o.customer?.email || '').toLowerCase().includes(q)
-        || (o.state || '').toLowerCase().includes(q));
-      renderTable(container, filtered, ctx);
+      const q = e.target.value;
+      setUrlParam('q', q);
+      renderTable(container, filterOrders(orders, q), ctx);
     });
 
     container.querySelector('#add-order-btn').addEventListener('click', () => {

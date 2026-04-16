@@ -40,6 +40,8 @@ const PAGE_MODULES = {
   indices: () => import('./indices.js'),
   catalog: () => import('./catalog.js'),
   config: () => import('./config.js'),
+  journals: () => import('./journals.js'),
+  'service-tokens': () => import('./service-tokens.js'),
   admins: () => import('./admins.js'),
 };
 
@@ -109,6 +111,12 @@ function renderSidebar(org, site, currentPage) {
     { id: 'config', label: 'Config' },
   ];
 
+  const isAdmin = auth.roles && (auth.roles.includes('admin') || auth.roles.includes('superuser'));
+  if (isAdmin) {
+    navLinks.push({ id: 'journals', label: 'Journals' });
+    navLinks.push({ id: 'service-tokens', label: 'Service Tokens' });
+  }
+
   if (auth.roles && auth.roles.includes('superuser')) {
     navLinks.push({ id: 'admins', label: 'Admins' });
   }
@@ -137,7 +145,13 @@ function renderSidebar(org, site, currentPage) {
   sidebar.querySelectorAll('a[data-page]').forEach((link) => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
-      setParams({ page: link.dataset.page });
+      // Switching pages wipes view-specific query params so shared URLs only
+      // carry the state the target view itself writes back in.
+      const p = new URLSearchParams();
+      if (org) p.set('org', org);
+      if (site) p.set('site', site);
+      p.set('page', link.dataset.page);
+      window.history.pushState({}, '', `${window.location.pathname}?${p.toString()}`);
       renderApp();
     });
   });

@@ -28,6 +28,11 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-m);
+  position: sticky;
+  top: var(--spacing-m);
+  align-self: start;
+  height: calc(100vh - 5 * var(--spacing-m));
+  max-height: calc(100vh - 5 * var(--spacing-m));
 }
 
 .productbus-admin .sidebar-connect {
@@ -61,6 +66,8 @@
   flex-direction: column;
   gap: var(--spacing-xs);
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .productbus-admin .sidebar-nav a {
@@ -473,6 +480,7 @@ dialog.productbus-modal .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--spacing-m);
+  align-items: flex-end;
 }
 
 dialog.productbus-modal h4,
@@ -572,6 +580,194 @@ dialog.productbus-modal h4,
   border-color: var(--red-700);
 }
 
+/* Journals View */
+.productbus-admin .journals-controls {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr auto;
+  gap: var(--spacing-m);
+  align-items: end;
+  margin-bottom: var(--spacing-l);
+}
+
+.productbus-admin .journals-controls .view-switcher {
+  margin-bottom: 0;
+  align-self: end;
+}
+
+.productbus-admin .journals-controls .form-field {
+  margin: 0;
+}
+
+.productbus-admin .journals-controls .journals-orderid,
+.productbus-admin .journals-controls .journals-filter {
+  grid-column: 1 / -1;
+}
+
+.productbus-admin .journals-actions {
+  display: flex;
+  gap: var(--spacing-s);
+  justify-content: flex-end;
+}
+
+.productbus-admin .journals-entry {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-background);
+  margin-bottom: var(--spacing-xs);
+  transition: background-color 0.15s ease;
+}
+
+.productbus-admin .journals-entry:hover {
+  background: light-dark(var(--gray-50), var(--gray-800));
+}
+
+.productbus-admin .journals-entry-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-m);
+  padding: var(--spacing-s) var(--spacing-m);
+  cursor: pointer;
+  min-width: 0;
+}
+
+.productbus-admin .journals-entry-ts {
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+  color: var(--color-font-grey);
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.productbus-admin .journals-entry-detail {
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+  color: var(--color-text);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.productbus-admin .journals-entry .journals-copy-btn {
+  flex: 0 0 auto;
+}
+
+.productbus-admin .journals-entry-details {
+  display: none;
+  padding: 0 var(--spacing-m) var(--spacing-m);
+}
+
+.productbus-admin .journals-entry.expanded .journals-entry-details {
+  display: block;
+}
+
+.productbus-admin .journals-entry-details .json-display {
+  margin: 0;
+  max-height: 500px;
+  overflow: auto;
+}
+
+.productbus-admin .journals-status {
+  margin-top: var(--spacing-m);
+  font-size: var(--body-size-s);
+  color: var(--color-font-grey);
+}
+
+/* Service Tokens View */
+.productbus-admin .service-token-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-m);
+  max-width: 700px;
+}
+
+.productbus-admin .service-token-form h4 {
+  margin: var(--spacing-s) 0 0;
+  font-size: var(--body-size-l);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--spacing-xs);
+}
+
+.productbus-admin .permissions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-xs) var(--spacing-m);
+}
+
+.productbus-admin .permission-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.productbus-admin .permission-item:hover {
+  background: light-dark(var(--gray-50), var(--gray-800));
+}
+
+.productbus-admin .permission-item input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+.productbus-admin .field-hint-inline {
+  font-weight: 400;
+  color: var(--color-font-grey);
+  font-size: var(--body-size-s);
+}
+
+.productbus-admin .token-result {
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-m);
+}
+
+.productbus-admin .token-warning {
+  padding: var(--spacing-m);
+  border: 1px solid light-dark(var(--orange-400, #f59e0b), var(--orange-600, #d97706));
+  background: light-dark(var(--orange-100, #fef3c7), rgb(245 158 11 / 15%));
+  color: light-dark(var(--orange-800, #92400e), var(--orange-200, #fde68a));
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.productbus-admin .token-box {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-s);
+  padding: var(--spacing-m);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--layer-elevated);
+}
+
+.productbus-admin .token-box code {
+  flex: 1;
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+  word-break: break-all;
+  color: var(--color-text);
+}
+
+.productbus-admin .token-meta {
+  font-size: var(--body-size-s);
+  color: var(--color-text);
+}
+
+.productbus-admin .token-permissions {
+  margin: 0;
+  padding-left: var(--spacing-l);
+  font-size: var(--body-size-s);
+}
+
+.productbus-admin .token-permissions code {
+  font-family: var(--code-font-family);
+}
+
 /* Responsive */
 @media (width < 600px) {
   .productbus-admin #app-container {
@@ -584,6 +780,9 @@ dialog.productbus-modal h4,
     top: 0;
     bottom: 0;
     width: 260px;
+    height: auto;
+    max-height: none;
+    align-self: auto;
     z-index: 1000;
     background: var(--color-background);
     box-shadow: 2px 0 8px rgb(0 0 0 / 10%);
@@ -610,5 +809,17 @@ dialog.productbus-modal h4,
 
   .productbus-admin .page-actions .search-input {
     max-width: none;
+  }
+
+  .productbus-admin .journals-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .productbus-admin .journals-actions {
+    justify-content: stretch;
+  }
+
+  .productbus-admin .permissions-grid {
+    grid-template-columns: 1fr;
   }
 }

@@ -73,6 +73,24 @@ export function createModal(title, content, footer) {
   return dialog;
 }
 
+/**
+ * Read a single query param from window.location.search.
+ */
+export function getUrlParam(key) {
+  return new URLSearchParams(window.location.search).get(key) || '';
+}
+
+/**
+ * Set or remove a query param via replaceState so the URL reflects
+ * current view state without pushing history entries.
+ */
+export function setUrlParam(key, value) {
+  const url = new URL(window.location.href);
+  if (value) url.searchParams.set(key, value);
+  else url.searchParams.delete(key);
+  window.history.replaceState({}, '', url);
+}
+
 export function createFormField(name, label, type = 'text', options = {}) {
   const {
     required = false, placeholder = '', value = '', disabled = false, maxLength = '',

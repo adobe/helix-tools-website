@@ -3,7 +3,9 @@
  */
 
 import { apiFetch } from './api.js';
-import { showToast, createModal } from './ui.js';
+import {
+  showToast, createModal, getUrlParam, setUrlParam,
+} from './ui.js';
 
 function renderTable(container, admins, ctx) {
   const tableWrap = container.querySelector('#admins-table');
@@ -107,12 +109,13 @@ function openAddModal(ctx, onAdded) {
 }
 
 export async function render(container, ctx) {
+  const initialQ = getUrlParam('q');
   container.innerHTML = `
     <div class="page-header">
       <h1>Admins</h1>
     </div>
     <div class="page-actions">
-      <input type="text" class="search-input" placeholder="Search admins..." id="search-admins">
+      <input type="text" class="search-input" placeholder="Search admins..." id="search-admins" value="${initialQ.replace(/"/g, '&quot;')}">
       <button class="button" id="add-admin-btn">+ Add Admin</button>
     </div>
     <div id="admins-table">
@@ -120,17 +123,23 @@ export async function render(container, ctx) {
     </div>
   `;
 
+  function filterAdmins(admins, q) {
+    if (!q) return admins;
+    const needle = q.toLowerCase();
+    return admins.filter((a) => a.email.toLowerCase().includes(needle));
+  }
+
   try {
     const resp = await apiFetch(ctx.org, ctx.site, 'auth/admins', { method: 'GET' });
     const data = await resp.json();
     const admins = data.admins || data || [];
 
-    renderTable(container, admins, ctx);
+    renderTable(container, filterAdmins(admins, initialQ), ctx);
 
     container.querySelector('#search-admins').addEventListener('input', (e) => {
-      const q = e.target.value.toLowerCase();
-      const filtered = admins.filter((a) => a.email.toLowerCase().includes(q));
-      renderTable(container, filtered, ctx);
+      const q = e.target.value;
+      setUrlParam('q', q);
+      renderTable(container, filterAdmins(admins, q), ctx);
     });
 
     container.querySelector('#add-admin-btn').addEventListener('click', () => {
