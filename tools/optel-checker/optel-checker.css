@@ -1,6 +1,12 @@
 .optel-checker #check-form {
   display: grid;
+  margin-top: var(--spacing-xxl);
   gap: var(--spacing-m);
+}
+
+.optel-checker #check-form .button-wrapper {
+  margin: 0;
+  justify-content: flex-start;
 }
 
 /* Avoid stacking default `p` margins with grid gap; Submit stays aligned to the grid rhythm. */
@@ -11,22 +17,6 @@
 .optel-checker #check-form .optel-checker-form-lead {
   margin: 0;
   max-width: 65ch;
-}
-
-@media (width >= 900px) {
-  .optel-checker #check-form {
-    grid-template-columns: 1fr max-content;
-    gap: var(--spacing-l);
-    align-items: end;
-  }
-
-  .optel-checker #check-form .form-field {
-    grid-column: 1;
-  }
-
-  .optel-checker #check-form .button-wrapper {
-    grid-column: 2;
-  }
 }
 
 .optel-checker #url-input {

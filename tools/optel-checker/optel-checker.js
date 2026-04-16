@@ -823,10 +823,12 @@ function syncUrlQueryParam(urlValue) {
 }
 
 function init() {
+  let urlFromQuery = '';
   try {
-    const fromQuery = new URL(window.location.href).searchParams.get('url');
-    if (fromQuery) {
-      urlInput.value = fromQuery;
+    const raw = new URL(window.location.href).searchParams.get('url');
+    urlFromQuery = raw ? raw.trim() : '';
+    if (urlFromQuery) {
+      urlInput.value = urlFromQuery;
     }
   } catch {
     /* ignore malformed window.location */
@@ -932,6 +934,10 @@ The OpTel script is not included.
       setLoading(false);
     }
   });
+
+  if (urlFromQuery) {
+    form.requestSubmit();
+  }
 }
 
 registerToolReady(init());
