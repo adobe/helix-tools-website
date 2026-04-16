@@ -468,49 +468,37 @@ function urlMatchesConnectPolicy(resourceUrl, pageUrl, tokens) {
  * Checks RUM / OpTel beacon hosts against connect-src (or default-src).
  * @param {URL} pageUrl
  * @param {Record<string, string[]>} directives
- * @returns {{ allowed: boolean, lines: string[] }}
+ * @returns {{ allowed: true } | { allowed: false, failReason: string }}
  */
 function evaluateRumConnectDestinations(pageUrl, directives) {
   const { label, tokens } = getEffectiveConnectTokens(directives);
-  /** @type {{ href: string, note: string }[]} */
-  const destinations = [
-    { href: 'https://rum.hlx.page/', note: 'rum.hlx.page (RUM beacon / ingestion)' },
-    { href: 'https://ot.aem.live/', note: 'ot.aem.live (Operational Telemetry API)' },
-  ];
-
-  const lines = [];
 
   if (!label) {
-    lines.push('No connect-src or default-src in the policy — fetch/XHR to RUM hosts are not restricted by those directives.');
-    lines.push('(Other directives or browser rules may still apply.)');
-    return { allowed: true, lines };
+    return { allowed: true };
   }
 
-  lines.push(`Effective for connect: ${label}`);
-  lines.push(`${label}: ${tokens.join(' ')}`);
-  lines.push('');
-
+  const destinations = ['https://rum.hlx.page/', 'https://ot.aem.live/'];
   let allOk = true;
-  destinations.forEach(({ href, note }) => {
+  destinations.forEach((href) => {
     let destUrl;
     try {
       destUrl = new URL(href);
     } catch {
-      lines.push(`${note}: invalid check URL.`);
       allOk = false;
       return;
     }
-    const ok = urlMatchesConnectPolicy(destUrl, pageUrl, tokens);
-    if (!ok) allOk = false;
-    lines.push(`${note}: ${ok ? 'allowed' : 'NOT allowed (would block fetch/XHR to this host)'}`);
+    if (!urlMatchesConnectPolicy(destUrl, pageUrl, tokens)) {
+      allOk = false;
+    }
   });
 
-  lines.push('');
-  lines.push(allOk
-    ? 'Verdict: these RUM endpoints match the connect policy (or its default-src fallback).'
-    : 'Verdict: The connect-src directive in the Content-Security-Policy partially blocks OpTel collection.');
-
-  return { allowed: allOk, lines };
+  if (!allOk) {
+    return {
+      allowed: false,
+      failReason: 'The connect-src directive in the Content-Security-Policy partially blocks OpTel collection.',
+    };
+  }
+  return { allowed: true };
 }
 
 /**
@@ -552,11 +540,9 @@ function shouldCheckConnectSrcForOptel(matches, pageUrl, directives) {
  * @param {HTMLScriptElement} script
  * @param {URL} pageUrl
  * @param {string[]} tokens
- * @param {string} policyLabel
- * @returns {{ allowed: boolean, lines: string[] }}
+ * @returns {{ allowed: true } | { allowed: false, failReason: string }}
  */
-function evaluateScriptAgainstCsp(script, pageUrl, tokens, policyLabel) {
-  const lines = [];
+function evaluateScriptAgainstCsp(script, pageUrl, tokens) {
   const rawSrc = script.getAttribute('src');
   const src = normalizeCanonicalAttrValue(rawSrc || '');
   let scriptUrl;
@@ -565,58 +551,33 @@ function evaluateScriptAgainstCsp(script, pageUrl, tokens, policyLabel) {
   } catch {
     return {
       allowed: false,
-      lines: [`Could not resolve src relative to page: ${src}`],
+      failReason: `Could not resolve src relative to page: ${src}`,
     };
   }
 
-  lines.push(`Resolved URL: ${scriptUrl.href}`);
-  lines.push(`Policy used: ${policyLabel}`);
-
   const nonceVal = script.getAttribute('nonce');
   const nonceCheck = checkNonceInPolicy(tokens, nonceVal?.trim() ?? null);
-  if (nonceCheck.hasNonceAttr) {
-    lines.push('Nonce attribute: present');
-    lines.push(`Expect policy token: ${nonceCheck.expectedToken}`);
-    lines.push(nonceCheck.nonceInPolicy
-      ? 'Nonce: matches a token in the policy.'
-      : 'Nonce: no matching \'nonce-…\' token in the policy.');
-  } else {
-    lines.push('Nonce attribute: absent');
-  }
-
   const strict = tokensIncludeStrictDynamic(tokens);
   const urlOk = urlMatchesScriptPolicy(scriptUrl, pageUrl, tokens);
 
   if (nonceCheck.hasNonceAttr && !nonceCheck.nonceInPolicy) {
     return {
       allowed: false,
-      lines: [...lines, 'Verdict: blocked (nonce required by the script but not allowed by the policy).'],
+      failReason: 'blocked (nonce required by the script but not allowed by the policy).',
     };
   }
 
   if (strict && nonceCheck.hasNonceAttr && nonceCheck.nonceInPolicy) {
-    return {
-      allowed: true,
-      lines: [
-        ...lines,
-        'strict-dynamic is present with a valid nonce — browsers ignore host allowlists for this nonce-guarded script (CSP3).',
-        'Verdict: allowed (under typical CSP3 strict-dynamic rules).',
-      ],
-    };
+    return { allowed: true };
   }
 
   if (urlOk) {
-    return {
-      allowed: true,
-      lines: [...lines, 'URL matches script-src / default-src source list.',
-        'Verdict: allowed (host / scheme / self).'],
-    };
+    return { allowed: true };
   }
 
   return {
     allowed: false,
-    lines: [...lines, 'URL does not match any host, scheme, or self source in the policy.',
-      'Verdict: likely blocked by Content-Security-Policy.'],
+    failReason: 'likely blocked by Content-Security-Policy.',
   };
 }
 
@@ -631,34 +592,6 @@ function anyOpTelScriptNonceMatchesPolicy(matches, scriptTokens) {
     if (!n) return false;
     return checkNonceInPolicy(scriptTokens, n).nonceInPolicy;
   });
-}
-
-/**
- * @param {{ allowed: boolean, lines: string[] }} result
- * @returns {string}
- */
-function summarizeScriptCspFailure(result) {
-  const verdict = result.lines.find((l) => l.startsWith('Verdict:'));
-  if (verdict) {
-    return verdict.replace(/^Verdict:\s*/i, '').trim();
-  }
-  const first = result.lines[0];
-  if (first) return first;
-  return 'CSP blocked the OpTel script.';
-}
-
-/**
- * @param {string[]} lines
- * @returns {string}
- */
-function summarizeConnectCspFailure(lines) {
-  const verdict = lines.find((l) => l.startsWith('Verdict:'));
-  if (verdict) {
-    return verdict.replace(/^Verdict:\s*/i, '').trim();
-  }
-  const detail = lines.find((l) => l.includes('NOT allowed'));
-  if (detail) return detail;
-  return 'CSP connect-src blocked RUM or telemetry requests.';
 }
 
 /**
@@ -681,19 +614,17 @@ function buildCspScriptAnalysis(matches, pageUrl, cspRaw) {
   const checkConnect = shouldCheckConnectSrcForOptel(matches, pageUrl, directives);
   const { label: scriptLabel, tokens: scriptTokens } = getEffectiveScriptTokens(directives);
 
-  /** @type {{ allowed: boolean, lines: string[] }[]} */
+  /** @type {{ allowed: boolean, failReason?: string }[]} */
   const scriptResults = [];
   if (scriptLabel) {
     matches.forEach((m) => {
-      scriptResults.push(
-        evaluateScriptAgainstCsp(m.script, pageUrl, scriptTokens, scriptLabel),
-      );
+      scriptResults.push(evaluateScriptAgainstCsp(m.script, pageUrl, scriptTokens));
     });
   }
 
   const connectEval = checkConnect
     ? evaluateRumConnectDestinations(pageUrl, directives)
-    : { allowed: true, lines: [] };
+    : { allowed: true };
 
   const scriptsOkForProbe = !scriptLabel
     ? matches.length > 0
@@ -706,11 +637,15 @@ function buildCspScriptAnalysis(matches, pageUrl, cspRaw) {
   if (!cspFullyPasses) {
     const failedScript = scriptResults.find((r) => !r.allowed);
     if (failedScript) {
-      return { text: summarizeScriptCspFailure(failedScript), cspFullyPasses: false };
+      return {
+        text: failedScript.failReason ?? 'CSP blocked the OpTel script.',
+        cspFullyPasses: false,
+      };
     }
     if (!connectEval.allowed) {
       return {
-        text: summarizeConnectCspFailure(connectEval.lines),
+        text: connectEval.failReason
+          ?? 'CSP connect-src blocked RUM or telemetry requests.',
         cspFullyPasses: false,
       };
     }
