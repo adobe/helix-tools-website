@@ -213,7 +213,15 @@ header.header-wrapper {
         left: 50%;
         transform: translateX(-50%);
         margin: 0;
-        padding: var(--spacing-xs) var(--spacing-m);
+      }
+
+      @media (width >= 1200px) {
+        top: 30px;
+        left: -105px;
+        width: 300px;
+        border-radius: 0;
+        transform: rotate(-45deg);
+        z-index: 2;
       }
     }
   }
