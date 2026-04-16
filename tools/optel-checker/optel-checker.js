@@ -570,6 +570,13 @@ function evaluateScriptAgainstCsp(script, pageUrl, tokens) {
     return { allowed: true };
   }
 
+  if (strict) {
+    return {
+      allowed: false,
+      failReason: 'blocked by strict-dynamic (script has no nonce matching the policy).',
+    };
+  }
+
   if (urlOk) {
     return { allowed: true };
   }
