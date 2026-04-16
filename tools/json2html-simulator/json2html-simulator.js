@@ -1347,6 +1347,11 @@ function setupButtons() {
     previewStatus.setAttribute('aria-expanded', String(isExpanded));
     if (validationDetails) validationDetails.hidden = !isExpanded;
   });
+  previewStatus?.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+    ev.preventDefault();
+    previewStatus.click();
+  });
 }
 
 /**
