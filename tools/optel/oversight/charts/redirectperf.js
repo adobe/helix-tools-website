@@ -211,32 +211,6 @@ export default class RedirectPerfChart extends AbstractChart {
       const parsed = parseRedirectTarget(evt.target);
       return parsed && parsed.type === 'external' ? bundle.weight : undefined;
     });
-
-    // Interpolations for percentage of traffic with/without redirects
-    dataChunks.addInterpolation(
-      'iHasRedirect',
-      ['hasRedirect', 'noRedirect'],
-      ({ hasRedirect, noRedirect }) => {
-        const valueCount = hasRedirect.count + noRedirect.count;
-        if (valueCount < INTERPOLATION_THRESHOLD) return 0;
-        const totalWeight = hasRedirect.weight + noRedirect.weight;
-        const share = hasRedirect.weight / (totalWeight || 1);
-        return Math.round(share * totalWeight);
-      },
-    );
-    dataChunks.addInterpolation(
-      'iNoRedirect',
-      ['hasRedirect', 'noRedirect'],
-      ({ hasRedirect, noRedirect }) => {
-        const valueCount = hasRedirect.count + noRedirect.count;
-        if (valueCount < INTERPOLATION_THRESHOLD) {
-          return hasRedirect.weight + noRedirect.weight;
-        }
-        const totalWeight = hasRedirect.weight + noRedirect.weight;
-        const share = noRedirect.weight / (totalWeight || 1);
-        return Math.round(share * totalWeight);
-      },
-    );
   }
 
   /**
