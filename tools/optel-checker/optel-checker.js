@@ -756,7 +756,7 @@ async function postOpTelProbe(endpoint) {
   }
   const statusBits = [response.status, response.statusText].filter(Boolean).join(' ');
   const xErr = response.headers.get('x-error');
-  const lines = [`HTTP ${statusBits} ${xErr}`];
+  const lines = [xErr ? `HTTP ${statusBits} ${xErr}` : `HTTP ${statusBits}`];
   if (bodySnippet) {
     lines.push(bodySnippet);
   }
