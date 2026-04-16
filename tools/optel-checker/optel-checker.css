@@ -13,7 +13,7 @@
   margin: 0;
 }
 
-@media (width >= 720px) {
+@media (width >= 900px) {
   .optel-checker #check-form {
     grid-template-columns: 1fr max-content;
     gap: var(--spacing-l);
