@@ -378,8 +378,7 @@ function sourceExpressionMatchesUrl(expr, resourceUrl, documentUrl) {
     if (pathPart && pathPart !== '/') {
       const prefix = pathPart.endsWith('/') ? pathPart.slice(0, -1) : pathPart;
       return resourceUrl.pathname === pathPart
-        || resourceUrl.pathname.startsWith(`${prefix}/`)
-        || resourceUrl.pathname.startsWith(pathPart);
+        || resourceUrl.pathname.startsWith(`${prefix}/`);
     }
     return true;
   }
