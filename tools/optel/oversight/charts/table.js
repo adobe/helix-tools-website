@@ -81,11 +81,11 @@ export default class TableRenderer extends AbstractChart {
     this.dataChunks.filtered.forEach((bundle) => {
       bundle.events
         .filter((event) => event.checkpoint === checkpoint
-          && (!sourceFilter || event.source === sourceFilter)
-          && (!targetFilter || event.target === targetFilter))
+          && (!sourceFilter || String(event.source ?? '') === sourceFilter)
+          && (!targetFilter || String(event.target ?? '') === targetFilter))
         .forEach((event) => {
-          const source = event.source || '';
-          const target = event.target || '';
+          const source = String(event.source ?? '');
+          const target = String(event.target ?? '');
           const key = `${source}\0${target}`;
           if (!pairs.has(key)) {
             pairs.set(key, {
