@@ -9,7 +9,7 @@
 }
 
 /* Avoid stacking default `p` margins with grid gap; Submit stays aligned to the grid rhythm. */
-.optel-checker #check-form .button-wrapper {
+.optel-checker .optel-checker-form-lead {
   margin: 0;
 }
 
