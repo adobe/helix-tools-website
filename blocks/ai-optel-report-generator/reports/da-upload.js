@@ -220,10 +220,13 @@ function mapFolderItemsToReports(items, folder, domain = null) {
 async function listFolder(path) {
   try {
     const domainkey = new URL(window.location.href).searchParams.get('domainkey') || '';
+    const domain = getCurrentAnalyzedUrl();
     const res = await fetch(DA_CONFIG.WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'list', path, domainkey }),
+      body: JSON.stringify({
+        action: 'list', path, domainkey, domain,
+      }),
     });
     if (!res.ok) return [];
     const data = await res.json();
