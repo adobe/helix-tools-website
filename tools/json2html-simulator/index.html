@@ -161,24 +161,36 @@
               class="code-editor" 
               spellcheck="false" 
               placeholder="Enter your Mustache template here..."
-            ><div>
-  <h1>{{title}}</h1>
-  <p>{{description}}</p>
-</div>
-<div>
-  <h2>Features</h2>
-  <ul>
-    {{#features}}
-    <li>
-      {{name}}{{#enabled}} ✓{{/enabled}}
-    </li>
-    {{/features}}
-  </ul>
-</div>
-<div>
-  <p>Created by <strong>{{author.name}}</strong></p>
-  <p>{{author.role}}</p>
-</div></textarea>
+            ><!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>{{title}}</title>
+  </head>
+  <body>
+    <header></header>
+    <main>
+      <div>
+        <h1>{{title}}</h1>
+        <p>{{description}}</p>
+      </div>
+      <div>
+        <h2>Features</h2>
+        <ul>
+          {{#features}}
+          <li>
+            {{name}}{{#enabled}} ✓{{/enabled}}
+          </li>
+          {{/features}}
+        </ul>
+      </div>
+      <div>
+        <p>Created by <strong>{{author.name}}</strong></p>
+        <p>{{author.role}}</p>
+      </div>
+    </main>
+    <footer></footer>
+  </body>
+</html></textarea>
             <pre class="code-highlight" id="template-highlight" aria-hidden="true"><code class="language-html"></code></pre>
             <div class="error-line-highlight" id="template-error-highlight" aria-hidden="true"></div>
           </div>
