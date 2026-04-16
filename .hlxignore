@@ -1,4 +1,5 @@
 .*
+*.cjs
 *.md
 vendor/vendor.js
 vendor/.vendor-hash
