@@ -14,13 +14,17 @@ function labelURLParts(url, prefix, solo = false) {
   if (prefix && url.startsWith(prefix) && !solo) {
     return `<span class="collapse" title="${escapeHTML(url)}">${escapeHTML(prefix)}</span><span class="suffix" title="${escapeHTML(urlDecode(url))}">${urlDecode(escapeHTML(url.replace(prefix, '')), true)}</span>`;
   }
-  const u = new URL(url);
-  return ['protocol', 'hostname', 'port', 'pathname', 'search', 'hash']
-    .map((part) => ({ part, value: u[part], full: u.href }))
-    .reduce(
-      (acc, { part, value, full }) => `${acc}<span class="${part}" title="${escapeHTML(full)}">${escapeHTML(value)}</span>`,
-      '',
-    );
+  try {
+    const u = new URL(url);
+    return ['protocol', 'hostname', 'port', 'pathname', 'search', 'hash']
+      .map((part) => ({ part, value: u[part], full: u.href }))
+      .reduce(
+        (acc, { part, value, full }) => `${acc}<span class="${part}" title="${escapeHTML(full)}">${escapeHTML(value)}</span>`,
+        '',
+      );
+  } catch {
+    return escapeHTML(url);
+  }
 }
 
 /**
