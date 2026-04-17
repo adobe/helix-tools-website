@@ -86,11 +86,11 @@ function renderSidebar(org, site, currentPage) {
       <form id="connect-form">
         <div class="form-field">
           <label for="connect-org">Organization</label>
-          <input type="text" id="connect-org" name="org" required placeholder="my-org" autocomplete="off">
+          <input type="text" id="connect-org" name="org" required placeholder="my-org" autocomplete="off" value="${org || ''}">
         </div>
         <div class="form-field">
           <label for="connect-site">Site</label>
-          <input type="text" id="connect-site" name="site" required placeholder="my-site" autocomplete="off">
+          <input type="text" id="connect-site" name="site" required placeholder="my-site" autocomplete="off" value="${site || ''}">
         </div>
         <button type="submit" class="button connect-btn">Connect</button>
       </form>
