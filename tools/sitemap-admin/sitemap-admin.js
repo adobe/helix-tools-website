@@ -500,7 +500,6 @@ function populateSitemaps(sitemaps) {
   });
 }
 
-
 async function fetchCdnProdHost() {
   const resp = await fetch(`https://admin.hlx.page/config/${org.value}/sites/${site.value}/cdn.json`);
   logResponse(consoleBlock, resp.status, ['GET', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/cdn.json`, resp.headers.get('x-error') || '']);
@@ -515,7 +514,6 @@ function getOrigin(sitemapOrigin) {
   if (sitemapOrigin) return sitemapOrigin;
   return '';
 }
-
 
 function buildSitemapIndex() {
   const sitemapEntries = collectSitemapEntries(loadedSitemaps?.sitemaps);
