@@ -221,6 +221,12 @@
   cursor: not-allowed;
 }
 
+.productbus-admin .form-field input.input-error,
+.productbus-admin .form-field input.input-error:focus {
+  border-color: var(--red-600);
+  box-shadow: 0 0 0 2px light-dark(var(--red-100), rgb(239 68 68 / 25%));
+}
+
 .productbus-admin .form-field input[type="checkbox"] {
   width: auto;
   margin-right: var(--spacing-xs);

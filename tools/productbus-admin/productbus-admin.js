@@ -86,11 +86,11 @@ function renderSidebar(org, site, currentPage) {
       <form id="connect-form">
         <div class="form-field">
           <label for="connect-org">Organization</label>
-          <input type="text" id="connect-org" name="org" required placeholder="my-org" value="${org}">
+          <input type="text" id="connect-org" name="org" required placeholder="my-org" autocomplete="off">
         </div>
         <div class="form-field">
           <label for="connect-site">Site</label>
-          <input type="text" id="connect-site" name="site" required placeholder="my-site" value="${site}">
+          <input type="text" id="connect-site" name="site" required placeholder="my-site" autocomplete="off">
         </div>
         <button type="submit" class="button connect-btn">Connect</button>
       </form>
@@ -237,6 +237,13 @@ renderApp = function renderAppFn() {
 // ============================================================================
 
 async function init() {
+  const stageParam = new URLSearchParams(window.location.search).get('stage');
+  if (stageParam === 'true') {
+    sessionStorage.setItem('productbus-stage', 'true');
+  } else if (stageParam === 'false') {
+    sessionStorage.removeItem('productbus-stage');
+  }
+
   const container = document.getElementById('app-container');
 
   const sidebar = document.createElement('nav');
