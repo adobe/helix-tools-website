@@ -4,9 +4,9 @@ This document defines the testing philosophy for this project. It is intended as
 
 ## When To Add Tests
 
-**When modifying a tool**: check if it has a `utils.js`. If you add or change non-trivial logic, add or update tests alongside the change. Don't let a PR land with new pure logic and no test coverage.
+**When modifying a tool**: check whether it has any importable pure logic. If you add or change non-trivial logic, add or update tests alongside the change. Don't let a PR land with new pure logic and no test coverage.
 
-**When creating a new tool**: if the tool has meaningful data processing, extract it into `utils.js` and add tests before the first PR.
+**When creating a new tool**: if the tool has meaningful data processing, extract it into a separate module and add tests before the first PR.
 
 **When fixing a bug**: if the bug was in pure logic, add a test that would have caught it.
 
@@ -63,7 +63,7 @@ If most answers are yes, write the test — refactoring first if needed.
 When logic worth testing is tangled with DOM manipulation, refactor by extraction:
 
 1. Identify the pure logic (transformations, calculations, data processing)
-2. Move it into a `utils.js` co-located with the tool
+2. Move it into a module co-located with the tool — name it after what it does (`parser.js`, `scoring.js`, `transforms.js`) or use a generic name if the contents are genuinely mixed
 3. Export individual functions
 4. The main script imports and calls them
 
@@ -72,7 +72,7 @@ Only refactor when the logic is genuinely complex enough to justify it. Over-eng
 ## Test Conventions
 
 - **Framework**: Node.js built-in `node:test` + `node:assert/strict`
-- **Location**: `tools/{toolname}/test/{module}.test.js`
+- **Location**: `tools/{toolname}/test/{module}.test.js` — name the test file after the module it tests
 - **Run**: `npm test` (executes all `**/test/*.test.js`)
 - **No mocking**: avoid mocking libraries and simulated environments
 - **Helpers in tests are fine**: local helper functions (e.g., `daysAgo(n)`) make edge case setup readable
@@ -80,4 +80,4 @@ Only refactor when the logic is genuinely complex enough to justify it. Over-eng
 See existing tests for reference:
 - `tools/bulk/test/utils.test.js` — URL sanitization and normalization
 - `tools/error-analyzer/test/utils.test.js` — formatting with edge cases
-- `tools/optel/oversight/test/utils.test.js` — date truncation and HTML escaping
+- `tools/site-query/test/utils.test.js` — error code extraction and message formatting

@@ -196,7 +196,7 @@ With this information, you can construct URLs for the preview environment (same 
 ### Modifying Existing Tools
 - Standalone tools: code lives in `tools/`
 - CMS-based tools (e.g., `power-score`, `svg-doctor`): code lives in `blocks/`, but the page structure is authored in the CMS. Inspect the content page (e.g., `curl http://localhost:3000/tools/{toolname}`) to understand which blocks are used before making changes.
-- When modifying a tool, check whether it has a `utils.js` with pure logic worth testing. If you add or change non-trivial logic, add or update tests in `tools/{toolname}/test/utils.test.js`. See `TESTING.md` for what qualifies.
+- When modifying a tool, check whether it has pure logic in an importable module. If you add or change non-trivial logic, add or update tests in `tools/{toolname}/test/`. See `TESTING.md` for what qualifies.
 
 ## Troubleshooting
 
