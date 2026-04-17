@@ -186,8 +186,7 @@ function normalizeText(text) {
  */
 function getPlainHtmlPath() {
   const plain = 'plain.html';
-  let { pathname } = window.location;
-  if (pathname.endsWith('.html')) pathname = pathname.slice(0, -5);
+  const { pathname } = window.location;
   if (pathname.endsWith('/')) {
     const dir = pathname.replace(/\/+$/, '') || '/';
     if (dir === '/') {
@@ -203,6 +202,7 @@ function getPlainHtmlPath() {
  * @returns {Promise<Document|null>} Parsed plain DOM or `null` if fetch fails
  */
 async function fetchPlainDom() {
+  if (window.location.pathname.endsWith('.html')) return null;
   try {
     const plainUrl = getPlainHtmlPath();
     const resp = await fetch(plainUrl);
