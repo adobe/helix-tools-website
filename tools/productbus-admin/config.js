@@ -3,7 +3,7 @@
  */
 
 import { apiFetch } from './api.js';
-import { showToast, createFormField } from './ui.js';
+import { showToast, createFormField, confirmModal } from './ui.js';
 
 function buildFormHTML(config) {
   const c = config || {};
@@ -144,9 +144,12 @@ export async function render(container, ctx) {
     });
 
     content.querySelector('#delete-config-btn').addEventListener('click', async () => {
-      // eslint-disable-next-line no-alert
-      // eslint-disable-next-line no-restricted-globals, no-alert
-      if (!confirm('Delete configuration? This cannot be undone.')) return;
+      const ok = await confirmModal('Delete configuration? This cannot be undone.', {
+        title: 'Delete config',
+        confirmLabel: 'Delete',
+        destructive: true,
+      });
+      if (!ok) return;
       try {
         await apiFetch(ctx.org, ctx.site, 'config', { method: 'DELETE' });
         config = {};

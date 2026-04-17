@@ -11,28 +11,37 @@
   padding: 0;
 }
 
-/* App Layout */
+/* App Layout — mobile first: single column */
 .productbus-admin #app-container {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: 1fr;
   gap: var(--spacing-l);
   min-height: 600px;
 }
 
-/* Sidebar */
+/* Sidebar — mobile first: fixed drawer, hidden off-canvas until .open */
 .productbus-admin #sidebar {
+  position: fixed;
+  left: -280px;
+  top: 0;
+  bottom: 0;
+  width: 260px;
+  z-index: 1000;
   padding: var(--spacing-m);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--layer-elevated);
+  border: none;
+  border-right: 1px solid var(--color-border);
+  border-radius: 0;
+  background: var(--color-background);
+  box-shadow: 2px 0 8px rgb(0 0 0 / 10%);
+  transition: left 0.3s ease;
   display: flex;
   flex-direction: column;
   gap: var(--spacing-m);
-  position: sticky;
-  top: var(--spacing-m);
-  align-self: start;
-  height: calc(100vh - 5 * var(--spacing-m));
-  max-height: calc(100vh - 5 * var(--spacing-m));
+  overflow-y: auto;
+}
+
+.productbus-admin #sidebar.open {
+  left: 0;
 }
 
 .productbus-admin .sidebar-connect {
@@ -147,7 +156,7 @@
 }
 
 /* Login Page */
-.productbus-admin .login-container {
+.productbus-admin .login-wrap {
   max-width: 500px;
   margin: var(--spacing-xxl) auto;
   padding: var(--spacing-xl);
@@ -157,12 +166,12 @@
   box-shadow: var(--shadow-default);
 }
 
-.productbus-admin .login-container h1 {
+.productbus-admin .login-wrap h1 {
   margin: 0 0 var(--spacing-s) 0;
   text-align: center;
 }
 
-.productbus-admin .login-container .subtitle {
+.productbus-admin .login-wrap .subtitle {
   text-align: center;
   color: var(--color-font-grey);
   margin: 0 0 var(--spacing-l) 0;
@@ -296,11 +305,11 @@
   color: white;
 }
 
-/* Page Actions */
+/* Page Actions — mobile first: stacked */
 .productbus-admin .page-actions {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   margin: 0 var(--spacing-l) var(--spacing-l) var(--spacing-m);
   gap: var(--spacing-m);
 }
@@ -310,7 +319,7 @@
   border: 1px solid var(--color-border);
   border-radius: 6px;
   flex: 1;
-  max-width: 400px;
+  max-width: none;
   background: var(--color-background);
   color: var(--color-text);
 }
@@ -322,7 +331,7 @@
 }
 
 /* Modal Styles */
-dialog.productbus-modal {
+.productbus-admin dialog.productbus-modal {
   max-width: 800px;
   width: 90vw;
   max-height: 90vh;
@@ -338,17 +347,17 @@ dialog.productbus-modal {
   margin: 0;
 }
 
-dialog.productbus-modal::backdrop {
+.productbus-admin dialog.productbus-modal::backdrop {
   background: rgb(0 0 0 / 50%);
 }
 
-dialog.productbus-modal .modal-content {
+.productbus-admin dialog.productbus-modal .modal-content {
   display: flex;
   flex-direction: column;
   max-height: 90vh;
 }
 
-dialog.productbus-modal .modal-header {
+.productbus-admin dialog.productbus-modal .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -358,13 +367,13 @@ dialog.productbus-modal .modal-header {
   border-radius: 12px 12px 0 0;
 }
 
-dialog.productbus-modal .modal-header h3 {
+.productbus-admin dialog.productbus-modal .modal-header h2 {
   margin: 0;
   font-size: var(--heading-size-m);
   color: var(--color-text);
 }
 
-dialog.productbus-modal .modal-close {
+.productbus-admin dialog.productbus-modal .modal-close {
   background: none;
   border: none;
   font-size: 1.5rem;
@@ -381,18 +390,18 @@ dialog.productbus-modal .modal-close {
   transition: all 0.2s ease;
 }
 
-dialog.productbus-modal .modal-close:hover {
+.productbus-admin dialog.productbus-modal .modal-close:hover {
   background: light-dark(var(--gray-200), var(--gray-700));
   color: var(--color-text);
 }
 
-dialog.productbus-modal .modal-body {
+.productbus-admin dialog.productbus-modal .modal-body {
   padding: var(--spacing-l);
   overflow-y: auto;
   flex: 1;
 }
 
-dialog.productbus-modal .modal-footer {
+.productbus-admin dialog.productbus-modal .modal-footer {
   display: flex;
   gap: var(--spacing-s);
   justify-content: flex-end;
@@ -401,8 +410,7 @@ dialog.productbus-modal .modal-footer {
 }
 
 /* View Switcher (Form/JSON toggle) */
-.productbus-admin .view-switcher,
-dialog.productbus-modal .view-switcher {
+.productbus-admin .view-switcher {
   display: flex;
   gap: var(--spacing-xs);
   margin-bottom: var(--spacing-m);
@@ -412,8 +420,7 @@ dialog.productbus-modal .view-switcher {
   width: fit-content;
 }
 
-.productbus-admin .view-switcher button,
-dialog.productbus-modal .view-switcher button {
+.productbus-admin .view-switcher button {
   padding: var(--spacing-xs) var(--spacing-m);
   border: none;
   background: transparent;
@@ -425,15 +432,13 @@ dialog.productbus-modal .view-switcher button {
   transition: background-color 0.2s ease;
 }
 
-.productbus-admin .view-switcher button.active,
-dialog.productbus-modal .view-switcher button.active {
+.productbus-admin .view-switcher button.active {
   background: var(--color-background);
   box-shadow: var(--shadow-default);
 }
 
 /* JSON Editor */
-.productbus-admin .json-editor,
-dialog.productbus-modal .json-editor {
+.productbus-admin .json-editor {
   width: 100%;
   min-height: 300px;
   font-family: var(--code-font-family);
@@ -447,8 +452,7 @@ dialog.productbus-modal .json-editor {
   box-sizing: border-box;
 }
 
-.productbus-admin .json-editor:focus,
-dialog.productbus-modal .json-editor:focus {
+.productbus-admin .json-editor:focus {
   outline: none;
   border-color: var(--blue-500);
   box-shadow: 0 0 0 2px var(--blue-100);
@@ -467,24 +471,21 @@ dialog.productbus-modal .json-editor:focus {
   overflow-wrap: break-word;
 }
 
-/* Form View */
-.productbus-admin .form-view,
-dialog.productbus-modal .form-view {
+/* Form View — mobile first: single column */
+.productbus-admin .form-view {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-m);
 }
 
-.productbus-admin .form-row,
-dialog.productbus-modal .form-row {
+.productbus-admin .form-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: var(--spacing-m);
   align-items: flex-end;
 }
 
-dialog.productbus-modal h4,
-.productbus-admin .form-view h4 {
+.productbus-admin .form-view h3 {
   margin: var(--spacing-m) 0 0;
   font-size: var(--body-size-l);
   color: var(--color-text);
@@ -492,8 +493,16 @@ dialog.productbus-modal h4,
   padding-bottom: var(--spacing-xs);
 }
 
+/* Confirmation Modal */
+.productbus-admin .confirm-message {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--body-size-m);
+  line-height: 1.5;
+}
+
 /* Toast Notifications */
-.productbus-toast {
+.productbus-admin .productbus-toast {
   position: fixed;
   bottom: var(--spacing-l);
   left: 50%;
@@ -508,17 +517,17 @@ dialog.productbus-modal h4,
   pointer-events: none;
 }
 
-.productbus-toast.show {
+.productbus-admin .productbus-toast.show {
   transform: translateX(-50%) translateY(0);
   opacity: 1;
 }
 
-.productbus-toast.success {
+.productbus-admin .productbus-toast.success {
   background: var(--green-700);
   color: white;
 }
 
-.productbus-toast.error {
+.productbus-admin .productbus-toast.error {
   background: var(--red-800);
   color: white;
 }
@@ -580,10 +589,10 @@ dialog.productbus-modal h4,
   border-color: var(--red-700);
 }
 
-/* Journals View */
+/* Journals View — mobile first: single column */
 .productbus-admin .journals-controls {
   display: grid;
-  grid-template-columns: auto 1fr 1fr auto;
+  grid-template-columns: 1fr;
   gap: var(--spacing-m);
   align-items: end;
   margin-bottom: var(--spacing-l);
@@ -598,15 +607,10 @@ dialog.productbus-modal h4,
   margin: 0;
 }
 
-.productbus-admin .journals-controls .journals-orderid,
-.productbus-admin .journals-controls .journals-filter {
-  grid-column: 1 / -1;
-}
-
 .productbus-admin .journals-actions {
   display: flex;
   gap: var(--spacing-s);
-  justify-content: flex-end;
+  justify-content: stretch;
 }
 
 .productbus-admin .journals-entry {
@@ -674,7 +678,7 @@ dialog.productbus-modal h4,
   color: var(--color-font-grey);
 }
 
-/* Service Tokens View */
+/* Service Tokens View — mobile first: single column */
 .productbus-admin .service-token-form {
   display: flex;
   flex-direction: column;
@@ -682,7 +686,8 @@ dialog.productbus-modal h4,
   max-width: 700px;
 }
 
-.productbus-admin .service-token-form h4 {
+/* stylelint-disable-next-line no-descending-specificity */
+.productbus-admin .service-token-form h2 {
   margin: var(--spacing-s) 0 0;
   font-size: var(--body-size-l);
   border-bottom: 1px solid var(--color-border);
@@ -691,7 +696,7 @@ dialog.productbus-modal h4,
 
 .productbus-admin .permissions-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: var(--spacing-xs) var(--spacing-m);
 }
 
@@ -768,58 +773,58 @@ dialog.productbus-modal h4,
   font-family: var(--code-font-family);
 }
 
-/* Responsive */
-@media (width < 600px) {
+/* Tablet and up */
+@media (width >= 600px) {
   .productbus-admin #app-container {
-    grid-template-columns: 1fr;
+    grid-template-columns: 260px 1fr;
   }
 
   .productbus-admin #sidebar {
-    position: fixed;
-    left: -280px;
-    top: 0;
-    bottom: 0;
-    width: 260px;
-    height: auto;
-    max-height: none;
-    align-self: auto;
-    z-index: 1000;
-    background: var(--color-background);
-    box-shadow: 2px 0 8px rgb(0 0 0 / 10%);
-    transition: left 0.3s ease;
-    border-radius: 0;
-    border: none;
-    border-right: 1px solid var(--color-border);
-    overflow-y: auto;
-  }
-
-  .productbus-admin #sidebar.open {
-    left: 0;
-  }
-
-  .productbus-admin .form-row,
-  dialog.productbus-modal .form-row {
-    grid-template-columns: 1fr;
+    position: sticky;
+    top: var(--spacing-m);
+    left: auto;
+    bottom: auto;
+    width: auto;
+    height: calc(100vh - 5 * var(--spacing-m));
+    max-height: calc(100vh - 5 * var(--spacing-m));
+    z-index: auto;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--layer-elevated);
+    box-shadow: none;
+    transition: none;
+    align-self: start;
+    overflow-y: visible;
   }
 
   .productbus-admin .page-actions {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
   }
 
   .productbus-admin .page-actions .search-input {
-    max-width: none;
+    max-width: 400px;
+  }
+
+  .productbus-admin .form-row {
+    grid-template-columns: 1fr 1fr;
   }
 
   .productbus-admin .journals-controls {
-    grid-template-columns: 1fr;
+    grid-template-columns: auto 1fr 1fr auto;
+  }
+
+  .productbus-admin .journals-controls .journals-orderid,
+  .productbus-admin .journals-controls .journals-filter {
+    grid-column: 1 / -1;
   }
 
   .productbus-admin .journals-actions {
-    justify-content: stretch;
+    justify-content: flex-end;
   }
 
   .productbus-admin .permissions-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
   }
 }

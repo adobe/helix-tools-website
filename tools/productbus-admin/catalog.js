@@ -4,7 +4,7 @@
 
 import { apiFetch } from './api.js';
 import {
-  showToast, createModal, createFormField, getUrlParam, setUrlParam,
+  showToast, createModal, createFormField, getUrlParam, setUrlParam, confirmModal,
 } from './ui.js';
 
 const AVAILABILITY_OPTIONS = [
@@ -78,8 +78,12 @@ function renderTable(container, products, ctx) {
     btn.addEventListener('click', async () => {
       const { path } = btn.dataset;
       const jsonPath = path.endsWith('.json') ? path : `${path}.json`;
-      // eslint-disable-next-line no-restricted-globals, no-alert
-      if (!confirm(`Delete product at ${path}?`)) return;
+      const ok = await confirmModal(`Delete product at ${path}?`, {
+        title: 'Delete product',
+        confirmLabel: 'Delete',
+        destructive: true,
+      });
+      if (!ok) return;
       try {
         await apiFetch(ctx.org, ctx.site, `catalog${jsonPath}`, { method: 'DELETE' });
         showToast('Product deleted');
@@ -102,7 +106,7 @@ function buildFormHTML(product) {
 
   return `
     <form class="form-view" id="product-form">
-      <h4>Basic Information</h4>
+      <h3>Basic Information</h3>
       <div class="form-row">
         ${createFormField('sku', 'SKU', 'text', { required: true, value: p.sku || '' }).outerHTML}
         ${createFormField('name', 'Name', 'text', { required: true, value: p.name || '' }).outerHTML}
@@ -141,7 +145,7 @@ function buildFormHTML(product) {
         </select>
       </div>
 
-      <h4>Price</h4>
+      <h3>Price</h3>
       <div class="form-row">
         ${createFormField('price.currency', 'Currency', 'text', { value: price.currency || 'USD' }).outerHTML}
         ${createFormField('price.regular', 'Regular', 'number', { value: price.regular ?? '' }).outerHTML}
@@ -150,7 +154,7 @@ function buildFormHTML(product) {
         ${createFormField('price.final', 'Final', 'number', { value: price.final ?? '' }).outerHTML}
       </div>
 
-      <h4>Images</h4>
+      <h3>Images</h3>
       <div id="images-container">
         ${(p.images || []).map((img, i) => `
           <div class="image-row form-row" data-idx="${i}">

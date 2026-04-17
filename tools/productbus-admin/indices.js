@@ -4,7 +4,7 @@
 
 import { apiFetch } from './api.js';
 import {
-  showToast, createModal, createFormField, getUrlParam, setUrlParam,
+  showToast, createModal, createFormField, getUrlParam, setUrlParam, confirmModal,
 } from './ui.js';
 
 const DIR_PATH_PATTERN = /^\/[a-z0-9-/]+$/;
@@ -49,8 +49,12 @@ function renderTable(container, indices, ctx) {
   tableWrap.querySelectorAll('[data-action="delete"]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const { path } = btn.dataset;
-      // eslint-disable-next-line no-restricted-globals, no-alert
-      if (!confirm(`Delete index at ${path}?`)) return;
+      const ok = await confirmModal(`Delete index at ${path}?`, {
+        title: 'Delete index',
+        confirmLabel: 'Delete',
+        destructive: true,
+      });
+      if (!ok) return;
       try {
         await apiFetch(ctx.org, ctx.site, `index${path}`, { method: 'DELETE' });
         showToast('Index deleted');

@@ -83,7 +83,7 @@ function openCreateModal(ctx, onCreated) {
           <button type="button" data-view="json">JSON</button>
         </div>
         <form class="form-view" id="order-form">
-          <h4>Customer</h4>
+          <h3>Customer</h3>
           <div class="form-row">
             ${createFormField('customer.firstName', 'First Name', 'text', { required: true }).outerHTML}
             ${createFormField('customer.lastName', 'Last Name', 'text', { required: true }).outerHTML}
@@ -92,7 +92,7 @@ function openCreateModal(ctx, onCreated) {
             ${createFormField('customer.email', 'Email', 'email', { required: true }).outerHTML}
             ${createFormField('customer.phone', 'Phone').outerHTML}
           </div>
-          <h4>Shipping</h4>
+          <h3>Shipping</h3>
           <div class="form-row">
             ${createFormField('shipping.name', 'Name', 'text', { required: true }).outerHTML}
             ${createFormField('shipping.email', 'Email', 'email').outerHTML}
@@ -109,7 +109,7 @@ function openCreateModal(ctx, onCreated) {
             ${createFormField('shipping.postcode', 'Zip/Postal', 'text', { required: true }).outerHTML}
             ${createFormField('shipping.country', 'Country', 'text', { required: true }).outerHTML}
           </div>
-          <h4>Items</h4>
+          <h3>Items</h3>
           <div id="items-list">
             <div class="item-row">
               <div class="form-row">

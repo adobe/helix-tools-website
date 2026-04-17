@@ -4,7 +4,7 @@
 
 import { apiFetch } from './api.js';
 import {
-  showToast, createModal, createFormField, getUrlParam, setUrlParam,
+  showToast, createModal, createFormField, getUrlParam, setUrlParam, confirmModal,
 } from './ui.js';
 
 function renderTable(container, customers, ctx) {
@@ -53,9 +53,12 @@ function renderTable(container, customers, ctx) {
   tableWrap.querySelectorAll('[data-action="delete"]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const { email } = btn.dataset;
-      // eslint-disable-next-line no-alert
-      // eslint-disable-next-line no-restricted-globals, no-alert
-      if (!confirm(`Delete customer ${email}? This will also remove their orders and addresses.`)) return;
+      const ok = await confirmModal(`Delete customer ${email}? This will also remove their orders and addresses.`, {
+        title: 'Delete customer',
+        confirmLabel: 'Delete',
+        destructive: true,
+      });
+      if (!ok) return;
       try {
         await apiFetch(ctx.org, ctx.site, `customers/${encodeURIComponent(email)}`, { method: 'DELETE' });
         showToast('Customer deleted');

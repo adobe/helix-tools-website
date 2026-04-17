@@ -46,7 +46,7 @@ function renderForm(container, ctx) {
       <p>Mint a service token for server-to-server use. The token is shown once — copy it immediately.</p>
     </div>
     <form class="service-token-form" id="service-token-form">
-      <h4>Permissions</h4>
+      <h2>Permissions</h2>
       <div class="permissions-grid">
         ${ALLOWED_PERMISSIONS.map((p) => `
           <label class="permission-item">
@@ -62,7 +62,7 @@ function renderForm(container, ctx) {
         <p class="field-hint">Comma-separated. Each becomes an <code>emails:send:&lt;pattern&gt;</code> permission entry.</p>
       </div>
 
-      <h4>Time to live</h4>
+      <h2>Time to live</h2>
       <div class="form-row">
         <div class="form-field">
           <label for="ttl-value">Value</label>

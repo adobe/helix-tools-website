@@ -4,7 +4,7 @@
 
 import { apiFetch } from './api.js';
 import {
-  showToast, createModal, getUrlParam, setUrlParam,
+  showToast, createModal, getUrlParam, setUrlParam, confirmModal,
 } from './ui.js';
 
 function renderTable(container, admins, ctx) {
@@ -49,9 +49,12 @@ function renderTable(container, admins, ctx) {
   tableWrap.querySelectorAll('[data-action="delete"]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const { email } = btn.dataset;
-      // eslint-disable-next-line no-alert
-      // eslint-disable-next-line no-restricted-globals, no-alert
-      if (!confirm(`Remove admin ${email}?`)) return;
+      const ok = await confirmModal(`Remove admin ${email}?`, {
+        title: 'Remove admin',
+        confirmLabel: 'Remove',
+        destructive: true,
+      });
+      if (!ok) return;
       try {
         await apiFetch(ctx.org, ctx.site, `auth/admins/${encodeURIComponent(email)}`, { method: 'DELETE' });
         showToast('Admin removed');

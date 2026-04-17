@@ -11,7 +11,7 @@ export async function render(container, ctx) {
   const redirect = params.get('redirect') || '';
 
   container.innerHTML = `
-    <div class="login-container">
+    <div class="login-wrap">
       <h1>ProductBus Admin Login</h1>
       <p class="subtitle">Enter your email to receive a verification code</p>
       <form class="login-form" id="login-form">

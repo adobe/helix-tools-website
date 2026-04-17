@@ -241,6 +241,7 @@ async function init() {
 
   const sidebar = document.createElement('nav');
   sidebar.id = 'sidebar';
+  sidebar.setAttribute('aria-label', 'ProductBus Admin');
 
   const mainContent = document.createElement('div');
   mainContent.id = 'main-content';
