@@ -55,7 +55,7 @@ export function toISODate(str) {
  */
 export function calculatePastDate(days, hours, mins, now = new Date()) {
   const newDate = now;
-  if (days > 0) newDate.setDate(newDate.getDate() - days);
+  const newDate = new Date(now);
   if (hours > 0) newDate.setHours(newDate.getHours() - hours);
   if (mins > 0) newDate.setMinutes(newDate.getMinutes() - mins);
   return newDate;
