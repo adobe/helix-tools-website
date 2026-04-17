@@ -208,3 +208,32 @@ export function cwvInterpolationFn(targetMetric) {
     return Math.round(share * totalWeight);
   };
 }
+
+/**
+ * Format a date as a relative time string (e.g., "Today", "Yesterday", "2 days ago")
+ * @param {string|Date} dateInput - The date to format
+ * @returns {string} Formatted relative date string
+ */
+export function formatRelativeDate(dateInput) {
+  const date = new Date(dateInput);
+
+  if (Number.isNaN(date.getTime())) {
+    return '-';
+  }
+
+  const now = new Date();
+  const dateUTC = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+  const nowUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const diffMs = nowUTC - dateUTC;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays <= 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 14) return 'Last week';
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  if (diffDays < 60) return 'Last month';
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
+  if (diffDays < 730) return 'Last year';
+  return `${Math.floor(diffDays / 365)} years ago`;
+}
