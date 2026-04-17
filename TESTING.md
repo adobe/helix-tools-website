@@ -28,8 +28,6 @@ Focus on **pure logic** — functions with no DOM access, no fetch calls, and no
 - **Comparison and diff logic**: non-trivial comparisons, structural diffing
 - **Edge cases**: empty inputs, boundary values, special characters, type coercion
 
-If a function has a name like `formatRelativeDate` or `sanitizeURL`, it probably has interesting edge case behavior worth testing.
-
 ## What Not To Test
 
 Avoid:
@@ -68,7 +66,6 @@ Only refactor when the logic is genuinely complex enough to justify it. Over-eng
 - **Location**: `tools/{toolname}/test/{module}.test.js` — name the test file after the module it tests
 - **Run**: `npm test` (executes all `**/test/*.test.js`)
 - **No mocking**: avoid mocking libraries and simulated environments
-- **Helpers in tests are fine**: local helper functions (e.g., `daysAgo(n)`) make edge case setup readable
 
 See existing tests for reference:
 - `tools/bulk/test/utils.test.js` — URL sanitization and normalization
