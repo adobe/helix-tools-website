@@ -78,30 +78,6 @@ function formatSignificanceListItemHtml(key, p) {
   return `<code>${key}</code>: <span class="psi-sig-p">p = ${pFormatted}</span> — <span class="${verdictClass}">${verdictText}</span> <span class="psi-sig-alpha">(α = ${SIGNIFICANCE_ALPHA})</span>`;
 }
 
-/**
- * Performs two-sample t-test to determine if performance differences are statistically significant.
- * @param {number[]} arr1 - Performance measurements from first URL
- * @param {number[]} arr2 - Performance measurements from second URL
- * @returns {number} P-value (same one-tailed construction as before: 1 - cdf(|t|))
- */
-function significancetest(arr1, arr2) {
-  const n1 = arr1.length;
-  const n2 = arr2.length;
-  const mean1 = mean(arr1);
-  const mean2 = mean(arr2);
-  const stDev1 = stDev(arr1);
-  const stDev2 = stDev(arr2);
-
-  const pooledstDev = Math.sqrt(
-    ((n1 - 1) * stDev1 * stDev1 + (n2 - 1) * stDev2 * stDev2) / (n1 + n2 - 2),
-  );
-
-  const tStat = (mean1 - mean2) / (pooledstDev * Math.sqrt(1 / n1 + 1 / n2));
-  const df = n1 + n2 - 2;
-
-  return 1 - studentTCdf(Math.abs(tStat), df);
-}
-
 // PSI API interaction functions
 
 /**

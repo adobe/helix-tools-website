@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { deriveReindexPaths } from '../utils.js';
+import deriveReindexPaths from '../utils.js';
 
 describe('index-admin:utils.js', () => {
   describe('deriveReindexPaths', () => {
@@ -37,8 +37,7 @@ describe('index-admin:utils.js', () => {
     });
 
     it('handles mid-path wildcard correctly', () => {
-      // /en/*/posts → wildcard is at segment 'en', stops before it with /en, but 'en' is not wildcard
-      // segment breakdown: ['', 'en', '*', 'posts'] — stops when '*' is found → pathSegments = ['', 'en']
+      // ['', 'en', '*', 'posts'] — stops at '*' → base is /en → /en/*
       assert.deepEqual(deriveReindexPaths(['/en/*/posts']), ['/en/*']);
     });
 

@@ -3,7 +3,7 @@ import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { toClassName } from '../../scripts/aem.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { logResponse } from '../../blocks/console/console.js';
-import { deriveReindexPaths } from './utils.js';
+import deriveReindexPaths from './utils.js';
 
 const adminForm = document.getElementById('admin-form');
 const site = document.getElementById('site');
@@ -282,7 +282,6 @@ async function fetchJobDetails(detailsUrl) {
     return null;
   }
 }
-
 
 async function removeIndex(name) {
   // eslint-disable-next-line no-alert, no-restricted-globals
