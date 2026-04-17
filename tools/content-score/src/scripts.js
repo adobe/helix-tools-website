@@ -202,6 +202,7 @@ function getPlainHtmlPath() {
  * @returns {Promise<Document|null>} Parsed plain DOM or `null` if fetch fails
  */
 async function fetchPlainDom() {
+  if (window.location.pathname.endsWith('.html')) return null;
   try {
     const plainUrl = getPlainHtmlPath();
     const resp = await fetch(plainUrl);
