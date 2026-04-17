@@ -73,4 +73,5 @@ Only refactor when the logic is genuinely complex enough to justify it. Over-eng
 See existing tests for reference:
 - `tools/bulk/test/utils.test.js` — URL sanitization and normalization
 - `tools/error-analyzer/test/utils.test.js` — formatting with edge cases
-- `tools/site-query/test/utils.test.js` — error code extraction and message formatting
+- `tools/index-admin/test/utils.test.js` — path derivation with branching logic
+- `tools/log-viewer/test/utils.test.js` — date utility extraction from a larger script
