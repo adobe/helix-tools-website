@@ -160,7 +160,14 @@ export function createFormField(name, label, type = 'text', options = {}) {
   if (type !== 'textarea') input.type = type;
   if (required) input.required = true;
   if (placeholder) input.placeholder = placeholder;
-  if (value) input.value = value;
+  // Use setAttribute (not the .value property) so callers that serialize via
+  // outerHTML still carry the value through — property-only assignment does
+  // not reflect into HTML serialization. For textarea the value lives in the
+  // element's text content, not an attribute.
+  if (value !== '' && value !== null && value !== undefined) {
+    if (type === 'textarea') input.textContent = String(value);
+    else input.setAttribute('value', String(value));
+  }
   if (disabled) input.disabled = true;
   if (maxLength) input.maxLength = maxLength;
 
