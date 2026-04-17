@@ -73,16 +73,16 @@ export default class TableRenderer extends AbstractChart {
     const params = new URL(window.location.href).searchParams;
     const drilldown = params.get('drilldown') || '';
     const checkpoint = drilldown.split('.')[0];
-    const sourceFilter = params.get(`${checkpoint}.source`) || null;
-    const targetFilter = params.get(`${checkpoint}.target`) || null;
+    const sourceFilters = params.getAll(`${checkpoint}.source`);
+    const targetFilters = params.getAll(`${checkpoint}.target`);
 
     // aggregate source+target pairs across filtered bundles
     const pairs = new Map();
     this.dataChunks.filtered.forEach((bundle) => {
       bundle.events
         .filter((event) => event.checkpoint === checkpoint
-          && (!sourceFilter || String(event.source ?? '') === sourceFilter)
-          && (!targetFilter || String(event.target ?? '') === targetFilter))
+          && (sourceFilters.length === 0 || sourceFilters.includes(String(event.source ?? '')))
+          && (targetFilters.length === 0 || targetFilters.includes(String(event.target ?? ''))))
         .forEach((event) => {
           const source = String(event.source ?? '');
           const target = String(event.target ?? '');
@@ -176,7 +176,7 @@ export default class TableRenderer extends AbstractChart {
       bar.className = 'count-bar';
       const fill = document.createElement('div');
       fill.className = `count-bar-fill ${severity}`;
-      fill.style.width = `${pct}%`;
+      fill.style.setProperty('--fill-width', `${pct}%`);
       bar.appendChild(fill);
       tdCount.appendChild(bar);
 

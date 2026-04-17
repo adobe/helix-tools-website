@@ -1482,6 +1482,7 @@ html[data-theme="dark"] .ai-optel-report-generator-button {
 
 #table-container .count-bar-fill {
   height: 100%;
+  width: var(--fill-width, 0%);
   border-radius: 2px;
 }
 
@@ -1499,6 +1500,13 @@ html[data-theme="dark"] .ai-optel-report-generator-button {
 
 #table-container .count-bar-fill.low {
   background-color: var(--dark-green);
+}
+
+@media (width >= 600px) {
+  #table-container td,
+  #table-container thead th {
+    padding: 8px 14px;
+  }
 }
 
 @media (width >= 900px) {
