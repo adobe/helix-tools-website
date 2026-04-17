@@ -2,14 +2,6 @@
 
 This document defines the testing philosophy for this project. It is intended as a decision-making guide — use it to evaluate whether a given tool or function warrants tests, and what kind.
 
-## When To Add Tests
-
-**When modifying a tool**: check whether it has any importable pure logic. If you add or change non-trivial logic, add or update tests alongside the change. Don't let a PR land with new pure logic and no test coverage.
-
-**When creating a new tool**: if the tool has meaningful data processing, extract it into a separate module and add tests before the first PR.
-
-**When fixing a bug**: if the bug was in pure logic, add a test that would have caught it.
-
 ## Philosophy
 
 Testing is a cost-benefit decision, not a ritual. We want tests whose value in finding and preventing bugs exceeds their cost to maintain. Use these guidelines to make that judgement:
@@ -19,6 +11,7 @@ Testing is a cost-benefit decision, not a ritual. We want tests whose value in f
 - **Unstable tests have high cost.** A test that needs rewriting every time the UI changes is a liability. Prefer tests that survive refactoring.
 - **Refactor for testability when the logic warrants it.** Logic doesn't need to be pure today to be worth testing. If the logic is complex and entangled with DOM or fetch calls, extract it into a pure function and test that. If the logic is trivial, don't bother — the refactoring cost exceeds the value.
 - **Tool complexity sets the baseline.** A thin tool that fetches data and renders it with very little intermediate logic rarely has anything worth testing. The more state, data processing, and coordination a tool has, the more likely there's a meaningful logic layer worth extracting and testing.
+- **Add tests when you touch a tool.** If you add or change non-trivial logic in an existing tool, add or update tests alongside the change. The same goes for bug fixes in pure logic — add a test that would have caught it.
 - **Avoid mocking.** Mocked tests are expensive to maintain and give false confidence. Test pure functions directly instead.
 - **Comprehensive coverage is an explicit non-goal.** A small set of high-confidence tests is more valuable than broad coverage that breaks frequently or tests the obvious.
 
