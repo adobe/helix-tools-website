@@ -31,7 +31,7 @@
   border: none;
   border-right: 1px solid var(--color-border);
   border-radius: 0;
-  background: var(--color-background);
+  background: var(--layer-elevated);
   box-shadow: 2px 0 8px rgb(0 0 0 / 10%);
   transition: left 0.3s ease;
   display: flex;
@@ -203,7 +203,7 @@
   border: 1px solid var(--color-border);
   border-radius: 6px;
   font-size: var(--body-size-m);
-  background: var(--color-background);
+  background: var(--layer-elevated);
   color: var(--color-text);
   font-family: inherit;
 }
@@ -326,7 +326,7 @@
   border-radius: 6px;
   flex: 1;
   max-width: none;
-  background: var(--color-background);
+  background: var(--layer-elevated);
   color: var(--color-text);
 }
 
@@ -345,7 +345,7 @@
   border-radius: 12px;
   padding: 0;
   box-shadow: var(--shadow-hover);
-  background: var(--color-background);
+  background: var(--layer-elevated);
   position: fixed;
   top: 50%;
   left: 50%;
@@ -439,7 +439,7 @@
 }
 
 .productbus-admin .view-switcher button.active {
-  background: var(--color-background);
+  background: var(--layer-elevated);
   box-shadow: var(--shadow-default);
 }
 
@@ -622,7 +622,7 @@
 .productbus-admin .journals-entry {
   border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: var(--color-background);
+  background: var(--layer-elevated);
   margin-bottom: var(--spacing-xs);
   transition: background-color 0.15s ease;
 }

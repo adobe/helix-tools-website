@@ -379,6 +379,9 @@ export async function render(container, ctx) {
       if (entry) copyText(JSON.stringify(entry, null, 2), 'Entry copied');
       return;
     }
+    // Only the summary toggles expansion — clicks inside the details pane must
+    // not collapse the entry so users can select/copy JSON text.
+    if (!e.target.closest('.journals-entry-summary')) return;
     if (state.expanded.has(key)) state.expanded.delete(key);
     else state.expanded.add(key);
     entryEl.classList.toggle('expanded');
