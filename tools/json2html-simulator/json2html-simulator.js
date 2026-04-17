@@ -4,6 +4,7 @@
  */
 
 import { highlight, loadPrismLibrary } from '../../utils/prism/prism.js';
+import { examples } from './example-data.js';
 
 // Simulator endpoints
 const ENDPOINTS = {
@@ -31,11 +32,18 @@ const jsonInput = document.getElementById('json-input');
 const templateInput = document.getElementById('template-input');
 const jsonHighlight = document.getElementById('json-highlight');
 const templateHighlight = document.getElementById('template-highlight');
+const jsonLineNumbers = document.getElementById('json-line-numbers');
+const templateLineNumbers = document.getElementById('template-line-numbers');
+const jsonErrorHighlight = document.getElementById('json-error-highlight');
+const templateErrorHighlight = document.getElementById('template-error-highlight');
 const previewFrame = document.getElementById('preview-frame');
 const sourceOutput = document.getElementById('source-output');
 const jsonStatus = document.getElementById('json-status');
 const templateStatus = document.getElementById('template-status');
 const previewStatus = document.getElementById('preview-status');
+const sourceErrorHighlights = document.getElementById('source-error-highlights');
+const sourceLineNumbers = document.getElementById('source-line-numbers');
+const validationDetails = document.getElementById('validation-details');
 
 // Preview tabs (Rendered vs Source toggle)
 const previewTabs = document.querySelectorAll('.preview-tab');
@@ -69,6 +77,125 @@ let prismLoadPromise = null;
 // ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
+
+/**
+ * Convert a character offset in a string to a line:col position (1-based)
+ * @param {string} text - Full text content
+ * @param {number} pos - Character offset
+ * @returns {{ line: number, col: number }}
+ */
+function positionToLineCol(text, pos) {
+  const before = text.substring(0, pos);
+  const lines = before.split('\n');
+  return { line: lines.length, col: lines[lines.length - 1].length + 1 };
+}
+
+/**
+ * Find the last unclosed {{#section}} opening using a stack.
+ * Handles nested sections of the same name correctly.
+ * @param {string} text - Template text
+ * @param {string} escapedName - Regex-escaped section name
+ * @param {number} [limit] - Only scan up to this character index (exclusive)
+ * @returns {number} Character index of unclosed opening, or -1
+ */
+function findUnclosedSectionOpening(text, escapedName, limit) {
+  const re = new RegExp(`\\{\\{([#^/])\\s*${escapedName}\\s*\\}\\}`, 'g');
+  const stack = [];
+  let m = re.exec(text);
+  while (m !== null && (limit === undefined || m.index < limit)) {
+    if (m[1] === '#' || m[1] === '^') stack.push(m.index);
+    else if (stack.length > 0) stack.pop();
+    m = re.exec(text);
+  }
+  return stack.length > 0 ? stack[stack.length - 1] : -1;
+}
+
+/**
+ * Return the sigil character ('#' or '^') of a Mustache opening tag at charIndex.
+ * Falls back to '#' if the position doesn't look like a tag opener.
+ * @param {string} text
+ * @param {number} charIndex
+ * @returns {string}
+ */
+function sectionSigilAt(text, charIndex) {
+  const after = text.slice(charIndex + 2).trimStart();
+  return after.startsWith('^') ? '^' : '#';
+}
+
+/**
+ * Build a newline-delimited string of line numbers "1\n2\n…\nN".
+ * @param {number} count - Total number of lines
+ * @returns {string}
+ */
+function lineNumbersText(count) {
+  return Array.from({ length: count }, (_, i) => i + 1).join('\n');
+}
+
+/**
+ * Get the pixel offset of a 1-based line number within an element,
+ * using the element's computed paddingTop and lineHeight.
+ * @param {Element} element - The element whose styles determine the layout
+ * @param {number} line - 1-based line number
+ * @returns {{ top: number, lineHeight: number }}
+ */
+function getLinePosition(element, line) {
+  const style = getComputedStyle(element);
+  const paddingTop = parseFloat(style.paddingTop);
+  const lineHeight = parseFloat(style.lineHeight);
+  return { top: paddingTop + (line - 1) * lineHeight, lineHeight };
+}
+
+/**
+ * Update line number gutter for an editor
+ * @param {HTMLTextAreaElement} textarea - Source textarea
+ * @param {HTMLElement} lineNumbersEl - Line numbers element
+ */
+function updateLineNumbers(textarea, lineNumbersEl) {
+  if (!lineNumbersEl) return;
+  const lineCount = (textarea.value.match(/\n/g) || []).length + 1;
+  lineNumbersEl.textContent = lineNumbersText(lineCount);
+}
+
+/**
+ * Reposition the error line highlight to account for the textarea's current scroll offset.
+ * Called on initial placement and whenever the textarea scrolls.
+ * @param {HTMLTextAreaElement} textarea
+ * @param {HTMLElement} highlightEl
+ */
+function syncErrorHighlight(textarea, highlightEl) {
+  const line = parseInt(highlightEl.dataset.errorLine, 10);
+  if (!line) return;
+  const { top } = getLinePosition(textarea, line);
+  highlightEl.style.top = `${top - textarea.scrollTop}px`;
+}
+
+/**
+ * Show or hide the error line highlight band in an editor.
+ * Pass line=0 (or omit) to clear the highlight.
+ * @param {HTMLTextAreaElement} textarea - The editor textarea (used to measure line height)
+ * @param {HTMLElement} highlightEl - The .error-line-highlight div
+ * @param {number} [line] - 1-based line number to highlight
+ */
+function setErrorHighlight(textarea, highlightEl, line) {
+  if (!highlightEl) return;
+  if (!line || line < 1) {
+    highlightEl.style.display = 'none';
+    highlightEl.dataset.errorLine = '';
+    return;
+  }
+  const { top: lineTop, lineHeight } = getLinePosition(textarea, line);
+  highlightEl.dataset.errorLine = line;
+  highlightEl.style.height = `${lineHeight}px`;
+  highlightEl.style.display = 'block';
+  const lineBottom = lineTop + lineHeight;
+  const { scrollTop, clientHeight } = textarea;
+  const isVisible = lineTop >= scrollTop && lineBottom <= scrollTop + clientHeight;
+  if (!isVisible) {
+    const visibleCenter = (clientHeight - lineHeight) / 2;
+    textarea.scrollTop = Math.max(0, lineTop - visibleCenter);
+  }
+  syncErrorHighlight(textarea, highlightEl);
+}
 
 /**
  * Show a toast notification
@@ -119,14 +246,12 @@ function updateStatus(statusEl, type, message) {
 }
 
 /**
- * Update preview status text
+ * Update preview status bar (icon + text).
+ * @param {string} type - 'ok', 'error', or 'warning'
  * @param {string} message - Status message
  */
-function updatePreviewStatus(message) {
-  const statusText = previewStatus?.querySelector('.status-text');
-  if (statusText) {
-    statusText.textContent = message;
-  }
+function updatePreviewStatus(type, message) {
+  updateStatus(previewStatus, type, message);
 }
 
 /**
@@ -201,6 +326,11 @@ function updatePreview(html) {
       codeEl.className = 'language-html';
       highlight(codeEl);
     }
+  }
+
+  if (sourceLineNumbers) {
+    const lineCount = html ? (html.match(/\n/g) || []).length + 1 : 0;
+    sourceLineNumbers.textContent = lineNumbersText(lineCount);
   }
 }
 
@@ -296,20 +426,28 @@ async function updateAllEditorHighlights() {
  * @returns {Object|null} Parsed JSON or null if invalid
  */
 function validateJson() {
-  const value = jsonInput?.value?.trim();
-  if (!value) {
+  const value = jsonInput?.value ?? '';
+  if (!value.trim()) {
     updateStatus(jsonStatus, 'warning', 'Empty JSON');
+    setErrorHighlight(jsonInput, jsonErrorHighlight);
     return null;
   }
 
   try {
     const parsed = JSON.parse(value);
     updateStatus(jsonStatus, 'ok', 'Valid JSON');
+    setErrorHighlight(jsonInput, jsonErrorHighlight);
     return parsed;
   } catch (e) {
     const match = e.message.match(/position (\d+)/);
-    const position = match ? ` at position ${match[1]}` : '';
-    updateStatus(jsonStatus, 'error', `Invalid JSON${position}`);
+    if (match) {
+      const { line } = positionToLineCol(value, parseInt(match[1], 10));
+      updateStatus(jsonStatus, 'error', `Invalid JSON at line ${line}`);
+      setErrorHighlight(jsonInput, jsonErrorHighlight, line);
+    } else {
+      updateStatus(jsonStatus, 'error', 'Invalid JSON');
+      setErrorHighlight(jsonInput, jsonErrorHighlight);
+    }
     return null;
   }
 }
@@ -322,8 +460,20 @@ function formatJson() {
   if (parsed && jsonInput) {
     jsonInput.value = JSON.stringify(parsed, null, 2);
     updateEditorHighlight(jsonInput, jsonHighlight, 'json');
+    updateLineNumbers(jsonInput, jsonLineNumbers);
     updateStatus(jsonStatus, 'ok', 'Formatted');
   }
+}
+
+/**
+ * Escape HTML special characters so strings can be safely injected via innerHTML.
+ * @param {string} str - Raw string
+ * @returns {string} Escaped string
+ */
+function escapeHtml(str) {
+  const el = document.createElement('span');
+  el.textContent = str;
+  return el.innerHTML;
 }
 
 /**
@@ -398,17 +548,21 @@ function validateOptionsTemplateCompatibility(jsonData, options, template) {
         const hasArrayIteration = /\{\{#\s*\.\s*\}\}/.test(template);
 
         if (!hasArrayIteration) {
+          const safeKey = escapeHtml(options.arrayKey);
           return {
             type: 'array_iteration_missing',
             title: 'Template Missing Array Iteration',
             message: `Your arrayKey "${options.arrayKey}" points to an array with ${arrayData.length} item${arrayData.length === 1 ? '' : 's'}, but your template doesn't iterate over it.`,
-            suggestion: `Wrap your template in <code>{{#.}}...{{/.}}</code> to loop over array items.<br><br>
-<strong>Example:</strong><br>
-<code>{{#.}}<br>
-&nbsp;&nbsp;&lt;h1&gt;{{name}}&lt;/h1&gt;<br>
-&nbsp;&nbsp;&lt;p&gt;{{description}}&lt;/p&gt;<br>
-{{/.}}</code><br><br>
-<strong>Alternative:</strong> Remove arrayKey and use <code>{{#${options.arrayKey}}}...{{/${options.arrayKey}}}</code> in your template instead.`,
+            suggestion: 'Wrap your template in <code>{{#.}}...{{/.}}</code>'
+              + ' to loop over array items.<br><br>'
+              + '<strong>Example:</strong><br>'
+              + '<code>{{#.}}<br>'
+              + '&nbsp;&nbsp;&lt;h1&gt;{{name}}&lt;/h1&gt;<br>'
+              + '&nbsp;&nbsp;&lt;p&gt;{{description}}&lt;/p&gt;<br>'
+              + '{{/.}}</code><br><br>'
+              + '<strong>Alternative:</strong> Remove arrayKey and use '
+              + `<code>{{#${safeKey}}}...{{/${safeKey}}}</code>`
+              + ' in your template instead.',
             arrayLength: arrayData.length,
           };
         }
@@ -444,7 +598,7 @@ function setLoadingState(show) {
     renderButton.textContent = show ? '⏳ Rendering...' : '▶ Render';
   }
   if (show) {
-    updatePreviewStatus('Rendering...');
+    updatePreviewStatus('ok', 'Rendering…');
   }
 }
 
@@ -500,652 +654,378 @@ function hideValidationError() {
 }
 
 /**
+ * Hide the validation details panel and reset the status bar toggle state.
+ */
+function collapseValidationDetails() {
+  if (validationDetails) {
+    validationDetails.hidden = true;
+    validationDetails.innerHTML = '';
+  }
+  if (previewStatus) {
+    previewStatus.classList.remove('has-details', 'expanded');
+    previewStatus.removeAttribute('role');
+    previewStatus.removeAttribute('tabindex');
+    previewStatus.removeAttribute('aria-expanded');
+    previewStatus.removeAttribute('aria-controls');
+  }
+}
+
+/**
+ * Hide HTML validation status and source error highlights.
+ * Shows a neutral message when no preview is available.
+ */
+function hideHtmlValidation() {
+  updatePreviewStatus('error', 'No preview — fix errors above');
+  collapseValidationDetails();
+  if (sourceErrorHighlights) {
+    sourceErrorHighlights.replaceChildren();
+  }
+}
+
+/**
+ * Render error/warning line highlights in the source view.
+ * Measures actual line height from the source `<pre>` and positions
+ * translucent bands over each flagged line, matching the
+ * textarea-based error-line-highlight pattern used by the editors.
+ * @param {Array} results - Validation result items with line and severity
+ */
+function renderSourceHighlights(results) {
+  if (!sourceErrorHighlights || !sourceOutput) return;
+
+  sourceErrorHighlights.replaceChildren();
+
+  // Deduplicate by line, keeping the first (most severe) entry per line
+  const uniqueByLine = [...new Map(
+    results.filter((r) => r.line).map((r) => [r.line, r]),
+  ).values()];
+  if (uniqueByLine.length === 0) return;
+
+  uniqueByLine.forEach((r) => {
+    const { top, lineHeight } = getLinePosition(sourceOutput, r.line);
+    const cls = r.severity === 'error'
+      ? 'source-highlight-error' : 'source-highlight-warning';
+    const band = document.createElement('div');
+    band.className = `source-highlight ${cls}`;
+    band.style.top = `${top}px`;
+    band.style.height = `${lineHeight}px`;
+    band.title = r.message;
+    sourceErrorHighlights.appendChild(band);
+  });
+}
+
+/**
+ * Keep source line numbers and error highlights in sync when the `<pre>` scrolls.
+ */
+function syncSourceOverlays() {
+  if (!sourceOutput) return;
+  const { scrollTop } = sourceOutput;
+  if (sourceLineNumbers) sourceLineNumbers.scrollTop = scrollTop;
+  if (sourceErrorHighlights) {
+    sourceErrorHighlights.style.transform = `translateY(-${scrollTop}px)`;
+  }
+}
+
+/**
+ * Build a human-readable status message from validation results.
+ * Shows the first (most severe) message with line info, plus a
+ * "+N more" suffix when additional issues exist.
+ * @param {Array} results - Validation result items
+ * @returns {{ type: string, message: string }}
+ */
+function formatValidationStatus(results) {
+  if (results.length === 0) {
+    return { type: 'ok', message: 'Valid EDS HTML' };
+  }
+
+  const errors = results.filter((r) => r.severity === 'error');
+  const worst = errors.length > 0 ? errors[0] : results[0];
+  const type = errors.length > 0 ? 'error' : 'warning';
+
+  let msg = worst.message;
+  if (worst.line) msg += ` (line ${worst.line})`;
+
+  const remaining = results.length - 1;
+  if (remaining > 0) {
+    msg += ` (+${remaining} more)`;
+  }
+
+  return { type, message: msg };
+}
+
+/**
+ * Scroll the source `<pre>` to bring a specific line into view.
+ * @param {number} line - 1-based line number
+ */
+function scrollSourceToLine(line) {
+  if (!sourceOutput || !line) return;
+  const { top: lineTop, lineHeight } = getLinePosition(sourceOutput, line);
+  const center = (sourceOutput.clientHeight - lineHeight) / 2;
+  sourceOutput.scrollTop = Math.max(0, lineTop - center);
+}
+
+/**
+ * Populate the expandable validation detail list.
+ * Each row shows severity icon, message, and line number.
+ * Clicking a row scrolls the source to that line.
+ * @param {Array} results - Validation result items
+ */
+function buildValidationDetails(results) {
+  if (!validationDetails || results.length < 2) {
+    collapseValidationDetails();
+    return;
+  }
+
+  validationDetails.replaceChildren();
+
+  results.forEach((r) => {
+    const row = document.createElement('button');
+    row.className = 'validation-detail-row';
+    row.type = 'button';
+
+    const severity = document.createElement('span');
+    severity.className = 'detail-severity';
+    severity.textContent = r.severity === 'error' ? '✗' : '⚠';
+    row.appendChild(severity);
+
+    const msg = document.createElement('span');
+    msg.className = 'detail-msg';
+    msg.textContent = r.message;
+    row.appendChild(msg);
+
+    if (r.line) {
+      const lineLabel = document.createElement('span');
+      lineLabel.className = 'detail-line';
+      lineLabel.textContent = `line ${r.line}`;
+      row.appendChild(lineLabel);
+      row.addEventListener('click', () => scrollSourceToLine(r.line));
+    }
+
+    validationDetails.appendChild(row);
+  });
+
+  validationDetails.hidden = true;
+  if (previewStatus) {
+    previewStatus.classList.remove('expanded');
+    previewStatus.classList.add('has-details');
+    previewStatus.setAttribute('role', 'button');
+    previewStatus.setAttribute('tabindex', '0');
+    previewStatus.setAttribute('aria-expanded', 'false');
+    previewStatus.setAttribute('aria-controls', 'validation-details');
+  }
+}
+
+/**
+ * Display HTML validation results from the server.
+ * Updates the preview status bar and highlights error lines in the source.
+ * @param {object} validation - Validation result from /simulator
+ */
+function displayHtmlValidation(validation) {
+  if (!validation || !Array.isArray(validation.results)) {
+    collapseValidationDetails();
+    if (sourceErrorHighlights) sourceErrorHighlights.replaceChildren();
+    if (!validation) updatePreviewStatus('ok', 'HTML');
+    return;
+  }
+
+  const { results } = validation;
+  const { type, message } = formatValidationStatus(results);
+  updatePreviewStatus(type, message);
+  renderSourceHighlights(results);
+  buildValidationDetails(results);
+}
+
+/**
+ * POST to the simulator endpoint and return the rendered HTML.
+ * Throws with a human-readable message on HTTP or server errors.
+ * @param {string} jsonValue - Raw JSON string
+ * @param {string} template - Mustache template string
+ * @param {Object} options - Simulator options
+ * @param {AbortSignal} signal - Abort signal for cancellation
+ * @returns {Promise<{html: string, validation: object}>} Rendered HTML with validation
+ */
+async function fetchRenderedHtml(jsonValue, template, options, signal) {
+  const requestBody = {
+    json: encodeURIComponent(jsonValue),
+    template: encodeURIComponent(template),
+  };
+  if (Object.keys(options).length > 0) {
+    requestBody.options = options;
+  }
+
+  const response = await fetch(SIMULATOR_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(requestBody),
+    signal,
+  });
+
+  if (!response.ok) {
+    let errorMessage = `Server error: ${response.status}`;
+    try {
+      const errorData = await response.json();
+      if (errorData.error && errorData.message) errorMessage = errorData.message;
+    } catch {
+      const errorText = await response.text();
+      if (errorText) errorMessage = errorText;
+    }
+    throw new Error(errorMessage);
+  }
+
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    return response.json();
+  }
+  const html = await response.text();
+  return { html };
+}
+
+/**
+ * Translate a raw Mustache error message into a human-readable form
+ * by converting character offsets to line numbers and clarifying error types.
+ * Pure function — no side effects.
+ * @param {string} rawMessage - Error message from the simulator
+ * @param {string} templateText - Current template content
+ * @returns {string} Human-readable error message
+ */
+function humanizeRenderError(rawMessage, templateText) {
+  const msg = rawMessage;
+  const atPosMatch = msg.match(/\bat (\d+)$/);
+  if (!atPosMatch) return msg;
+
+  const charPos = parseInt(atPosMatch[1], 10);
+  const unclosedSectionMatch = msg.match(/Unclosed section "([^"]+)"/);
+  const unclosedTagMatch = /^Unclosed tag/.test(msg);
+
+  if (unclosedSectionMatch) {
+    const sectionName = unclosedSectionMatch[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    if (charPos >= templateText.length) {
+      // EOF case: position is end-of-template — find where the section actually opened.
+      const openPos = findUnclosedSectionOpening(templateText, sectionName);
+      const suffix = openPos !== -1
+        ? `opened at line ${positionToLineCol(templateText, openPos).line}` : '';
+      return msg.replace(/\bat \d+$/, suffix);
+    }
+
+    // Mismatch case: a {{/wrongTag}} was encountered while this section was open.
+    const wrongTagMatch = templateText.substring(charPos).match(/^\{\{\/\s*([^}\s]+)\s*\}\}/);
+    if (wrongTagMatch && wrongTagMatch[1] !== unclosedSectionMatch[1]) {
+      const wrongLine = positionToLineCol(templateText, charPos).line;
+      const wrongEscaped = wrongTagMatch[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const wrongOpenPos = findUnclosedSectionOpening(templateText, wrongEscaped, charPos);
+
+      if (wrongOpenPos === -1) {
+        // Orphan close tag: the wrong tag has no opener before it.
+        // The Mustache stack tells us exactly which section IS open — no guessing.
+        const openSectionName = unclosedSectionMatch[1];
+        // Limit scan to charPos so a later {{/name}} doesn't pop the stack.
+        const openSectionEsc = openSectionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const openSectionPos = findUnclosedSectionOpening(templateText, openSectionEsc, charPos);
+        const openSectionLine = openSectionPos !== -1
+          ? positionToLineCol(templateText, openSectionPos).line : null;
+        const openSectionSigil = openSectionPos !== -1
+          ? sectionSigilAt(templateText, openSectionPos) : '#';
+        const replacement = openSectionLine
+          ? `Unexpected {{/${wrongTagMatch[1]}}} at line ${wrongLine}`
+            + ` — '{{${openSectionSigil}${openSectionName}}}' at line ${openSectionLine} is still open`
+          : `Unexpected {{/${wrongTagMatch[1]}}} at line ${wrongLine}`
+            + ` — no opening {{#${wrongTagMatch[1]}}} found`;
+        return msg.replace(/Unclosed section "[^"]+" at \d+$/, replacement);
+      }
+
+      // Out-of-order: the named section is genuinely unclosed.
+      // Limit to charPos so a later {{/sectionName}} doesn't pop the stack.
+      const openPos = findUnclosedSectionOpening(templateText, sectionName, charPos);
+      if (openPos !== -1) {
+        const openLine = positionToLineCol(templateText, openPos).line;
+        return msg.replace(/\bat \d+$/, `opened at line ${openLine} — unexpected {{/${wrongTagMatch[1]}}} at line ${wrongLine}`);
+      }
+      return msg.replace(/\bat \d+$/, `— unexpected {{/${wrongTagMatch[1]}}} at line ${wrongLine}`);
+    }
+
+    return msg.replace(/\bat \d+$/, `at line ${positionToLineCol(templateText, charPos).line}`);
+  }
+
+  if (unclosedTagMatch) {
+    // "Unclosed tag" reports end-of-template — find the last unmatched {{.
+    let unmatched = -1;
+    let pos = 0;
+    while (pos < templateText.length) {
+      const openIdx = templateText.indexOf('{{', pos);
+      if (openIdx === -1) break;
+      const closeIdx = templateText.indexOf('}}', openIdx + 2);
+      if (closeIdx === -1) { unmatched = openIdx; break; }
+      pos = openIdx + 2;
+    }
+    if (unmatched !== -1) {
+      return msg.replace(/\bat \d+$/, `at line ${positionToLineCol(templateText, unmatched).line}`);
+    }
+    return msg.replace(/\bat \d+$/, '');
+  }
+
+  // "Unopened section" and all other errors report an accurate position.
+  const { line } = positionToLineCol(templateText, charPos);
+  const unopenedMatch = msg.match(/^Unopened section "([^"]+)"/);
+  if (unopenedMatch) {
+    const tagName = unopenedMatch[1];
+    return `Unexpected {{/${tagName}}} at line ${line} — no opening {{#${tagName}}} found`;
+  }
+  return msg.replace(/\bat \d+$/, `at line ${line}`);
+}
+
+/**
  * Render the template with JSON data via /simulator endpoint
  */
 async function render() {
   const jsonValue = jsonInput?.value?.trim();
   const template = templateInput?.value || '';
 
-  // Validate JSON first
   const jsonData = validateJson();
   if (!jsonData) {
-    // Clear preview - error shown in status field only
     updatePreview('');
+    hideHtmlValidation();
     return;
   }
 
-  // Validate options and template compatibility
   const options = getSimulatorOptions();
   const validationError = validateOptionsTemplateCompatibility(jsonData, options, template);
   if (validationError) {
     displayValidationError(validationError);
+    hideHtmlValidation();
     return;
   }
-
-  // Hide validation error if it was showing
   hideValidationError();
 
-  // Cancel any pending request
-  if (abortController) {
-    abortController.abort();
-  }
+  if (abortController) abortController.abort();
   abortController = new AbortController();
-
   setLoadingState(true);
 
   try {
-    // Build request body with options
-    const requestBody = {
-      json: encodeURIComponent(jsonValue),
-      template: encodeURIComponent(template),
-    };
-
-    // Add options if any are set
-    if (Object.keys(options).length > 0) {
-      requestBody.options = options;
-    }
-
-    const response = await fetch(SIMULATOR_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-      signal: abortController.signal,
-    });
-
-    if (!response.ok) {
-      // Try to get error message from response
-      let errorMessage = `Server error: ${response.status}`;
-      try {
-        const errorData = await response.json();
-        if (errorData.error && errorData.message) {
-          errorMessage = errorData.message;
-        }
-      } catch {
-        // Response wasn't JSON, use the text
-        const errorText = await response.text();
-        if (errorText) {
-          errorMessage = errorText;
-        }
-      }
-      throw new Error(errorMessage);
-    }
-
-    const html = await response.text();
-    updatePreview(html);
+    const result = await fetchRenderedHtml(jsonValue, template, options, abortController.signal);
+    updatePreview(result.html);
     updateStatus(templateStatus, 'ok', 'Rendered successfully');
-    updatePreviewStatus('Last rendered: just now');
+    setErrorHighlight(templateInput, templateErrorHighlight);
+    displayHtmlValidation(result.validation);
   } catch (e) {
-    // Ignore abort errors (expected when user types quickly)
-    if (e.name === 'AbortError') {
-      return;
-    }
+    if (e.name === 'AbortError') return;
 
-    // Network error
+    hideHtmlValidation();
     if (e.message === 'Failed to fetch') {
-      // Clear preview - error shown in status field only
       updatePreview('');
       updateStatus(templateStatus, 'error', 'Connection failed');
+      setErrorHighlight(templateInput, templateErrorHighlight);
     } else {
-      // Clear preview - error shown in status field only
+      const errorMessage = humanizeRenderError(e.message, templateInput?.value ?? '');
       updatePreview('');
-      updateStatus(templateStatus, 'error', `Render error: ${e.message}`);
+      updateStatus(templateStatus, 'error', `Render error: ${errorMessage}`);
+      const lineMatch = errorMessage.match(/\bline (\d+)/);
+      const errorLine = lineMatch ? parseInt(lineMatch[1], 10) : 0;
+      setErrorHighlight(templateInput, templateErrorHighlight, errorLine);
     }
   } finally {
     setLoadingState(false);
   }
 }
-
-// ============================================================================
-// EXAMPLES DATA
-// ============================================================================
-
-const examples = {
-  basic: {
-    json: {
-      name: 'John Doe',
-      email: 'john@example.com',
-      message: 'Hello, World!',
-    },
-    template: `<div class="greeting">
-  <h1>Hello, {{name}}!</h1>
-  <p>Email: {{email}}</p>
-  <blockquote>{{message}}</blockquote>
-</div>`,
-    // No options - basic example
-  },
-  array: {
-    json: {
-      metadata: {
-        title: 'Shopping List',
-        lastUpdated: '2025-01-06',
-      },
-      data: {
-        items: [
-          { name: 'Apples', quantity: 5 },
-          { name: 'Bread', quantity: 2 },
-          { name: 'Milk', quantity: 1 },
-        ],
-      },
-    },
-    template: `<div class="list">
-  <h1>Shopping List</h1>
-  <ul>
-    {{#.}}
-    <li>{{name}} (x{{quantity}})</li>
-    {{/.}}
-  </ul>
-</div>`,
-    options: {
-      arrayKey: 'data.items',
-    },
-    // Demonstrates: Using arrayKey to navigate to nested array
-  },
-  conditional: {
-    json: {
-      user: 'Alice',
-      isPremium: true,
-      notifications: 3,
-      hasNotifications: true,
-    },
-    template: `<div class="user-status">
-  <h1>Welcome, {{user}}!</h1>
-  
-  {{#isPremium}}
-  <p class="badge">⭐ Premium Member</p>
-  {{/isPremium}}
-  
-  {{^isPremium}}
-  <p><a href="#">Upgrade to Premium</a></p>
-  {{/isPremium}}
-  
-  {{#hasNotifications}}
-  <p>You have {{notifications}} new notifications.</p>
-  {{/hasNotifications}}
-</div>`,
-  },
-  nested: {
-    json: {
-      pages: [
-        {
-          path: '/about',
-          title: 'About Us',
-          description: 'Learn about our company',
-          author: 'Marketing Team',
-        },
-        {
-          path: '/products',
-          title: 'Our Products',
-          description: 'Browse our product catalog',
-          author: 'Product Team',
-        },
-        {
-          path: '/contact',
-          title: 'Contact Us',
-          description: 'Get in touch',
-          author: 'Support Team',
-        },
-      ],
-    },
-    template: `<article class="page">
-  <h1>{{title}}</h1>
-  <p class="description">{{description}}</p>
-  <footer>
-    <p class="meta">Created by {{author}}</p>
-    <p class="path">Path: {{path}}</p>
-  </footer>
-</article>`,
-    options: {
-      arrayKey: 'pages',
-      pathKey: 'path',
-      testPath: '/products',
-    },
-    // Demonstrates: Using arrayKey + pathKey + testPath to extract single item from array
-  },
-  product: {
-    json: {
-      name: 'Wireless Headphones',
-      price: 149.99,
-      currency: 'USD',
-      inStock: true,
-      rating: 4.5,
-      features: ['Noise Canceling', 'Bluetooth 5.0', '30hr Battery', 'Foldable'],
-      image: '/media/products/headphones.jpg',
-      thumbnail: '/media/products/headphones-thumb.jpg',
-    },
-    template: `<article class="product-card">
-  <img src="{{image}}" alt="{{name}}" class="product-image" />
-  <h1>{{name}}</h1>
-  <p class="price">{{currency}} {{price}}</p>
-  
-  {{#inStock}}
-  <p class="stock in-stock">✓ In Stock</p>
-  {{/inStock}}
-  {{^inStock}}
-  <p class="stock out-of-stock">Out of Stock</p>
-  {{/inStock}}
-  
-  <p class="rating">Rating: {{rating}} / 5</p>
-  
-  <h2>Features</h2>
-  <ul class="features">
-    {{#features}}
-    <li>{{.}}</li>
-    {{/features}}
-  </ul>
-  
-  <img src="{{thumbnail}}" alt="{{name}} thumbnail" class="thumbnail" />
-</article>`,
-    options: {
-      relativeURLPrefix: 'https://cdn.example.com',
-    },
-    // Demonstrates: Using relativeURLPrefix to rewrite /media/* URLs to full CDN URLs
-  },
-  event: {
-    json: {
-      schema: 'event',
-      title: 'Tech Conference 2025',
-      date: 'March 15, 2025',
-      location: 'San Francisco, CA',
-      description: 'Join us for the biggest tech event of the year!',
-      speakers: [
-        { name: 'Jane Smith', topic: 'AI & Machine Learning' },
-        { name: 'John Doe', topic: 'Cloud Architecture' },
-      ],
-      registrationOpen: true,
-    },
-    template: `<article class="event-page">
-  <header>
-    <h1>{{title}}</h1>
-    <p class="meta">📅 {{date}} | 📍 {{location}}</p>
-  </header>
-  
-  <section class="description">
-    <p>{{description}}</p>
-  </section>
-  
-  <section class="speakers">
-    <h2>Speakers</h2>
-    {{#speakers}}
-    <div class="speaker">
-      <strong>{{name}}</strong>
-      <span>{{topic}}</span>
-    </div>
-    {{/speakers}}
-  </section>
-  
-  {{#registrationOpen}}
-  <footer>
-    <button class="register-btn">Register Now</button>
-  </footer>
-  {{/registrationOpen}}
-</article>`,
-  },
-  contentIndex: {
-    json: {
-      total: 47,
-      offset: 0,
-      limit: 10,
-      data: [
-        {
-          path: '/blog/2025/getting-started',
-          title: 'Getting Started with Edge Delivery',
-          description: 'Learn how to set up your first EDS project in minutes.',
-          author: 'Content Team',
-          date: '2025-01-05',
-          image: '/media/blog/getting-started.jpg',
-        },
-        {
-          path: '/blog/2025/blocks-deep-dive',
-          title: 'Building Custom Blocks',
-          description: 'A comprehensive guide to creating reusable blocks.',
-          author: 'Developer Team',
-          date: '2025-01-03',
-          image: '/media/blog/blocks.jpg',
-        },
-        {
-          path: '/blog/2024/performance-tips',
-          title: 'Keeping Your Score at 100',
-          description: 'Best practices for maintaining perfect Lighthouse scores.',
-          author: 'Performance Team',
-          date: '2024-12-28',
-          image: '/media/blog/performance.jpg',
-        },
-      ],
-    },
-    template: `<div class="article-index">
-  <header class="index-header">
-    <p class="pagination-info">Showing {{limit}} of {{total}} articles</p>
-  </header>
-  
-  <div class="article-grid">
-    {{#.}}
-    <article class="article-card">
-      <img src="{{image}}" alt="{{title}}" class="article-image" />
-      <div class="article-content">
-        <h2><a href="{{path}}">{{title}}</a></h2>
-        <p class="description">{{description}}</p>
-        <footer class="article-meta">
-          <span class="author">By {{author}}</span>
-          <span class="date">{{date}}</span>
-        </footer>
-      </div>
-    </article>
-    {{/.}}
-  </div>
-</div>`,
-    options: {
-      arrayKey: 'data',
-    },
-    // Demonstrates: Blog/article index from query-index.json with pagination metadata
-  },
-  storeLocator: {
-    json: {
-      region: 'San Francisco Bay Area',
-      stores: [
-        {
-          id: 'store-001',
-          name: 'Downtown Flagship',
-          path: '/stores/downtown',
-          address: {
-            street: '123 Market Street',
-            city: 'San Francisco',
-            state: 'CA',
-            zip: '94102',
-          },
-          phone: '(415) 555-0123',
-          hours: {
-            weekday: '9:00 AM - 9:00 PM',
-            weekend: '10:00 AM - 6:00 PM',
-          },
-          services: ['In-Store Pickup', 'Returns', 'Gift Wrapping', 'Personal Shopping'],
-          isOpen: true,
-        },
-        {
-          id: 'store-002',
-          name: 'Mission District',
-          path: '/stores/mission',
-          address: {
-            street: '456 Valencia Street',
-            city: 'San Francisco',
-            state: 'CA',
-            zip: '94110',
-          },
-          phone: '(415) 555-0456',
-          hours: {
-            weekday: '10:00 AM - 8:00 PM',
-            weekend: '11:00 AM - 7:00 PM',
-          },
-          services: ['In-Store Pickup', 'Returns'],
-          isOpen: true,
-        },
-        {
-          id: 'store-003',
-          name: 'Palo Alto',
-          path: '/stores/palo-alto',
-          address: {
-            street: '789 University Ave',
-            city: 'Palo Alto',
-            state: 'CA',
-            zip: '94301',
-          },
-          phone: '(650) 555-0789',
-          hours: {
-            weekday: '9:00 AM - 9:00 PM',
-            weekend: '10:00 AM - 8:00 PM',
-          },
-          services: ['In-Store Pickup', 'Returns', 'Repairs'],
-          isOpen: false,
-        },
-      ],
-    },
-    template: `<article class="store-detail">
-  <header>
-    <h1>{{name}}</h1>
-    {{#isOpen}}
-    <span class="status open">Open Now</span>
-    {{/isOpen}}
-    {{^isOpen}}
-    <span class="status closed">Currently Closed</span>
-    {{/isOpen}}
-  </header>
-  
-  <section class="store-info">
-    <div class="address">
-      <h2>Address</h2>
-      <p>{{address.street}}</p>
-      <p>{{address.city}}, {{address.state}} {{address.zip}}</p>
-      <p class="phone">📞 {{phone}}</p>
-    </div>
-    
-    <div class="hours">
-      <h2>Hours</h2>
-      <p><strong>Mon-Fri:</strong> {{hours.weekday}}</p>
-      <p><strong>Sat-Sun:</strong> {{hours.weekend}}</p>
-    </div>
-  </section>
-  
-  <section class="services">
-    <h2>Available Services</h2>
-    <ul>
-      {{#services}}
-      <li>{{.}}</li>
-      {{/services}}
-    </ul>
-  </section>
-</article>`,
-    options: {
-      arrayKey: 'stores',
-      pathKey: 'path',
-      testPath: '/stores/downtown',
-    },
-    // Demonstrates: Store locator with nested address, filtering by path
-  },
-  productCatalog: {
-    json: {
-      metadata: {
-        category: 'Electronics',
-        totalProducts: 24,
-        currentPage: 1,
-      },
-      products: [
-        {
-          sku: 'LAPTOP-001',
-          name: 'ProBook 15 Laptop',
-          path: '/products/probook-15',
-          price: {
-            amount: 1299.99,
-            currency: 'USD',
-            salePrice: 999.99,
-            onSale: true,
-          },
-          availability: 'in-stock',
-          images: ['/media/products/probook-main.jpg', '/media/products/probook-side.jpg'],
-          rating: {
-            score: 4.5,
-            reviewCount: 127,
-          },
-          badges: ['Best Seller', 'Free Shipping'],
-        },
-        {
-          sku: 'TABLET-002',
-          name: 'ProTab 10 Tablet',
-          path: '/products/protab-10',
-          price: {
-            amount: 599.99,
-            currency: 'USD',
-            salePrice: null,
-            onSale: false,
-          },
-          availability: 'in-stock',
-          images: ['/media/products/protab-main.jpg'],
-          rating: {
-            score: 4.2,
-            reviewCount: 89,
-          },
-          badges: ['New Arrival'],
-        },
-        {
-          sku: 'MONITOR-003',
-          name: 'UltraView 27" Monitor',
-          path: '/products/ultraview-27',
-          price: {
-            amount: 449.99,
-            currency: 'USD',
-            salePrice: 379.99,
-            onSale: true,
-          },
-          availability: 'low-stock',
-          images: ['/media/products/ultraview-main.jpg'],
-          rating: {
-            score: 4.8,
-            reviewCount: 256,
-          },
-          badges: ['Top Rated'],
-        },
-      ],
-    },
-    template: `<article class="product-detail">
-  <div class="product-gallery">
-    {{#images}}
-    <img src="{{.}}" alt="{{name}}" class="product-image" />
-    {{/images}}
-  </div>
-  
-  <div class="product-info">
-    <div class="badges">
-      {{#badges}}
-      <span class="badge">{{.}}</span>
-      {{/badges}}
-    </div>
-    
-    <h1>{{name}}</h1>
-    <p class="sku">SKU: {{sku}}</p>
-    
-    <div class="pricing">
-      {{#price.onSale}}
-      <span class="original-price">{{price.currency}} {{price.amount}}</span>
-      <span class="sale-price">{{price.currency}} {{price.salePrice}}</span>
-      {{/price.onSale}}
-      {{^price.onSale}}
-      <span class="price">{{price.currency}} {{price.amount}}</span>
-      {{/price.onSale}}
-    </div>
-    
-    <div class="rating">
-      ⭐ {{rating.score}} / 5 ({{rating.reviewCount}} reviews)
-    </div>
-    
-    <p class="availability availability-{{availability}}">
-      {{availability}}
-    </p>
-  </div>
-</article>`,
-    options: {
-      arrayKey: 'products',
-      pathKey: 'path',
-      testPath: '/products/probook-15',
-      relativeURLPrefix: 'https://cdn.example.com',
-    },
-    // Demonstrates: Product catalog with filtering, CDN URLs, sale prices
-  },
-  eventCalendar: {
-    json: {
-      calendar: {
-        month: 'January 2025',
-        year: 2025,
-      },
-      events: [
-        {
-          id: 'evt-001',
-          title: 'Developer Meetup',
-          path: '/events/developer-meetup',
-          date: 'January 15, 2025',
-          time: '6:00 PM - 8:00 PM',
-          location: 'Adobe Tower, Floor 12',
-          type: 'In-Person',
-          capacity: 50,
-          registered: 42,
-          spotsLeft: 8,
-          isAlmostFull: true,
-          description: 'Monthly gathering for web developers to share knowledge and network.',
-        },
-        {
-          id: 'evt-002',
-          title: 'AEM Best Practices Webinar',
-          path: '/events/aem-webinar',
-          date: 'January 22, 2025',
-          time: '10:00 AM - 11:30 AM',
-          location: 'Online (Zoom)',
-          type: 'Virtual',
-          capacity: 500,
-          registered: 234,
-          spotsLeft: 266,
-          isAlmostFull: false,
-          description: 'Learn best practices for Edge Delivery Services from Adobe experts.',
-        },
-        {
-          id: 'evt-003',
-          title: 'Hackathon Weekend',
-          path: '/events/hackathon',
-          date: 'January 27-28, 2025',
-          time: 'All Day',
-          location: 'Innovation Lab, Building C',
-          type: 'In-Person',
-          capacity: 100,
-          registered: 100,
-          spotsLeft: 0,
-          isAlmostFull: true,
-          description: 'Build something amazing in 48 hours with fellow developers.',
-        },
-      ],
-    },
-    template: `<article class="event-detail">
-  <header class="event-header">
-    <span class="event-type type-{{type}}">{{type}}</span>
-    <h1>{{title}}</h1>
-  </header>
-  
-  <div class="event-info">
-    <p class="datetime">
-      <span class="date">📅 {{date}}</span>
-      <span class="time">🕐 {{time}}</span>
-    </p>
-    <p class="location">📍 {{location}}</p>
-  </div>
-  
-  <section class="description">
-    <p>{{description}}</p>
-  </section>
-  
-  <section class="registration">
-    <h2>Registration</h2>
-    <div class="capacity-bar">
-      <span class="registered">{{registered}} / {{capacity}} registered</span>
-    </div>
-    
-    {{#spotsLeft}}
-    <p class="spots-left {{#isAlmostFull}}almost-full{{/isAlmostFull}}">
-      {{spotsLeft}} spots remaining
-    </p>
-    <button class="register-btn">Register Now</button>
-    {{/spotsLeft}}
-    
-    {{^spotsLeft}}
-    <p class="sold-out">This event is sold out</p>
-    <button class="waitlist-btn">Join Waitlist</button>
-    {{/spotsLeft}}
-  </section>
-</article>`,
-    options: {
-      arrayKey: 'events',
-      pathKey: 'path',
-      testPath: '/events/developer-meetup',
-    },
-    // Demonstrates: Event calendar with capacity tracking, conditional registration
-  },
-};
 
 /**
  * Load an example template
@@ -1189,6 +1069,8 @@ async function loadExample(exampleType) {
     }
 
     validateJson();
+    updateLineNumbers(jsonInput, jsonLineNumbers);
+    updateLineNumbers(templateInput, templateLineNumbers);
     await updateAllEditorHighlights();
     await render();
   }
@@ -1287,22 +1169,30 @@ function setupEditorListeners() {
   jsonInput?.addEventListener('input', () => {
     validateJson();
     updateEditorHighlight(jsonInput, jsonHighlight, 'json');
+    updateLineNumbers(jsonInput, jsonLineNumbers);
     handleInput();
   });
 
   jsonInput?.addEventListener('scroll', () => {
     syncScroll(jsonInput, jsonHighlight);
+    if (jsonLineNumbers) jsonLineNumbers.scrollTop = jsonInput.scrollTop;
+    syncErrorHighlight(jsonInput, jsonErrorHighlight);
   });
 
   // Template input listeners
   templateInput?.addEventListener('input', () => {
     updateEditorHighlight(templateInput, templateHighlight, 'handlebars');
+    updateLineNumbers(templateInput, templateLineNumbers);
     handleInput();
   });
 
   templateInput?.addEventListener('scroll', () => {
     syncScroll(templateInput, templateHighlight);
+    if (templateLineNumbers) templateLineNumbers.scrollTop = templateInput.scrollTop;
+    syncErrorHighlight(templateInput, templateErrorHighlight);
   });
+
+  sourceOutput?.addEventListener('scroll', syncSourceOverlays);
 }
 
 /**
@@ -1449,6 +1339,19 @@ function setupButtons() {
   // Validation close button
   const validationCloseBtn = document.getElementById('validation-close');
   validationCloseBtn?.addEventListener('click', hideValidationError);
+
+  // Toggle validation details when clicking the preview status bar
+  previewStatus?.addEventListener('click', () => {
+    if (!previewStatus.classList.contains('has-details')) return;
+    const isExpanded = previewStatus.classList.toggle('expanded');
+    previewStatus.setAttribute('aria-expanded', String(isExpanded));
+    if (validationDetails) validationDetails.hidden = !isExpanded;
+  });
+  previewStatus?.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+    ev.preventDefault();
+    previewStatus.click();
+  });
 }
 
 /**
@@ -1533,6 +1436,10 @@ async function init() {
 
   // Initialize editor syntax highlighting (Prism is now guaranteed loaded)
   await updateAllEditorHighlights();
+
+  // Initialize line numbers for both editors
+  updateLineNumbers(jsonInput, jsonLineNumbers);
+  updateLineNumbers(templateInput, templateLineNumbers);
 
   // Initial render
   render();

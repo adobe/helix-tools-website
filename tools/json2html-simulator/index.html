@@ -116,6 +116,7 @@
             </div>
           </div>
           <div class="editor-wrapper">
+            <div class="line-numbers" id="json-line-numbers" aria-hidden="true"></div>
             <textarea 
               id="json-input" 
               class="code-editor" 
@@ -135,6 +136,7 @@
   }
 }</textarea>
             <pre class="code-highlight" id="json-highlight" aria-hidden="true"><code class="language-json"></code></pre>
+            <div class="error-line-highlight" id="json-error-highlight" aria-hidden="true"></div>
           </div>
           <div class="editor-status" id="json-status">
             <span class="status-icon status-ok">✓</span>
@@ -153,33 +155,44 @@
             <span class="editor-label">Mustache Template</span>
           </div>
           <div class="editor-wrapper">
+            <div class="line-numbers" id="template-line-numbers" aria-hidden="true"></div>
             <textarea 
               id="template-input" 
               class="code-editor" 
               spellcheck="false" 
               placeholder="Enter your Mustache template here..."
-            ><article class="content-card">
-  <h1>{{title}}</h1>
-  <p class="description">{{description}}</p>
-  
-  <section class="features">
-    <h2>Features</h2>
-    <ul>
-      {{#features}}
-      <li class="feature {{#enabled}}enabled{{/enabled}}">
-        <span class="feature-name">{{name}}</span>
-        {{#enabled}}<span class="badge">Active</span>{{/enabled}}
-      </li>
-      {{/features}}
-    </ul>
-  </section>
-  
-  <footer class="author-info">
-    <p>Created by <strong>{{author.name}}</strong></p>
-    <p class="role">{{author.role}}</p>
-  </footer>
-</article></textarea>
+            ><!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>{{title}}</title>
+  </head>
+  <body>
+    <header></header>
+    <main>
+      <div>
+        <h1>{{title}}</h1>
+        <p>{{description}}</p>
+      </div>
+      <div>
+        <h2>Features</h2>
+        <ul>
+          {{#features}}
+          <li>
+            {{name}}{{#enabled}} ✓{{/enabled}}
+          </li>
+          {{/features}}
+        </ul>
+      </div>
+      <div>
+        <p>Created by <strong>{{author.name}}</strong></p>
+        <p>{{author.role}}</p>
+      </div>
+    </main>
+    <footer></footer>
+  </body>
+</html></textarea>
             <pre class="code-highlight" id="template-highlight" aria-hidden="true"><code class="language-html"></code></pre>
+            <div class="error-line-highlight" id="template-error-highlight" aria-hidden="true"></div>
           </div>
           <div class="editor-status" id="template-status">
             <span class="status-icon status-ok">✓</span>
@@ -222,11 +235,15 @@
           </div>
           <!-- Source View -->
           <div class="preview-view active" data-view="source">
+            <div class="line-numbers" id="source-line-numbers" aria-hidden="true"></div>
+            <div id="source-error-highlights" class="source-error-highlights" aria-hidden="true"></div>
             <pre id="source-output" class="source-code"><code class="language-html"></code></pre>
           </div>
+          <div class="validation-details" id="validation-details" aria-live="polite" hidden></div>
         </div>
         <div class="preview-status" id="preview-status">
-          <span class="status-text">Last rendered: just now</span>
+          <span class="status-icon status-ok">✓</span>
+          <span class="status-text">HTML</span>
           <span class="status-hint" id="keyboard-hint">💡 Press <kbd>Cmd+Enter</kbd> to render instantly</span>
         </div>
       </section>

@@ -216,6 +216,31 @@ export default class IncognitoCheckbox extends HTMLElement {
       background: black;
       transform: rotate(-20deg);
     }
+
+    /* Dark mode support */
+    :host-context(html[data-theme="dark"]) .eye__base,
+    :host-context(html[data-theme="dark"]) .eye__base__view__iris,
+    :host-context(html[data-theme="dark"]) .eye__base__view__pupil {
+      border-color: white;
+    }
+
+    :host-context(html[data-theme="dark"]) .eye__lid__mask {
+      background: #1a1a1a;
+    }
+
+    :host-context(html[data-theme="dark"]) input:checked + .eye .eye__lid__mask {
+      background: transparent;
+    }
+
+    :host-context(html[data-theme="dark"]) .eye__lid__lashes__line {
+      border-color: white;
+    }
+
+    :host-context(html[data-theme="dark"]) .eye__lid__lashes__hair,
+    :host-context(html[data-theme="dark"]) .eye__lid__lashes__hair::before,
+    :host-context(html[data-theme="dark"]) .eye__lid__lashes__hair::after {
+      background: white;
+    }
     `;
     this.shadowRoot.appendChild(style);
     this.input = this.shadowRoot.querySelector('input');

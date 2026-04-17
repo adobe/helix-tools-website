@@ -352,6 +352,19 @@ function loadDelayed() {
   // eslint-disable-next-line import/no-cycle
   window.setTimeout(() => import('./delayed.js'), 3000);
   // load anything that can be postponed to the latest here
+
+  const initContentScore = async () => {
+    const CONTENT_SCORE = `${window.hlx.codeBasePath}/tools/content-score/src/scripts.js`;
+    const { init } = await import(CONTENT_SCORE);
+    await init();
+  };
+
+  const sk = document.querySelector('aem-sidekick');
+
+  if (sk) initContentScore();
+  else {
+    document.addEventListener('sidekick-ready', initContentScore, { once: true });
+  }
 }
 
 async function loadPage() {

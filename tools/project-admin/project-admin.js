@@ -1,4 +1,5 @@
 import { registerToolReady } from '../../scripts/scripts.js';
+import { toClassName } from '../../scripts/aem.js';
 import createLoginButton from '../../utils/login.js';
 import { messageSidekick, NO_SIDEKICK } from '../../utils/sidekick.js';
 
@@ -12,8 +13,8 @@ function externalLink(url, text, iconOnly = false) {
 
 function displayProjectForm(elem, config) {
   const { org, site, project } = config;
-  const name = `${org}--${site}`;
-  elem.innerHTML = `<form id=${name}>
+  const name = toClassName(`${org}--${site}`);
+  elem.innerHTML = `<form id="${name}">
       <fieldset>
         <div class="form-field url-field">
           <label for="${name}-project">Project name</label>
@@ -43,7 +44,7 @@ function displayProjectForm(elem, config) {
       config: {
         org,
         site,
-        project: elem.querySelector(`input[id="${name}-project"]`).value,
+        project: elem.querySelector(`#${name}-project`).value,
       },
     });
     if (success) {
@@ -112,7 +113,7 @@ function displayProject(config, editMode = false) {
       <div>
         <div>Preview:</div><div>${externalLink(previewUrl, new URL(previewUrl).host)}</div>
       </div>
-      ${host ? `<div><div>Production: </div><div>${externalLink(host, host)}</div></div>` : ''}
+      ${host ? `<div><div>Production: </div><div>${externalLink(`https://${host}`, host)}</div></div>` : ''}
     </div>`;
 
   const details = li.querySelector('.projects-project-details');

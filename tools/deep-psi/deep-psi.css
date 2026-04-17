@@ -88,6 +88,30 @@
   margin-bottom: var(--spacing-m);
 }
 
+.deep-psi .psi-significance-intro {
+  margin: 0 0 var(--spacing-m);
+  font-size: var(--detail-size-s);
+  color: var(--color-font-grey);
+  line-height: 1.45;
+}
+
+.deep-psi .psi-significance-wrapper .psi-sig-verdict {
+  font-weight: var(--weight-bold);
+}
+
+.deep-psi .psi-significance-wrapper .psi-sig-verdict-yes {
+  color: light-dark(var(--green-1100), var(--green-300));
+}
+
+.deep-psi .psi-significance-wrapper .psi-sig-verdict-no {
+  color: var(--color-font-grey);
+}
+
+.deep-psi .psi-significance-wrapper .psi-sig-alpha {
+  color: var(--color-font-grey);
+  font-size: var(--detail-size-s);
+}
+
 .deep-psi .psi-significance-wrapper ul {
   margin: 0;
   padding: 0;
@@ -220,17 +244,9 @@
 }
 
 .deep-psi .table-container {
-  max-height: 400px;
-  overflow: auto;
   border-radius: 0.5rem;
   box-shadow: var(--shadow-default);
   background: var(--layer-elevated);
-}
-
-@media (width >= 900px) {
-  .deep-psi .table-container {
-    max-height: 500px;
-  }
 }
 
 .deep-psi .table-container table {
@@ -239,24 +255,10 @@
   box-shadow: none;
 }
 
-.deep-psi .table-container table thead {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: light-dark(var(--gray-50), var(--gray-800));
-}
-
 .deep-psi table tr.average {
   font-weight: var(--weight-bold);
   background-color: light-dark(var(--gray-100), var(--gray-800));
   border-top: 2px solid var(--color-border);
-}
-
-.deep-psi .table-container table tbody tr.average {
-  position: sticky;
-  bottom: 0;
-  z-index: 10;
-  background: light-dark(var(--gray-100), var(--gray-800));
 }
 
 .deep-psi table tr.average td {
@@ -407,15 +409,16 @@
   padding: var(--spacing-s) var(--spacing-m);
   background: light-dark(var(--gray-50), var(--gray-800));
   border-radius: 0.5rem;
-  border-left: 4px solid var(--blue-500);
+  border-left: 4px solid light-dark(var(--blue-1100), var(--blue-400));
   display: flex;
   align-items: center;
   gap: var(--spacing-s);
+  min-height: 5em;
 }
 
 .deep-psi .table-url-header.loading {
   color: var(--color-font-grey);
-  border-left-color: var(--orange-500);
+  border-left-color: light-dark(var(--orange-1100), var(--orange-400));
 }
 
 .deep-psi .table-url-header .loading-spinner {

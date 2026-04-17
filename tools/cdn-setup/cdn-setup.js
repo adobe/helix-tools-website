@@ -1,6 +1,6 @@
 /* eslint-disable no-alert */
 import { registerToolReady } from '../../scripts/scripts.js';
-import { initConfigField } from '../../utils/config/config.js';
+import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { logResponse } from '../../blocks/console/console.js';
 
@@ -381,8 +381,10 @@ async function saveConfig() {
     return;
   }
 
-  const hostPattern = /^www\.[a-zA-Z0-9-]+(\.[a-zA-Z]{2,})+$/;
-  if (!host.value || !hostPattern.test(host.value)) {
+  // DNS: labels 1-63 chars, [a-z0-9-] no leading/trailing hyphen, total ≤253
+  const dnsLabel = '[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?';
+  const hostPattern = new RegExp(`^(${dnsLabel})(\\.(${dnsLabel}))*$`);
+  if (!host.value || host.value.length > 253 || !hostPattern.test(host.value)) {
     alert('Please enter a valid production host (e.g. www.example.com)');
     host.focus();
     return;
@@ -420,6 +422,15 @@ async function saveConfig() {
 
 async function init() {
   await initConfigField();
+
+  // Update URL params when org or site changes
+  org.addEventListener('change', () => {
+    updateConfig();
+  });
+
+  site.addEventListener('change', () => {
+    updateConfig();
+  });
 
   cdnTypeRadios.forEach((radio) => {
     radio.addEventListener('change', () => {

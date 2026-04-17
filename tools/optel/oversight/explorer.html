@@ -20,7 +20,7 @@
   <script nonce="aem" type="importmap">{"imports": {
     "chartjs": "https://esm.sh/chart.js@4.4.8",
     "chartjs-adapter-luxon": "https://esm.sh/chartjs-adapter-luxon@1.3.1?deps=chart.js@4.4.8",
-    "@adobe/rum-distiller": "https://esm.sh/@adobe/rum-distiller@1.22.2"
+    "@adobe/rum-distiller": "https://esm.sh/@adobe/rum-distiller@1.23.0"
   }}</script>
 
   <script nonce="aem" type="module">
@@ -420,10 +420,15 @@
             <a href="/docs/optel-explorer#facet-redirect" class="help" target="_blank"
               title="What links of the site are redirecting?"></a>
           </link-facet>
-          <list-facet facet="redirect.target">
+          <list-facet facet="redirect.target" drilldown="redirectperf.html">
             <legend>Redirect Count</legend>
             <a href="/docs/optel-explorer#facet-redirect" class="help" target="_blank"
               title="Number of hops it took to reach the final destination page"></a>
+          </list-facet>
+          <list-facet facet="redirect.type" drilldown="redirectperf.html">
+            <legend>Redirect Type</legend>
+            <a href="/docs/optel-explorer#facet-redirect" class="help" target="_blank"
+              title="Internal redirects (same origin) vs external redirects (cross origin)"></a>
           </list-facet>
 
           <list-facet facet="experiment.source">

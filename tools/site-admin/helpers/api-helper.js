@@ -96,6 +96,23 @@ export const saveSiteConfig = async (orgValue, siteName, siteConfig, logFn = nul
 };
 
 /**
+ * Save site code config separately (required for BYO Git)
+ */
+export const saveSiteCodeConfig = async (orgValue, siteName, codeConfig, logFn = null) => {
+  const resp = await adminFetch(
+    `${getSitesPath(orgValue)}/${siteName}/code.json`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(codeConfig),
+    },
+    logFn,
+  );
+  await resp.text();
+  return resp.ok;
+};
+
+/**
  * Delete site config
  */
 export const deleteSiteConfig = async (orgValue, siteName, logFn = null) => {
@@ -128,6 +145,28 @@ export const createSecret = async (orgValue, siteName, logFn = null) => {
 };
 
 /**
+ * Create a named secret with a specific value
+ */
+export const createNamedSecret = async (
+  orgValue,
+  siteName,
+  secretName,
+  secretValue,
+  logFn = null,
+) => {
+  const resp = await adminFetch(
+    `${getSitesPath(orgValue)}/${siteName}/secrets/${encodeURIComponent(secretName)}.json`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ value: secretValue }),
+    },
+    logFn,
+  );
+  return resp.ok;
+};
+
+/**
  * Delete a secret
  */
 export const deleteSecret = async (orgValue, siteName, secretId, logFn = null) => {
@@ -154,11 +193,20 @@ export const fetchApiKeys = async (orgValue, siteName, logFn = null) => {
 
 /**
  * Create a new API key
+ * @param {string} orgValue - Organization name
+ * @param {string} siteName - Site name
+ * @param {object} [body] - Optional body with roles and description
+ * @param {Function} [logFn] - Optional logging function
  */
-export const createApiKey = async (orgValue, siteName, logFn = null) => {
+export const createApiKey = async (orgValue, siteName, body = null, logFn = null) => {
+  const options = { method: 'POST' };
+  if (body) {
+    options.headers = { 'content-type': 'application/json' };
+    options.body = JSON.stringify(body);
+  }
   const resp = await adminFetch(
     `${getSitesPath(orgValue)}/${siteName}/apiKeys.json`,
-    { method: 'POST' },
+    options,
     logFn,
   );
   return resp.ok ? resp.json() : null;

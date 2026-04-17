@@ -3,7 +3,7 @@
 <head>
   <meta
     http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'nonce-aem' 'strict-dynamic' https://cdn.jsdelivr.net https://cdn.skypack.dev; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://thinktanked.org https://cdn.jsdelivr.net https://cdn.skypack.dev; frame-src 'none'; base-uri 'self'; object-src 'none'; form-action 'self';"
+    content="default-src 'self'; script-src 'nonce-aem' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://thinktanked.org; frame-src 'none'; base-uri 'self'; object-src 'none'; form-action 'self';"
     move-to-http-header="true"
   >
   <meta charset="UTF-8">
@@ -61,6 +61,10 @@
         <div id="psi-significance-container" style="display: none;">
           <div class="psi-significance-wrapper">
             <h3>Statistical Significance Test</h3>
+            <p class="psi-significance-intro">
+              Two-sample t-tests compare each metric between the two URLs.
+              When <i>p</i> &lt; 0.05, the difference is labeled statistically significant at the 5% level.
+              When <var>p</var> &lt; 0.05, the difference is labeled statistically significant at the 5% level.
             <ul id="significancetestresults"></ul>
           </div>
         </div>

@@ -14,9 +14,17 @@ const fetchButton = document.getElementById('fetch');
 let loadedIndices;
 let YAML;
 
+async function ensureYaml() {
+  // eslint-disable-next-line import/no-unresolved
+  YAML = YAML || await import('../../vendor/yaml/yaml.js');
+}
+
 function displayIndexDetails(indexName, indexDef, newIndex = false) {
-  document.body.append(document.querySelector('#index-details-dialog-template').content.cloneNode(true));
-  const indexDetails = document.querySelector('dialog.index-details');
+  document.querySelector('dialog.index-details')?.remove();
+
+  const fragment = document.querySelector('#index-details-dialog-template').content.cloneNode(true);
+  const indexDetails = fragment.querySelector('dialog.index-details');
+  document.body.append(fragment);
 
   indexDetails.querySelector('#index-name').value = indexName;
   if (!newIndex) {
@@ -69,6 +77,10 @@ function displayIndexDetails(indexName, indexDef, newIndex = false) {
   });
 
   indexDetails.showModal();
+
+  indexDetails.addEventListener('close', () => {
+    indexDetails.remove();
+  });
 
   // Add event listeners for add/remove property buttons
   const addPropertyBtn = indexDetails.querySelector('.add-property-btn');
@@ -146,8 +158,7 @@ function displayIndexDetails(indexName, indexDef, newIndex = false) {
       loadedIndices.indices[indexDetails.querySelector('#index-name').value.trim()].exclude = indexDetails.querySelector('#index-exclude').value.split('\n').map((line) => line.trim());
     }
 
-    // eslint-disable-next-line import/no-unresolved
-    YAML = YAML || await import('https://unpkg.com/yaml@2.8.1/browser/index.js');
+    await ensureYaml();
     const yamlText = YAML.stringify(loadedIndices);
     const resp = await fetch(`https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`, {
       method: 'POST',
@@ -161,7 +172,6 @@ function displayIndexDetails(indexName, indexDef, newIndex = false) {
 
     if (resp.ok) {
       indexDetails.close();
-      indexDetails.remove();
 
       const indexesList = document.getElementById('indexes-list');
       indexesList.innerHTML = '';
@@ -175,10 +185,9 @@ function displayIndexDetails(indexName, indexDef, newIndex = false) {
   cancel.addEventListener('click', (e) => {
     e.preventDefault();
     indexDetails.close();
-    indexDetails.remove();
   });
 
-  // close on click ouside modal
+  // close on click outside modal
   indexDetails.addEventListener('click', (e) => {
     const {
       left, right, top, bottom,
@@ -186,7 +195,6 @@ function displayIndexDetails(indexName, indexDef, newIndex = false) {
     const { clientX, clientY } = e;
     if (clientX < left || clientX > right || clientY < top || clientY > bottom) {
       indexDetails.close();
-      indexDetails.remove();
     }
   });
 }
@@ -328,8 +336,7 @@ async function removeIndex(name) {
 
   delete loadedIndices.indices[name];
 
-  // eslint-disable-next-line import/no-unresolved
-  YAML = YAML || await import('https://unpkg.com/yaml@2.8.1/browser/index.js');
+  await ensureYaml();
   const yamlText = YAML.stringify(loadedIndices);
   const resp = await fetch(`https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`, {
     method: 'POST',
@@ -522,8 +529,7 @@ async function init() {
 
       if (resp.ok) {
         updateConfig();
-        // eslint-disable-next-line import/no-unresolved
-        YAML = YAML || await import('https://unpkg.com/yaml@2.8.1/browser/index.js');
+        await ensureYaml();
 
         const yamlText = await resp.text();
         loadedIndices = YAML.parse(yamlText);

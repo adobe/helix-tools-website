@@ -1,4 +1,5 @@
 import { ensureLogin } from '../../blocks/profile/profile.js';
+import { analyzeUrls, extractOrgSite } from './utils.js';
 
 const log = document.getElementById('logger');
 const adminVersion = new URLSearchParams(window.location.search).get('hlx-admin-version');
@@ -21,12 +22,6 @@ function sleep(ms) {
   });
 }
 
-function extractOrgSite(url) {
-  const { hostname } = new URL(url);
-  const [, site, org] = hostname.split('.')[0].split('--');
-  return { org, site };
-}
-
 /**
  * Show a confirmation dialog with sanitization warnings
  * @param {Object} changes - Sanitization analysis results
@@ -35,10 +30,12 @@ function extractOrgSite(url) {
  * @param {Array<{original: string, sanitized: string, changes: string[]}>} changes.modified
  *   URLs that were sanitized
  * @param {string[]} changes.deduplicated - Duplicate URLs that will be removed
- * @returns {Promise<boolean>} True if user confirms to proceed, false if cancelled
+ * @returns {Promise<boolean|'sanitized'|'unsanitized'>} true or 'sanitized' to proceed with
+ *   sanitized URLs, 'unsanitized' to use originals, false if cancelled
  */
 const showSanitizationWarning = (changes) => {
   const { rejected, modified, deduplicated } = changes;
+  const showUnsanitizedOption = modified.length > 0;
 
   return new Promise((resolve) => {
     const modal = document.createElement('dialog');
@@ -137,8 +134,16 @@ const showSanitizationWarning = (changes) => {
     const confirmBtn = document.createElement('button');
     confirmBtn.className = 'button primary';
     confirmBtn.id = 'confirm-sanitize';
-    confirmBtn.textContent = 'Proceed with sanitized URLs';
+    confirmBtn.textContent = showUnsanitizedOption ? 'Proceed with sanitized URLs' : 'Proceed';
     actionsDiv.appendChild(confirmBtn);
+
+    if (showUnsanitizedOption) {
+      const unsanitizedBtn = document.createElement('button');
+      unsanitizedBtn.className = 'button primary';
+      unsanitizedBtn.id = 'confirm-unsanitized';
+      unsanitizedBtn.textContent = 'Run with original URLs';
+      actionsDiv.appendChild(unsanitizedBtn);
+    }
 
     const cancelBtn = document.createElement('button');
     cancelBtn.className = 'button secondary';
@@ -152,8 +157,16 @@ const showSanitizationWarning = (changes) => {
     modal.querySelector('#confirm-sanitize').addEventListener('click', () => {
       modal.close();
       modal.remove();
-      resolve(true);
+      resolve(showUnsanitizedOption ? 'sanitized' : true);
     });
+
+    if (showUnsanitizedOption) {
+      modal.querySelector('#confirm-unsanitized').addEventListener('click', () => {
+        modal.close();
+        modal.remove();
+        resolve('unsanitized');
+      });
+    }
 
     modal.querySelector('#cancel-sanitize').addEventListener('click', () => {
       modal.close();
@@ -168,108 +181,6 @@ const showSanitizationWarning = (changes) => {
 
     modal.showModal();
   });
-};
-
-/**
- * Analyze URLs for sanitization issues
- * @param {string[]} rawUrls - Array of raw URL strings
- * @returns {Object} Analysis results
- * @property {string[]} urls - Unique, sanitized URLs ready for processing
- * @property {Array<{original: string, reason: string}>} rejected
- *   URLs that failed validation
- * @property {Array<{original: string, sanitized: string, changes: string[]}>} modified
- *   URLs that were sanitized
- * @property {string[]} deduplicated
- *   URLs that appeared multiple times (after sanitization)
- */
-const analyzeUrls = (rawUrls) => {
-  const rejected = [];
-  const modified = [];
-  const validUrls = [];
-
-  const sanitizeUrl = (urlObj) => {
-    urlObj.hash = '';
-    urlObj.search = '';
-    const decodedPath = decodeURIComponent(urlObj.pathname);
-    urlObj.pathname = decodedPath
-      .toLowerCase()
-      .replace(/\/{2,}/g, '/')
-      .split('/')
-      .map((segment) => segment
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, ''))
-      .join('/');
-    return urlObj.toString();
-  };
-
-  rawUrls.forEach((rawUrl) => {
-    if (!rawUrl) return;
-
-    try {
-      const urlObj = new URL(rawUrl.trim());
-      if (urlObj.protocol !== 'https:') {
-        rejected.push({
-          original: rawUrl,
-          reason: `Protocol '${urlObj.protocol}' not allowed (only https)`,
-        });
-        return;
-      }
-
-      const sanitized = sanitizeUrl(urlObj);
-
-      if (sanitized !== rawUrl) {
-        const changes = [];
-        try {
-          const original = new URL(rawUrl);
-          const result = new URL(sanitized);
-          if (original.hash && !result.hash) changes.push('hash removed');
-          if (original.search && !result.search) changes.push('query params removed');
-          if (original.pathname !== result.pathname) {
-            const decodedOriginalPath = decodeURIComponent(original.pathname);
-            const pathChanges = [];
-            if (decodedOriginalPath !== decodedOriginalPath.toLowerCase()) {
-              pathChanges.push('converted to lowercase');
-            }
-            if (/[^a-zA-Z0-9/-]/.test(decodedOriginalPath)) {
-              pathChanges.push('special characters replaced');
-            }
-            if (/\/{2,}/.test(decodedOriginalPath)) {
-              pathChanges.push('duplicate slashes removed');
-            }
-            if (pathChanges.length > 0) {
-              changes.push(`path: ${pathChanges.join(', ')}`);
-            } else {
-              changes.push('path normalized');
-            }
-          }
-        } catch {
-          changes.push('normalized');
-        }
-        modified.push({ original: rawUrl, sanitized, changes });
-        validUrls.push(sanitized);
-      } else {
-        validUrls.push(sanitized);
-      }
-    } catch {
-      rejected.push({ original: rawUrl, reason: 'Invalid URL format' });
-    }
-  });
-
-  const urlCounts = new Map();
-  validUrls.forEach((url) => {
-    urlCounts.set(url, (urlCounts.get(url) || 0) + 1);
-  });
-
-  const urls = [...urlCounts.keys()];
-  const deduplicated = Array.from(urlCounts.entries())
-    .filter(([, count]) => count > 1)
-    .map(([url]) => url);
-
-  return {
-    urls, rejected, modified, deduplicated,
-  };
 };
 
 document.getElementById('urls-form').addEventListener('submit', async (e) => {
@@ -288,30 +199,35 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
 
   // Analyze URLs for sanitization issues
   const {
-    urls, rejected, modified, deduplicated,
+    urls, urlsUnsanitized, rejected, modified, deduplicated,
   } = analyzeUrls(rawUrls);
-  const total = urls.length;
 
   // Check if there are any sanitization issues
   const hasIssues = rejected.length > 0 || modified.length > 0 || deduplicated.length > 0;
 
+  let urlsToUse = urls;
   if (hasIssues) {
-    const confirmed = await showSanitizationWarning({ rejected, modified, deduplicated });
-    if (!confirmed) {
+    const choice = await showSanitizationWarning({ rejected, modified, deduplicated });
+    if (!choice) {
       append('Operation cancelled by user');
       return false;
     }
-
-    document.getElementById('urls').value = urls.join('\n');
-    append(`URL(s) updated with ${urls.length} sanitized URL(s)`);
+    urlsToUse = choice === 'unsanitized' ? urlsUnsanitized : urls;
+    if (choice === 'sanitized' || choice === true) {
+      document.getElementById('urls').value = urls.join('\n');
+      append(`URL(s) updated with ${urls.length} sanitized URL(s)`);
+    } else {
+      append(`Proceeding with ${urlsToUse.length} original URL(s)`);
+    }
   }
 
-  if (urls.length === 0) {
+  const total = urlsToUse.length;
+  if (urlsToUse.length === 0) {
     append('No valid URLs after sanitization');
     return false;
   }
 
-  const { org, site } = extractOrgSite(urls[0]);
+  const { org, site } = extractOrgSite(urlsToUse[0]);
   if (!await ensureLogin(org, site)) {
     window.addEventListener('profile-update', ({ detail: loginInfo }) => {
       if (loginInfo.includes(org)) {
@@ -351,8 +267,8 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
   };
 
   const dequeue = async () => {
-    while (urls.length) {
-      const url = urls.shift();
+    while (urlsToUse.length) {
+      const url = urlsToUse.shift();
       // eslint-disable-next-line no-await-in-loop
       await executeOperation(url, total);
       // eslint-disable-next-line no-await-in-loop
@@ -366,11 +282,11 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
         preview: 'preview',
         live: 'publish',
       };
-      const { hostname } = new URL(urls[0]); // use first URL to determine project details
+      const { hostname } = new URL(urlsToUse[0]); // use first URL to determine project details
       const [branch, repo, owner] = hostname.split('.')[0].split('--');
       const bulkText = `$1/${total} URL(s) bulk ${VERB[operation]}ed on ${owner}/${repo} ${forceUpdate ? '(force update)' : ''}`;
       const bulkLog = append(bulkText.replace('$1', 0));
-      const paths = urls.map((url) => new URL(url).pathname);
+      const paths = urlsToUse.map((url) => new URL(url).pathname);
       const bulkResp = await fetch(`https://admin.hlx.page/${operation}/${owner}/${repo}/${branch}/*${adminVersionSuffix}`, {
         method: 'POST',
         body: JSON.stringify({
@@ -426,15 +342,15 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
 
   if (['preview', 'live'].includes(operation)) {
     // use bulk preview/publish API
-    doBulkOperation(urls);
+    doBulkOperation();
   } else {
-    append(`URLs: ${urls.length}`);
+    append(`URLs: ${urlsToUse.length}`);
     let concurrency = ['live', 'unpublish', 'unpreview'].includes(operation) ? 40 : 3;
     if (slow) {
       concurrency = 1;
     }
     for (let i = 0; i < concurrency; i += 1) {
-      dequeue(urls);
+      dequeue();
     }
   }
   return true;
