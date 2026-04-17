@@ -68,12 +68,12 @@ export function createModal(title, content, footer) {
 
   dialog.addEventListener('cancel', closeModal);
   dialog.querySelector('.modal-close').addEventListener('click', closeModal);
+  // Backdrop click: the click event only targets the dialog element itself when
+  // the user clicks the backdrop. Coord-based checks are unreliable because
+  // in-modal handlers can re-render and resize the dialog before the click
+  // bubbles up here (e.g. Form/JSON switcher shrinking the body).
   dialog.addEventListener('click', (e) => {
-    const rect = dialog.getBoundingClientRect();
-    if (e.clientX < rect.left || e.clientX > rect.right
-        || e.clientY < rect.top || e.clientY > rect.bottom) {
-      closeModal();
-    }
+    if (e.target === dialog) closeModal();
   });
 
   getRoot().appendChild(dialog);
