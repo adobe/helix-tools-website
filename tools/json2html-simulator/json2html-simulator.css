@@ -678,23 +678,27 @@ body.json2html-simulator .error-line-highlight {
 }
 
 /* Error state styling for better visibility */
-.editor-status:has(.status-error) {
+body.json2html-simulator .editor-status:has(.status-error),
+body.json2html-simulator .preview-status:has(.status-error) {
   background: light-dark(var(--red-100), var(--red-900));
   border-top-color: light-dark(var(--red-300), var(--red-700));
 }
 
-.editor-status:has(.status-error) .status-text {
+body.json2html-simulator .editor-status:has(.status-error) .status-text,
+body.json2html-simulator .preview-status:has(.status-error) .status-text {
   color: light-dark(var(--red-900), var(--red-300));
   font-weight: var(--weight-medium);
 }
 
 /* Warning state styling */
-.editor-status:has(.status-warning) {
+body.json2html-simulator .editor-status:has(.status-warning),
+body.json2html-simulator .preview-status:has(.status-warning) {
   background: light-dark(var(--yellow-100), var(--yellow-900));
   border-top-color: light-dark(var(--yellow-300), var(--yellow-700));
 }
 
-.editor-status:has(.status-warning) .status-text {
+body.json2html-simulator .editor-status:has(.status-warning) .status-text,
+body.json2html-simulator .preview-status:has(.status-warning) .status-text {
   color: light-dark(var(--yellow-900), var(--yellow-300));
   font-weight: var(--weight-medium);
 }
@@ -793,7 +797,7 @@ body.json2html-simulator main .resizer-horizontal {
   flex-direction: column;
   width: 100%;
   min-height: 80px;
-  min-width: 0; /* Prevent content from affecting flex size */
+  min-width: 0;
   overflow: hidden;
   border-top: var(--border-s) solid var(--color-border);
 }
@@ -917,6 +921,7 @@ body.json2html-simulator main .resizer-horizontal {
 .source-code {
   margin: 0;
   padding: var(--spacing-300);
+  padding-left: calc(36px + var(--spacing-300));
   width: 100%;
   height: 100%;
   overflow: auto;
@@ -925,9 +930,9 @@ body.json2html-simulator main .resizer-horizontal {
   line-height: var(--line-height-l);
   background: light-dark(var(--gray-100), var(--gray-800));
   color: var(--color-text);
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
+  white-space: pre;
   border-radius: 0; /* Override global pre styling */
+  box-sizing: border-box;
 }
 
 /* Override scrollbar styling to match source-code background */
@@ -955,16 +960,18 @@ body.json2html-simulator main .resizer-horizontal {
   background-color: transparent;
 }
 
+/* stylelint-disable-next-line no-descending-specificity */
 .preview-status {
   flex: 0 0 auto;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: var(--spacing-300);
+  gap: var(--spacing-100);
   padding: var(--spacing-100) var(--spacing-300);
   background: light-dark(var(--gray-50), var(--gray-800));
   border-top: var(--border-s) solid var(--color-border);
   font-size: var(--detail-size-m);
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* stylelint-disable-next-line no-descending-specificity */
@@ -973,6 +980,7 @@ body.json2html-simulator main .resizer-horizontal {
 }
 
 .preview-status .status-hint {
+  margin-left: auto;
   color: var(--color-font-grey);
   font-size: var(--detail-size-s);
 }
@@ -1493,4 +1501,108 @@ body.json2html-simulator .hidden {
   white-space: nowrap;
   border: 0;
 }
+
+/* ========================================
+   HTML VALIDATION — SOURCE ERROR HIGHLIGHTS
+   ======================================== */
+
+body.json2html-simulator .source-error-highlights {
+  position: absolute;
+  inset: 0;
+  left: 36px;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+body.json2html-simulator .source-highlight {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+
+body.json2html-simulator .source-highlight-error {
+  background: light-dark(rgb(220 50 50 / 10%), rgb(255 80 80 / 14%));
+}
+
+body.json2html-simulator .source-highlight-warning {
+  background: light-dark(rgb(200 150 0 / 10%), rgb(255 200 50 / 12%));
+}
+
+/* ========================================
+   VALIDATION DETAILS — EXPANDABLE LIST
+   ======================================== */
+
+body.json2html-simulator .validation-details {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 160px;
+  overflow-y: auto;
+  border-top: var(--border-s) solid var(--color-border);
+  background: light-dark(var(--gray-50), var(--gray-800));
+  font-size: var(--detail-size-s);
+  z-index: 3;
+  box-shadow: 0 -2px 8px light-dark(rgb(0 0 0 / 8%), rgb(0 0 0 / 20%));
+}
+
+body.json2html-simulator .validation-details[hidden] {
+  display: none;
+}
+
+body.json2html-simulator .validation-detail-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-100);
+  padding: var(--spacing-100) var(--spacing-300);
+  border-bottom: 1px solid light-dark(var(--gray-100), var(--gray-700));
+  cursor: pointer;
+  min-height: 28px;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+}
+
+body.json2html-simulator .validation-detail-row:last-child {
+  border-bottom: none;
+}
+
+body.json2html-simulator .validation-detail-row:hover {
+  background: light-dark(var(--gray-100), var(--gray-700));
+}
+
+body.json2html-simulator .validation-detail-row .detail-severity {
+  flex-shrink: 0;
+  font-size: var(--detail-size-xs);
+  line-height: 1;
+}
+
+body.json2html-simulator .validation-detail-row .detail-msg {
+  flex: 1;
+  min-width: 0;
+}
+
+body.json2html-simulator .validation-detail-row .detail-line {
+  flex-shrink: 0;
+  color: var(--color-font-grey);
+  font-family: var(--font-code);
+  font-size: var(--detail-size-xs);
+}
+
+/* Make status bar clickable when there are multiple issues */
+body.json2html-simulator .preview-status.has-details {
+  cursor: pointer;
+}
+
+body.json2html-simulator .preview-status.has-details:hover {
+  filter: brightness(0.96);
+}
+
 

@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-  <title>Operational Telemetry Explorer | AEM Live</title>
+  <title>Operational Telemetry Table | AEM Live</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
@@ -23,7 +23,8 @@
   }}</script>
 
   <script nonce="aem" type="module">
-        import BarChart from './charts/barchart.js';
+        import TableRenderer from './charts/table.js';
+        import ConversionTracker from './elements/conversion-tracker.js';
         import IncognitoCheckbox from './elements/incognito-checkbox.js';
         import FacetSidebar from './elements/facetsidebar.js';
         import ListFacet from './elements/list-facet.js';
@@ -35,7 +36,7 @@
         import NumberFormat from './elements/number-format.js';
         import DateRangePicker from './elements/daterange-picker.js';
         window.slicer = {
-          Chart: BarChart,
+          Chart: TableRenderer,
         };
         customElements.define('incognito-checkbox', IncognitoCheckbox);
         customElements.define('facet-sidebar', FacetSidebar);
@@ -45,6 +46,7 @@
         customElements.define('literal-facet', LiteralFacet);
         customElements.define('vitals-facet', VitalsFacet);
         customElements.define('url-selector', URLSelector);
+        customElements.define('conversion-tracker', ConversionTracker);
         customElements.define('number-format', NumberFormat);
         customElements.define('daterange-picker', DateRangePicker);
   </script>
@@ -99,7 +101,7 @@
             </ul>
             <div class="key-metrics-more" aria-hidden="true">
               <ul>
-                <li id="cls" title="Time to First Byte">
+                <li id="ttfb" title="Time to First Byte">
                   <h2>TTFB</h2>
                   <p><number-format>0</number-format></p>
                 </li>
@@ -107,9 +109,7 @@
             </div>
           </div>
           <figure>
-            <div class="chart-container solitary">
-              <canvas id="time-series"></canvas>
-            </div>
+            <div id="table-container"></div>
             <div class="filter-tags"></div>
             <figcaption>
               <span aria-hidden="true" id="low-data-warning"><span class="danger-icon"></span> small sample size, accuracy
@@ -157,7 +157,7 @@
             <link-facet facet="url" drilldown="list.html" thumbnail="true" highlight="filter">
               <legend>URL</legend>
               <a href="/docs/optel-explorer#url" class="help"
-              target="_blank" title="What different pages make up your site?"></a>  
+              target="_blank" title="What different pages make up your site?"></a>
             </link-facet>
             <list-facet facet="checkpoint" drilldown="flow.html" highlight="filter">
               <legend>Checkpoints</legend>
@@ -184,6 +184,10 @@
                 <dd>Consent</dd>
                 <dt>navigate</dt>
                 <dd>Internal Navigation</dd>
+                <dt>language</dt>
+                <dd>Language Preference</dd>
+                <dt>redirect</dt>
+                <dd>Redirect</dd>
               </dl>
             </list-facet>
             <literal-facet facet="click.source" drilldown="list.html">
@@ -228,7 +232,7 @@
 
             <list-facet facet="consent.source">
               <legend>Consent Provider</legend>
-              <a href="docs/optel-explorer#facet-consent" class="help" target="_blank" 
+              <a href="docs/optel-explorer#facet-consent" class="help" target="_blank"
                 title="Which consent provider is enabled on the site?"></a>
               <dl>
                 <dt>onetrust</dt>
@@ -243,7 +247,7 @@
             </list-facet>
             <list-facet facet="consent.target">
               <legend>Consent Dialog</legend>
-              <a href="docs/optel-explorer#facet-consent" class="help" target="_blank" 
+              <a href="docs/optel-explorer#facet-consent" class="help" target="_blank"
                 title="How does the visitors interact with the consent window/modal on the site?"></a>
               <dl>
                 <dt>show</dt>
@@ -281,10 +285,6 @@
             <vitals-facet drilldown="cwvperf.html" facet="vitals">
               <legend>Experience Quality</legend>
             </vitals-facet>
-            <dt>language</dt>
-            <dd>Language Preference</dd>
-            <dt>redirect</dt>
-            <dd>Redirect</dd>
           </facet-sidebar>
         </div>
         </div>

@@ -1330,3 +1330,242 @@ html[data-theme="dark"] .ai-optel-report-generator-button {
   background: var(--spectrum-gray-800);
   border-color: var(--ai-claude-orange);
 }
+
+/* table drilldown */
+
+#table-container {
+  overflow: auto;
+  max-height: calc(100vh - var(--nav-height) - 349px);
+  min-height: 150px;
+}
+
+#table-container table {
+  width: 100%;
+  min-width: 600px;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 16px;
+  border: 1px solid var(--gray-300);
+  table-layout: fixed;
+  font-size: var(--type-body-s-size);
+}
+
+#table-container thead th {
+  background-color: var(--light-indigo);
+  color: var(--dark-indigo);
+  border-bottom: 1px solid var(--gray-400);
+  padding: 8px 12px;
+  text-align: left;
+  white-space: nowrap;
+  position: relative;
+}
+
+#table-container thead th:first-child {
+  border-top-left-radius: 15px;
+}
+
+#table-container thead th:last-child {
+  border-top-right-radius: 15px;
+}
+
+#table-container thead th:nth-child(1) { width: 25%; }
+
+#table-container thead th:nth-child(2) { width: 35%; }
+
+#table-container thead th:nth-child(3) { width: 15%; }
+
+#table-container thead th:nth-child(4) { width: 25%; }
+
+#table-container thead th[data-sort] {
+  user-select: none;
+  padding-right: 28px;
+}
+
+#table-container thead th[data-sort] button {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+
+#table-container thead th[data-sort] button:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid currentcolor;
+  outline-offset: 2px;
+}
+
+/* down arrow for unsorted / descending */
+#table-container thead th[data-sort]::after {
+  content: "";
+  display: block;
+  box-sizing: border-box;
+  position: absolute;
+  width: 0;
+  height: 0;
+  border: 5px solid transparent;
+  border-top-color: currentcolor;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-2px);
+}
+
+/* up arrow for ascending */
+#table-container thead th[data-sort][aria-sort="ascending"]::after {
+  border-top-color: transparent;
+  border-bottom-color: currentcolor;
+  transform: translateY(-8px);
+}
+
+#table-container thead th[data-sort][aria-sort="none"]::after {
+  opacity: 0.4;
+}
+
+#table-container tbody tr:nth-child(even) {
+  background-color: var(--gray-100);
+}
+
+#table-container tbody tr:hover {
+  background-color: var(--light-indigo);
+}
+
+#table-container tbody tr:last-child td {
+  border-bottom: none;
+}
+
+#table-container td {
+  padding: 6px 12px;
+  vertical-align: middle;
+  word-break: break-all;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+#table-container .count-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 1em;
+  font-size: var(--type-body-xs-size);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+#table-container .count-badge.critical {
+  background-color: var(--light-red);
+  color: var(--dark-red);
+}
+
+#table-container .count-badge.high {
+  background-color: var(--light-orange);
+  color: var(--dark-orange);
+}
+
+#table-container .count-badge.medium {
+  background-color: var(--light-orange);
+  color: var(--medium-orange);
+}
+
+#table-container .count-badge.low {
+  background-color: var(--light-green);
+  color: var(--dark-green);
+}
+
+#table-container .count-bar {
+  height: 4px;
+  background-color: var(--gray-300);
+  border-radius: 2px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+#table-container .count-bar-fill {
+  height: 100%;
+  width: var(--fill-width, 0%);
+  border-radius: 2px;
+}
+
+#table-container .count-bar-fill.critical {
+  background-color: var(--dark-red);
+}
+
+#table-container .count-bar-fill.high {
+  background-color: var(--dark-orange);
+}
+
+#table-container .count-bar-fill.medium {
+  background-color: var(--medium-orange);
+}
+
+#table-container .count-bar-fill.low {
+  background-color: var(--dark-green);
+}
+
+@media (width >= 600px) {
+  #table-container td,
+  #table-container thead th {
+    padding: 8px 14px;
+  }
+}
+
+@media (width >= 900px) {
+  #table-container td,
+  #table-container thead th {
+    padding: 10px 16px;
+  }
+
+  #table-container thead th[data-sort] {
+    padding-right: 32px;
+  }
+
+  #table-container thead th[data-sort]::after {
+    right: 12px;
+  }
+
+  #table-container table {
+    font-size: var(--type-body-m-size);
+  }
+}
+
+html[data-theme="dark"] #table-container tbody tr:nth-child(even) {
+  background-color: var(--gray-700);
+}
+
+html[data-theme="dark"] #table-container tbody tr:hover {
+  background-color: var(--dark-indigo);
+}
+
+html[data-theme="dark"] #table-container td {
+  border-bottom-color: var(--gray-600);
+}
+
+html[data-theme="dark"] #table-container .count-badge.critical {
+  background-color: var(--dark-red);
+  color: var(--light-red);
+}
+
+html[data-theme="dark"] #table-container .count-badge.high {
+  background-color: var(--dark-orange);
+  color: var(--light-orange);
+}
+
+html[data-theme="dark"] #table-container .count-badge.medium {
+  background-color: var(--medium-orange);
+  color: var(--light-orange);
+}
+
+html[data-theme="dark"] #table-container .count-badge.low {
+  background-color: var(--dark-green);
+  color: var(--light-green);
+}
+
+html[data-theme="dark"] #table-container table {
+  border-color: var(--gray-600);
+}
+
+html[data-theme="dark"] #table-container thead th {
+  background-color: var(--dark-indigo);
+  color: var(--light-indigo);
+  border-bottom-color: var(--gray-600);
+}
