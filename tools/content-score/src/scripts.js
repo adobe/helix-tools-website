@@ -186,7 +186,8 @@ function normalizeText(text) {
  */
 function getPlainHtmlPath() {
   const plain = 'plain.html';
-  const { pathname } = window.location;
+  let { pathname } = window.location;
+  if (pathname.endsWith('.html')) pathname = pathname.slice(0, -5);
   if (pathname.endsWith('/')) {
     const dir = pathname.replace(/\/+$/, '') || '/';
     if (dir === '/') {
