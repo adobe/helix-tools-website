@@ -58,6 +58,12 @@ const PSI_SAMPLE_COUNT = 20;
 /** Alpha for labeling two-sample t-test results (p less than alpha → significant). */
 const SIGNIFICANCE_ALPHA = 0.05;
 
+/**
+ * Extracts values for a specific key from an array of objects.
+ * @param {Object[]} arr - Array of objects containing performance metrics
+ * @param {string} key - Key name to extract from each object (e.g., 'FCP', 'LCP')
+ * @returns {any[]} Array of values for the specified key
+ */
 function keyToArray(arr, key) {
   return arr.map((item) => item[key]);
 }
