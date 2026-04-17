@@ -67,7 +67,6 @@ function keyToArray(arr, key) {
   return arr.map((item) => item[key]);
 }
 
-
 /**
  * Builds list item HTML for a metric significance row (p-value + verdict vs α).
  * @param {string} key - Metric name
@@ -81,7 +80,6 @@ function formatSignificanceListItemHtml(key, p) {
   const verdictText = significant ? 'Significant' : 'Not significant';
   return `<code>${key}</code>: <span class="psi-sig-p">p = ${pFormatted}</span> — <span class="${verdictClass}">${verdictText}</span> <span class="psi-sig-alpha">(α = ${SIGNIFICANCE_ALPHA})</span>`;
 }
-
 
 /**
  * @param {unknown} json - Parsed JSON from deep-psi proxy
@@ -153,7 +151,6 @@ async function getResults(url, samples) {
 
   return valid;
 }
-
 
 /**
  * Converts raw PSI values to display units (seconds for paint metrics; CLS unchanged).
@@ -308,7 +305,6 @@ function createTable(results, averages) {
   return tableContainer;
 }
 
-
 /**
  * Shows loading state across all form controls to prevent user interaction during PSI analysis.
  */
@@ -353,7 +349,6 @@ function hideLoadingAnimation() {
     clearCheckbox.disabled = false;
   }
 }
-
 
 /**
  * Executes PSI analysis for a single URL and displays comprehensive results.
