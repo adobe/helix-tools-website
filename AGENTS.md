@@ -145,7 +145,7 @@ Pages are progressively loaded in three phases to maximize performance. This pro
 
 ## Testing & Quality Assurance
 
-See `TESTING.md` for the full testing philosophy, what warrants tests vs. what to skip, tool complexity tiers, and test conventions.
+See `TESTING.md` for the full testing philosophy, what warrants automated CI tests vs. what to skip, and test conventions.
 
 ### Performance
 - Follow AEM Edge Delivery performance best practices https://www.aem.live/developer/keeping-it-100
