@@ -1,7 +1,6 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
-import { getErrorCode, getErrorMessage } from './utils.js';
 
 function getFormData(form) {
   const data = {};
@@ -69,8 +68,31 @@ function clearResults(table) {
 }
 
 function updateTableError(table, errCode, org, site) {
-  if (errCode === 401) ensureLogin(org, site);
-  const { title, msg } = getErrorMessage(errCode, org, site);
+  const { title, msg } = (() => {
+    switch (errCode) {
+      case 401:
+        ensureLogin(org, site);
+        return {
+          title: '401 Unauthorized Error',
+          msg: `Unable to display results. <a target="_blank" href="https://main--${site}--${org}.aem.page">Sign in to the ${site} project sidekick</a> to view the results.`,
+        };
+      case 404:
+        return {
+          title: '404 Not Found Error',
+          msg: 'Unable to display results. Ensure your sitemap/index path is correct.',
+        };
+      case 499:
+        return {
+          title: 'Initial Fetch Failed',
+          msg: 'This is likely due to CORS. Either use a CORS allow plugin or add a header <code>Access-Control-Allow-Origin: https://tools.aem.live</code> in your site config.',
+        };
+      default:
+        return {
+          title: 'Error',
+          msg: 'Unable to display results. Please check the console for more information.',
+        };
+    }
+  })();
 
   table.querySelectorAll('tbody').forEach((tbody) => {
     if (tbody.classList.contains('error')) {
@@ -372,7 +394,15 @@ async function init(doc) {
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(err);
-      updateTableError(table, getErrorCode(err), org, site);
+      if (err.status === 401 || err.message.startsWith('Unauthorized')) {
+        updateTableError(table, 401, org, site);
+      } else if (err.message.startsWith('Failed on initial fetch')) {
+        updateTableError(table, 499, org, site);
+      } else if (err.message.startsWith('Not found')) {
+        updateTableError(table, 404, org, site);
+      } else {
+        updateTableError(table, 500, org, site);
+      }
     } finally {
       stopButton.setAttribute('aria-hidden', 'true');
       enableForm(form);
