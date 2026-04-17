@@ -4,16 +4,7 @@ import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { loadPrism, highlight } from '../../utils/prism/prism.js';
 import {
-  toDateTimeLocal,
-  toISODate,
-  calculatePastDate,
-  writeTimeParams as buildTimeParams,
-  formatTimestamp,
-  formatUser,
-  formatErrors,
-  formatMethod,
-  formatDuration,
-  formatPath,
+  toDateTimeLocal, toUTCDate, toISODate, calculatePastDate,
 } from './utils.js';
 
 // field ids
@@ -53,9 +44,6 @@ function debounce(func, wait) {
     timeout = setTimeout(() => func.apply(context, args), wait);
   };
 }
-
-// date management — pad, toDateTimeLocal, toUTCDate, toISODate, calculatePastDate
-// are imported from ./utils.js
 
 // loading button management
 /**
@@ -273,14 +261,25 @@ class RewrittenData {
     this.preview = preview;
   }
 
-  // Formatting methods delegate to pure functions imported from ./utils.js
-  // so they can be tested independently without a DOM.
+  /**
+   * Formats timestamp value into UTC format.
+   * @param {string|number|null} value - Timestamp.
+   * @returns {string} Formatted UTC date (or '-' if no value provided).
+   */
+  timestamp(value) {
+    if (!value) return '-';
+    return toUTCDate(new Date(value));
+  }
 
-  /** @param {string|number|null} value */
-  timestamp(value) { return formatTimestamp(value); }
-
-  /** @param {string|null} value */
-  user(value) { return formatUser(value); }
+  /**
+   * Formats user email address into a :mailto link.
+   * @param {string|null} value - User email address.
+   * @returns {string} Mailto link formatted from email address (or '-' if no value provided).
+   */
+  user(value) {
+    if (!value) return '-';
+    return `<a href="mailto:${value}" title="${value}">${value.split('@')[0]}</a>`;
+  }
 
   /**
    * Generates link or button based on type of path.
@@ -288,14 +287,106 @@ class RewrittenData {
    * @returns {string} Link or button (or '-' if no value or unhandled type).
    */
   path(value) {
-    return formatPath(value, this.data, this.live, this.preview);
+    const writeA = (href, text) => `<a href="https://${href}" target="_blank">${text}</a>`;
+    const writeAdminDetails = (href, text) => `<button
+        type='button'
+        class='button outline'
+        data-url='https://${href}'
+        value='${text}'
+        title='${text}'>
+          ${text.length > 26 ? `${text.substring(0, 26)}…` : text}
+      </button>`;
+    // path is created based on route/source
+    const ADMIN = 'admin.hlx.page';
+    const type = this.data.route || this.data.source;
+    if (!type) return value || '-';
+    if (type === 'code') {
+      return writeA(`github.com/${this.data.owner}/${this.data.repo}/tree/${this.data.ref}`, value);
+    }
+    if (type === 'config') {
+      return writeAdminDetails(`${ADMIN}/config/${this.data.org}/sites/${this.data.site}.json`, value);
+    }
+    if (type === 'index' || type === 'live') {
+      return writeA(`${this.live}${value}`, value);
+    }
+    if (type === 'indexer') {
+      if (!this.data.changes) return value || '-';
+      // sometimes ms appears in indexer path?
+      const updateMs = !this.data.duration;
+      if (updateMs) this.data.duration = 0;
+      const changes = this.data.changes.map((change) => {
+        const segments = change.split(' ');
+        const segment = segments.find((s) => s.startsWith('/'));
+        if (updateMs) {
+          const ms = segments.find((s) => s.endsWith('ms'));
+          if (ms && ms !== segment) {
+            const number = Number.parseInt(ms.replace('ms', ''), 10);
+            if (!Number.isNaN(number)) this.data.duration += number;
+          }
+        }
+        return segment ? writeAdminDetails(`${ADMIN}/index/${this.data.owner}/${this.data.repo}/${this.data.ref}${segment}`, segment) : '/';
+      });
+      return changes.join('<br /><br />');
+    }
+    if (type === 'job' || type.includes('-job')) {
+      return writeAdminDetails(`${ADMIN}/job/${this.data.org}/${this.data.site}/${this.data.ref}${value}/details`, value);
+    }
+    if (type === 'snapshot') {
+      // snapshot logs have job ID in the 'job' field, not 'path'
+      const jobId = this.data.job;
+      if (jobId) {
+        return writeAdminDetails(`${ADMIN}/job/${this.data.org}/${this.data.site}/${this.data.ref}/${jobId}/details`, jobId);
+      }
+      return value || '-';
+    }
+    if (type === 'preview') {
+      return writeA(`${this.preview}${value}`, value);
+    }
+    if (type === 'sitemap') {
+      // when source: sitemap, we get arrays of paths
+      if (this.data.updated) {
+        const paths = this.data.updated[0].map(
+          (update) => writeA(`${this.live}${update}`, update),
+        );
+        return paths.join('<br /><br />');
+      }
+      // when route: sitemap, we only get a path
+      return writeA(`${this.live}${this.data.path}`, this.data.path);
+    }
+    if (type === 'status') {
+      return writeAdminDetails(`${ADMIN}/status/${this.data.owner}/${this.data.repo}/${this.data.ref}${value}`, value);
+    }
+    // eslint-disable-next-line no-console
+    console.warn('unhandled log type:', type, this.data);
+    return value || '-';
   }
 
-  /** @param {Array|null} value */
-  errors(value) { return formatErrors(value); }
+  /**
+   * Formats array of error messages for display.
+   * @param {Array|null} value - Array of error objects.
+   * @returns {string} Error messages (or '-' if no errors present).
+   */
+  errors(value) {
+    if (!value || value.length === 0) return '-';
+    const errs = value.map((err) => {
+      const { message, target } = err;
+      if (message) {
+        return `${message} (${target})`;
+      }
+      return err;
+    });
+    return errs.join(', <br />');
+  }
 
-  /** @param {string|null} value */
-  method(value) { return formatMethod(value); }
+  /**
+   * Styles HTTP method in code tags.
+   * @param {string|null} value - HTTP method.
+   * @returns {string} HTTP method wrapped in <code> tags (or '-' if no value provided).
+   */
+  method(value) {
+    if (!value) return '-';
+    return `<code>${value}</code>`;
+  }
 
   /**
    * Creates a status light for HTTP status code.
@@ -310,8 +401,15 @@ class RewrittenData {
     return badge.outerHTML;
   }
 
-  /** @param {number|null} value */
-  duration(value) { return formatDuration(value); }
+  /**
+   * Formats the duration in seconds.
+   * @param {number|null} value - Duration (in ms).
+   * @returns {string} Duration in seconds (or '-' if no value provided).
+   */
+  duration(value) {
+    if (!value) return '-';
+    return `${(value / 1000).toFixed(1)} s`;
+  }
 
   /**
    * Transforms data based on key.
@@ -400,17 +498,22 @@ function displayLogs(logs, live, preview) {
 }
 
 /**
- * Constructs query params based on the provided timeframe, reading from/to from DOM inputs.
+ * Constructs query params based on the provided timeframe.
  * @param {string} timeframe - Timeframe for logs.
  * @returns {string} Constructed query params.
  */
 function writeTimeParams(timeframe) {
   if (timeframe === 'custom' || timeframe === 'today') {
-    const fromISO = toISODate(FROM.value);
-    const toISO = toISODate(TO.value);
-    return buildTimeParams(timeframe, fromISO, toISO);
+    const [from, to] = [FROM, TO].map((i) => encodeURIComponent(toISODate(i.value)));
+    return `from=${from}&to=${to}`;
   }
-  return buildTimeParams(timeframe);
+  const [days, hours, mins] = timeframe.split(':').map((v) => parseInt(v, 10));
+  // eslint-disable-next-line no-nested-ternary
+  return (days > 0)
+    ? `since=${days}d`
+    : (hours > 0)
+      ? `since=${hours}h`
+      : `since=${mins}m`;
 }
 
 /**
