@@ -70,10 +70,27 @@ function getHeader(headers, key) {
  * @param {string[]} [mismatchFields] - Field names that differ from live
  * @returns {object|null}
  */
+function formatError(err) {
+  if (!err) return '';
+  if (typeof err === 'string') return err;
+  if (typeof err === 'object') {
+    const { name, message } = err;
+    if (name && message) return `${name}: ${message}`;
+    if (message) return String(message);
+    if (name) return String(name);
+    try {
+      return JSON.stringify(err);
+    } catch {
+      return String(err);
+    }
+  }
+  return String(err);
+}
+
 function buildPopTooltipData(popResponse, mismatchFields = []) {
   if (!popResponse) return null;
   const headers = popResponse.headers ?? popResponse.response?.headers ?? {};
-  const popError = popResponse.error ?? '';
+  const popError = formatError(popResponse.error);
   const xError = getHeader(headers, 'x-error') || getHeader(headers, 'x_error') || '';
   const resp = popResponse.response ?? {};
   const message = resp.message ?? resp.Message ?? '';
