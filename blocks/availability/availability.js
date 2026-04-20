@@ -59,17 +59,6 @@ function getHeader(headers, key) {
   return entry ? String(entry[1] ?? '') : '';
 }
 
-/**
- * Builds slim tooltip data from a pop response.
- * @param {object} popResponse
- * @param {boolean} headerMismatch
- * @returns {object|null}
- */
-/**
- * @param {object} popResponse
- * @param {string[]} [mismatchFields] - Field names that differ from live
- * @returns {object|null}
- */
 function formatError(err) {
   if (!err) return '';
   if (typeof err === 'string') return err;
@@ -87,6 +76,12 @@ function formatError(err) {
   return String(err);
 }
 
+/**
+ * Builds slim tooltip data from a pop response.
+ * @param {object} popResponse
+ * @param {string[]} [mismatchFields] - Field names that differ from live
+ * @returns {object|null}
+ */
 function buildPopTooltipData(popResponse, mismatchFields = []) {
   if (!popResponse) return null;
   const headers = popResponse.headers ?? popResponse.response?.headers ?? {};
