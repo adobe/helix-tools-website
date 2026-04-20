@@ -5,6 +5,8 @@ node_modules/
 **/lcov.info
 **/junit.xml
 
+.env
+
 helix-importer-ui
 .DS_Store
 *.bak
