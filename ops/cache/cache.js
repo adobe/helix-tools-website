@@ -548,11 +548,11 @@ const renderDetails = (data) => {
   const liveRef = getReferenceResponse(data.live?.pops);
   if (data.cdn) {
     data.cdn.headers = cdnRef.headers;
-    data.cdn.status = cdnRef.status;
+    data.cdn.status = cdnRef.status ?? data.cdn.status;
   }
   if (data.live) {
     data.live.headers = liveRef.headers;
-    data.live.status = liveRef.status;
+    data.live.status = liveRef.status ?? data.live.status;
   }
 
   const opts = {
