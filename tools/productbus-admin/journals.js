@@ -3,21 +3,11 @@
  */
 
 import { apiFetch } from './api.js';
-import { showToast } from './ui.js';
+import { showToast, escapeHtml } from './ui.js';
 
 const FILTER_DEBOUNCE_MS = 150;
 const MAX_RANGE_MS = 12 * 60 * 60 * 1000;
 const RANGE_ADJUST_MS = 15 * 60 * 1000;
-
-function escapeHtml(str) {
-  if (str === null || str === undefined) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
 
 function toDatetimeLocal(date) {
   const pad = (n) => String(n).padStart(2, '0');

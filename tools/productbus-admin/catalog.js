@@ -4,7 +4,7 @@
 
 import { apiFetch } from './api.js';
 import {
-  showToast, createModal, createFormField, getUrlParam, setUrlParam, confirmModal,
+  showToast, createModal, createFormField, getUrlParam, setUrlParam, confirmModal, escapeHtml,
 } from './ui.js';
 
 const AVAILABILITY_OPTIONS = [
@@ -44,13 +44,13 @@ function renderTable(container, products, ctx) {
       <tbody>
         ${products.map((p) => `
           <tr>
-            <td><code>${p.sku}</code></td>
-            <td>${p.name || '—'}</td>
-            <td><code>${p.path || '—'}</code></td>
+            <td><code>${escapeHtml(p.sku)}</code></td>
+            <td>${escapeHtml(p.name || '—')}</td>
+            <td><code>${escapeHtml(p.path || '—')}</code></td>
             <td>
               <div class="actions">
-                <button class="btn-icon" data-action="edit" data-path="${p.path}" title="Edit">Edit</button>
-                <button class="btn-icon danger" data-action="delete" data-path="${p.path}" title="Delete">Delete</button>
+                <button class="btn-icon" data-action="edit" data-path="${escapeHtml(p.path)}" title="Edit">Edit</button>
+                <button class="btn-icon danger" data-action="delete" data-path="${escapeHtml(p.path)}" title="Delete">Delete</button>
               </div>
             </td>
           </tr>
@@ -121,7 +121,7 @@ function buildFormHTML(product) {
       </div>
       <div class="form-field">
         <label for="description">Description</label>
-        <textarea id="description" name="description" rows="3">${p.description || ''}</textarea>
+        <textarea id="description" name="description" rows="3">${escapeHtml(p.description || '')}</textarea>
       </div>
       <div class="form-row">
         ${createFormField('metaTitle', 'Meta Title', 'text', { value: p.metaTitle || '' }).outerHTML}
@@ -204,7 +204,7 @@ function openProductModal(ctx, existing, onSaved) {
           <button type="button" data-view="form">Form</button>
           <button type="button" class="active" data-view="json">JSON</button>
         </div>
-        <textarea class="json-editor" id="json-editor">${JSON.stringify(jsonData, null, 2)}</textarea>
+        <textarea class="json-editor" id="json-editor">${escapeHtml(JSON.stringify(jsonData, null, 2))}</textarea>
       `;
     }
 
@@ -297,7 +297,7 @@ export async function render(container, ctx) {
       <h1>Catalog</h1>
     </div>
     <div class="page-actions">
-      <input type="text" class="search-input" placeholder="Search products..." id="search-catalog" value="${initialQ.replace(/"/g, '&quot;')}">
+      <input type="text" class="search-input" placeholder="Search products..." id="search-catalog" value="${escapeHtml(initialQ)}">
       <button class="button" id="add-product-btn">+ Create Product</button>
     </div>
     <div id="catalog-table">

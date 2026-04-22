@@ -4,7 +4,7 @@
 
 import { apiFetch } from './api.js';
 import {
-  showToast, createModal, createFormField, getUrlParam, setUrlParam, confirmModal,
+  showToast, createModal, createFormField, getUrlParam, setUrlParam, confirmModal, escapeHtml,
 } from './ui.js';
 
 const DIR_PATH_PATTERN = /^\/[a-z0-9-/]+$/;
@@ -33,11 +33,11 @@ function renderTable(container, indices, ctx) {
       <tbody>
         ${indices.map((idx) => `
           <tr>
-            <td><code>${idx.path}</code></td>
+            <td><code>${escapeHtml(idx.path)}</code></td>
             <td>${idx.lastModified ? new Date(idx.lastModified).toLocaleDateString() : '—'}</td>
             <td>
               <div class="actions">
-                <button class="btn-icon danger" data-action="delete" data-path="${idx.path}" title="Delete">Delete</button>
+                <button class="btn-icon danger" data-action="delete" data-path="${escapeHtml(idx.path)}" title="Delete">Delete</button>
               </div>
             </td>
           </tr>
@@ -81,7 +81,7 @@ function openCreateModal(ctx, onCreated) {
   const footer = document.createElement('div');
   footer.innerHTML = `
     <button type="button" class="button outline cancel-btn">Cancel</button>
-    <button type="submit" class="button save-btn">Create Index</button>
+    <button type="submit" form="index-form" class="button save-btn">Create Index</button>
   `;
 
   const dialog = createModal('Create Index', content, footer);
@@ -131,7 +131,7 @@ export async function render(container, ctx) {
       <h1>Indices</h1>
     </div>
     <div class="page-actions">
-      <input type="text" class="search-input" placeholder="Search indices..." id="search-indices" value="${initialQ.replace(/"/g, '&quot;')}">
+      <input type="text" class="search-input" placeholder="Search indices..." id="search-indices" value="${escapeHtml(initialQ)}">
       <button class="button" id="add-index-btn">+ Create Index</button>
     </div>
     <div id="indices-table">

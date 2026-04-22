@@ -3,7 +3,7 @@
  */
 
 import { apiFetch, setAuthState } from './api.js';
-import { showToast } from './ui.js';
+import { showToast, escapeHtml } from './ui.js';
 
 function navigate(search) {
   window.history.pushState({}, '', `${window.location.pathname}?${search}`);
@@ -69,8 +69,8 @@ export async function render(container, ctx) {
         // Switch to OTP entry
         form.innerHTML = `
           <div class="form-field">
-            <label>Email</label>
-            <input type="text" value="${email}" disabled>
+            <label for="otp-email">Email</label>
+            <input type="text" id="otp-email" value="${escapeHtml(email)}" disabled>
           </div>
           <div class="form-field">
             <label for="otp-code">Verification Code</label>

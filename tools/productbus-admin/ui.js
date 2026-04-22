@@ -11,6 +11,21 @@ function getRoot() {
   return document.querySelector('.productbus-admin') || document.body;
 }
 
+/**
+ * HTML-escape a string for safe interpolation into `innerHTML` templates.
+ * Covers `& < > " '` — required for any API- or URL-sourced value that
+ * reaches an innerHTML sink, including textarea RCDATA and attribute values.
+ */
+export function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export function showToast(message, type = 'success') {
   const existing = document.querySelector('.productbus-toast');
   if (existing) existing.remove();

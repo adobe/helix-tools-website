@@ -5,7 +5,7 @@
  */
 
 import { apiFetch } from './api.js';
-import { showToast } from './ui.js';
+import { showToast, escapeHtml } from './ui.js';
 
 const ALLOWED_PERMISSIONS = [
   'catalog:read',
@@ -24,16 +24,6 @@ const ALLOWED_PERMISSIONS = [
 ];
 
 const MAX_TTL_SECONDS = 365 * 24 * 60 * 60;
-
-function escapeHtml(str) {
-  if (str === null || str === undefined) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
 
 function humanizeSeconds(total) {
   if (total % 86400 === 0) return `${total / 86400} day${total === 86400 ? '' : 's'}`;

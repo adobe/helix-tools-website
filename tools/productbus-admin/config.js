@@ -3,7 +3,9 @@
  */
 
 import { apiFetch } from './api.js';
-import { showToast, createFormField, confirmModal } from './ui.js';
+import {
+  showToast, createFormField, confirmModal, escapeHtml,
+} from './ui.js';
 
 function buildFormHTML(config) {
   const c = config || {};
@@ -26,7 +28,7 @@ function buildFormHTML(config) {
   }).outerHTML}
       <div class="form-field">
         <label for="otpEmailBodyTemplate">OTP Email Body Template</label>
-        <textarea id="otpEmailBodyTemplate" name="otpEmailBodyTemplate" rows="6" maxlength="102400">${c.otpEmailBodyTemplate || ''}</textarea>
+        <textarea id="otpEmailBodyTemplate" name="otpEmailBodyTemplate" rows="6" maxlength="102400">${escapeHtml(c.otpEmailBodyTemplate || '')}</textarea>
       </div>
       ${createFormField('otpEmailBodyUrl', 'OTP Email Body URL', 'text', {
     value: c.otpEmailBodyUrl || '', maxLength: '1024',
@@ -102,7 +104,7 @@ export async function render(container, ctx) {
           <button type="button" data-view="form">Form</button>
           <button type="button" class="active" data-view="json">JSON</button>
         </div>
-        <textarea class="json-editor" id="json-editor" style="min-height: 400px;">${JSON.stringify(config, null, 2)}</textarea>
+        <textarea class="json-editor" id="json-editor" style="min-height: 400px;">${escapeHtml(JSON.stringify(config, null, 2))}</textarea>
         <div class="config-actions">
           <button class="button danger outline" id="delete-config-btn">Delete Config</button>
           <button class="button" id="save-config-btn">Save Config</button>

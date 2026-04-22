@@ -5,6 +5,7 @@
 
 import { registerToolReady } from '../../scripts/scripts.js';
 import { getAuthState, clearAuthState, apiFetch } from './api.js';
+import { escapeHtml } from './ui.js';
 
 // ============================================================================
 // Query Params
@@ -86,11 +87,11 @@ function renderSidebar(org, site, currentPage) {
       <form id="connect-form">
         <div class="form-field">
           <label for="connect-org">Organization</label>
-          <input type="text" id="connect-org" name="org" required placeholder="my-org" autocomplete="off" value="${org || ''}">
+          <input type="text" id="connect-org" name="org" required placeholder="my-org" autocomplete="off" value="${escapeHtml(org || '')}">
         </div>
         <div class="form-field">
           <label for="connect-site">Site</label>
-          <input type="text" id="connect-site" name="site" required placeholder="my-site" autocomplete="off" value="${site || ''}">
+          <input type="text" id="connect-site" name="site" required placeholder="my-site" autocomplete="off" value="${escapeHtml(site || '')}">
         </div>
         <button type="submit" class="button connect-btn">Connect</button>
       </form>
@@ -126,16 +127,16 @@ function renderSidebar(org, site, currentPage) {
     <ul class="sidebar-nav">
       ${navLinks.map((link) => `
         <li>
-          <a href="?page=${link.id}&org=${org}&site=${site}"
+          <a href="?page=${encodeURIComponent(link.id)}&org=${encodeURIComponent(org)}&site=${encodeURIComponent(site)}"
              class="${currentPage === link.id ? 'active' : ''}"
-             data-page="${link.id}">
-            <span>${link.label}</span>
+             data-page="${escapeHtml(link.id)}">
+            <span>${escapeHtml(link.label)}</span>
           </a>
         </li>
       `).join('')}
     </ul>
     <div class="sidebar-footer">
-      <span class="sidebar-email">${auth.email}</span>
+      <span class="sidebar-email">${escapeHtml(auth.email)}</span>
       <button type="button" class="button outline" id="logout-btn">Logout</button>
     </div>
   `;

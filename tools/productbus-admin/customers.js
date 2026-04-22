@@ -4,7 +4,7 @@
 
 import { apiFetch } from './api.js';
 import {
-  showToast, createModal, createFormField, getUrlParam, setUrlParam, confirmModal,
+  showToast, createModal, createFormField, getUrlParam, setUrlParam, confirmModal, escapeHtml,
 } from './ui.js';
 
 function renderTable(container, customers, ctx) {
@@ -34,14 +34,14 @@ function renderTable(container, customers, ctx) {
       <tbody>
         ${customers.map((c) => `
           <tr>
-            <td>${c.email}</td>
-            <td>${c.firstName || '—'}</td>
-            <td>${c.lastName || '—'}</td>
-            <td>${c.phone || '—'}</td>
+            <td>${escapeHtml(c.email)}</td>
+            <td>${escapeHtml(c.firstName || '—')}</td>
+            <td>${escapeHtml(c.lastName || '—')}</td>
+            <td>${escapeHtml(c.phone || '—')}</td>
             <td>${c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '—'}</td>
             <td>
               <div class="actions">
-                <button class="btn-icon danger" data-action="delete" data-email="${c.email}" title="Delete">Delete</button>
+                <button class="btn-icon danger" data-action="delete" data-email="${escapeHtml(c.email)}" title="Delete">Delete</button>
               </div>
             </td>
           </tr>
@@ -99,9 +99,9 @@ function openCreateModal(ctx, onCreated) {
           <button type="button" data-view="form">Form</button>
           <button type="button" class="active" data-view="json">JSON</button>
         </div>
-        <textarea class="json-editor" id="json-editor">${JSON.stringify({
+        <textarea class="json-editor" id="json-editor">${escapeHtml(JSON.stringify({
     firstName: '', lastName: '', email: '', phone: '',
-  }, null, 2)}</textarea>
+  }, null, 2))}</textarea>
       `;
     }
 
@@ -165,7 +165,7 @@ export async function render(container, ctx) {
       <h1>Customers</h1>
     </div>
     <div class="page-actions">
-      <input type="text" class="search-input" placeholder="Search customers..." id="search-customers" value="${initialQ.replace(/"/g, '&quot;')}">
+      <input type="text" class="search-input" placeholder="Search customers..." id="search-customers" value="${escapeHtml(initialQ)}">
       <button class="button" id="add-customer-btn">+ Create Customer</button>
     </div>
     <div id="customers-table">

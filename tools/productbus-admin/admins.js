@@ -4,7 +4,7 @@
 
 import { apiFetch } from './api.js';
 import {
-  showToast, createModal, getUrlParam, setUrlParam, confirmModal,
+  showToast, createModal, getUrlParam, setUrlParam, confirmModal, escapeHtml,
 } from './ui.js';
 
 function renderTable(container, admins, ctx) {
@@ -32,12 +32,12 @@ function renderTable(container, admins, ctx) {
       <tbody>
         ${admins.map((a) => `
           <tr>
-            <td>${a.email}</td>
+            <td>${escapeHtml(a.email)}</td>
             <td>${a.dateAdded ? new Date(a.dateAdded).toLocaleDateString() : '—'}</td>
-            <td>${a.addedBy || '—'}</td>
+            <td>${escapeHtml(a.addedBy || '—')}</td>
             <td>
               <div class="actions">
-                <button class="btn-icon danger" data-action="delete" data-email="${a.email}" title="Remove">Remove</button>
+                <button class="btn-icon danger" data-action="delete" data-email="${escapeHtml(a.email)}" title="Remove">Remove</button>
               </div>
             </td>
           </tr>
@@ -80,7 +80,7 @@ function openAddModal(ctx, onAdded) {
   const footer = document.createElement('div');
   footer.innerHTML = `
     <button type="button" class="button outline cancel-btn">Cancel</button>
-    <button type="submit" class="button save-btn">Add Admin</button>
+    <button type="submit" form="add-admin-form" class="button save-btn">Add Admin</button>
   `;
 
   const dialog = createModal('Add Admin', content, footer);
@@ -118,7 +118,7 @@ export async function render(container, ctx) {
       <h1>Admins</h1>
     </div>
     <div class="page-actions">
-      <input type="text" class="search-input" placeholder="Search admins..." id="search-admins" value="${initialQ.replace(/"/g, '&quot;')}">
+      <input type="text" class="search-input" placeholder="Search admins..." id="search-admins" value="${escapeHtml(initialQ)}">
       <button class="button" id="add-admin-btn">+ Add Admin</button>
     </div>
     <div id="admins-table">

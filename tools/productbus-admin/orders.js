@@ -4,7 +4,7 @@
 
 import { apiFetch } from './api.js';
 import {
-  showToast, createModal, createFormField, getUrlParam, setUrlParam,
+  showToast, createModal, createFormField, getUrlParam, setUrlParam, escapeHtml,
 } from './ui.js';
 
 function renderTable(container, orders, ctx) {
@@ -33,15 +33,15 @@ function renderTable(container, orders, ctx) {
       </thead>
       <tbody>
         ${orders.map((o) => `
-          <tr data-id="${o.id}">
-            <td><code>${o.id}</code></td>
-            <td><span class="badge ${o.state === 'completed' ? 'success' : 'info'}">${o.state || 'pending'}</span></td>
-            <td>${o.customer?.email || o.customMetadata?.customerEmail || 'N/A'}</td>
+          <tr data-id="${escapeHtml(o.id)}">
+            <td><code>${escapeHtml(o.id)}</code></td>
+            <td><span class="badge ${o.state === 'completed' ? 'success' : 'info'}">${escapeHtml(o.state || 'pending')}</span></td>
+            <td>${escapeHtml(o.customer?.email || o.customMetadata?.customerEmail || 'N/A')}</td>
             <td>${o.items?.length ?? '—'}</td>
             <td>${o.createdAt ? new Date(o.createdAt).toLocaleDateString() : 'N/A'}</td>
             <td>
               <div class="actions">
-                <button class="btn-icon" data-action="view" data-id="${o.id}" title="View">View</button>
+                <button class="btn-icon" data-action="view" data-id="${escapeHtml(o.id)}" title="View">View</button>
               </div>
             </td>
           </tr>
@@ -53,7 +53,7 @@ function renderTable(container, orders, ctx) {
   tableWrap.querySelectorAll('[data-action="view"]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       try {
-        const resp = await apiFetch(ctx.org, ctx.site, `orders/${btn.dataset.id}`, { method: 'GET' });
+        const resp = await apiFetch(ctx.org, ctx.site, `orders/${encodeURIComponent(btn.dataset.id)}`, { method: 'GET' });
         const order = await resp.json();
         // eslint-disable-next-line no-use-before-define
         viewOrderModal(order);
@@ -67,6 +67,8 @@ function renderTable(container, orders, ctx) {
 function viewOrderModal(order) {
   const pre = document.createElement('pre');
   pre.className = 'json-display';
+  // textContent is already safe (not parsed as HTML); modal title flows through
+  // createModal -> titleEl.textContent, also safe.
   pre.textContent = JSON.stringify(order, null, 2);
   createModal(`Order: ${order.id}`, pre);
 }
@@ -137,7 +139,7 @@ function openCreateModal(ctx, onCreated) {
           <button type="button" data-view="form">Form</button>
           <button type="button" class="active" data-view="json">JSON</button>
         </div>
-        <textarea class="json-editor" id="json-editor">${JSON.stringify({
+        <textarea class="json-editor" id="json-editor">${escapeHtml(JSON.stringify({
     customer: {
       firstName: '',
       lastName: '',
@@ -164,7 +166,7 @@ function openCreateModal(ctx, onCreated) {
         final: 0,
       },
     }],
-  }, null, 2)}</textarea>
+  }, null, 2))}</textarea>
       `;
     }
 
@@ -244,7 +246,7 @@ export async function render(container, ctx) {
       <h1>Orders</h1>
     </div>
     <div class="page-actions">
-      <input type="text" class="search-input" placeholder="Search orders..." id="search-orders" value="${initialQ.replace(/"/g, '&quot;')}">
+      <input type="text" class="search-input" placeholder="Search orders..." id="search-orders" value="${escapeHtml(initialQ)}">
       <button class="button" id="add-order-btn">+ Create Order</button>
     </div>
     <div id="orders-table">
