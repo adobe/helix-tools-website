@@ -17,6 +17,9 @@ const ALLOWED_PERMISSIONS = [
   'index:write',
   'customers:read',
   'customers:write',
+  'journal:general:read',
+  'journal:orders:read',
+  'journal:*:read',
   'emails:send',
 ];
 
