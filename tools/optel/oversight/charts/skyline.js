@@ -898,4 +898,21 @@ export default class SkylineChart extends AbstractChart {
 
     this.chart.update();
   }
+
+  /**
+   * Download the current chart as a PNG (Chart.js canvas snapshot).
+   */
+  downloadPng() {
+    if (!this.chart || typeof this.chart.toBase64Image !== 'function') return;
+    const dataUrl = this.chart.toBase64Image('image/png', 1);
+    const domain = new URLSearchParams(window.location.search).get('domain') || 'chart';
+    const safe = domain.replace(/[^a-z0-9.-]/gi, '_').slice(0, 80);
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `optel-oversight-skyline-${safe}.png`;
+    a.rel = 'noopener';
+    document.body.append(a);
+    a.click();
+    a.remove();
+  }
 }
