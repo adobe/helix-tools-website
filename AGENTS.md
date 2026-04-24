@@ -25,6 +25,7 @@ The repository provides the basic structure, blocks, and configuration needed to
   - The dev server runs at `http://localhost:3000` with auto-reload. Open it in playwright, puppeteer, or a browser. If none are available, ask the human to open it and give feedback.
 - Run linting before committing: `npm run lint`
 - Auto-Fix linting issues: `npm run lint:fix`
+- Run tests: `npm test`
 
 ## Project Structure
 
@@ -144,6 +145,8 @@ Pages are progressively loaded in three phases to maximize performance. This pro
 
 ## Testing & Quality Assurance
 
+See `TESTING.md` for the full testing philosophy, what warrants automated CI tests vs. what to skip, and test conventions.
+
 ### Performance
 - Follow AEM Edge Delivery performance best practices https://www.aem.live/developer/keeping-it-100
 - Images uploaded by authors are automatically optimized, all images and assets committed to git must be optimized and checked for size
@@ -193,6 +196,7 @@ With this information, you can construct URLs for the preview environment (same 
 ### Modifying Existing Tools
 - Standalone tools: code lives in `tools/`
 - CMS-based tools (e.g., `power-score`, `svg-doctor`): code lives in `blocks/`, but the page structure is authored in the CMS. Inspect the content page (e.g., `curl http://localhost:3000/tools/{toolname}`) to understand which blocks are used before making changes.
+- Modifying a tool is a good opportunity to add test coverage if the tool doesn't have it yet. Extract pure logic into an importable module and add tests for it — even if your change is small. See `TESTING.md` for how to identify what's worth extracting and testing.
 
 ## Troubleshooting
 
