@@ -468,6 +468,35 @@ dialog.user-admin-modal .modal-toolbar .presets-btn-row {
   gap: var(--spacing-xs);
 }
 
+dialog.user-admin-modal .presets-collapse {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+dialog.user-admin-modal .presets-collapse summary.presets-label {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+dialog.user-admin-modal .presets-collapse summary.presets-label::-webkit-details-marker {
+  display: none;
+}
+
+dialog.user-admin-modal .presets-collapse summary.presets-label::before {
+  content: '\25B6';
+  font-size: 0.55em;
+  color: var(--color-font-grey);
+  transition: transform 0.2s ease;
+}
+
+dialog.user-admin-modal .presets-collapse[open] summary.presets-label::before {
+  transform: rotate(90deg);
+}
+
 dialog.user-admin-modal .role-preset-btn {
   background: none;
   border: 1px dashed var(--color-border);

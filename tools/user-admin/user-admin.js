@@ -458,10 +458,12 @@ function openAddUsersModal(onSave) {
 
   const presetsDiv = document.createElement('div');
   presetsDiv.className = 'modal-toolbar';
-  const presetsLabel = document.createElement('span');
+  const presetsCollapse = document.createElement('details');
+  presetsCollapse.className = 'presets-collapse';
+  const presetsLabel = document.createElement('summary');
   presetsLabel.className = 'presets-label';
   presetsLabel.textContent = 'Roles (Apply to all)';
-  presetsDiv.appendChild(presetsLabel);
+  presetsCollapse.appendChild(presetsLabel);
   const presetsBtnRow = document.createElement('div');
   presetsBtnRow.className = 'presets-btn-row';
   const syncPresets = () => {
@@ -490,7 +492,8 @@ function openAddUsersModal(onSave) {
     });
     presetsBtnRow.appendChild(btn);
   });
-  presetsDiv.appendChild(presetsBtnRow);
+  presetsCollapse.appendChild(presetsBtnRow);
+  presetsDiv.appendChild(presetsCollapse);
   presetsDiv.appendChild(createRolesReference());
 
   entriesContainer.addEventListener('change', syncPresets);
@@ -499,7 +502,7 @@ function openAddUsersModal(onSave) {
 
   const {
     dialog, content, bodyDiv, saveBtn, closeModal, setConfirmClose,
-  } = createModal('Add Users', 'Add 2 Users');
+  } = createModal('Add Users', 'Add 1 User');
 
   dialog.addEventListener('close', () => presetsObserver.disconnect());
 
@@ -531,10 +534,10 @@ function openAddUsersModal(onSave) {
   };
 
   const firstEntry = createUserEntry(entriesContainer, updateSaveLabel);
-  createUserEntry(entriesContainer, updateSaveLabel);
   firstEntry.querySelector('input[type="email"]').focus();
 
   addAnotherBtn.addEventListener('click', () => {
+    presetsCollapse.open = true;
     const entry = createUserEntry(entriesContainer, updateSaveLabel);
     entry.querySelector('input[type="email"]').focus();
     entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
