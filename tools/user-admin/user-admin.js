@@ -235,6 +235,8 @@ function createRolesReference() {
   const summary = document.createElement('summary');
   summary.textContent = 'What do these roles mean?';
   details.appendChild(summary);
+  const panel = document.createElement('div');
+  panel.className = 'roles-reference-panel';
   const list = document.createElement('dl');
   list.className = 'roles-reference-list';
   ROLES.forEach((role) => {
@@ -251,14 +253,15 @@ function createRolesReference() {
   link.target = '_blank';
   link.className = 'roles-reference-link';
   link.textContent = 'Learn more about roles';
-  details.appendChild(list);
-  details.appendChild(link);
+  panel.appendChild(list);
+  panel.appendChild(link);
+  details.appendChild(panel);
   return details;
 }
 
 let entryIdCounter = 0;
 
-function createUserEntry(entriesContainer, updateSaveLabel) {
+function createUserEntry(entriesContainer, updateSaveLabel, selectedRoles = []) {
   entryIdCounter += 1;
   const entryId = entryIdCounter;
   const entry = document.createElement('div');
@@ -296,7 +299,7 @@ function createUserEntry(entriesContainer, updateSaveLabel) {
   const rolesLabel = document.createElement('label');
   rolesLabel.id = rolesFieldId;
   rolesLabel.textContent = 'Roles';
-  const rolesContainer = createCompactRoleCheckboxes();
+  const rolesContainer = createCompactRoleCheckboxes(selectedRoles);
   rolesContainer.setAttribute('role', 'group');
   rolesContainer.setAttribute('aria-labelledby', rolesFieldId);
   rolesField.appendChild(rolesLabel);
@@ -456,57 +459,13 @@ function openAddUsersModal(onSave) {
   const entriesContainer = document.createElement('div');
   entriesContainer.className = 'user-entries';
 
-  const presetsDiv = document.createElement('div');
-  presetsDiv.className = 'modal-toolbar';
-  const presetsCollapse = document.createElement('details');
-  presetsCollapse.className = 'presets-collapse';
-  const presetsLabel = document.createElement('summary');
-  presetsLabel.className = 'presets-label';
-  presetsLabel.textContent = 'Roles (Apply to all)';
-  presetsCollapse.appendChild(presetsLabel);
-  const presetsBtnRow = document.createElement('div');
-  presetsBtnRow.className = 'presets-btn-row';
-  const syncPresets = () => {
-    presetsBtnRow.querySelectorAll('.role-preset-btn').forEach((btn) => {
-      const { role } = btn.dataset;
-      const cbs = entriesContainer.querySelectorAll(`input[type="checkbox"][value="${role}"]`);
-      const allChecked = cbs.length > 0 && [...cbs].every((cb) => cb.checked);
-      btn.classList.toggle('active', allChecked);
-    });
-  };
-
-  ROLES.forEach((role) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'role-preset-btn';
-    btn.dataset.role = role;
-    btn.textContent = ROLE_DESCRIPTIONS[role].label;
-    btn.addEventListener('click', () => {
-      const cbs = entriesContainer.querySelectorAll(`input[type="checkbox"][value="${role}"]`);
-      const allChecked = cbs.length > 0 && [...cbs].every((cb) => cb.checked);
-      cbs.forEach((cb) => { cb.checked = !allChecked; });
-      entriesContainer.querySelectorAll('.user-entry.has-error').forEach((entry) => {
-        entry.classList.remove('has-error');
-      });
-      syncPresets();
-    });
-    presetsBtnRow.appendChild(btn);
-  });
-  presetsCollapse.appendChild(presetsBtnRow);
-  presetsDiv.appendChild(presetsCollapse);
-  presetsDiv.appendChild(createRolesReference());
-
-  entriesContainer.addEventListener('change', syncPresets);
-  const presetsObserver = new MutationObserver(syncPresets);
-  presetsObserver.observe(entriesContainer, { childList: true });
-
   const {
-    dialog, content, bodyDiv, saveBtn, closeModal, setConfirmClose,
+    dialog, bodyDiv, footerDiv, saveBtn, closeModal, setConfirmClose,
   } = createModal('Add Users', 'Add 1 User');
 
-  dialog.addEventListener('close', () => presetsObserver.disconnect());
-
-  content.insertBefore(presetsDiv, bodyDiv);
+  const rolesReference = createRolesReference();
+  rolesReference.classList.add('footer-roles-reference');
+  footerDiv.prepend(rolesReference);
 
   setConfirmClose(async () => {
     const emails = dialog.querySelectorAll('input[type="email"]');
@@ -537,8 +496,12 @@ function openAddUsersModal(onSave) {
   firstEntry.querySelector('input[type="email"]').focus();
 
   addAnotherBtn.addEventListener('click', () => {
-    presetsCollapse.open = true;
-    const entry = createUserEntry(entriesContainer, updateSaveLabel);
+    const previousEntries = entriesContainer.querySelectorAll('.user-entry');
+    const previousEntry = previousEntries[previousEntries.length - 1];
+    const previousRoles = previousEntry
+      ? [...previousEntry.querySelectorAll('input[type="checkbox"]:checked')].map((cb) => cb.value)
+      : [];
+    const entry = createUserEntry(entriesContainer, updateSaveLabel, previousRoles);
     entry.querySelector('input[type="email"]').focus();
     entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
