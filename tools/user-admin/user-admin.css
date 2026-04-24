@@ -277,11 +277,6 @@ dialog.user-admin-modal .modal-footer .footer-roles-reference .roles-reference-p
   z-index: 1;
 }
 
-dialog.user-admin-modal .modal-footer .footer-roles-reference .roles-reference-link {
-  display: block;
-  margin-top: var(--spacing-s);
-}
-
 dialog.user-admin-modal .form-field {
   margin-bottom: var(--spacing-l);
 }
@@ -437,6 +432,11 @@ dialog.user-admin-modal .roles-reference-link {
   padding-top: var(--spacing-xs);
   font-size: var(--body-size-s);
   color: var(--blue-600);
+}
+
+dialog.user-admin-modal .modal-footer .footer-roles-reference .roles-reference-link {
+  display: block;
+  margin-top: var(--spacing-s);
 }
 
 /* Danger Button - scoped to user-admin-modal */
