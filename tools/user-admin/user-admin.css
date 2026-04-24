@@ -56,6 +56,12 @@
     "badges"
     "actions";
   gap: var(--spacing-s);
+  cursor: pointer;
+}
+
+.user-admin .user-card:focus-visible {
+  outline: 2px solid var(--blue-500);
+  outline-offset: 2px;
 }
 
 .user-admin .user-card .user-card-info {
@@ -106,6 +112,27 @@
 .user-admin .user-card .card-item-actions {
   grid-area: actions;
   margin-top: var(--spacing-s);
+}
+
+.user-admin .user-card .user-card-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--body-size-xs);
+  color: var(--color-font-grey);
+  font-style: italic;
+  pointer-events: none;
+  transition: color 0.15s ease;
+}
+
+.user-admin .user-card:hover .user-card-hint,
+.user-admin .user-card:focus-visible .user-card-hint {
+  color: var(--blue-700);
+}
+
+.user-admin .user-card .user-card-hint svg {
+  width: 12px;
+  height: 12px;
 }
 
 /* List view specific styles */
