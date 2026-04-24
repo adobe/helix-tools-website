@@ -2,6 +2,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { logResponse } from '../../blocks/console/console.js';
+import { escapeXml, parseHreflang, collectSitemapEntries } from './utils.js';
 
 const adminForm = document.getElementById('admin-form');
 const site = document.getElementById('site');
@@ -280,14 +281,9 @@ function displayLanguageEditDialog(sitemapName, langCode, langDef, isNew = false
       destination,
     };
 
-    if (hreflang) {
-      const hreflangs = hreflang.split(',').map((h) => h.trim()).filter((h) => h);
-      if (hreflangs.length > 1) {
-        loadedSitemaps.sitemaps[sitemapName].languages[newLangCode].hreflang = hreflangs;
-      } else if (hreflangs.length === 1) {
-        const [firstLang] = hreflangs;
-        loadedSitemaps.sitemaps[sitemapName].languages[newLangCode].hreflang = firstLang;
-      }
+    const parsedHreflang = parseHreflang(hreflang);
+    if (parsedHreflang !== null) {
+      loadedSitemaps.sitemaps[sitemapName].languages[newLangCode].hreflang = parsedHreflang;
     }
 
     if (alternate) {
@@ -504,24 +500,6 @@ function populateSitemaps(sitemaps) {
   });
 }
 
-function collectSitemapEntries() {
-  const entries = [];
-  if (!loadedSitemaps?.sitemaps) return entries;
-
-  Object.values(loadedSitemaps.sitemaps).forEach((sitemapDef) => {
-    const origin = sitemapDef.origin || '';
-    if (isMultiLanguageSitemap(sitemapDef)) {
-      Object.values(sitemapDef.languages).forEach((langDef) => {
-        if (langDef.destination) entries.push({ destination: langDef.destination, origin });
-      });
-    } else if (sitemapDef.destination) {
-      entries.push({ destination: sitemapDef.destination, origin });
-    }
-  });
-
-  return entries;
-}
-
 async function fetchCdnProdHost() {
   const resp = await fetch(`https://admin.hlx.page/config/${org.value}/sites/${site.value}/cdn.json`);
   logResponse(consoleBlock, resp.status, ['GET', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/cdn.json`, resp.headers.get('x-error') || '']);
@@ -537,17 +515,8 @@ function getOrigin(sitemapOrigin) {
   return '';
 }
 
-function escapeXml(value) {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll('\'', '&apos;');
-}
-
 function buildSitemapIndex() {
-  const sitemapEntries = collectSitemapEntries();
+  const sitemapEntries = collectSitemapEntries(loadedSitemaps?.sitemaps);
   if (sitemapEntries.length === 0) return '';
 
   const defaultOrigin = getOrigin('');
