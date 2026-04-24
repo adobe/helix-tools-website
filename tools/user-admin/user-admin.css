@@ -443,14 +443,9 @@ dialog.user-admin-modal .user-entry.has-error {
 
 dialog.user-admin-modal .user-entry-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   margin-bottom: var(--spacing-s);
-}
-
-dialog.user-admin-modal .user-entry-label {
-  font-weight: 600;
-  font-size: var(--body-size-m);
 }
 
 dialog.user-admin-modal .user-entry-remove {

@@ -269,15 +269,10 @@ function createUserEntry(entriesContainer, updateSaveLabel, selectedRoles = []) 
 
   const header = document.createElement('div');
   header.className = 'user-entry-header';
-  const label = document.createElement('span');
-  label.className = 'user-entry-label';
-  const num = entriesContainer.querySelectorAll('.user-entry').length + 1;
-  label.textContent = `User ${num}`;
   const removeBtn = document.createElement('button');
   removeBtn.type = 'button';
   removeBtn.className = 'user-entry-remove';
   removeBtn.textContent = 'Remove';
-  header.appendChild(label);
   header.appendChild(removeBtn);
 
   const emailField = document.createElement('div');
@@ -309,15 +304,8 @@ function createUserEntry(entriesContainer, updateSaveLabel, selectedRoles = []) 
   entry.appendChild(emailField);
   entry.appendChild(rolesField);
 
-  const renumber = () => {
-    entriesContainer.querySelectorAll('.user-entry').forEach((e, i) => {
-      e.querySelector('.user-entry-label').textContent = `User ${i + 1}`;
-    });
-  };
-
   removeBtn.addEventListener('click', () => {
     entry.remove();
-    renumber();
     updateSaveLabel();
   });
 
@@ -576,9 +564,6 @@ function openAddUsersModal(onSave) {
       const added = err.addedCount || 0;
       if (added > 0) {
         validEntries.slice(0, added).forEach((entry) => entry.remove());
-        entriesContainer.querySelectorAll('.user-entry').forEach((el, i) => {
-          el.querySelector('.user-entry-label').textContent = `User ${i + 1}`;
-        });
         const failed = users.length - added;
         showModalError(dialog, `${added} user(s) added, ${failed} failed: ${err.message}`);
       } else {
