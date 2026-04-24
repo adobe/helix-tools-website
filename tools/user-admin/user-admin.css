@@ -59,11 +59,6 @@
   cursor: pointer;
 }
 
-.user-admin .user-card:focus-visible {
-  outline: 2px solid var(--blue-500);
-  outline-offset: 2px;
-}
-
 .user-admin .user-card .user-card-info {
   grid-area: info;
   display: flex;
@@ -112,27 +107,6 @@
 .user-admin .user-card .card-item-actions {
   grid-area: actions;
   margin-top: var(--spacing-s);
-}
-
-.user-admin .user-card .user-card-hint {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: var(--body-size-xs);
-  color: var(--color-font-grey);
-  font-style: italic;
-  pointer-events: none;
-  transition: color 0.15s ease;
-}
-
-.user-admin .user-card:hover .user-card-hint,
-.user-admin .user-card:focus-visible .user-card-hint {
-  color: var(--blue-700);
-}
-
-.user-admin .user-card .user-card-hint svg {
-  width: 12px;
-  height: 12px;
 }
 
 /* List view specific styles */
@@ -396,13 +370,13 @@ dialog.user-admin-modal .roles-reference summary::-webkit-details-marker {
 }
 
 dialog.user-admin-modal .roles-reference summary::before {
-  content: '\25B6';
+  content: '\25BC';
   font-size: 0.55em;
   transition: transform 0.2s ease;
 }
 
 dialog.user-admin-modal .roles-reference[open] summary::before {
-  transform: rotate(90deg);
+  transform: rotate(180deg);
 }
 
 dialog.user-admin-modal .roles-reference-list {

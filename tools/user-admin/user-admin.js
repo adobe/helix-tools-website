@@ -681,9 +681,6 @@ function createUserCard(user) {
   const card = document.createElement('div');
   card.className = 'card-item user-card';
   card.dataset.email = user.email.toLowerCase();
-  card.setAttribute('role', 'button');
-  card.setAttribute('tabindex', '0');
-  card.setAttribute('aria-label', `Edit user ${user.email}`);
 
   // Build card structure safely to prevent XSS
   const infoDiv = document.createElement('div');
@@ -710,15 +707,6 @@ function createUserCard(user) {
     badgesDiv.appendChild(badge);
   });
 
-  const hintDiv = document.createElement('div');
-  hintDiv.className = 'card-item-actions user-card-hint';
-  hintDiv.setAttribute('aria-hidden', 'true');
-  hintDiv.innerHTML = `${icon('edit')} <span>Click to edit</span>`;
-
-  card.appendChild(infoDiv);
-  card.appendChild(badgesDiv);
-  card.appendChild(hintDiv);
-
   const openEdit = () => {
     openEditUserModal(user, async (updatedUser) => {
       if (accessConfig.type === 'site') {
@@ -728,13 +716,28 @@ function createUserCard(user) {
     });
   };
 
-  card.addEventListener('click', openEdit);
-  card.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      openEdit();
-    }
+  const actionsDiv = document.createElement('div');
+  actionsDiv.className = 'card-item-actions';
+  const editBtn = document.createElement('button');
+  editBtn.type = 'button';
+  editBtn.className = 'card-item-btn edit-btn';
+  editBtn.innerHTML = `${icon('edit')} Edit`;
+  editBtn.addEventListener('click', (e) => {
+    // prevent the card-level click handler from firing a second time
+    e.stopPropagation();
+    openEdit();
   });
+  actionsDiv.appendChild(editBtn);
+
+  // make the entire card a click target as a UX convenience; the button
+  // above remains the semantic/a11y entry point for keyboard and AT users.
+  // dialog backdrop clicks won't reach the card because the open <dialog>
+  // is modal and catches those clicks itself.
+  card.addEventListener('click', openEdit);
+
+  card.appendChild(infoDiv);
+  card.appendChild(badgesDiv);
+  card.appendChild(actionsDiv);
 
   return card;
 }
