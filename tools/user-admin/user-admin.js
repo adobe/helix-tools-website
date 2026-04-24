@@ -233,7 +233,7 @@ function createRolesReference() {
   const details = document.createElement('details');
   details.className = 'roles-reference';
   const summary = document.createElement('summary');
-  summary.textContent = 'What do these roles mean?';
+  summary.textContent = 'What do the Roles mean?';
   details.appendChild(summary);
   const panel = document.createElement('div');
   panel.className = 'roles-reference-panel';
