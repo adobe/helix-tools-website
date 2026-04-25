@@ -52,6 +52,17 @@ describe('helix-admin.js', () => {
       const cfg = admin.config({ org: 'adobe' });
       assert.equal(cfg.robots, undefined);
     });
+
+    it('headers is present on a site-scoped context', () => {
+      const cfg = admin.config({ org: 'adobe', site: 'x' });
+      assert.equal(typeof cfg.headers, 'function');
+      assert.equal(typeof cfg.headers.remove, 'function');
+    });
+
+    it('headers is absent on an org-only context', () => {
+      const cfg = admin.config({ org: 'adobe' });
+      assert.equal(cfg.headers, undefined);
+    });
   });
 
   describe('admin.config(coords).robots.url', () => {
@@ -60,6 +71,16 @@ describe('helix-admin.js', () => {
       assert.equal(
         cfg.robots.url,
         'https://admin.hlx.page/config/adobe/sites/helix-tools-website/robots.txt',
+      );
+    });
+  });
+
+  describe('admin.config(coords).headers.url', () => {
+    it('exposes the canonical URL of the resource', () => {
+      const cfg = admin.config({ org: 'adobe', site: 'helix-tools-website' });
+      assert.equal(
+        cfg.headers.url,
+        'https://admin.hlx.page/config/adobe/sites/helix-tools-website/headers.json',
       );
     });
   });
@@ -93,6 +114,46 @@ describe('helix-admin.js', () => {
       await admin.config({ org: 'adobe', site: 'x' }).robots('');
       assert.equal(calls[0].init.method, 'POST');
       assert.equal(calls[0].init.body, '');
+    });
+  });
+
+  describe('admin.config(coords).headers()', () => {
+    it('GETs headers.json when no data is passed', async () => {
+      await admin.config({ org: 'adobe', site: 'helix-tools-website' }).headers();
+      assert.equal(
+        calls[0].url,
+        'https://admin.hlx.page/config/adobe/sites/helix-tools-website/headers.json',
+      );
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('POSTs application/json with the JSON-stringified data', async () => {
+      const data = { '/**': [{ key: 'cache-control', value: 'no-cache' }] };
+      await admin.config({ org: 'adobe', site: 'x' }).headers(data);
+      assert.equal(calls[0].init.method, 'POST');
+      assert.equal(calls[0].init.body, JSON.stringify(data));
+      assert.deepEqual(
+        Object.fromEntries(calls[0].init.headers),
+        { 'content-type': 'application/json' },
+      );
+    });
+
+    it('POSTs an empty object as `{}`, not as a delete', async () => {
+      // Setting headers to {} is conceptually different from deleting the
+      // resource — callers who want delete must use .remove(). Pin that.
+      await admin.config({ org: 'adobe', site: 'x' }).headers({});
+      assert.equal(calls[0].init.method, 'POST');
+      assert.equal(calls[0].init.body, '{}');
+    });
+
+    it('.remove() DELETEs the resource', async () => {
+      await admin.config({ org: 'adobe', site: 'x' }).headers.remove();
+      assert.equal(calls[0].init.method, 'DELETE');
+      assert.equal(
+        calls[0].url,
+        'https://admin.hlx.page/config/adobe/sites/x/headers.json',
+      );
+      assert.equal(calls[0].init.body, undefined);
     });
   });
 
