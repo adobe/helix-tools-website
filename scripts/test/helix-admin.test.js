@@ -198,6 +198,152 @@ describe('helix-admin.js', () => {
     });
   });
 
+  describe('admin.status(coords)', () => {
+    it('binds a /status/{org}/{site}/{ref} prefix', () => {
+      const s = admin.status({ org: 'adobe', site: 'x', ref: 'feat' });
+      assert.equal(s.url, 'https://admin.hlx.page/status/adobe/x/feat');
+    });
+
+    it('defaults ref to main', () => {
+      const s = admin.status({ org: 'adobe', site: 'x' });
+      assert.equal(s.url, 'https://admin.hlx.page/status/adobe/x/main');
+    });
+
+    it('get() with no path GETs the prefix URL', async () => {
+      await admin.status({ org: 'adobe', site: 'x' }).get();
+      assert.equal(calls[0].url, 'https://admin.hlx.page/status/adobe/x/main');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('get(path) appends the path', async () => {
+      await admin.status({ org: 'adobe', site: 'x' }).get('/foo/bar');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/status/adobe/x/main/foo/bar');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('bulk() POSTs to /* with JSON body', async () => {
+      await admin.status({ org: 'adobe', site: 'x' }).bulk({
+        paths: ['/a', '/b'],
+        select: ['edit', 'preview', 'live'],
+      });
+      assert.equal(calls[0].url, 'https://admin.hlx.page/status/adobe/x/main/*');
+      assert.equal(calls[0].init.method, 'POST');
+      assert.deepEqual(JSON.parse(calls[0].init.body), {
+        paths: ['/a', '/b'],
+        select: ['edit', 'preview', 'live'],
+      });
+      assert.deepEqual(
+        Object.fromEntries(calls[0].init.headers),
+        { 'content-type': 'application/json' },
+      );
+    });
+
+    it('bulk.url is the canonical bulk URL', () => {
+      assert.equal(
+        admin.status({ org: 'adobe', site: 'x' }).bulk.url,
+        'https://admin.hlx.page/status/adobe/x/main/*',
+      );
+    });
+  });
+
+  describe('admin.job(coords)', () => {
+    it('binds a /job/{org}/{site}/{ref} prefix', () => {
+      const j = admin.job({ org: 'adobe', site: 'x' });
+      assert.equal(j.url, 'https://admin.hlx.page/job/adobe/x/main');
+    });
+
+    it('list(topic) GETs /job/{r}/{topic}', async () => {
+      await admin.job({ org: 'adobe', site: 'x' }).list('status');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/job/adobe/x/main/status');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('get(topic, name) GETs /job/{r}/{topic}/{name}', async () => {
+      await admin.job({ org: 'adobe', site: 'x' }).get('status', 'job-abc');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/job/adobe/x/main/status/job-abc');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('details(topic, name) GETs /job/{r}/{topic}/{name}/details', async () => {
+      await admin.job({ org: 'adobe', site: 'x' }).details('status', 'job-abc');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/job/adobe/x/main/status/job-abc/details');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('stop(topic, name) DELETEs /job/{r}/{topic}/{name}', async () => {
+      await admin.job({ org: 'adobe', site: 'x' }).stop('status', 'job-abc');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/job/adobe/x/main/status/job-abc');
+      assert.equal(calls[0].init.method, 'DELETE');
+      assert.equal(calls[0].init.body, undefined);
+    });
+
+    it('threads through a non-default ref', async () => {
+      await admin.job({ org: 'adobe', site: 'x', ref: 'feat' }).get('publish', 'j1');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/job/adobe/x/feat/publish/j1');
+    });
+  });
+
+  describe('admin.preview(coords) and admin.live(coords)', () => {
+    // Both share contentBusFactory; one round of tests against preview is
+    // enough for the URL/method/body shape, plus a parity check on live.
+
+    it('preview.url binds the prefix', () => {
+      const p = admin.preview({ org: 'adobe', site: 'x' });
+      assert.equal(p.url, 'https://admin.hlx.page/preview/adobe/x/main');
+    });
+
+    it('live.url binds the prefix', () => {
+      const l = admin.live({ org: 'adobe', site: 'x' });
+      assert.equal(l.url, 'https://admin.hlx.page/live/adobe/x/main');
+    });
+
+    it('get(path) GETs the path', async () => {
+      await admin.preview({ org: 'adobe', site: 'x' }).get('/foo.md');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/preview/adobe/x/main/foo.md');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('update(path) POSTs the path', async () => {
+      await admin.preview({ org: 'adobe', site: 'x' }).update('/foo');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/preview/adobe/x/main/foo');
+      assert.equal(calls[0].init.method, 'POST');
+      assert.equal(calls[0].init.body, undefined);
+    });
+
+    it('remove(path) DELETEs the path', async () => {
+      await admin.preview({ org: 'adobe', site: 'x' }).remove('/foo');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/preview/adobe/x/main/foo');
+      assert.equal(calls[0].init.method, 'DELETE');
+    });
+
+    it('bulk(body) POSTs /* with JSON-stringified body', async () => {
+      await admin.preview({ org: 'adobe', site: 'x' }).bulk({
+        paths: ['/a', '/b'],
+        delete: true,
+      });
+      assert.equal(calls[0].url, 'https://admin.hlx.page/preview/adobe/x/main/*');
+      assert.equal(calls[0].init.method, 'POST');
+      assert.deepEqual(JSON.parse(calls[0].init.body), { paths: ['/a', '/b'], delete: true });
+      assert.deepEqual(
+        Object.fromEntries(calls[0].init.headers),
+        { 'content-type': 'application/json' },
+      );
+    });
+
+    it('bulk.url is the canonical bulk URL', () => {
+      assert.equal(
+        admin.preview({ org: 'adobe', site: 'x' }).bulk.url,
+        'https://admin.hlx.page/preview/adobe/x/main/*',
+      );
+    });
+
+    it('live shares the same surface, only the path family changes', async () => {
+      await admin.live({ org: 'adobe', site: 'x' }).remove('/foo');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/live/adobe/x/main/foo');
+      assert.equal(calls[0].init.method, 'DELETE');
+    });
+  });
+
   describe('admin.withRequestInit(extra)', () => {
     it('merges fetch-init defaults into every request', async () => {
       const a = admin.withRequestInit({ credentials: 'include', cache: 'no-cache' });

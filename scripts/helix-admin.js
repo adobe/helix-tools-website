@@ -34,8 +34,9 @@ function createAdmin(defaults = {}) {
   /**
    * Issue an admin API request and return a normalized envelope.
    *
-   * Resource methods on the returned `admin` object are thin wrappers around
-   * this; tools shouldn't call it directly.
+   * Does not throw on non-2xx — `ok`/`status` carry the outcome and `error`
+   * carries the `x-error` response header. `text()` and `json()` are
+   * pass-throughs to the underlying single-use Response.
    *
    * @param {object} args
    * @param {string} args.method            HTTP method
@@ -145,6 +146,114 @@ function createAdmin(defaults = {}) {
   }
 
   /**
+   * Bind a status-API context to a site/ref.
+   *
+   * The returned object exposes `url` (the URL prefix) and operations:
+   *   - `get(path?)` — GET `/status/{org}/{site}/{ref}{path}`. Without a path,
+   *     returns site-level metadata (live/preview hosts, etc).
+   *   - `bulk({paths, select})` — POST `/status/{org}/{site}/{ref}/*` to kick
+   *     off a bulk-status job. The response includes the new job's `name`;
+   *     pass it to `admin.job(...).get('status', name)`.
+   *
+   * @param {{org: string, site: string, ref?: string}} coords ref defaults to 'main'
+   */
+  function status({ org, site, ref = 'main' }) {
+    const baseUrl = `${ADMIN_BASE}/status/${org}/${site}/${ref}`;
+    const bulkUrl = `${baseUrl}/*`;
+
+    const get = (path) => request({
+      method: 'GET',
+      url: path === undefined ? baseUrl : `${baseUrl}${path}`,
+    });
+
+    const bulk = ({ paths, select }) => request({
+      method: 'POST',
+      url: bulkUrl,
+      body: JSON.stringify({ paths, select }),
+      contentType: 'application/json',
+    });
+    bulk.url = bulkUrl;
+
+    return { url: baseUrl, get, bulk };
+  }
+
+  /**
+   * Bind a job-API context to a site/ref. Helix groups jobs under topics
+   * (`status`, `publish`, etc.); methods take `topic` so they're not locked to
+   * any one topic.
+   *
+   *   - `list(topic)`         — GET    `/job/{org}/{site}/{ref}/{topic}`
+   *   - `get(topic, name)`    — GET    `/job/{org}/{site}/{ref}/{topic}/{name}`
+   *   - `details(topic, name)`— GET    `/job/{org}/{site}/{ref}/{topic}/{name}/details`
+   *   - `stop(topic, name)`   — DELETE `/job/{org}/{site}/{ref}/{topic}/{name}`
+   *
+   * @param {{org: string, site: string, ref?: string}} coords ref defaults to 'main'
+   */
+  function job({ org, site, ref = 'main' }) {
+    const baseUrl = `${ADMIN_BASE}/job/${org}/${site}/${ref}`;
+    return {
+      url: baseUrl,
+      list: (topic) => request({ method: 'GET', url: `${baseUrl}/${topic}` }),
+      get: (topic, name) => request({ method: 'GET', url: `${baseUrl}/${topic}/${name}` }),
+      details: (topic, name) => request({ method: 'GET', url: `${baseUrl}/${topic}/${name}/details` }),
+      stop: (topic, name) => request({ method: 'DELETE', url: `${baseUrl}/${topic}/${name}` }),
+    };
+  }
+
+  /**
+   * Build a content-bus namespace (preview or live). Both bus types share the
+   * same surface — the only difference is the URL prefix.
+   *
+   * @param {string} opName  "preview" or "live"
+   */
+  function contentBusFactory(opName) {
+    return ({ org, site, ref = 'main' }) => {
+      const baseUrl = `${ADMIN_BASE}/${opName}/${org}/${site}/${ref}`;
+      const bulkUrl = `${baseUrl}/*`;
+
+      const get = (path) => request({ method: 'GET', url: `${baseUrl}${path}` });
+      const update = (path) => request({ method: 'POST', url: `${baseUrl}${path}` });
+      const remove = (path) => request({ method: 'DELETE', url: `${baseUrl}${path}` });
+
+      const bulk = (body) => request({
+        method: 'POST',
+        url: bulkUrl,
+        body: JSON.stringify(body),
+        contentType: 'application/json',
+      });
+      bulk.url = bulkUrl;
+
+      return {
+        url: baseUrl, get, update, remove, bulk,
+      };
+    };
+  }
+
+  /**
+   * Bind a preview-bus context. Methods take a path that starts with `/`.
+   *   - `get(path)`     — GET    `/preview/{org}/{site}/{ref}{path}`  (preview status / content)
+   *   - `update(path)`  — POST   `/preview/{org}/{site}/{ref}{path}`  (refresh preview from source)
+   *   - `remove(path)`  — DELETE `/preview/{org}/{site}/{ref}{path}`  (unpublish from preview)
+   *   - `bulk(body)`    — POST   `/preview/{org}/{site}/{ref}/*` with `JSON.stringify(body)`
+   *     (e.g. `{paths}` to bulk-publish, `{paths, delete: true}` to bulk-unpublish)
+   *
+   * @param {{org: string, site: string, ref?: string}} coords ref defaults to 'main'
+   */
+  const preview = contentBusFactory('preview');
+
+  /**
+   * Bind a live-bus context. Methods take a path that starts with `/`.
+   *   - `get(path)`     — GET    `/live/{org}/{site}/{ref}{path}`  (live status / content)
+   *   - `update(path)`  — POST   `/live/{org}/{site}/{ref}{path}`  (publish from preview to live)
+   *   - `remove(path)`  — DELETE `/live/{org}/{site}/{ref}{path}`  (unpublish from live)
+   *   - `bulk(body)`    — POST   `/live/{org}/{site}/{ref}/*` with `JSON.stringify(body)`
+   *     (e.g. `{paths}` to bulk-publish, `{paths, delete: true}` to bulk-unpublish)
+   *
+   * @param {{org: string, site: string, ref?: string}} coords ref defaults to 'main'
+   */
+  const live = contentBusFactory('live');
+
+  /**
    * Derive an admin client whose request init defaults are merged with `extra`
    * (later wins). Use for tools whose calls need non-default fetch options:
    *
@@ -159,7 +268,9 @@ function createAdmin(defaults = {}) {
     return createAdmin({ ...defaults, ...extra });
   }
 
-  return { config, withRequestInit };
+  return {
+    config, status, job, preview, live, withRequestInit,
+  };
 }
 
 const admin = createAdmin();

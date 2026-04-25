@@ -1,6 +1,7 @@
 import { registerToolReady } from '../../scripts/scripts.js';
+import admin from '../../scripts/helix-admin.js';
 import { initConfigField } from '../../utils/config/config.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 
 // Lazy-load Dark Alley converter module
 const CONVERTERS_URL = 'https://main--da-nx--adobe.aem.live/nx/utils/converters.js';
@@ -66,14 +67,20 @@ function showError(message) {
 }
 
 /**
- * Fetches the live and preview host URLs for org/site.
- * @param {string} org - Organization name.
- * @param {string} site - Site name within org.
- * @returns {Promise<Object>} Object with live and preview hostnames.
+ * Fetch live/preview host config. Doubles as the auth preflight — uses
+ * `executeAdminRequest` with `preflightAndRetry` so an unauthenticated user
+ * is prompted to log in. Returns `null` if login was cancelled.
+ *
+ * @param {string} org
+ * @param {string} site
+ * @returns {Promise<{live: string, preview: string} | null>}
  */
 async function fetchHosts(org, site) {
-  const url = `https://admin.hlx.page/status/${org}/${site}/main`;
-  const res = await fetch(url);
+  const res = await executeAdminRequest(
+    () => admin.status({ org, site }).get(),
+    { org, site, policy: AuthMode.PREFLIGHT_AND_RETRY },
+  );
+  if (!res) return null;
   if (!res.ok) throw new Error(`Failed to fetch hosts: ${res.status}`);
   const json = await res.json();
   return {
@@ -81,6 +88,9 @@ async function fetchHosts(org, site) {
     preview: new URL(json.preview.url).host,
   };
 }
+
+// Preserve the original `{mode: 'cors'}` posture from the polling fetches.
+const jobPollAdmin = admin.withRequestInit({ mode: 'cors' });
 
 /**
  * Fetches job details from an existing job ID.
@@ -90,10 +100,10 @@ async function fetchHosts(org, site) {
  * @returns {Promise<Array>} Array of resources
  */
 async function fetchJobDetails(org, site, jobId) {
-  const jobUrl = `https://admin.hlx.page/job/${org}/${site}/main/status/${jobId}`;
+  const j = jobPollAdmin.job({ org, site });
 
   // First check job status
-  const jobRes = await fetch(jobUrl, { mode: 'cors' });
+  const jobRes = await j.get('status', jobId);
   if (!jobRes.ok) throw new Error(`Job fetch failed: ${jobRes.status}`);
 
   const { state } = await jobRes.json();
@@ -102,7 +112,7 @@ async function fetchJobDetails(org, site, jobId) {
   }
 
   // Fetch details
-  const detailsRes = await fetch(`${jobUrl}/details`, { mode: 'cors' });
+  const detailsRes = await j.details('status', jobId);
   if (!detailsRes.ok) throw new Error('Failed to fetch job details');
 
   const { data } = await detailsRes.json();
@@ -135,12 +145,13 @@ function filterPendingPages(resources) {
 }
 
 /**
- * Fetches content from a URL.
- * @param {string} url - URL to fetch
+ * Fetches content from a content-bus path via the admin API.
+ * @param {object} bus  the bound bus context, e.g. admin.preview({org,site})
+ * @param {string} path  resource path (with leading slash)
  * @returns {Promise<{content: string|null, status: number}>} Content and status
  */
-async function fetchContent(url) {
-  const res = await fetch(url);
+async function fetchContent(bus, path) {
+  const res = await bus.get(path);
   if (!res.ok) {
     return { content: null, status: res.status };
   }
@@ -602,10 +613,10 @@ async function loadPageDiff(page) {
     return;
   }
 
-  // Build admin API URLs to fetch markdown content
+  // Build the content-bus path; preview/live methods append it to the prefix.
   const fetchPath = path.endsWith('/') ? `${path}index.md` : `${path}.md`;
-  const previewUrl = `https://admin.hlx.page/preview/${currentOrg}/${currentSite}/main${fetchPath}`;
-  const liveUrl = `https://admin.hlx.page/live/${currentOrg}/${currentSite}/main${fetchPath}`;
+  const previewBus = admin.preview({ org: currentOrg, site: currentSite });
+  const liveBus = admin.live({ org: currentOrg, site: currentSite });
 
   // Show loading state
   DIFF_CONTENT.innerHTML = createDiffPanelHtml(
@@ -621,8 +632,8 @@ async function loadPageDiff(page) {
   try {
     // Fetch both versions from admin API
     const [previewResult, liveResult] = await Promise.all([
-      fetchContent(previewUrl),
-      fetchContent(liveUrl),
+      fetchContent(previewBus, fetchPath),
+      fetchContent(liveBus, fetchPath),
     ]);
 
     // Check if preview content is available
@@ -915,19 +926,13 @@ async function init() {
   updateDisplayState('loading');
 
   try {
-    // Ensure login
-    if (!await ensureLogin(currentOrg, currentSite)) {
-      window.addEventListener('profile-update', ({ detail: loginInfo }) => {
-        if (loginInfo.includes(currentOrg)) {
-          window.location.reload();
-        }
-      }, { once: true });
+    // Fetch host configuration (also handles login + persists org/site).
+    // Returns null if the user cancelled the login modal.
+    const hosts = await fetchHosts(currentOrg, currentSite);
+    if (!hosts) {
       showError('Please sign in to view page diffs.');
       return;
     }
-
-    // Fetch host configuration
-    const hosts = await fetchHosts(currentOrg, currentSite);
     previewHost = hosts.preview;
     liveHost = hosts.live;
 

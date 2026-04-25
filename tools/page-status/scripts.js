@@ -1,7 +1,8 @@
 import { registerToolReady } from '../../scripts/scripts.js';
+import admin from '../../scripts/helix-admin.js';
 import { decorateIcons } from '../../scripts/aem.js';
-import { initConfigField, updateConfig } from '../../utils/config/config.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
+import { initConfigField } from '../../utils/config/config.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import loadingMessages from './loading-messages.js';
 
 const FORM = document.getElementById('status-form');
@@ -439,69 +440,59 @@ function displayResources(resources, live, preview) {
 
 // data fetching
 /**
- * Fetches the live and preview host URLs for org/site.
- * @param {string} org - Organization name.
- * @param {string} site - Site name within org.
- * @returns {Promise<>} Object with `live` and `preview` hostnames.
- */
-async function fetchHosts(org, site) {
-  try {
-    const url = `https://admin.hlx.page/status/${org}/${site}/main`;
-    const res = await fetch(url);
-    if (!res.ok) throw res;
-    const json = await res.json();
-    return {
-      live: new URL(json.live.url).host,
-      preview: new URL(json.preview.url).host,
-    };
-  } catch (error) {
-    return {
-      live: null,
-      preview: null,
-    };
-  }
-}
-
-/**
- * Validates the live and preview host config for org/site.
- * @param {string} org - Organization name.
- * @param {string} site - Site name within org.
- * @returns {Promise<>} Object with `live` and `preview` hostnames.
+ * Fetch and validate live/preview host config. Doubles as the auth preflight
+ * for the submit flow — uses `executeAdminRequest` with `preflightAndRetry`
+ * so an unauthenticated user is prompted to log in before the rest of the
+ * job-kickoff steps run. The helper also persists the org/site via
+ * `updateConfig` on success.
+ *
+ * @param {string} org
+ * @param {string} site
+ * @returns {Promise<{live: string, preview: string} | null>} `null` if the
+ *   user cancelled login. Throws on invalid project configuration.
  */
 async function validateHosts(org, site) {
-  const { live, preview } = await fetchHosts(org, site);
-  if (!live || !preview) {
+  const res = await executeAdminRequest(
+    () => admin.status({ org, site }).get(),
+    { org, site, policy: AuthMode.PREFLIGHT_AND_RETRY },
+  );
+  if (!res) return null;
+  if (!res.ok) throw new Error(`Invalid project configuration for ${org}/${site}`);
+  const json = await res.json();
+  if (!json.live?.url || !json.preview?.url) {
     throw new Error(`Invalid project configuration for ${org}/${site}`);
   }
-  return { live, preview };
+  return {
+    live: new URL(json.live.url).host,
+    preview: new URL(json.preview.url).host,
+  };
 }
 
+// Preserve the exact fetch posture the original kickoff used. mode/credentials/
+// redirect are explicit-defaults (no observable effect), but we keep them so the
+// `init` object passed to fetch matches the original literally — guards against
+// a future browser default change quietly altering behavior.
+const statusJobAdmin = admin.withRequestInit({
+  mode: 'cors',
+  cache: 'no-cache',
+  credentials: 'same-origin',
+  redirect: 'follow',
+  referrerPolicy: 'no-referrer',
+});
+
 /**
- * Fetches job URL for page status admin operation.
+ * Submits a bulk-status job for a path; returns the job's name (jobId).
  * @param {string} org - Organization name.
  * @param {string} site - Site name within org.
  * @param {string} path - Path to validate and include in request payload.
- * @returns {Promise<string|null>} Job URL if job is successfully created, or `null` if error.
+ * @returns {Promise<string|null>} Job name if successfully created, else `null`.
  */
-async function fetchJobUrl(org, site, path) {
+async function submitStatusJob(org, site, path) {
   try {
-    const options = {
-      body: JSON.stringify({
-        paths: [validatePath(path)],
-        select: ['edit', 'preview', 'live'],
-      }),
-      method: 'POST',
-      mode: 'cors',
-      cache: 'no-cache',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      redirect: 'follow',
-      referrerPolicy: 'no-referrer',
-    };
-    const res = await fetch(
-      `https://admin.hlx.page/status/${org}/${site}/main/*`,
-      options,
-    );
+    const res = await statusJobAdmin.status({ org, site }).bulk({
+      paths: [validatePath(path)],
+      select: ['edit', 'preview', 'live'],
+    });
     if (!res.ok) throw res;
     const json = await res.json();
     if (!json.job || json.job.state !== 'created') {
@@ -511,29 +502,35 @@ async function fetchJobUrl(org, site, path) {
     }
     // update url param with job
     if (json.job.name) updateJobParam(json.job.name);
-    return json.links ? json.links.self : null;
+    return json.job.name || null;
   } catch (error) {
     updateTableError(error.status, null, `${org}/${site}${path}`);
     return null;
   }
 }
 
+// Preserve the original `{mode: 'cors'}` posture from the polling fetches.
+const jobPollAdmin = admin.withRequestInit({ mode: 'cors' });
+
 /**
- * Polls job URL then fetches additional details and returns job resources.
- * @param {string} url - Job URL.
+ * Polls a job until it completes, then fetches details and returns resources.
+ * @param {string} org - Organization name.
+ * @param {string} site - Site name.
+ * @param {string} jobName - Job name (id) to poll.
  * @param {number} [retry=10000] - Delay (in ms) between polling attempts.
  * @returns {Promise<Object[]>} Array of resources.
  */
-async function runJob(url, retry = 10000) {
+async function runJob(org, site, jobName, retry = 10000) {
+  const j = jobPollAdmin.job({ org, site });
   try {
-    const jobRes = await fetch(url, { mode: 'cors' });
+    const jobRes = await j.get('status', jobName);
     if (!jobRes.ok) throw jobRes;
     const { state } = await jobRes.json();
     if (state !== 'completed' && state !== 'stopped') {
       await new Promise((resolve) => { setTimeout(resolve, retry); }); // wait before repolling
-      return runJob(url, retry); // poll again
+      return runJob(org, site, jobName, retry); // poll again
     }
-    const detailsRes = await fetch(`${url}/details`, { mode: 'cors' });
+    const detailsRes = await j.details('status', jobName);
     if (!detailsRes.ok) throw detailsRes;
     const { data, createTime } = await detailsRes.json();
     // update table caption with create time
@@ -547,13 +544,15 @@ async function runJob(url, retry = 10000) {
 
 /**
  * Executes status job.
- * @param {string} jobUrl - Job URL.
+ * @param {string} org - Organization name.
+ * @param {string} site - Site name.
+ * @param {string} jobName - Job name (id).
  * @param {string} live - Base URL for live resources.
  * @param {string} preview - Base URL for preview resources.
  * @returns {Promise<>} Promise that resolves once job has run and results are displayed.
  */
-async function runAndDisplayJob(jobUrl, live, preview) {
-  const paths = await runJob(jobUrl);
+async function runAndDisplayJob(org, site, jobName, live, preview) {
+  const paths = await runJob(org, site, jobName);
   if (!paths || paths.length === 0) {
     throw new Error('No page status data found.');
   }
@@ -603,12 +602,12 @@ async function runFromParams(search) {
       try {
         // initial setup
         setupJob(FORM, FORM.querySelector('button'));
-        // fetch host config
-        const { live, preview } = await validateHosts(org, site);
-        updateConfig();
+        // fetch host config (also handles login + persists org/site)
+        const hosts = await validateHosts(org, site);
+        if (!hosts) return; // user cancelled login
+        const { live, preview } = hosts;
         // fetch page status and display results
-        const jobUrl = `https://admin.hlx.page/job/${org}/${site}/main/status/${job}`;
-        await runAndDisplayJob(jobUrl, live, preview);
+        await runAndDisplayJob(org, site, job, live, preview);
         updateJobParam(job);
       } catch (error) {
         updateTableError('Job');
@@ -636,30 +635,18 @@ async function init() {
     const data = getFormData(target);
     const { org, site } = data;
 
-    if (!await ensureLogin(org, site)) {
-      // not logged in yet, listen for profile-update event
-      window.addEventListener('profile-update', ({ detail: loginInfo }) => {
-        // check if user is logged in now
-        if (loginInfo.includes(org)) {
-          // logged in, restart action (e.g. resubmit form)
-          submitter.click();
-        }
-      }, { once: true });
-      // abort action
-      return;
-    }
-
     try {
       // initial setup
       setupJob(target, submitter);
       const { path } = data;
-      // fetch host config
-      const { live, preview } = await validateHosts(org, site);
-      updateConfig();
+      // fetch host config (also handles login + persists org/site)
+      const hosts = await validateHosts(org, site);
+      if (!hosts) return; // user cancelled login
+      const { live, preview } = hosts;
       // fetch page status and display results
-      const jobUrl = await fetchJobUrl(org, site, path);
-      if (!jobUrl) throw new Error('Failed to create page status job.');
-      await runAndDisplayJob(jobUrl, live, preview);
+      const jobName = await submitStatusJob(org, site, path);
+      if (!jobName) throw new Error('Failed to create page status job.');
+      await runAndDisplayJob(org, site, jobName, live, preview);
     } catch (error) {
       updateTableError('Job');
       removeJobParam();
