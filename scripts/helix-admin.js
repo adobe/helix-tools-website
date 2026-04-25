@@ -112,9 +112,35 @@ function createAdmin(defaults = {}) {
     }
     robots.url = robotsUrl;
 
+    const headersUrl = `${siteUrl}/headers.json`;
+    /**
+     * Get or replace the site's per-path response-headers config.
+     *
+     * Also exposes:
+     *   - `.url` — canonical URL of this resource
+     *   - `.remove()` — DELETE the headers config entirely (use when callers
+     *     want to clear the resource, not when they want to set it to `{}`)
+     *
+     * @param {object} [data] omit to GET; pass an object to POST as JSON
+     * @returns {Promise<AdminResponse>}
+     */
+    function headers(data) {
+      return data === undefined
+        ? request({ method: 'GET', url: headersUrl })
+        : request({
+          method: 'POST',
+          url: headersUrl,
+          body: JSON.stringify(data),
+          contentType: 'application/json',
+        });
+    }
+    headers.url = headersUrl;
+    headers.remove = () => request({ method: 'DELETE', url: headersUrl });
+
     return {
       url: siteUrl,
       robots,
+      headers,
     };
   }
 
@@ -123,7 +149,7 @@ function createAdmin(defaults = {}) {
    * (later wins). Use for tools whose calls need non-default fetch options:
    *
    *   const admin2 = admin.withRequestInit({ credentials: 'include' });
-   *   await admin2.config({ org, site }).robots();
+   *   await admin2.config({ org, site }).headers();
    *
    * Calls made through the original `admin` are unaffected. Compose by chaining.
    *
