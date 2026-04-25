@@ -72,28 +72,83 @@ function createAdmin(defaults = {}) {
   }
 
   /**
-   * Bind a config-API context to a site (or just an org).
+   * Build the versions sub-namespace for a given base URL. Versioning lets
+   * callers list, read, rename, delete, or restore prior snapshots of the
+   * bound config object. Available at all three scopes (org, profile, site).
    *
-   * The returned object exposes `url` (the URL prefix of this context) and
-   * resource methods. Site-scoped resources are only present when `site` is
-   * provided — calling them on an org-only context yields a TypeError at the
-   * call site, which is the intended failure mode.
+   *   - `list()`           — GET    `{base}/versions.json`
+   *   - `get(id)`          — GET    `{base}/versions/{id}.json`
+   *   - `update(id, name)` — POST   `{base}/versions/{id}.json?name=X` with `{name}`
+   *   - `remove(id)`       — DELETE `{base}/versions/{id}.json`
+   *   - `restore(id)`      — POST   `{base}.json?restoreVersion={id}` (note: hits
+   *     the bound config object itself, not the version subresource)
+   */
+  function makeVersions(baseUrl) {
+    return {
+      list: () => request({ method: 'GET', url: `${baseUrl}/versions.json` }),
+      get: (id) => request({ method: 'GET', url: `${baseUrl}/versions/${id}.json` }),
+      update: (id, name) => request({
+        method: 'POST',
+        // Original sent the new name in both query param and body. Preserved
+        // verbatim — server may read either; safest is to keep both.
+        url: `${baseUrl}/versions/${id}.json?name=${encodeURIComponent(name)}`,
+        body: JSON.stringify({ name }),
+        contentType: 'application/json',
+      }),
+      remove: (id) => request({ method: 'DELETE', url: `${baseUrl}/versions/${id}.json` }),
+      restore: (id) => request({
+        method: 'POST',
+        url: `${baseUrl}.json?restoreVersion=${id}`,
+      }),
+    };
+  }
+
+  /**
+   * Bind a config-API context. Three scopes are supported:
+   *   - `admin.config({org})`             — org-level config
+   *   - `admin.config({org}).profile(p)`  — profile-level (a named template)
+   *   - `admin.config({org, site})`       — site-level config
    *
-   * Each resource method is a callable that also exposes `.url` (the canonical
-   * URL of that resource) for test assertions and debugging.
+   * The returned object exposes `url` (the URL prefix), `versions` (config-
+   * version operations, available at every scope), and site-only resources
+   * (`robots`, `headers`) which are present only when `site` is provided.
+   * The org-level context additionally exposes `.profile(name)` to navigate
+   * into a profile sub-scope. Calling a site-only resource on a non-site
+   * context yields a TypeError at the call site.
    *
    * @param {{org: string, site?: string}} coords
    */
   function config({ org, site }) {
-    const orgUrl = `${ADMIN_BASE}/config/${org}`;
-
-    // Org-scoped context — site-only resources are deliberately absent.
     if (!site) {
-      return { url: orgUrl };
+      const orgUrl = `${ADMIN_BASE}/config/${org}`;
+      return {
+        url: orgUrl,
+        versions: makeVersions(orgUrl),
+        /**
+         * Navigate from this org context to a profile sub-scope.
+         * @param {string} profile profile name
+         */
+        profile: (profile) => {
+          const profileUrl = `${orgUrl}/profiles/${profile}`;
+          return {
+            url: profileUrl,
+            versions: makeVersions(profileUrl),
+          };
+        },
+        /**
+         * List profiles at this org scope.
+         * GET `/config/{org}/profiles.json`
+         * @returns {Promise<AdminResponse>}
+         */
+        profiles: () => request({
+          method: 'GET',
+          url: `${orgUrl}/profiles.json`,
+        }),
+      };
     }
 
-    const siteUrl = `${orgUrl}/sites/${site}`;
-
+    const siteUrl = `${ADMIN_BASE}/config/${org}/sites/${site}`;
+    const versions = makeVersions(siteUrl);
     const robotsUrl = `${siteUrl}/robots.txt`;
     /**
      * Get or replace the site's robots.txt.
@@ -142,6 +197,7 @@ function createAdmin(defaults = {}) {
       url: siteUrl,
       robots,
       headers,
+      versions,
     };
   }
 

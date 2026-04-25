@@ -38,6 +38,26 @@ describe('helix-admin.js', () => {
         'https://admin.hlx.page/config/adobe',
       );
     });
+
+    it('navigates to a profile sub-scope via .profile(name)', () => {
+      assert.equal(
+        admin.config({ org: 'adobe' }).profile('corp').url,
+        'https://admin.hlx.page/config/adobe/profiles/corp',
+      );
+    });
+
+    it('site-scoped context does not expose .profile() or .profiles()', () => {
+      // Both are only present on the org-level context.
+      const cfg = admin.config({ org: 'adobe', site: 'x' });
+      assert.equal(cfg.profile, undefined);
+      assert.equal(cfg.profiles, undefined);
+    });
+
+    it('.profiles() GETs /config/{org}/profiles.json', async () => {
+      await admin.config({ org: 'adobe' }).profiles();
+      assert.equal(calls[0].url, 'https://admin.hlx.page/config/adobe/profiles.json');
+      assert.equal(calls[0].init.method, 'GET');
+    });
   });
 
   describe('site-only resource gating', () => {
@@ -71,6 +91,84 @@ describe('helix-admin.js', () => {
       assert.equal(
         cfg.robots.url,
         'https://admin.hlx.page/config/adobe/sites/helix-tools-website/robots.txt',
+      );
+    });
+  });
+
+  describe('admin.config(coords).versions', () => {
+    it('list() GETs /versions.json on a site-scoped context', async () => {
+      await admin.config({ org: 'adobe', site: 'x' }).versions.list();
+      assert.equal(calls[0].url, 'https://admin.hlx.page/config/adobe/sites/x/versions.json');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('list() GETs /versions.json on an org-scoped context', async () => {
+      await admin.config({ org: 'adobe' }).versions.list();
+      assert.equal(calls[0].url, 'https://admin.hlx.page/config/adobe/versions.json');
+    });
+
+    it('list() GETs /versions.json on a profile-scoped context', async () => {
+      await admin.config({ org: 'adobe' }).profile('p').versions.list();
+      assert.equal(calls[0].url, 'https://admin.hlx.page/config/adobe/profiles/p/versions.json');
+    });
+
+    it('get(id) GETs /versions/{id}.json', async () => {
+      await admin.config({ org: 'adobe', site: 'x' }).versions.get(42);
+      assert.equal(calls[0].url, 'https://admin.hlx.page/config/adobe/sites/x/versions/42.json');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('update(id, name) POSTs with name in both query param and body', async () => {
+      // Original tool sent the name in both places — preserved verbatim
+      // since server may read either form.
+      await admin.config({ org: 'adobe', site: 'x' }).versions.update(7, 'release-A');
+      assert.equal(
+        calls[0].url,
+        'https://admin.hlx.page/config/adobe/sites/x/versions/7.json?name=release-A',
+      );
+      assert.equal(calls[0].init.method, 'POST');
+      assert.deepEqual(JSON.parse(calls[0].init.body), { name: 'release-A' });
+      assert.deepEqual(
+        Object.fromEntries(calls[0].init.headers),
+        { 'content-type': 'application/json' },
+      );
+    });
+
+    it('update(id, name) URL-encodes the name in the query param', async () => {
+      await admin.config({ org: 'adobe', site: 'x' }).versions.update(7, 'foo bar/baz');
+      assert.equal(
+        calls[0].url,
+        'https://admin.hlx.page/config/adobe/sites/x/versions/7.json?name=foo%20bar%2Fbaz',
+      );
+      assert.equal(JSON.parse(calls[0].init.body).name, 'foo bar/baz');
+    });
+
+    it('remove(id) DELETEs /versions/{id}.json', async () => {
+      await admin.config({ org: 'adobe', site: 'x' }).versions.remove(7);
+      assert.equal(calls[0].url, 'https://admin.hlx.page/config/adobe/sites/x/versions/7.json');
+      assert.equal(calls[0].init.method, 'DELETE');
+    });
+
+    it('restore(id) POSTs to {base}.json?restoreVersion={id} at site scope', async () => {
+      await admin.config({ org: 'adobe', site: 'x' }).versions.restore(42);
+      assert.equal(
+        calls[0].url,
+        'https://admin.hlx.page/config/adobe/sites/x.json?restoreVersion=42',
+      );
+      assert.equal(calls[0].init.method, 'POST');
+      assert.equal(calls[0].init.body, undefined);
+    });
+
+    it('restore(id) POSTs at org scope with no /sites segment', async () => {
+      await admin.config({ org: 'adobe' }).versions.restore(42);
+      assert.equal(calls[0].url, 'https://admin.hlx.page/config/adobe.json?restoreVersion=42');
+    });
+
+    it('restore(id) POSTs at profile scope', async () => {
+      await admin.config({ org: 'adobe' }).profile('p').versions.restore(42);
+      assert.equal(
+        calls[0].url,
+        'https://admin.hlx.page/config/adobe/profiles/p.json?restoreVersion=42',
       );
     });
   });

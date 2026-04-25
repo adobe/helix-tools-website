@@ -1,8 +1,9 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
+import admin from '../../scripts/helix-admin.js';
+import { executeAdminRequest } from '../../utils/admin-request.js';
 import { diffJson } from './diff.js';
 import { logResponse } from '../../blocks/console/console.js';
-import { initConfigField, updateConfig } from '../../utils/config/config.js';
+import { initConfigField } from '../../utils/config/config.js';
 
 const adminForm = document.getElementById('admin-form');
 const typeSelect = document.getElementById('type');
@@ -21,20 +22,26 @@ const fetchButton = document.getElementById('fetch');
 const currentConfig = { type: '', versions: [], currentVersion: null };
 
 /**
- * Build the API URL based on the current configuration
- * @param {string} endpoint - The endpoint path (e.g., 'versions.json', 'versions/1.json')
- * @returns {string} The complete API URL
+ * Build a versions namespace bound to the currently selected scope.
+ * @returns {{list: Function, get: Function, update: Function, remove: Function, restore: Function}}
  */
-function buildApiUrl(endpoint) {
-  let url = `https://admin.hlx.page/config/${org.value}`;
-
-  if (currentConfig.type === 'profile') {
-    url += `/profiles/${profile.value}`;
-  } else if (currentConfig.type === 'site') {
-    url += `/sites/${site.value}`;
+function getVersionsApi() {
+  if (currentConfig.type === 'site') {
+    return admin.config({ org: org.value, site: site.value }).versions;
   }
+  if (currentConfig.type === 'profile') {
+    return admin.config({ org: org.value }).profile(profile.value).versions;
+  }
+  return admin.config({ org: org.value }).versions;
+}
 
-  return `${url}/${endpoint}`;
+/**
+ * Log an admin client response into the console block.
+ * @param {{status: number, error: string, request: {method: string, url: string}}} result
+ */
+function logResult(result) {
+  const { method, url } = result.request;
+  logResponse(consoleBlock, result.status, [method, url, result.error]);
 }
 
 /**
@@ -51,18 +58,17 @@ function formatDate(dateString) {
  * Fetch versions list from the API
  */
 async function fetchVersions() {
-  const url = buildApiUrl('versions.json');
-  const resp = await fetch(url);
-  logResponse(consoleBlock, resp.status, ['GET', url, resp.headers.get('x-error') || '']);
-
-  if (resp.status === 200) {
-    const data = await resp.json();
+  const result = await executeAdminRequest(
+    () => getVersionsApi().list(),
+    { org: org.value, site: site.value },
+  );
+  if (!result) return null;
+  logResult(result);
+  if (result.status === 200) {
+    const data = await result.json();
     currentConfig.versions = data.versions || [];
     currentConfig.currentVersion = data.current;
     return data;
-  }
-  if (resp.status === 401) {
-    await ensureLogin(org.value, site.value);
   }
   return null;
 }
@@ -72,17 +78,13 @@ async function fetchVersions() {
  * @param {number} versionId - Version ID to fetch
  */
 async function fetchVersionData(versionId) {
-  const url = buildApiUrl(`versions/${versionId}.json`);
-  const resp = await fetch(url);
-  logResponse(consoleBlock, resp.status, ['GET', url, resp.headers.get('x-error') || '']);
-
-  if (resp.status === 200) {
-    return resp.json();
-  }
-  if (resp.status === 401) {
-    await ensureLogin(org.value, site.value);
-  }
-  return null;
+  const result = await executeAdminRequest(
+    () => getVersionsApi().get(versionId),
+    { org: org.value, site: site.value },
+  );
+  if (!result) return null;
+  logResult(result);
+  return result.status === 200 ? result.json() : null;
 }
 
 /**
@@ -91,20 +93,13 @@ async function fetchVersionData(versionId) {
  * @param {string} newName - New name for the version
  */
 async function updateVersionName(versionId, newName) {
-  const url = buildApiUrl(`versions/${versionId}.json?name=${encodeURIComponent(newName)}`);
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ name: newName }),
-  });
-  logResponse(consoleBlock, resp.status, ['POST', url, resp.headers.get('x-error') || '']);
-
-  if (resp.status === 401) {
-    await ensureLogin(org.value, site.value);
-  }
-  return resp.status === 200;
+  const result = await executeAdminRequest(
+    () => getVersionsApi().update(versionId, newName),
+    { org: org.value, site: site.value },
+  );
+  if (!result) return false;
+  logResult(result);
+  return result.status === 200;
 }
 
 /**
@@ -112,24 +107,13 @@ async function updateVersionName(versionId, newName) {
  * @param {number} versionId - Version ID to restore
  */
 async function restoreVersion(versionId) {
-  let url;
-  if (currentConfig.type === 'org') {
-    url = `https://admin.hlx.page/config/${org.value}.json?restoreVersion=${versionId}`;
-  } else if (currentConfig.type === 'profile') {
-    url = `https://admin.hlx.page/config/${org.value}/profiles/${profile.value}.json?restoreVersion=${versionId}`;
-  } else if (currentConfig.type === 'site') {
-    url = `https://admin.hlx.page/config/${org.value}/sites/${site.value}.json?restoreVersion=${versionId}`;
-  }
-
-  const resp = await fetch(url, {
-    method: 'POST',
-  });
-  logResponse(consoleBlock, resp.status, ['POST', url, resp.headers.get('x-error') || '']);
-
-  if (resp.status === 401) {
-    await ensureLogin(org.value, site.value);
-  }
-  return resp.status === 200;
+  const result = await executeAdminRequest(
+    () => getVersionsApi().restore(versionId),
+    { org: org.value, site: site.value },
+  );
+  if (!result) return false;
+  logResult(result);
+  return result.status === 200;
 }
 
 /**
@@ -137,16 +121,13 @@ async function restoreVersion(versionId) {
  * @param {number} versionId - Version ID to delete
  */
 async function deleteVersion(versionId) {
-  const url = buildApiUrl(`versions/${versionId}.json`);
-  const resp = await fetch(url, {
-    method: 'DELETE',
-  });
-  logResponse(consoleBlock, resp.status, ['DELETE', url, resp.headers.get('x-error') || '']);
-
-  if (resp.status === 401) {
-    await ensureLogin(org.value, site.value);
-  }
-  return resp.status === 200;
+  const result = await executeAdminRequest(
+    () => getVersionsApi().remove(versionId),
+    { org: org.value, site: site.value },
+  );
+  if (!result) return false;
+  logResult(result);
+  return result.status === 200;
 }
 
 /**
@@ -402,19 +383,6 @@ typeSelect.addEventListener('change', updateFieldVisibility);
 adminForm.addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  if (!await ensureLogin(org.value, site.value)) {
-    // not logged in yet, listen for profile-update event
-    window.addEventListener('profile-update', ({ detail: loginInfo }) => {
-      // check if user is logged in now
-      if (loginInfo.includes(org.value)) {
-        // logged in, restart action (e.g. resubmit form)
-        e.target.querySelector('button[type="submit"]').click();
-      }
-    }, { once: true });
-    // abort action
-    return;
-  }
-
   if (!validateForm()) {
     // eslint-disable-next-line no-alert
     alert('Please fill in all required fields.');
@@ -426,11 +394,6 @@ adminForm.addEventListener('submit', async (e) => {
   currentConfig.type = typeSelect.value;
   versions.innerHTML = '';
   currentVersionInfo.style.display = 'none';
-
-  // Update URL and storage (org/site handled by config utility)
-  if (typeSelect.value === 'site') {
-    updateConfig();
-  }
 
   // Add type and profile to URL params
   const url = new URL(window.location.href);
