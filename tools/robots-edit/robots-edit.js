@@ -1,4 +1,6 @@
 import { registerToolReady } from '../../scripts/scripts.js';
+import admin from '../../scripts/helix-admin.js';
+import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 
@@ -8,6 +10,11 @@ const body = document.getElementById('body');
 const consoleBlock = document.querySelector('.console');
 const site = document.getElementById('site');
 const org = document.getElementById('org');
+
+function logResult(result) {
+  const { method, url } = result.request;
+  logResponse(consoleBlock, result.status, [method, url, result.error]);
+}
 
 async function init() {
   await initConfigField();
@@ -20,18 +27,8 @@ async function init() {
       return;
     }
 
-    const robotsUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/robots.txt`;
-    const resp = await fetch(robotsUrl, {
-      method: 'POST',
-      body: body.value,
-      headers: {
-        'content-type': 'text/plain',
-      },
-    });
-
-    resp.text().then(() => {
-      logResponse(consoleBlock, resp.status, ['POST', robotsUrl, resp.headers.get('x-error') || '']);
-    });
+    const result = await admin.config({ org: org.value, site: site.value }).robots(body.value);
+    logResult(result);
   });
 
   adminForm.addEventListener('submit', async (e) => {
@@ -42,11 +39,20 @@ async function init() {
       return;
     }
 
-    const robotsUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/robots.txt`;
-    const resp = await fetch(robotsUrl);
-    const text = await resp.text();
-    body.value = text;
-    logResponse(consoleBlock, resp.status, ['GET', robotsUrl, resp.headers.get('x-error') || '']);
+    // Login is checked here (the natural entry point: fetch → edit → save).
+    // Once the fetch succeeds, the user has an active session for any later save.
+    if (!await ensureLogin(org.value, site.value)) {
+      window.addEventListener('profile-update', ({ detail: loginInfo }) => {
+        if (Array.isArray(loginInfo) && loginInfo.includes(org.value)) {
+          e.target.querySelector('button[type="submit"]').click();
+        }
+      }, { once: true });
+      return;
+    }
+
+    const result = await admin.config({ org: org.value, site: site.value }).robots();
+    if (result.ok) body.value = await result.text();
+    logResult(result);
   });
 }
 
