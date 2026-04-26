@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>json2html Config</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/json2html-config/json2html-config.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/json2html-config/json2html-config.css" />
+</head>
+
+<body class="json2html-config">
+  <header></header>
+  <main>
+    <!-- TOOL HEADER -->
+    <div class="tool-header">
+      <div class="tool-header-content">
+        <h1>json2html Config</h1>
+        <p>Manage and test <a href="https://www.aem.live/developer/json2html" target="_blank">json2html</a> configurations for your AEM site.</p>
+      </div>
+      <nav class="tool-tabs" role="tablist" aria-label="Tool sections">
+        <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-configure" data-tab="configure">Configure</button>
+        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-simulate" data-tab="simulate">Simulate</button>
+      </nav>
+    </div>
+
+    <!-- CONFIGURE TAB -->
+    <div id="tab-configure" class="tab-panel active" role="tabpanel">
+
+      <!-- Connection form -->
+      <div class="connect-form-wrap">
+        <form id="connect-form" class="connect-form">
+          <div class="field-row">
+            <div class="field">
+              <label for="org">Organization</label>
+              <input id="org" name="org" type="text" placeholder="my-org" autocomplete="off" required />
+            </div>
+            <div class="field">
+              <label for="site">Site</label>
+              <input id="site" name="site" type="text" placeholder="my-site" autocomplete="off" required />
+            </div>
+            <div class="field field-branch">
+              <label for="branch">Branch</label>
+              <input id="branch" name="branch" type="text" placeholder="main" value="main" autocomplete="off" required />
+            </div>
+            <div class="field field-action">
+              <button type="submit" id="load-btn" class="button">Load Config</button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Config list (hidden until loaded) -->
+      <div id="config-section" class="config-section" hidden>
+        <div class="config-list-header">
+          <h2 id="config-heading">Configurations</h2>
+          <button type="button" id="add-config-btn" class="button">+ Add Config</button>
+        </div>
+        <div id="config-list" class="config-list"></div>
+        <div class="config-actions">
+          <button type="button" id="save-btn" class="button primary" disabled>Save Changes</button>
+          <span id="save-status" class="save-status" aria-live="polite"></span>
+        </div>
+      </div>
+
+      <!-- Add/Edit form (hidden until opened) -->
+      <div id="config-form-wrap" class="config-form-wrap" hidden>
+        <div class="config-form-panel">
+          <div class="form-panel-header">
+            <h2 id="form-title">Add Configuration</h2>
+            <button type="button" id="form-cancel-btn" class="button outline">Cancel</button>
+          </div>
+
+          <!-- Type selector -->
+          <fieldset id="type-selector" class="type-selector">
+            <legend>What kind of dynamic page are you creating?</legend>
+            <label class="type-option">
+              <input type="radio" name="config-type" value="cf" checked />
+              <span class="type-card">
+                <strong>AEM Content Fragment</strong>
+                <span>One content fragment → one dynamic page via AEM author API</span>
+              </span>
+            </label>
+            <label class="type-option">
+              <input type="radio" name="config-type" value="custom" />
+              <span class="type-card">
+                <strong>Custom JSON Endpoint</strong>
+                <span>External API or aem.live endpoint → one dynamic page per ID</span>
+              </span>
+            </label>
+            <label class="type-option">
+              <input type="radio" name="config-type" value="array" />
+              <span class="type-card">
+                <strong>JSON Array → Multiple Pages</strong>
+                <span>One JSON file with an array → one page per array item</span>
+              </span>
+            </label>
+          </fieldset>
+
+          <!-- Type-specific fields (shown/hidden by JS) -->
+          <form id="config-entry-form" class="config-entry-form" novalidate>
+
+            <!-- Shared: path -->
+            <div class="form-group">
+              <label for="cfg-path">Site path <span class="required">*</span></label>
+              <input id="cfg-path" name="path" type="text" placeholder="/news/" required />
+              <p class="field-hint">URL path prefix where dynamic pages live. End with <code>/</code> for a folder of pages, or use an exact path for a single page.</p>
+            </div>
+
+            <!-- CF-only fields -->
+            <div class="cf-fields type-fields">
+              <div class="form-group">
+                <label for="cfg-cf-author">AEM Author Host <span class="required">*</span></label>
+                <input id="cfg-cf-author" name="cf-author" type="text" placeholder="author-p12345-e67890.adobeaemcloud.com" />
+                <p class="field-hint">The author host of your AEM Cloud Service instance (without <code>https://</code>).</p>
+              </div>
+              <div class="form-group">
+                <label for="cfg-cf-path">Content Fragment folder path <span class="required">*</span></label>
+                <input id="cfg-cf-path" name="cf-path" type="text" placeholder="/api/assets/my-repo/cf-folder/" />
+                <p class="field-hint">Path to the CF folder in the AEM author API. The fragment ID will be appended automatically (<code>{{id}}.json</code>).</p>
+              </div>
+              <div class="form-group">
+                <label for="cfg-cf-publish">Publish Host</label>
+                <input id="cfg-cf-publish" name="cf-publish" type="text" placeholder="https://publish-p12345-e67890.adobeaemcloud.com" />
+                <p class="field-hint">Optional. Relative image/media URLs in your template will be prefixed with this URL.</p>
+              </div>
+            </div>
+
+            <!-- Custom endpoint-only fields -->
+            <div class="custom-fields type-fields" hidden>
+              <div class="form-group">
+                <label for="cfg-endpoint">Endpoint URL <span class="required">*</span></label>
+                <input id="cfg-endpoint" name="endpoint" type="text" placeholder="https://api.example.com/items/{{id}}" />
+                <p class="field-hint">Use <code>{{id}}</code> where the page identifier should be substituted.</p>
+              </div>
+              <div class="form-group">
+                <label for="cfg-regex">URL ID pattern</label>
+                <input id="cfg-regex" name="regex" type="text" placeholder="/[^/]+$/" value="/[^/]+$/" />
+                <p class="field-hint">Regex to extract the ID from the request URL. Default matches the last path segment.</p>
+              </div>
+              <div class="form-group">
+                <label>Custom request headers</label>
+                <div id="custom-headers-list" class="header-list"></div>
+                <button type="button" id="add-custom-header" class="button small outline">+ Add Header</button>
+              </div>
+              <div class="form-group">
+                <label for="cfg-forward-headers">Forward headers from request</label>
+                <input id="cfg-forward-headers" name="forwardHeaders" type="text" placeholder="Authorization, x-custom-header" />
+                <p class="field-hint">Comma-separated list of headers to forward from the browser request to the endpoint.</p>
+              </div>
+            </div>
+
+            <!-- Array-only fields -->
+            <div class="array-fields type-fields" hidden>
+              <div class="form-group">
+                <label for="cfg-array-endpoint">JSON endpoint URL <span class="required">*</span></label>
+                <input id="cfg-array-endpoint" name="array-endpoint" type="text" placeholder="https://example.com/data.json" />
+                <p class="field-hint">URL of the JSON file containing the array of items. This one endpoint drives all pages under the path above.</p>
+              </div>
+              <div class="form-group">
+                <label for="cfg-array-key">Array key <span class="required">*</span></label>
+                <input id="cfg-array-key" name="arrayKey" type="text" placeholder="data" />
+                <p class="field-hint">The JSON key whose value is the array of items (e.g. <code>data</code>, <code>products</code>). Use dot notation for nested keys like <code>results.items</code>.</p>
+              </div>
+              <div class="form-group">
+                <label for="cfg-path-key">Path key <span class="required">*</span></label>
+                <input id="cfg-path-key" name="pathKey" type="text" placeholder="path" />
+                <p class="field-hint">The field within each array item whose value matches the URL path (e.g. <code>path</code>, <code>URL</code>, <code>slug</code>).</p>
+              </div>
+            </div>
+
+            <!-- Shared: template + advanced -->
+            <div class="form-group">
+              <label for="cfg-template">Template URL <span class="required">*</span></label>
+              <input id="cfg-template" name="template" type="text" placeholder="/cf-templates/article.html" required />
+              <p class="field-hint">Path to the Handlebars/Mustache template. Can be relative (e.g. <code>/templates/page.html</code>) or an absolute URL on another branch.</p>
+            </div>
+
+            <details class="advanced-section">
+              <summary>Advanced options</summary>
+              <div class="advanced-fields">
+                <div class="form-group">
+                  <label for="cfg-relative-prefix">Relative URL prefix</label>
+                  <input id="cfg-relative-prefix" name="relativeURLPrefix" type="text" placeholder="https://publish-p12345.adobeaemcloud.com" />
+                  <p class="field-hint">Rewrite relative image/PDF/video URLs in rendered HTML to use this prefix.</p>
+                </div>
+                <div class="form-group">
+                  <label for="cfg-template-api-key">Template API key</label>
+                  <input id="cfg-template-api-key" name="templateApiKey" type="text" placeholder="hlx_..." />
+                  <p class="field-hint">Site token for fetching templates from protected (non-public) branches.</p>
+                </div>
+              </div>
+            </details>
+
+            <div class="form-actions">
+              <button type="submit" id="form-save-btn" class="button primary">Add to Config</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- SIMULATE TAB -->
+    <div id="tab-simulate" class="tab-panel" role="tabpanel" hidden>
+      <div id="simulator-root"></div>
+    </div>
+
+    <!-- Console output -->
+    <div>
+      <div class="console"></div>
+    </div>
+  </main>
+  <footer></footer>
+</body>
+
+</html>
