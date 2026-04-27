@@ -77,6 +77,8 @@ const STORAGE_KEY_ORG = 'eds-agent-org';
 const STORAGE_KEY_SITE = 'eds-agent-site';
 const STORAGE_KEY_TOKEN = 'eds-agent-token';
 const STORAGE_KEY_THEME = 'eds-agent-theme';
+const STORAGE_KEY_SIDEBAR_COLLAPSED = 'eds-agent-sidebar-collapsed';
+const DESKTOP_BREAKPOINT = '(min-width: 900px)';
 
 const WELCOME_GROUPS = [
   {
@@ -187,6 +189,24 @@ function applyTheme(theme) {
 
 function themeTitle(theme) {
   return `Theme: ${theme} (click to switch)`;
+}
+
+function isDesktopViewport() {
+  return window.matchMedia(DESKTOP_BREAKPOINT).matches;
+}
+
+function getSidebarCollapsed() {
+  return localStorage.getItem(STORAGE_KEY_SIDEBAR_COLLAPSED) === '1';
+}
+
+function setSidebarCollapsed(collapsed) {
+  if (collapsed) {
+    localStorage.setItem(STORAGE_KEY_SIDEBAR_COLLAPSED, '1');
+    document.body.classList.add('eds-sidebar-collapsed');
+  } else {
+    localStorage.removeItem(STORAGE_KEY_SIDEBAR_COLLAPSED);
+    document.body.classList.remove('eds-sidebar-collapsed');
+  }
 }
 
 // --- Markdown rendering (lightweight) ---
@@ -878,7 +898,19 @@ function renderSidebar(container, callbacks) {
     if (slot) slot.replaceWith(svg);
   });
   footer.addEventListener('click', () => callbacks.onOpenSettings());
-  container.appendChild(footer);
+
+  const collapseBtn = document.createElement('button');
+  collapseBtn.className = 'eds-sidebar-collapse';
+  collapseBtn.type = 'button';
+  collapseBtn.title = 'Collapse sidebar';
+  collapseBtn.setAttribute('aria-label', 'Collapse sidebar');
+  loadIcon('Smock_ChevronLeft_18_N').then((svg) => collapseBtn.appendChild(svg));
+  collapseBtn.addEventListener('click', () => setSidebarCollapsed(true));
+
+  const footerRow = document.createElement('div');
+  footerRow.className = 'eds-sidebar-footer-row';
+  footerRow.append(footer, collapseBtn);
+  container.appendChild(footerRow);
 }
 
 function closeModal() {
@@ -1053,6 +1085,11 @@ function renderChat(container) {
   main.appendChild(header);
 
   hamburgerBtn.addEventListener('click', () => {
+    if (isDesktopViewport()) {
+      setSidebarCollapsed(false);
+      hamburgerBtn.setAttribute('aria-expanded', 'true');
+      return;
+    }
     const willOpen = !sidebar.classList.contains('eds-agent-sidebar-open');
     sidebar.classList.toggle('eds-agent-sidebar-open', willOpen);
     document.body.classList.toggle('eds-sidebar-open', willOpen);
@@ -1160,6 +1197,7 @@ function initEdsAgent() {
   if (!appContainer) return;
 
   applyTheme(getStoredTheme());
+  setSidebarCollapsed(getSidebarCollapsed());
   attachSidebarBackdropDismiss();
 
   const config = getConfig();
