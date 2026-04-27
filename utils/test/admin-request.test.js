@@ -4,13 +4,18 @@ import {
 } from 'node:test';
 import assert from 'node:assert/strict';
 
-// Mock the profile module before importing the helper. This is one of the
-// rare places where mocking is the right call (see TESTING.md): the helper's
-// only job IS to orchestrate ensureLogin + window events into a result, so
-// the seam under test is the contract with those collaborators.
+// Mock the profile and config modules before importing the helper. This is
+// one of the rare places where mocking is the right call (see TESTING.md):
+// the helper's only job IS to orchestrate ensureLogin + window events +
+// updateConfig into a result, so the seam under test is the contract with
+// those collaborators.
 let ensureLoginStub;
+let updateConfigCalls;
 mock.module('../../blocks/profile/profile.js', {
   namedExports: { ensureLogin: (...args) => ensureLoginStub(...args) },
+});
+mock.module('../config/config.js', {
+  namedExports: { updateConfig: () => { updateConfigCalls += 1; } },
 });
 
 const { executeAdminRequest, AuthMode } = await import('../admin-request.js');
@@ -60,6 +65,7 @@ before(() => setupWindow());
 
 beforeEach(() => {
   ensureLoginStub = stubReturning(true);
+  updateConfigCalls = 0;
 });
 
 describe('executeAdminRequest', () => {
@@ -192,6 +198,40 @@ describe('executeAdminRequest', () => {
       assert.equal(requestFn.calls.length, 2);
       assert.equal(ensureLoginStub.calls.length, 2);
       assert.equal(result.status, 200);
+    });
+  });
+
+  describe('updateConfig persistence', () => {
+    it('runs after a successful request', async () => {
+      ensureLoginStub = stubReturning(true);
+      await executeAdminRequest(requestFnReturning(200), { org: 'adobe' });
+      assert.equal(updateConfigCalls, 1);
+    });
+
+    it('runs even on a non-401 error response (server processed the org/site)', async () => {
+      ensureLoginStub = stubReturning(true);
+      await executeAdminRequest(requestFnReturning(404), { org: 'adobe' });
+      assert.equal(updateConfigCalls, 1);
+    });
+
+    it('does not run when the user cancels the preflight login', async () => {
+      ensureLoginStub = stubReturning(false);
+      const promise = executeAdminRequest(requestFnReturning(200), {
+        org: 'adobe', auth: AuthMode.PREFLIGHT_AND_RETRY,
+      });
+      await new Promise((r) => { queueMicrotask(r); });
+      dispatchProfile('cancelled');
+      await promise;
+      assert.equal(updateConfigCalls, 0);
+    });
+
+    it('does not run when the user cancels after a 401', async () => {
+      ensureLoginStub = stubReturning(false);
+      const promise = executeAdminRequest(requestFnReturning(401), { org: 'adobe' });
+      await new Promise((r) => { queueMicrotask(r); });
+      dispatchProfile('cancelled');
+      await promise;
+      assert.equal(updateConfigCalls, 0);
     });
   });
 });

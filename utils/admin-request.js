@@ -1,4 +1,5 @@
 import { ensureLogin } from '../blocks/profile/profile.js';
+import { updateConfig } from './config/config.js';
 
 /**
  * Auth-handling policies for {@link executeAdminRequest}.
@@ -68,6 +69,10 @@ async function ensureSignedIn(org, site) {
  * complete login (cancels the modal, closes the login window, or
  * profile.js's give-up timer fires).
  *
+ * On any non-null result, calls `updateConfig()` to persist the org/site
+ * combo to URL params and localStorage. `updateConfig` is a no-op on pages
+ * that don't have the org/site fields, so callers don't need to opt in.
+ *
  * @template {{ status: number }} T
  * @param {() => Promise<T>} requestFn   returns an AdminResponse-like envelope (`{ status }`)
  * @param {object} policy
@@ -94,5 +99,6 @@ export async function executeAdminRequest(requestFn, policy) {
     }
   }
 
+  updateConfig();
   return result;
 }
