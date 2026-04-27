@@ -56,6 +56,7 @@
     "badges"
     "actions";
   gap: var(--spacing-s);
+  cursor: pointer;
 }
 
 .user-admin .user-card .user-card-info {
@@ -219,6 +220,7 @@ dialog.user-admin-modal .modal-error {
 dialog.user-admin-modal .modal-footer {
   display: flex;
   gap: var(--spacing-s);
+  align-items: center;
   justify-content: flex-end;
   padding: var(--spacing-l);
   border-top: 1px solid var(--color-border);
@@ -226,6 +228,27 @@ dialog.user-admin-modal .modal-footer {
 
 dialog.user-admin-modal .modal-footer .delete-btn {
   margin-right: auto;
+}
+
+dialog.user-admin-modal .modal-footer .footer-roles-reference {
+  margin-right: auto;
+  position: relative;
+}
+
+dialog.user-admin-modal .modal-footer .footer-roles-reference .roles-reference-panel {
+  position: absolute;
+  bottom: calc(100% + var(--spacing-s));
+  left: 0;
+  min-width: 320px;
+  max-width: 480px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: var(--spacing-m);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-hover);
+  z-index: 1;
 }
 
 dialog.user-admin-modal .form-field {
@@ -347,13 +370,13 @@ dialog.user-admin-modal .roles-reference summary::-webkit-details-marker {
 }
 
 dialog.user-admin-modal .roles-reference summary::before {
-  content: '\25B6';
+  content: '\25BC';
   font-size: 0.55em;
   transition: transform 0.2s ease;
 }
 
 dialog.user-admin-modal .roles-reference[open] summary::before {
-  transform: rotate(90deg);
+  transform: rotate(180deg);
 }
 
 dialog.user-admin-modal .roles-reference-list {
@@ -383,6 +406,11 @@ dialog.user-admin-modal .roles-reference-link {
   padding-top: var(--spacing-xs);
   font-size: var(--body-size-s);
   color: var(--blue-600);
+}
+
+dialog.user-admin-modal .modal-footer .footer-roles-reference .roles-reference-link {
+  display: block;
+  margin-top: var(--spacing-s);
 }
 
 /* Danger Button - scoped to user-admin-modal */
@@ -416,14 +444,9 @@ dialog.user-admin-modal .user-entry.has-error {
 
 dialog.user-admin-modal .user-entry-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   margin-bottom: var(--spacing-s);
-}
-
-dialog.user-admin-modal .user-entry-label {
-  font-weight: 600;
-  font-size: var(--body-size-m);
 }
 
 dialog.user-admin-modal .user-entry-remove {
@@ -442,53 +465,6 @@ dialog.user-admin-modal .user-entry-remove:hover {
 
 dialog.user-admin-modal .user-entry:only-child .user-entry-remove {
   display: none;
-}
-
-/* Modal toolbar - pinned strip between header and scrollable body */
-dialog.user-admin-modal .modal-toolbar {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-s);
-  padding: var(--spacing-m) var(--spacing-l);
-  background: light-dark(var(--gray-50), var(--gray-800));
-  border-bottom: 1px solid var(--color-border);
-  flex-shrink: 0;
-}
-
-dialog.user-admin-modal .modal-toolbar .presets-label {
-  font-weight: 600;
-  font-size: var(--body-size-m);
-  color: var(--color-text);
-  margin: 0;
-}
-
-dialog.user-admin-modal .modal-toolbar .presets-btn-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-xs);
-}
-
-dialog.user-admin-modal .role-preset-btn {
-  background: none;
-  border: 1px dashed var(--color-border);
-  border-radius: 20px;
-  padding: 4px 12px;
-  font-size: var(--body-size-s);
-  cursor: pointer;
-  color: var(--color-font-grey);
-  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
-}
-
-dialog.user-admin-modal .role-preset-btn:hover {
-  border-color: var(--blue-500);
-  border-style: solid;
-  color: var(--blue-700);
-}
-
-dialog.user-admin-modal .role-preset-btn.active {
-  background: var(--blue-100);
-  border: 1px solid var(--blue-500);
-  color: var(--blue-700);
 }
 
 /* Compact role pills */
