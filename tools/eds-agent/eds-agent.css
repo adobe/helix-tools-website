@@ -151,11 +151,11 @@ body.eds-agent {
 }
 
 .eds-chat-row-active {
-  background: color-mix(in srgb, var(--eds-accent-fill) 12%, transparent);
+  background: var(--gray-75);
 }
 
 .eds-chat-row-active:hover {
-  background: color-mix(in srgb, var(--eds-accent-fill) 18%, transparent);
+  background: var(--gray-100);
 }
 
 .eds-chat-row-title {
@@ -225,6 +225,11 @@ body.eds-agent {
   background: var(--layer-elevated);
   border-radius: 4px;
   padding: 2px;
+}
+
+.eds-chat-row-delete[hidden],
+.eds-chat-row-confirm[hidden] {
+  display: none;
 }
 
 .eds-chat-row-confirm-yes {
