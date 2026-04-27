@@ -1046,6 +1046,12 @@ body.eds-agent {
   }
 }
 
+@media (width >= 900px) {
+  .eds-mobile-only {
+    display: none;
+  }
+}
+
 @media (width < 900px) {
   .eds-agent-sidebar {
     position: fixed;

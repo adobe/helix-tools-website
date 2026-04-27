@@ -1015,13 +1015,6 @@ function renderChat(container) {
   const header = document.createElement('header');
   header.className = 'eds-agent-header';
 
-  const ctx = document.createElement('div');
-  ctx.className = 'eds-context';
-  const siteFragment = config.site
-    ? ` / <strong>${escapeHtml(config.site)}</strong>`
-    : '';
-  ctx.innerHTML = `<strong>${escapeHtml(config.org)}</strong>${siteFragment}`;
-
   const actions = document.createElement('div');
   actions.className = 'eds-actions';
 
@@ -1034,7 +1027,7 @@ function renderChat(container) {
   loadIcon('S2_Icon_ShowMenu_20_N').then((svg) => hamburgerBtn.appendChild(svg));
 
   const newChatBtn = document.createElement('button');
-  newChatBtn.className = 'eds-icon-btn';
+  newChatBtn.className = 'eds-icon-btn eds-mobile-only';
   newChatBtn.id = 'btn-new-chat';
   newChatBtn.title = 'New chat';
   newChatBtn.setAttribute('aria-label', 'New chat');
@@ -1047,15 +1040,8 @@ function renderChat(container) {
   themeBtn.setAttribute('aria-label', 'Toggle theme');
   loadIcon('S2_Icon_Contrast_20_N').then((svg) => themeBtn.appendChild(svg));
 
-  const settingsBtn = document.createElement('button');
-  settingsBtn.className = 'eds-icon-btn';
-  settingsBtn.id = 'btn-settings';
-  settingsBtn.title = 'Settings';
-  settingsBtn.setAttribute('aria-label', 'Settings');
-  loadIcon('S2_Icon_Settings_20_N').then((svg) => settingsBtn.appendChild(svg));
-
-  actions.append(hamburgerBtn, newChatBtn, themeBtn, settingsBtn);
-  header.append(ctx, actions);
+  actions.append(hamburgerBtn, newChatBtn, themeBtn);
+  header.append(actions);
   main.appendChild(header);
 
   hamburgerBtn.addEventListener('click', () => {
@@ -1133,10 +1119,6 @@ function renderChat(container) {
     activeChatId = null;
     messages = [];
     renderChat(container);
-  });
-
-  settingsBtn.addEventListener('click', () => {
-    openSetupModal({ mode: 'optional' });
   });
 
   themeBtn.addEventListener('click', () => {
