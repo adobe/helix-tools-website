@@ -69,12 +69,12 @@ beforeEach(() => {
 });
 
 describe('executeAdminRequest', () => {
-  describe('auth: none', () => {
+  describe('policy: none', () => {
     it('calls the request fn once and returns the result without invoking ensureLogin', async () => {
       ensureLoginStub = stubReturning(true);
       const requestFn = requestFnReturning(401);
       const result = await executeAdminRequest(requestFn, {
-        org: 'adobe', site: 'x', auth: AuthMode.NONE,
+        org: 'adobe', site: 'x', policy: AuthMode.NONE,
       });
       assert.equal(requestFn.calls.length, 1);
       assert.equal(ensureLoginStub.calls.length, 0);
@@ -82,7 +82,7 @@ describe('executeAdminRequest', () => {
     });
   });
 
-  describe('auth: retryOn401 (default)', () => {
+  describe('policy: retryOn401 (default)', () => {
     it('returns success without calling ensureLogin', async () => {
       ensureLoginStub = stubReturning(true);
       const requestFn = requestFnReturning(200);
@@ -152,12 +152,12 @@ describe('executeAdminRequest', () => {
     });
   });
 
-  describe('auth: preflightAndRetry', () => {
+  describe('policy: preflightAndRetry', () => {
     it('returns null and skips request fn when login is cancelled', async () => {
       ensureLoginStub = stubReturning(false);
       const requestFn = requestFnReturning(200);
       const promise = executeAdminRequest(requestFn, {
-        org: 'adobe', site: 'x', auth: AuthMode.PREFLIGHT_AND_RETRY,
+        org: 'adobe', site: 'x', policy: AuthMode.PREFLIGHT_AND_RETRY,
       });
       await new Promise((r) => { queueMicrotask(r); });
       dispatchProfile('cancelled');
@@ -170,7 +170,7 @@ describe('executeAdminRequest', () => {
       ensureLoginStub = stubReturning(true);
       const requestFn = requestFnReturning(200);
       const result = await executeAdminRequest(requestFn, {
-        org: 'adobe', auth: AuthMode.PREFLIGHT_AND_RETRY,
+        org: 'adobe', policy: AuthMode.PREFLIGHT_AND_RETRY,
       });
       assert.equal(requestFn.calls.length, 1);
       assert.equal(result.status, 200);
@@ -180,7 +180,7 @@ describe('executeAdminRequest', () => {
       ensureLoginStub = stubReturning(false);
       const requestFn = requestFnReturning(200);
       const promise = executeAdminRequest(requestFn, {
-        org: 'adobe', auth: AuthMode.PREFLIGHT_AND_RETRY,
+        org: 'adobe', policy: AuthMode.PREFLIGHT_AND_RETRY,
       });
       await new Promise((r) => { queueMicrotask(r); });
       dispatchProfile('update', ['adobe']);
@@ -193,7 +193,7 @@ describe('executeAdminRequest', () => {
       ensureLoginStub = stubReturning(true, true);
       const requestFn = requestFnReturning(401, 200);
       const result = await executeAdminRequest(requestFn, {
-        org: 'adobe', auth: AuthMode.PREFLIGHT_AND_RETRY,
+        org: 'adobe', policy: AuthMode.PREFLIGHT_AND_RETRY,
       });
       assert.equal(requestFn.calls.length, 2);
       assert.equal(ensureLoginStub.calls.length, 2);
@@ -217,7 +217,7 @@ describe('executeAdminRequest', () => {
     it('does not run when the user cancels the preflight login', async () => {
       ensureLoginStub = stubReturning(false);
       const promise = executeAdminRequest(requestFnReturning(200), {
-        org: 'adobe', auth: AuthMode.PREFLIGHT_AND_RETRY,
+        org: 'adobe', policy: AuthMode.PREFLIGHT_AND_RETRY,
       });
       await new Promise((r) => { queueMicrotask(r); });
       dispatchProfile('cancelled');

@@ -47,7 +47,7 @@ async function init() {
     // Once the fetch succeeds, the user has an active session for any later save.
     const result = await executeAdminRequest(
       () => admin.config({ org: org.value, site: site.value }).robots(),
-      { org: org.value, site: site.value, auth: AuthMode.PREFLIGHT_AND_RETRY },
+      { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
     );
     if (!result) return; // user cancelled login or timed out
     if (result.ok) body.value = await result.text();

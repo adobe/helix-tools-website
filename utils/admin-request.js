@@ -67,24 +67,24 @@ function waitForLogin(org) {
  * callers don't need to opt in.
  *
  * @template {{ status: number }} T
- * @param {() => Promise<T>} requestFn   returns an AdminResponse-like envelope (`{ status }`)
- * @param {object} policy
- * @param {string} policy.org            org for `ensureLogin`
- * @param {string} [policy.site]         site for `ensureLogin`
- * @param {AuthMode} [policy.auth]       auth handling mode (default: `retryOn401`)
+ * @param {() => Promise<T>} requestFn         returns an AdminResponse-like envelope (`{ status }`)
+ * @param {object} authConfig                  auth context for the request
+ * @param {string} authConfig.org              org for `ensureLogin`
+ * @param {string} [authConfig.site]           site for `ensureLogin`
+ * @param {AuthMode} [authConfig.policy]       auth handling mode (default: `retryOn401`)
  * @returns {Promise<T | null>}
  */
-export async function executeAdminRequest(requestFn, policy) {
-  const { org, site, auth = AuthMode.RETRY_ON_401 } = policy;
+export async function executeAdminRequest(requestFn, authConfig) {
+  const { org, site, policy = AuthMode.RETRY_ON_401 } = authConfig;
 
-  if (auth === AuthMode.PREFLIGHT_AND_RETRY) {
+  if (policy === AuthMode.PREFLIGHT_AND_RETRY) {
     const signedIn = await ensureLogin(org, site) || await waitForLogin(org);
     if (!signedIn) return null;
   }
 
   let result = await requestFn();
 
-  const retry = auth === AuthMode.RETRY_ON_401 || auth === AuthMode.PREFLIGHT_AND_RETRY;
+  const retry = policy === AuthMode.RETRY_ON_401 || policy === AuthMode.PREFLIGHT_AND_RETRY;
   if (retry && result?.status === 401) {
     const signedIn = await ensureLogin(org, site) || await waitForLogin(org);
     if (!signedIn) return null;
