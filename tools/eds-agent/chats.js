@@ -6,7 +6,6 @@ function chatsKey(org) {
   return `${CHATS_KEY_PREFIX}${org}`;
 }
 
-// eslint-disable-next-line no-unused-vars
 function activeKey(org) {
   return `${ACTIVE_KEY_PREFIX}${org}`;
 }
@@ -77,15 +76,33 @@ export function deleteChat(org, id) {
   return { remaining: chats, nextActiveId: chats[0]?.id ?? null };
 }
 
-// Stubs filled in by Tasks 2 and 3. Exported here only so the test file's
-// destructured import doesn't fail before those tasks land.
+export function getActiveChatId(org) {
+  if (!org) return null;
+  return localStorage.getItem(activeKey(org)) || null;
+}
 
-// eslint-disable-next-line no-unused-vars
-export function getActiveChatId(org) { return null; }
-// eslint-disable-next-line no-unused-vars
-export function setActiveChatId(org, id) {}
-// eslint-disable-next-line no-unused-vars
-export function appendMessage(org, id, message) { return null; }
+export function setActiveChatId(org, id) {
+  if (!org) return;
+  if (id == null) {
+    localStorage.removeItem(activeKey(org));
+  } else {
+    localStorage.setItem(activeKey(org), id);
+  }
+}
+
+export function appendMessage(org, id, message) {
+  const chats = loadChats(org);
+  const chat = chats.find((c) => c.id === id);
+  if (!chat) return null;
+  chat.messages.push(message);
+  chat.updatedAt = Date.now();
+  saveChats(org, chats);
+  return chat;
+}
+
+// Stubs filled in by Task 3. Exported here only so the test file's
+// destructured import doesn't fail before that task lands.
+
 // eslint-disable-next-line no-unused-vars
 export function migrateLegacyMessages(org, site) { return false; }
 export function groupChatsByDate(chats) {

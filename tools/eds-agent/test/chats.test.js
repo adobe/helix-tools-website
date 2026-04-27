@@ -140,3 +140,55 @@ describe('eds-agent:chats.js — CRUD', () => {
     assert.equal(result.nextActiveId, a.id);
   });
 });
+
+describe('eds-agent:chats.js — active chat tracking', () => {
+  it('getActiveChatId returns null when nothing is set', () => {
+    assert.equal(getActiveChatId('adobe'), null);
+  });
+
+  it('setActiveChatId / getActiveChatId round-trip', () => {
+    setActiveChatId('adobe', 'abc');
+    assert.equal(getActiveChatId('adobe'), 'abc');
+  });
+
+  it('setActiveChatId(null) clears the active chat', () => {
+    setActiveChatId('adobe', 'abc');
+    setActiveChatId('adobe', null);
+    assert.equal(getActiveChatId('adobe'), null);
+  });
+
+  it('active chat id is scoped per org', () => {
+    setActiveChatId('adobe', 'a');
+    setActiveChatId('twdc', 'b');
+    assert.equal(getActiveChatId('adobe'), 'a');
+    assert.equal(getActiveChatId('twdc'), 'b');
+  });
+});
+
+describe('eds-agent:chats.js — appendMessage', () => {
+  it('appends a message and bumps updatedAt', async () => {
+    const chat = createChat('adobe', 'hi', '');
+    const before = chat.updatedAt;
+    await new Promise((r) => { setTimeout(r, 5); });
+    const updated = appendMessage('adobe', chat.id, { role: 'user', content: 'hello' });
+    assert.ok(updated);
+    assert.equal(updated.messages.length, 1);
+    assert.equal(updated.messages[0].content, 'hello');
+    assert.ok(updated.updatedAt > before);
+  });
+
+  it('returns null for unknown chat id', () => {
+    const result = appendMessage('adobe', 'nonexistent', { role: 'user', content: 'x' });
+    assert.equal(result, null);
+  });
+
+  it('persists the appended message', () => {
+    const chat = createChat('adobe', 'hi', '');
+    appendMessage('adobe', chat.id, { role: 'user', content: 'one' });
+    appendMessage('adobe', chat.id, { role: 'assistant', content: 'two' });
+    const reloaded = loadChats('adobe').find((c) => c.id === chat.id);
+    assert.equal(reloaded.messages.length, 2);
+    assert.equal(reloaded.messages[0].content, 'one');
+    assert.equal(reloaded.messages[1].content, 'two');
+  });
+});
