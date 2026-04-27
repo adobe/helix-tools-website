@@ -27,42 +27,39 @@ const SIMULATOR_ENDPOINT = getSimulatorEndpoint();
 // Note: handlebars depends on markup-templating which depends on markup
 const PRISM_LANGUAGES = ['json', 'markup', 'markup-templating', 'handlebars'];
 
-// DOM Elements
-const jsonInput = document.getElementById('json-input');
-const templateInput = document.getElementById('template-input');
-const jsonHighlight = document.getElementById('json-highlight');
-const templateHighlight = document.getElementById('template-highlight');
-const jsonLineNumbers = document.getElementById('json-line-numbers');
-const templateLineNumbers = document.getElementById('template-line-numbers');
-const jsonErrorHighlight = document.getElementById('json-error-highlight');
-const templateErrorHighlight = document.getElementById('template-error-highlight');
-const previewFrame = document.getElementById('preview-frame');
-const sourceOutput = document.getElementById('source-output');
-const jsonStatus = document.getElementById('json-status');
-const templateStatus = document.getElementById('template-status');
-const previewStatus = document.getElementById('preview-status');
-const sourceErrorHighlights = document.getElementById('source-error-highlights');
-const sourceLineNumbers = document.getElementById('source-line-numbers');
-const validationDetails = document.getElementById('validation-details');
+// DOM Elements — assigned in initDOMRefs() after buildUI() injects the HTML
+let jsonInput;
+let templateInput;
+let jsonHighlight;
+let templateHighlight;
+let jsonLineNumbers;
+let templateLineNumbers;
+let jsonErrorHighlight;
+let templateErrorHighlight;
+let previewFrame;
+let sourceOutput;
+let jsonStatus;
+let templateStatus;
+let previewStatus;
+let sourceErrorHighlights;
+let sourceLineNumbers;
+let validationDetails;
+let previewTabs;
+let previewViews;
+let examplesModal;
+let helpModal;
+let examplesBtn;
+let helpBtn;
+let optionsPanel;
+let optionsToggleBtn;
+let optionArrayKey;
+let optionPathKey;
+let optionTestPath;
+let optionRelativeURLPrefix;
+let optionGenericFallback;
 
-// Preview tabs (Rendered vs Source toggle)
-const previewTabs = document.querySelectorAll('.preview-tab');
-const previewViews = document.querySelectorAll('.preview-view');
-
-// Modal elements
-const examplesModal = document.getElementById('examples-modal');
-const helpModal = document.getElementById('help-modal');
-const examplesBtn = document.getElementById('examples-btn');
-const helpBtn = document.getElementById('help-btn');
-
-// Options panel elements
-const optionsPanel = document.getElementById('options-panel');
-const optionsToggleBtn = document.getElementById('options-toggle-btn');
-const optionArrayKey = document.getElementById('option-arrayKey');
-const optionPathKey = document.getElementById('option-pathKey');
-const optionTestPath = document.getElementById('option-testPath');
-const optionRelativeURLPrefix = document.getElementById('option-relativeURLPrefix');
-const optionGenericFallback = document.getElementById('option-genericFallback');
+// Container reference — set in init(container)
+let rootContainer = null;
 
 // State
 let debounceTimer = null;
@@ -73,6 +70,356 @@ const VALIDATION_DELAY = 200; // Delay before showing validation errors (less ja
 
 // Prism loading promise - ensures single load and allows awaiting
 let prismLoadPromise = null;
+
+// ============================================================================
+// BUILD UI + DOM REFS
+// ============================================================================
+
+/**
+ * Inject simulator HTML into container (skipped on standalone page where HTML already exists).
+ * @param {Element} container
+ */
+function buildUI(container) {
+  if (container.querySelector('#json-input')) return;
+
+  container.innerHTML = `
+    <div class="simulator-header">
+      <span class="header-content">
+        <h1>JSON2HTML Simulator</h1>
+        <p>Build and test Mustache templates for your JSON endpoints. <a href="https://www.aem.live/developer/json2html" target="_blank" rel="noopener noreferrer">View full documentation →</a></p>
+      </span>
+      <span class="header-actions">
+        <button type="button" class="button outline" id="examples-btn">
+          <span class="icon icon-code"></span> Examples
+        </button>
+        <button type="button" class="button outline" id="help-btn">
+          <span class="icon icon-question"></span> Syntax Help
+        </button>
+      </span>
+    </div>
+    <div class="control-bar">
+      <span class="control-options">
+        <button type="button" class="button small outline" id="options-toggle-btn" title="Toggle Options">
+          ⚙ Options
+        </button>
+        <button type="button" class="button small outline" id="fullscreen-btn" title="Toggle Fullscreen">
+          ⛶
+        </button>
+      </span>
+    </div>
+    <div class="options-panel" id="options-panel" hidden>
+      <span class="options-header">
+        <span class="options-label">Simulator Options</span>
+        <span class="options-hint">Configure data filtering and URL rewriting. <a href="https://www.aem.live/developer/json2html#configuration-parameters" target="_blank" rel="noopener noreferrer">Learn more →</a></span>
+      </span>
+      <span class="options-grid">
+        <div class="option-group">
+          <label for="option-arrayKey">
+            <span class="option-name">arrayKey</span>
+            <span class="option-desc"><strong>When to use:</strong> Your JSON has nested data and you want to access an inner array (e.g., "data" or "items.products")</span>
+          </label>
+          <input type="text" id="option-arrayKey" placeholder="e.g., data">
+          <div class="option-hint" id="arrayKey-hint">
+            💡 When arrayKey points to an array, wrap your template in <code>{{#.}}...{{/.}}</code> to iterate over items
+          </div>
+        </div>
+        <div class="option-group">
+          <label for="option-pathKey">
+            <span class="option-name">pathKey</span>
+            <span class="option-desc"><strong>When to use:</strong> You want to filter an array to find one specific item by a property name (e.g., "URL" or "path")</span>
+          </label>
+          <input type="text" id="option-pathKey" placeholder="e.g., URL">
+          <div class="option-hint">
+            💡 Use with arrayKey + testPath to filter arrays and extract a single matching item
+          </div>
+        </div>
+        <div class="option-group">
+          <label for="option-testPath">
+            <span class="option-name">testPath</span>
+            <span class="option-desc"><strong>When to use:</strong> The value to match against pathKey to find the right item (e.g., "/products/my-item")</span>
+          </label>
+          <input type="text" id="option-testPath" placeholder="e.g., /page1">
+        </div>
+        <div class="option-group">
+          <label for="option-relativeURLPrefix">
+            <span class="option-name">relativeURLPrefix</span>
+            <span class="option-desc"><strong>When to use:</strong> Your JSON has relative image URLs like "/media/image.jpg" and you want to prefix them with a CDN domain</span>
+          </label>
+          <input type="text" id="option-relativeURLPrefix" placeholder="e.g., https://cdn.example.com">
+        </div>
+        <div class="option-group option-checkbox">
+          <label for="option-genericFallback">
+            <input type="checkbox" id="option-genericFallback">
+            <span class="option-info">
+              <span class="option-name">genericFallback</span>
+              <span class="option-desc"><strong>When to use:</strong> You want auto-generated HTML from your JSON without writing a template</span>
+            </span>
+          </label>
+        </div>
+      </span>
+    </div>
+    <div class="workspace">
+      <section class="editors-row">
+        <div class="editor-panel json-panel">
+          <div class="editor-header">
+            <span class="editor-label">JSON Data</span>
+            <div class="editor-actions">
+              <button type="button" class="button small outline" id="format-json">Format</button>
+            </div>
+          </div>
+          <div class="editor-wrapper">
+            <div class="line-numbers" id="json-line-numbers" aria-hidden="true"></div>
+            <textarea id="json-input" class="code-editor" spellcheck="false" placeholder="Enter your JSON data here...">{
+  "title": "Welcome to JSON2HTML",
+  "description": "This simulator helps you experiment with Mustache templates.",
+  "features": [
+    { "name": "Live Preview", "enabled": true },
+    { "name": "Syntax Highlighting", "enabled": true },
+    { "name": "Error Detection", "enabled": true }
+  ],
+  "author": {
+    "name": "AEM Developer",
+    "role": "Content Engineer"
+  }
+}</textarea>
+            <pre class="code-highlight" id="json-highlight" aria-hidden="true"><code class="language-json"></code></pre>
+            <div class="error-line-highlight" id="json-error-highlight" aria-hidden="true"></div>
+          </div>
+          <div class="editor-status" id="json-status">
+            <span class="status-icon status-ok">✓</span>
+            <span class="status-text">Valid JSON</span>
+          </div>
+        </div>
+        <span class="resizer resizer-vertical" id="resizer-vertical" title="Drag to resize">
+          <span class="resizer-handle"></span>
+        </span>
+        <div class="editor-panel template-panel">
+          <div class="editor-header">
+            <span class="editor-label">Mustache Template</span>
+          </div>
+          <div class="editor-wrapper">
+            <div class="line-numbers" id="template-line-numbers" aria-hidden="true"></div>
+            <textarea id="template-input" class="code-editor" spellcheck="false" placeholder="Enter your Mustache template here..."><!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>{{title}}</title>
+  </head>
+  <body>
+    <header></header>
+    <main>
+      <div>
+        <h1>{{title}}</h1>
+        <p>{{description}}</p>
+      </div>
+      <div>
+        <h2>Features</h2>
+        <ul>
+          {{#features}}
+          <li>
+            {{name}}{{#enabled}} ✓{{/enabled}}
+          </li>
+          {{/features}}
+        </ul>
+      </div>
+      <div>
+        <p>Created by <strong>{{author.name}}</strong></p>
+        <p>{{author.role}}</p>
+      </div>
+    </main>
+    <footer></footer>
+  </body>
+</html></textarea>
+            <pre class="code-highlight" id="template-highlight" aria-hidden="true"><code class="language-html"></code></pre>
+            <div class="error-line-highlight" id="template-error-highlight" aria-hidden="true"></div>
+          </div>
+          <div class="editor-status" id="template-status">
+            <span class="status-icon status-ok">✓</span>
+            <span class="status-text">Template ready</span>
+          </div>
+        </div>
+      </section>
+      <span class="resizer resizer-horizontal" id="resizer-horizontal" title="Drag to resize">
+        <span class="resizer-handle"></span>
+      </span>
+      <section class="preview-panel">
+        <div class="preview-header">
+          <span class="preview-label">HTML Preview</span>
+          <div class="preview-tabs" role="tablist">
+            <button type="button" class="preview-tab" role="tab" data-view="rendered" aria-selected="false">
+              Rendered
+            </button>
+            <button type="button" class="preview-tab active" role="tab" data-view="source" aria-selected="true">
+              Source
+            </button>
+          </div>
+          <div class="preview-actions">
+            <button type="button" class="button small outline" id="copy-html" title="Copy HTML">
+              <span class="icon icon-copy"></span>
+            </button>
+          </div>
+        </div>
+        <div class="preview-content">
+          <div class="preview-view" data-view="rendered" hidden>
+            <iframe id="preview-frame" sandbox="allow-scripts" title="HTML Preview"></iframe>
+          </div>
+          <div class="preview-view active" data-view="source">
+            <div class="line-numbers" id="source-line-numbers" aria-hidden="true"></div>
+            <div id="source-error-highlights" class="source-error-highlights" aria-hidden="true"></div>
+            <pre id="source-output" class="source-code"><code class="language-html"></code></pre>
+          </div>
+          <div class="validation-details" id="validation-details" aria-live="polite" hidden></div>
+        </div>
+        <div class="preview-status" id="preview-status">
+          <span class="status-icon status-ok">✓</span>
+          <span class="status-text">HTML</span>
+          <span class="status-hint" id="keyboard-hint">💡 Press <kbd>Cmd+Enter</kbd> to render instantly</span>
+        </div>
+      </section>
+    </div>
+    <dialog id="examples-modal" class="modal examples-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Example Templates</h2>
+          <button type="button" class="modal-close" aria-label="Close">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="examples-grid">
+            <button type="button" class="example-card" data-example="basic">
+              <h3>Basic Object</h3>
+              <p>Simple key-value pair rendering</p>
+            </button>
+            <button type="button" class="example-card" data-example="array">
+              <h3>Array Loop</h3>
+              <p>Iterate over arrays with {{#items}}</p>
+            </button>
+            <button type="button" class="example-card" data-example="conditional">
+              <h3>Conditionals</h3>
+              <p>Show/hide based on boolean values</p>
+            </button>
+            <button type="button" class="example-card" data-example="nested">
+              <h3>Nested Data</h3>
+              <p>Access nested object properties</p>
+            </button>
+            <button type="button" class="example-card" data-example="product">
+              <h3>Product Card</h3>
+              <p>E-commerce product example</p>
+            </button>
+            <button type="button" class="example-card" data-example="event">
+              <h3>Event Page</h3>
+              <p>Content fragment example</p>
+            </button>
+            <button type="button" class="example-card" data-example="contentIndex">
+              <h3>Content Index</h3>
+              <p>Blog/article listing with pagination</p>
+            </button>
+            <button type="button" class="example-card" data-example="storeLocator">
+              <h3>Store Locator</h3>
+              <p>Location data with nested address</p>
+            </button>
+            <button type="button" class="example-card" data-example="productCatalog">
+              <h3>Product Catalog</h3>
+              <p>Multiple products with filtering</p>
+            </button>
+            <button type="button" class="example-card" data-example="eventCalendar">
+              <h3>Event Calendar</h3>
+              <p>Events with date and capacity</p>
+            </button>
+          </div>
+        </div>
+      </div>
+    </dialog>
+    <dialog id="help-modal" class="modal help-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Mustache Syntax Reference</h2>
+          <button type="button" class="modal-close" aria-label="Close">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="syntax-reference">
+            <div class="syntax-item">
+              <h3>Variables</h3>
+              <code>{{variable}}</code>
+              <p>Renders the value of <em>variable</em> (HTML escaped)</p>
+            </div>
+            <div class="syntax-item">
+              <h3>Unescaped HTML</h3>
+              <code>{{{rawHtml}}}</code>
+              <p>Renders raw HTML without escaping</p>
+            </div>
+            <div class="syntax-item">
+              <h3>Sections (Loops &amp; Conditionals)</h3>
+              <code>{{#items}}...{{/items}}</code>
+              <p>Loops over arrays or shows content if truthy</p>
+            </div>
+            <div class="syntax-item">
+              <h3>Inverted Sections</h3>
+              <code>{{^items}}...{{/items}}</code>
+              <p>Shows content only if value is falsy or empty</p>
+            </div>
+            <div class="syntax-item">
+              <h3>Nested Properties</h3>
+              <code>{{author.name}}</code>
+              <p>Access nested object properties with dot notation</p>
+            </div>
+            <div class="syntax-item">
+              <h3>Comments</h3>
+              <code>{{! This is a comment }}</code>
+              <p>Comments are not rendered in output</p>
+            </div>
+          </div>
+          <div class="help-links">
+            <p>
+              <a href="https://mustache.github.io/mustache.5.html" target="_blank" rel="noopener noreferrer">
+                Full Mustache Documentation ↗
+              </a>
+            </p>
+            <p>
+              <a href="https://www.aem.live/developer/json2html" target="_blank" rel="noopener noreferrer">
+                AEM JSON2HTML Documentation ↗
+              </a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </dialog>
+  `;
+}
+
+/**
+ * Assign all module-level DOM element references.
+ * Must be called after buildUI() so elements exist in the document.
+ */
+function initDOMRefs() {
+  jsonInput = document.getElementById('json-input');
+  templateInput = document.getElementById('template-input');
+  jsonHighlight = document.getElementById('json-highlight');
+  templateHighlight = document.getElementById('template-highlight');
+  jsonLineNumbers = document.getElementById('json-line-numbers');
+  templateLineNumbers = document.getElementById('template-line-numbers');
+  jsonErrorHighlight = document.getElementById('json-error-highlight');
+  templateErrorHighlight = document.getElementById('template-error-highlight');
+  previewFrame = document.getElementById('preview-frame');
+  sourceOutput = document.getElementById('source-output');
+  jsonStatus = document.getElementById('json-status');
+  templateStatus = document.getElementById('template-status');
+  previewStatus = document.getElementById('preview-status');
+  sourceErrorHighlights = document.getElementById('source-error-highlights');
+  sourceLineNumbers = document.getElementById('source-line-numbers');
+  validationDetails = document.getElementById('validation-details');
+  previewTabs = document.querySelectorAll('.preview-tab');
+  previewViews = document.querySelectorAll('.preview-view');
+  examplesModal = document.getElementById('examples-modal');
+  helpModal = document.getElementById('help-modal');
+  examplesBtn = document.getElementById('examples-btn');
+  helpBtn = document.getElementById('help-btn');
+  optionsPanel = document.getElementById('options-panel');
+  optionsToggleBtn = document.getElementById('options-toggle-btn');
+  optionArrayKey = document.getElementById('option-arrayKey');
+  optionPathKey = document.getElementById('option-pathKey');
+  optionTestPath = document.getElementById('option-testPath');
+  optionRelativeURLPrefix = document.getElementById('option-relativeURLPrefix');
+  optionGenericFallback = document.getElementById('option-genericFallback');
+}
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -206,9 +553,8 @@ function showToast(message) {
   const toast = document.createElement('div');
   toast.className = 'toast';
   toast.textContent = message;
-  // Append to main so it's visible in fullscreen mode
-  const main = document.querySelector('main');
-  (main || document.body).appendChild(toast);
+  // Append to rootContainer so it's visible in fullscreen mode
+  (rootContainer || document.body).appendChild(toast);
   setTimeout(() => toast.remove(), 2000);
 }
 
@@ -1324,7 +1670,7 @@ function setupButtons() {
   // Fullscreen button - fullscreen the entire tool
   const fullscreenBtn = document.getElementById('fullscreen-btn');
   fullscreenBtn?.addEventListener('click', () => {
-    const mainElement = document.querySelector('main');
+    const mainElement = rootContainer;
     if (document.fullscreenElement) {
       document.exitFullscreen();
     } else {
@@ -1390,8 +1736,8 @@ function setupKeyboardShortcuts() {
  * 3. Work in fullscreen mode (element must be inside <main>)
  */
 function createValidationMessage() {
-  const main = document.querySelector('main');
-  if (!main || document.getElementById('validation-message')) return;
+  const main = rootContainer;
+  if (!main || main.querySelector('#validation-message')) return;
 
   const container = document.createElement('aside');
   container.className = 'validation-message-container';
@@ -1416,9 +1762,15 @@ function createValidationMessage() {
 }
 
 /**
- * Initialize the simulator
+ * Initialize the simulator inside the given container element.
+ * Injects the simulator HTML if not already present (embedded mode),
+ * then wires all listeners and renders the initial preview.
+ * @param {Element} container - Element to build the simulator inside
  */
-async function init() {
+export default async function init(container) {
+  rootContainer = container;
+  buildUI(container);
+  initDOMRefs();
   // Load Prism FIRST - must complete before input listeners are active
   await ensurePrismReady();
 
@@ -1445,9 +1797,13 @@ async function init() {
   render();
 }
 
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
+// Auto-init on the standalone simulator page only.
+// When imported by the config tool, #simulator-root already exists so this is skipped;
+// the config tool calls init(container) explicitly on tab activation.
+if (!document.getElementById('simulator-root')) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => init(document.querySelector('main')));
+  } else {
+    init(document.querySelector('main'));
+  }
 }
