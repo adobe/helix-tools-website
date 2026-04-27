@@ -721,7 +721,7 @@ async function sendMessage(textarea, messagesEl) {
     isStreaming = false;
     setSendButtonMode('send');
     textarea.focus();
-    persistMessages(getConfig().org);
+    persistMessages(config.org);
   }
 }
 
@@ -821,7 +821,6 @@ async function openSetupModal({ mode = 'required', errorText = '' } = {}) {
     if (!token) { tokenInput.focus(); return; }
     if (!org) { orgInput.focus(); return; }
     saveConfig(token, org, site);
-    activeChatId = getActiveChatId(org);
     closeModal();
     const appContainer = document.getElementById('agent-app');
     renderChat(appContainer); // eslint-disable-line no-use-before-define
@@ -910,8 +909,7 @@ function renderChat(container) {
   sendBtnState.el = sendBtn;
   sendBtnState.sendIconHTML = sendBtn.innerHTML;
 
-  const cfgForLoad = getConfig();
-  const active = cfgForLoad.org ? getActiveChat(cfgForLoad.org) : null;
+  const active = config.org ? getActiveChat(config.org) : null;
   if (active) {
     activeChatId = active.id;
     messages = active.messages.slice();
