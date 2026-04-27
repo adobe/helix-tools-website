@@ -783,7 +783,7 @@ function renderChatRow(chat, isActive, callbacks) {
       <button class="eds-chat-row-confirm-no" type="button" aria-label="Cancel">×</button>
     </span>
   `;
-  loadIcon('S2_Icon_Delete_20_N').then((svg) => {
+  loadIcon('trash').then((svg) => {
     const btn = row.querySelector('.eds-chat-row-delete');
     if (btn) btn.appendChild(svg);
   });
@@ -1026,7 +1026,13 @@ function renderChat(container) {
   hamburgerBtn.title = 'Open chats';
   hamburgerBtn.setAttribute('aria-label', 'Open chats');
   hamburgerBtn.setAttribute('aria-expanded', 'false');
-  loadIcon('S2_Icon_ShowMenu_20_N').then((svg) => hamburgerBtn.appendChild(svg));
+  hamburgerBtn.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  `;
 
   const newChatBtn = document.createElement('button');
   newChatBtn.className = 'eds-icon-btn eds-mobile-only';
