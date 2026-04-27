@@ -303,7 +303,7 @@ function showStatusRow(messagesEl) {
     <span class="eds-status-text">${THINKING_WORDS[startIdx]}…</span>
   `;
   messagesEl.appendChild(el);
-  scrollToBottom(messagesEl);
+  scrollToBottom();
 
   let idx = startIdx;
   thinkingInterval = setInterval(() => {
@@ -364,7 +364,7 @@ function renderMessageBubble(messagesEl, msg, streaming = false) {
   bubble.appendChild(body);
   messagesEl.appendChild(bubble);
   if (msg.role === 'assistant') injectCopyButtons(body);
-  scrollToBottom(messagesEl);
+  scrollToBottom();
 
   return bubble;
 }
@@ -375,7 +375,7 @@ function updateStreamingMessage(messagesEl, text) {
     const body = streamingMsg.querySelector('.eds-body');
     body.innerHTML = renderMarkdown(text);
     injectCopyButtons(body);
-    scrollToBottom(messagesEl);
+    scrollToBottom();
   }
 }
 
@@ -425,7 +425,7 @@ function renderApprovalCard(messagesEl, approval) {
   });
 
   messagesEl.appendChild(card);
-  scrollToBottom(messagesEl);
+  scrollToBottom();
 
   return new Promise((resolve) => {
     card.querySelector('[data-action="approve"]').addEventListener('click', () => {
@@ -455,7 +455,7 @@ function renderToolCallCard(messagesEl, { toolCallId, toolName, input }) {
     card.querySelector('.eds-toolcall-icon').replaceWith(svg);
   });
   messagesEl.appendChild(card);
-  scrollToBottom(messagesEl);
+  scrollToBottom();
   return card;
 }
 
@@ -478,7 +478,7 @@ function renderAllMessages(messagesEl) {
       renderMessageBubble(messagesEl, msg);
     }
   });
-  scrollToBottom(messagesEl);
+  scrollToBottom();
 }
 
 // --- SSE Stream parsing ---
@@ -714,6 +714,8 @@ async function sendMessage(textarea, messagesEl) {
     }
   }
 
+  const sendChatId = activeChatId;
+
   messages.push(userMsg);
   renderMessageBubble(messagesEl, userMsg);
 
@@ -729,7 +731,7 @@ async function sendMessage(textarea, messagesEl) {
     isStreaming = false;
     setSendButtonMode('send');
     textarea.focus();
-    persistMessages(config.org);
+    if (activeChatId === sendChatId) persistMessages(config.org);
   }
 }
 
