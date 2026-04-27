@@ -27,7 +27,7 @@ body.eds-agent {
   --eds-card-radius: 4px;
   --eds-bubble-bg-user: var(--eds-accent-fill);
   --eds-bubble-fg-user: var(--eds-accent-text);
-  --eds-bubble-bg-assistant: var(--layer-elevated);
+  --eds-bubble-bg-assistant: light-dark(var(--blue-200), var(--gray-800));
   --eds-bubble-border-assistant: var(--color-border);
   --eds-status-color: var(--color-font-grey);
   --eds-warning-stripe: var(--orange-900);
@@ -486,7 +486,6 @@ html[data-theme="dark"] body.eds-agent {
 
 .eds-msg.eds-msg-assistant .eds-body {
   background: var(--eds-bubble-bg-assistant);
-  border: 1px solid var(--eds-bubble-border-assistant);
   color: var(--color-text);
   border-bottom-left-radius: 2px;
 }
@@ -682,8 +681,12 @@ html[data-theme="dark"] body.eds-agent {
   align-items: center;
   gap: var(--spacing-s);
   padding: 0 var(--spacing-m);
-  background: transparent;
+  background: var(--layer-base);
   font-size: 12px;
+
+  @media (width >= 900px) {
+    background: transparent;
+  }
 }
 
 .eds-agent-header .eds-actions {

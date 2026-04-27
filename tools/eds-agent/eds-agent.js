@@ -1071,7 +1071,7 @@ function renderChat(container) {
   newChatBtn.id = 'btn-new-chat';
   newChatBtn.title = 'New chat';
   newChatBtn.setAttribute('aria-label', 'New chat');
-  loadIcon('S2_Icon_Edit_20_N').then((svg) => newChatBtn.appendChild(svg));
+  loadIcon('s2-icon-aichat-20-n').then((svg) => newChatBtn.appendChild(svg));
 
   const themeBtn = document.createElement('button');
   themeBtn.className = 'eds-icon-btn';
