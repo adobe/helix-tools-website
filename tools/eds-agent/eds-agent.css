@@ -602,18 +602,6 @@ body.eds-agent {
   font-size: 12px;
 }
 
-.eds-agent-header .eds-context {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--color-font-grey);
-}
-
-.eds-agent-header .eds-context strong {
-  color: var(--color-text);
-  font-weight: 500;
-}
-
 .eds-agent-header .eds-actions {
   margin-left: auto;
   display: flex;
@@ -1041,13 +1029,13 @@ body.eds-agent {
 }
 
 @media (width >= 900px) {
-  .eds-hamburger-btn {
+  .eds-agent-header .eds-hamburger-btn {
     display: none;
   }
 }
 
 @media (width >= 900px) {
-  .eds-mobile-only {
+  .eds-agent-header .eds-mobile-only {
     display: none;
   }
 }
