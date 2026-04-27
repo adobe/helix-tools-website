@@ -30,7 +30,7 @@ const {
   appendMessage,
   migrateLegacyMessages,
   groupChatsByDate,
-} = await import('../chats.js');
+} = await import('../helpers/chats.js');
 
 beforeEach(() => {
   globalThis.localStorage = makeStorageShim();

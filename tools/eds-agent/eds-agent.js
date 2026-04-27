@@ -9,7 +9,7 @@ import {
   setActiveChatId,
   migrateLegacyMessages,
   groupChatsByDate,
-} from './chats.js';
+} from './helpers/chats.js';
 
 const iconCache = new Map();
 
