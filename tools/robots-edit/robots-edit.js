@@ -1,6 +1,6 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import admin from '../../scripts/helix-admin.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 
@@ -27,7 +27,11 @@ async function init() {
       return;
     }
 
-    const result = await admin.config({ org: org.value, site: site.value }).robots(body.value);
+    const result = await executeAdminRequest(
+      () => admin.config({ org: org.value, site: site.value }).robots(body.value),
+      { org: org.value, site: site.value },
+    );
+    if (!result) return; // 401 followed by cancelled login
     logResult(result);
   });
 
@@ -39,18 +43,13 @@ async function init() {
       return;
     }
 
-    // Login is checked here (the natural entry point: fetch → edit → save).
+    // Preflight on Fetch (the natural entry point: fetch → edit → save).
     // Once the fetch succeeds, the user has an active session for any later save.
-    if (!await ensureLogin(org.value, site.value)) {
-      window.addEventListener('profile-update', ({ detail: loginInfo }) => {
-        if (Array.isArray(loginInfo) && loginInfo.includes(org.value)) {
-          e.target.querySelector('button[type="submit"]').click();
-        }
-      }, { once: true });
-      return;
-    }
-
-    const result = await admin.config({ org: org.value, site: site.value }).robots();
+    const result = await executeAdminRequest(
+      () => admin.config({ org: org.value, site: site.value }).robots(),
+      { org: org.value, site: site.value, auth: AuthMode.PREFLIGHT_AND_RETRY },
+    );
+    if (!result) return; // user cancelled login or timed out
     if (result.ok) body.value = await result.text();
     logResult(result);
   });

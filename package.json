@@ -11,7 +11,7 @@
     "lint:js:fix": "eslint . --fix",
     "lint:css": "stylelint \"blocks/**/*.css\" \"styles/*.css\" \"tools/**/*.css\"",
     "lint:css:fix": "stylelint \"blocks/**/*.css\" \"styles/*.css\" \"tools/**/*.css\" --fix",
-    "test": "TZ=Europe/Berlin node --test --experimental-test-coverage --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=junit.xml --test-reporter=lcov --test-reporter-destination=lcov.info '**/test/*.test.js'",
+    "test": "TZ=Europe/Berlin node --test --experimental-test-coverage --experimental-test-module-mocks --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=junit.xml --test-reporter=lcov --test-reporter-destination=lcov.info '**/test/*.test.js'",
     "lint": "npm run lint:js && npm run lint:css",
     "lint:fix": "npm run lint:js:fix && npm run lint:css:fix"
   },
