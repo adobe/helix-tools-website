@@ -25,15 +25,10 @@ const {
   saveChats,
   createChat,
   deleteChat,
-  // The five names below are not exercised by Task 1's tests; they are
-  // destructured here so Tasks 2 and 3 can append more describe blocks
-  // without re-importing.
-  // eslint-disable-next-line no-unused-vars
   getActiveChatId,
-  // eslint-disable-next-line no-unused-vars
   setActiveChatId,
-  // eslint-disable-next-line no-unused-vars
   appendMessage,
+  // Destructured here so Task 3 can append more describe blocks without re-importing.
   // eslint-disable-next-line no-unused-vars
   migrateLegacyMessages,
   // eslint-disable-next-line no-unused-vars

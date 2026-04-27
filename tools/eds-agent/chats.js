@@ -39,14 +39,13 @@ export function loadChats(org) {
 }
 
 export function saveChats(org, chats) {
-  if (!org) return chats;
-  let toWrite = chats;
-  if (safeWrite(chatsKey(org), JSON.stringify(toWrite))) return toWrite;
-  if (toWrite.length > 1) {
-    toWrite = toWrite.slice(0, -1);
-    safeWrite(chatsKey(org), JSON.stringify(toWrite));
+  if (!org) return false;
+  if (safeWrite(chatsKey(org), JSON.stringify(chats))) return true;
+  if (chats.length > 1) {
+    const trimmed = chats.slice(0, -1);
+    if (safeWrite(chatsKey(org), JSON.stringify(trimmed))) return true;
   }
-  return toWrite;
+  return false;
 }
 
 export function createChat(org, firstUserMessage, site) {
@@ -96,7 +95,7 @@ export function appendMessage(org, id, message) {
   if (!chat) return null;
   chat.messages.push(message);
   chat.updatedAt = Date.now();
-  saveChats(org, chats);
+  if (!saveChats(org, chats)) return null;
   return chat;
 }
 
