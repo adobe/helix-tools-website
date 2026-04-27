@@ -1035,3 +1035,43 @@ body.eds-agent {
   font-weight: 600;
   color: var(--color-text);
 }
+
+.eds-hamburger-btn {
+  display: inline-flex;
+}
+
+@media (width >= 900px) {
+  .eds-hamburger-btn {
+    display: none;
+  }
+}
+
+@media (width < 900px) {
+  .eds-agent-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(280px, 85vw);
+    z-index: 150;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease-out;
+    height: 100vh;
+  }
+
+  .eds-agent-sidebar.eds-agent-sidebar-open {
+    display: flex;
+    transform: translateX(0);
+  }
+
+  body.eds-sidebar-open::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgb(0 0 0 / 50%);
+    z-index: 140;
+    animation: 0.15s ease-out 0s 1 normal none running fade-in;
+  }
+
+  body.eds-sidebar-open {
+    overflow: hidden;
+  }
+}

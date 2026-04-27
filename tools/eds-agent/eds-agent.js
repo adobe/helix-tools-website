@@ -127,6 +127,7 @@ let currentAbortController = null;
 let authToken = localStorage.getItem(STORAGE_KEY_TOKEN) || '';
 let thinkingInterval = null;
 let activeChatId = null;
+let sidebarDismissAttached = false;
 
 const sendBtnState = {
   el: null,
@@ -970,6 +971,7 @@ function buildSidebarCallbacks(container) {
       const cfg = getConfig();
       if (cfg.org) setActiveChatId(cfg.org, null);
       activeChatId = null;
+      document.body.classList.remove('eds-sidebar-open');
       renderChat(container); // eslint-disable-line no-use-before-define
     },
     onSwitchChat: (id) => {
@@ -977,6 +979,7 @@ function buildSidebarCallbacks(container) {
       const cfg = getConfig();
       activeChatId = id;
       if (cfg.org) setActiveChatId(cfg.org, id);
+      document.body.classList.remove('eds-sidebar-open');
       renderChat(container); // eslint-disable-line no-use-before-define
     },
     onDeleteChat: (id) => {
@@ -1022,6 +1025,13 @@ function renderChat(container) {
   const actions = document.createElement('div');
   actions.className = 'eds-actions';
 
+  const hamburgerBtn = document.createElement('button');
+  hamburgerBtn.className = 'eds-icon-btn eds-hamburger-btn';
+  hamburgerBtn.id = 'btn-hamburger';
+  hamburgerBtn.title = 'Open chats';
+  hamburgerBtn.setAttribute('aria-label', 'Open chats');
+  loadIcon('S2_Icon_ShowMenu_20_N').then((svg) => hamburgerBtn.appendChild(svg));
+
   const newChatBtn = document.createElement('button');
   newChatBtn.className = 'eds-icon-btn';
   newChatBtn.id = 'btn-new-chat';
@@ -1043,9 +1053,14 @@ function renderChat(container) {
   settingsBtn.setAttribute('aria-label', 'Settings');
   loadIcon('S2_Icon_Settings_20_N').then((svg) => settingsBtn.appendChild(svg));
 
-  actions.append(newChatBtn, themeBtn, settingsBtn);
+  actions.append(hamburgerBtn, newChatBtn, themeBtn, settingsBtn);
   header.append(ctx, actions);
   main.appendChild(header);
+
+  hamburgerBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('eds-agent-sidebar-open');
+    document.body.classList.toggle('eds-sidebar-open');
+  });
 
   // Messages area
   const messagesEl = document.createElement('div');
@@ -1132,11 +1147,25 @@ function renderChat(container) {
 
 // --- Initialization ---
 
+function attachSidebarBackdropDismiss() {
+  if (sidebarDismissAttached) return;
+  sidebarDismissAttached = true;
+  document.addEventListener('click', (e) => {
+    if (!document.body.classList.contains('eds-sidebar-open')) return;
+    if (e.target.closest('.eds-agent-sidebar')) return;
+    if (e.target.closest('.eds-hamburger-btn')) return;
+    document.body.classList.remove('eds-sidebar-open');
+    const sidebarEl = document.querySelector('.eds-agent-sidebar');
+    if (sidebarEl) sidebarEl.classList.remove('eds-agent-sidebar-open');
+  }, { capture: true });
+}
+
 function initEdsAgent() {
   const appContainer = document.getElementById('agent-app');
   if (!appContainer) return;
 
   applyTheme(getStoredTheme());
+  attachSidebarBackdropDismiss();
 
   const config = getConfig();
   if (config.org) {
