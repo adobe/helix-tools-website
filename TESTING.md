@@ -12,7 +12,7 @@ Testing is a cost-benefit decision, not a ritual. We want tests whose value in f
 - **Refactor for testability when the logic warrants it.** Logic doesn't need to be pure today to be worth testing. If the logic is complex and entangled with DOM or fetch calls, extract it into a pure function and test that. If the logic is trivial, don't bother — the refactoring cost exceeds the value.
 - **Tool complexity sets the baseline.** A thin tool that fetches data and renders it with very little intermediate logic rarely has anything worth testing. The more state, data processing, and coordination a tool has, the more likely there's a meaningful logic layer worth extracting and testing.
 - **Add tests when you touch a tool.** If you add or change an existing tool, add or update tests alongside the change. The same goes for bug fixes — add a test that would have caught it.
-- **Avoid mocking — with one exception.** Mocked tests are expensive to maintain and give false confidence when the code being tested *consumes* a mocked dependency (the mock can drift from reality). The exception is shared library/orchestration code where the unit under test *is* the contract with a collaborator — see "When mocking is acceptable" below.
+- **Avoid mocks whenever possible.** Mocked tests are expensive to maintain and give false confidence when the code being tested *consumes* a mocked dependency — the mock can drift from reality, and the test passes while production breaks. Reach for mocks only when the unit under test *is* the contract with a collaborator (shared libraries, orchestration helpers); see "When Mocking Is Acceptable" below.
 - **Comprehensive coverage is an explicit non-goal.** A small set of high-confidence tests is more valuable than broad coverage that breaks frequently or tests the obvious.
 
 Reference: https://www.aem.live/blog/testing-in-aem
@@ -62,9 +62,9 @@ Only refactor when the logic is genuinely complex enough to justify it. Over-eng
 
 ## When Mocking Is Acceptable
 
-The default rule is no mocking. Mocked tests are expensive to maintain and give false confidence when the code under test *consumes* a mocked dependency — the mock can drift from the real API, and the test passes while production breaks.
+Avoid mocks whenever possible. They're expensive to maintain and give false confidence when the code under test *consumes* a mocked dependency — the mock can drift from the real API, and the test passes while production breaks.
 
-Mocking is acceptable, and sometimes the right call, in a narrow case: **shared library or orchestration code where the unit under test IS the contract with a collaborator**, and that contract is the very thing you want to pin. The mock is the system under test, not a stand-in for it. Examples:
+Mocks are acceptable, and sometimes the right call, in a narrow case: **shared library or orchestration code where the unit under test IS the contract with a collaborator**, and that contract is the very thing you want to pin. The mock is the system under test, not a stand-in for it. Examples:
 
 - `scripts/test/helix-admin.test.js` — fetches are spied because the wrapper's job is to construct fetch arguments and shape the response. The spy *is* the SUT.
 - `utils/test/admin-request.test.js` — `ensureLogin` is mocked via `node:test`'s `mock.module` and `window` events are dispatched against an `EventTarget`, because the helper's job is to orchestrate those collaborators into a result. The orchestration logic itself is the contract under test.
@@ -81,7 +81,7 @@ Conventions when mocking *is* used:
 - **Framework**: Node.js built-in `node:test` + `node:assert/strict`
 - **Location**: `tools/{toolname}/test/{module}.test.js` — name the test file after the module it tests
 - **Run**: `npm test` (executes all `**/test/*.test.js`)
-- **Mocking**: avoid by default; see "When Mocking Is Acceptable" for the narrow exception
+- **Mocks**: avoid whenever possible; see "When Mocking Is Acceptable" for the narrow exception
 
 See existing tests for reference:
 - `tools/bulk/test/utils.test.js` — URL sanitization and normalization
