@@ -409,8 +409,8 @@ function renderApprovalCard(messagesEl, approval) {
     </div>
     <div class="eds-approval-args">${escapeHtml(JSON.stringify(approval.args, null, 2))}</div>
     <div class="eds-approval-actions">
-      <button class="eds-btn eds-btn-accent" data-action="approve">Approve</button>
-      <button class="eds-btn eds-btn-quiet" data-action="reject">Reject</button>
+      <button class="eds-btn eds-btn-positive" data-action="approve">Approve</button>
+      <button class="eds-btn eds-btn-negative" data-action="reject">Reject</button>
     </div>
   `;
 

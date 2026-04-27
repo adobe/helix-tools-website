@@ -34,14 +34,15 @@ body.eds-agent {
   --eds-error-bg: light-dark(var(--red-900), var(--red-1000));
   --eds-header-height: 48px;
   --eds-content-max: 880px;
-  --eds-accent-fill: var();
   --eds-accent-fill: var(--blue-900);
+  --eds-accent-fill-hover: var(--blue-1000);
   --eds-accent-text: var(--gray-25);
   --eds-code-bg: light-dark(rgb(0 0 0 / 5%), rgb(255 255 255 / 6%));
   --eds-code-bg-strong: light-dark(rgb(0 0 0 / 7%), rgb(255 255 255 / 8%));
   --eds-surface: light-dark(rgb(255 255 255 / 65%), rgb(20 20 20 / 55%));
   --body-font-family: adobe-clean, 'Trebuchet MS', sans-serif;
   --heading-font-family: var(--body-font-family);
+
   background:
     radial-gradient(ellipse 60% 40% at 60% 30%, color-mix(in srgb, var(--blue-900) 4%, transparent), transparent 75%),
     radial-gradient(ellipse 60% 40% at 60% 70%, color-mix(in srgb, var(--blue-900) 6%, transparent), transparent 75%),
@@ -125,6 +126,15 @@ body.eds-agent {
   color: var(--color-white);
   text-align: left;
   cursor: pointer;
+
+  &:hover {
+    background: var(--blue-1000);
+  }
+
+  &:focus {
+    color: var(--color-white);
+    outline: 0;
+  }
 }
 
 .eds-msg {
@@ -530,6 +540,13 @@ body.eds-agent {
   font-weight: 500;
   cursor: pointer;
   border: 1px solid transparent;
+
+  &:focus {
+    outline: 0;
+    outline-offset: 0;
+    color: var(--color-white);
+    border: 1px solid transparent;
+  }
 }
 
 .eds-btn-accent {
@@ -538,18 +555,26 @@ body.eds-agent {
   transition: background 0.15s;
 }
 
+.eds-btn-positive {
+  background: var(--green-900);
+  color: var(--color-white);
+
+  &:hover {
+    background: var(--green-1000);
+  }
+}
+
 .eds-btn-accent:hover {
   background: var(--eds-accent-fill-hover);
 }
 
-.eds-btn-quiet {
-  background: transparent;
-  border-color: var(--color-border);
-  color: var(--color-text);
+.eds-btn-negative {
+  background: var(--red-900);
+  color: var(--color-white);
 }
 
-.eds-btn-quiet:hover {
-  background: var(--color-button-accent-bg);
+.eds-btn-negative:hover {
+  background: var(--red-1000);
 }
 
 .eds-approval-actions {
