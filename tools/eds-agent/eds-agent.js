@@ -1164,6 +1164,8 @@ function attachSidebarBackdropDismiss() {
     document.body.classList.remove('eds-sidebar-open');
     const sidebarEl = document.querySelector('.eds-agent-sidebar');
     if (sidebarEl) sidebarEl.classList.remove('eds-agent-sidebar-open');
+    const hamburgerEl = document.querySelector('.eds-hamburger-btn');
+    if (hamburgerEl) hamburgerEl.setAttribute('aria-expanded', 'false');
   }, { capture: true });
 }
 
