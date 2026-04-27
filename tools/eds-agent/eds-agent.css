@@ -59,6 +59,10 @@ body.eds-agent {
   background: transparent;
 }
 
+.eds-agent-sidebar {
+  display: none;
+}
+
 .eds-agent-messages {
   flex: 1;
   padding: var(--spacing-m) var(--spacing-m) var(--spacing-l);

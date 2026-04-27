@@ -959,22 +959,28 @@ async function openSetupModal({ mode = 'required', errorText = '' } = {}) {
   tokenInput.focus();
 }
 
+function cancelStreamIfActive() {
+  if (isStreaming && currentAbortController) currentAbortController.abort();
+}
+
 function buildSidebarCallbacks(container) {
   return {
     onNewChat: () => {
+      cancelStreamIfActive();
       const cfg = getConfig();
       if (cfg.org) setActiveChatId(cfg.org, null);
       activeChatId = null;
       renderChat(container); // eslint-disable-line no-use-before-define
     },
     onSwitchChat: (id) => {
+      cancelStreamIfActive();
       const cfg = getConfig();
-      if (isStreaming && currentAbortController) currentAbortController.abort();
       activeChatId = id;
       if (cfg.org) setActiveChatId(cfg.org, id);
       renderChat(container); // eslint-disable-line no-use-before-define
     },
     onDeleteChat: (id) => {
+      cancelStreamIfActive();
       const cfg = getConfig();
       if (!cfg.org) return;
       const result = deleteChat(cfg.org, id);
