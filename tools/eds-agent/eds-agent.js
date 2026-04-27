@@ -4,9 +4,11 @@ import {
   loadChats,
   saveChats,
   createChat,
+  deleteChat,
   getActiveChatId,
   setActiveChatId,
   migrateLegacyMessages,
+  groupChatsByDate,
 } from './chats.js';
 
 const iconCache = new Map();
@@ -704,6 +706,11 @@ async function sendMessage(textarea, messagesEl) {
     const newChat = createChat(config.org, text, config.site);
     activeChatId = newChat.id;
     setActiveChatId(config.org, newChat.id);
+    const sidebarEl = document.querySelector('.eds-agent-sidebar');
+    if (sidebarEl) {
+      // eslint-disable-next-line no-use-before-define
+      renderSidebar(sidebarEl, buildSidebarCallbacks(document.getElementById('agent-app')));
+    }
   }
 
   messages.push(userMsg);
@@ -751,6 +758,124 @@ function renderWelcome(messagesEl, textarea) {
       sendMessage(textarea, messagesEl);
     });
   });
+}
+
+const DATE_GROUP_LABELS = {
+  today: 'Today',
+  yesterday: 'Yesterday',
+  last7: 'Previous 7 days',
+  last30: 'Previous 30 days',
+  older: 'Older',
+};
+
+function renderChatRow(chat, isActive, callbacks) {
+  const row = document.createElement('div');
+  row.className = `eds-chat-row${isActive ? ' eds-chat-row-active' : ''}`;
+  row.dataset.chatId = chat.id;
+  row.innerHTML = `
+    <button class="eds-chat-row-title" type="button" title="${escapeHtml(chat.title)}">${escapeHtml(chat.title || '(untitled)')}</button>
+    <button class="eds-chat-row-delete" type="button" aria-label="Delete chat"></button>
+    <span class="eds-chat-row-confirm" hidden>
+      <button class="eds-chat-row-confirm-yes" type="button">Delete?</button>
+      <button class="eds-chat-row-confirm-no" type="button" aria-label="Cancel">×</button>
+    </span>
+  `;
+  loadIcon('S2_Icon_Delete_20_N').then((svg) => {
+    const btn = row.querySelector('.eds-chat-row-delete');
+    if (btn) btn.appendChild(svg);
+  });
+  row.querySelector('.eds-chat-row-title').addEventListener('click', () => callbacks.onSwitchChat(chat.id));
+  const deleteBtn = row.querySelector('.eds-chat-row-delete');
+  const confirmEl = row.querySelector('.eds-chat-row-confirm');
+  const yesBtn = row.querySelector('.eds-chat-row-confirm-yes');
+  const noBtn = row.querySelector('.eds-chat-row-confirm-no');
+  deleteBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    deleteBtn.hidden = true;
+    confirmEl.hidden = false;
+  });
+  noBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    deleteBtn.hidden = false;
+    confirmEl.hidden = true;
+  });
+  yesBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    callbacks.onDeleteChat(chat.id);
+  });
+  return row;
+}
+
+function renderSidebar(container, callbacks) {
+  const config = getConfig();
+  const chats = config.org ? loadChats(config.org) : [];
+  const groups = groupChatsByDate(chats);
+
+  container.innerHTML = '';
+  container.className = 'eds-agent-sidebar';
+
+  const top = document.createElement('div');
+  top.className = 'eds-sidebar-top';
+  const newBtn = document.createElement('button');
+  newBtn.className = 'eds-btn eds-btn-accent eds-sidebar-new-chat';
+  newBtn.type = 'button';
+  newBtn.textContent = '+ New chat';
+  newBtn.addEventListener('click', () => callbacks.onNewChat());
+  top.appendChild(newBtn);
+  container.appendChild(top);
+
+  const list = document.createElement('div');
+  list.className = 'eds-sidebar-list';
+
+  let totalRendered = 0;
+  Object.entries(DATE_GROUP_LABELS).forEach(([key, label]) => {
+    const bucket = groups[key];
+    if (!bucket.length) return;
+    const heading = document.createElement('div');
+    heading.className = 'eds-date-group-label';
+    heading.textContent = label;
+    list.appendChild(heading);
+    bucket.forEach((chat) => {
+      list.appendChild(renderChatRow(chat, activeChatId === chat.id, callbacks));
+      totalRendered += 1;
+    });
+  });
+
+  if (!totalRendered) {
+    const empty = document.createElement('div');
+    empty.className = 'eds-sidebar-empty';
+    empty.textContent = 'No chats yet';
+    list.appendChild(empty);
+  }
+
+  container.appendChild(list);
+
+  const footer = document.createElement('button');
+  footer.className = 'eds-sidebar-footer';
+  footer.type = 'button';
+  footer.setAttribute('aria-label', 'Open settings');
+  if (config.org) {
+    footer.innerHTML = `
+      <div class="eds-sidebar-footer-text">
+        <div class="eds-sidebar-org">${escapeHtml(config.org)}</div>
+        ${config.site ? `<div class="eds-sidebar-site">${escapeHtml(config.site)}</div>` : ''}
+      </div>
+      <span class="eds-sidebar-footer-icon" aria-hidden="true"></span>
+    `;
+  } else {
+    footer.innerHTML = `
+      <div class="eds-sidebar-footer-text">
+        <div class="eds-sidebar-org eds-sidebar-org-empty">Not connected</div>
+      </div>
+      <span class="eds-sidebar-footer-icon" aria-hidden="true"></span>
+    `;
+  }
+  loadIcon('S2_Icon_Settings_20_N').then((svg) => {
+    const slot = footer.querySelector('.eds-sidebar-footer-icon');
+    if (slot) slot.replaceWith(svg);
+  });
+  footer.addEventListener('click', () => callbacks.onOpenSettings());
+  container.appendChild(footer);
 }
 
 function closeModal() {
@@ -834,12 +959,48 @@ async function openSetupModal({ mode = 'required', errorText = '' } = {}) {
   tokenInput.focus();
 }
 
+function buildSidebarCallbacks(container) {
+  return {
+    onNewChat: () => {
+      const cfg = getConfig();
+      if (cfg.org) setActiveChatId(cfg.org, null);
+      activeChatId = null;
+      renderChat(container); // eslint-disable-line no-use-before-define
+    },
+    onSwitchChat: (id) => {
+      const cfg = getConfig();
+      if (isStreaming && currentAbortController) currentAbortController.abort();
+      activeChatId = id;
+      if (cfg.org) setActiveChatId(cfg.org, id);
+      renderChat(container); // eslint-disable-line no-use-before-define
+    },
+    onDeleteChat: (id) => {
+      const cfg = getConfig();
+      if (!cfg.org) return;
+      const result = deleteChat(cfg.org, id);
+      if (activeChatId === id) {
+        activeChatId = result.nextActiveId;
+        setActiveChatId(cfg.org, result.nextActiveId);
+      }
+      renderChat(container); // eslint-disable-line no-use-before-define
+    },
+    onOpenSettings: () => openSetupModal({ mode: 'optional' }),
+  };
+}
+
 function renderChat(container) {
   const config = getConfig();
   container.innerHTML = '';
 
   const app = document.createElement('div');
   app.className = 'eds-agent-app';
+
+  const sidebar = document.createElement('aside');
+  app.appendChild(sidebar);
+
+  const main = document.createElement('div');
+  main.className = 'eds-agent-main';
+  app.appendChild(main);
 
   // Header
   const header = document.createElement('header');
@@ -878,12 +1039,12 @@ function renderChat(container) {
 
   actions.append(newChatBtn, themeBtn, settingsBtn);
   header.append(ctx, actions);
-  app.appendChild(header);
+  main.appendChild(header);
 
   // Messages area
   const messagesEl = document.createElement('div');
   messagesEl.className = 'eds-agent-messages';
-  app.appendChild(messagesEl);
+  main.appendChild(messagesEl);
   attachCopyDelegation(messagesEl);
 
   // Input area
@@ -900,7 +1061,9 @@ function renderChat(container) {
       </button>
     </div>
   `;
-  app.appendChild(inputArea);
+  main.appendChild(inputArea);
+
+  renderSidebar(sidebar, buildSidebarCallbacks(container));
 
   container.appendChild(app);
 
