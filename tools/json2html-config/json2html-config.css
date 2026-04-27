@@ -1,1 +1,573 @@
-/* json2html-config — Configure tab styles. Full styles added in Task 4. */
+/* json2html Config Tool Styles */
+
+/* ========================================
+   PAGE LAYOUT
+   ======================================== */
+
+body.json2html-config main {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 60px);
+  padding: calc(var(--header-height) + var(--spacing-300)) var(--spacing-200) var(--spacing-300);
+  gap: var(--spacing-300);
+}
+
+@media (width >= 1200px) {
+  body.json2html-config main {
+    padding-inline: var(--spacing-100);
+  }
+}
+
+/* ========================================
+   TOOL HEADER (title + tab nav)
+   ======================================== */
+
+body.json2html-config .tool-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--spacing-200);
+  border-bottom: var(--border-s) solid var(--color-border);
+  padding-bottom: var(--spacing-200);
+  flex-shrink: 0;
+  margin: 0;
+}
+
+body.json2html-config .tool-header-content h1 {
+  margin: 0;
+}
+
+body.json2html-config .tool-header-content p {
+  margin: var(--spacing-50) 0 0;
+  color: var(--color-font-grey);
+  font-size: var(--body-size-s);
+}
+
+body.json2html-config .tool-tabs {
+  display: flex;
+  gap: var(--spacing-50);
+  background: light-dark(var(--gray-200), var(--gray-700));
+  border-radius: var(--rounding-s);
+  padding: var(--spacing-50);
+  flex-shrink: 0;
+}
+
+body.json2html-config .tab-btn {
+  padding: var(--spacing-100) var(--spacing-300);
+  font-size: var(--body-size-s);
+  font-weight: var(--weight-medium);
+  background: transparent;
+  border: none;
+  border-radius: var(--rounding-s);
+  color: var(--color-font-grey);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+body.json2html-config .tab-btn:hover {
+  color: var(--color-text);
+}
+
+body.json2html-config .tab-btn.active {
+  background: var(--layer-elevated);
+  color: var(--color-text);
+  box-shadow: 0 1px 2px var(--transparent-black-100);
+}
+
+/* ========================================
+   TAB PANELS
+   ======================================== */
+
+body.json2html-config .tab-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-300);
+}
+
+body.json2html-config .tab-panel[hidden] {
+  display: none;
+}
+
+/* Give the simulate tab minimum height for the workspace */
+body.json2html-config #tab-simulate {
+  min-height: 600px;
+}
+
+body.json2html-config #simulator-root {
+  flex: 1;
+}
+
+/* ========================================
+   CONNECT FORM
+   ======================================== */
+
+body.json2html-config .connect-form-wrap {
+  background: var(--layer-elevated);
+  border: var(--border-s) solid var(--color-border);
+  border-radius: var(--rounding-m);
+  padding: var(--spacing-300) var(--spacing-400);
+}
+
+body.json2html-config .connect-form .field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-200);
+  align-items: flex-end;
+}
+
+body.json2html-config .connect-form .field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-50);
+  flex: 1 1 160px;
+}
+
+body.json2html-config .connect-form .field-branch {
+  flex: 0 1 120px;
+}
+
+body.json2html-config .connect-form .field-action {
+  flex: 0 0 auto;
+}
+
+body.json2html-config .connect-form label {
+  font-size: var(--detail-size-m);
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+}
+
+/* ========================================
+   CONFIG LIST SECTION
+   ======================================== */
+
+body.json2html-config .config-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-200);
+}
+
+body.json2html-config .config-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-200);
+}
+
+body.json2html-config .config-list-header h2 {
+  margin: 0;
+}
+
+body.json2html-config .config-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-200);
+}
+
+body.json2html-config .empty-state {
+  color: var(--color-font-grey);
+  font-style: italic;
+  text-align: center;
+  padding: var(--spacing-500);
+  background: var(--layer-elevated);
+  border: var(--border-s) solid var(--color-border);
+  border-radius: var(--rounding-m);
+  margin: 0;
+}
+
+body.json2html-config .config-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-200);
+  padding-top: var(--spacing-100);
+}
+
+/* ========================================
+   CONFIG CARDS
+   ======================================== */
+
+body.json2html-config .config-card {
+  background: var(--layer-elevated);
+  border: var(--border-s) solid var(--color-border);
+  border-radius: var(--rounding-m);
+  padding: var(--spacing-300);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-150);
+  transition: box-shadow 0.2s ease;
+}
+
+body.json2html-config .config-card:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+body.json2html-config .card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-150);
+  flex-wrap: wrap;
+}
+
+body.json2html-config .card-path {
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-m);
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+}
+
+body.json2html-config .card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-50);
+}
+
+body.json2html-config .card-endpoint {
+  font-family: var(--code-font-family);
+  font-size: var(--detail-size-m);
+  color: var(--color-font-grey);
+  word-break: break-all;
+}
+
+body.json2html-config .card-template {
+  font-size: var(--detail-size-m);
+  color: var(--color-font-grey);
+}
+
+body.json2html-config .card-detail {
+  font-family: var(--code-font-family);
+  font-size: var(--detail-size-s);
+  color: var(--color-font-grey);
+}
+
+body.json2html-config .card-actions {
+  display: flex;
+  gap: var(--spacing-100);
+  flex-wrap: wrap;
+  margin-top: var(--spacing-100);
+}
+
+/* Danger button variant for delete actions */
+body.json2html-config .button.danger {
+  border-color: light-dark(var(--red-500), var(--red-500));
+  color: light-dark(var(--red-700), var(--red-400));
+}
+
+body.json2html-config .button.danger:hover {
+  background: light-dark(var(--red-100), var(--red-900));
+  border-color: light-dark(var(--red-700), var(--red-300));
+  color: light-dark(var(--red-900), var(--red-300));
+}
+
+/* ========================================
+   TYPE TAGS
+   ======================================== */
+
+body.json2html-config .type-tag {
+  display: inline-block;
+  padding: var(--spacing-25) var(--spacing-150);
+  border-radius: var(--rounding-s);
+  font-size: var(--detail-size-s);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+body.json2html-config .type-tag-cf {
+  background: light-dark(#dbeafe, #1e3a5f);
+  color: light-dark(#1d4ed8, #93c5fd);
+}
+
+body.json2html-config .type-tag-custom {
+  background: light-dark(#fef3c7, #431a10);
+  color: light-dark(#92400e, #fcd34d);
+}
+
+body.json2html-config .type-tag-array {
+  background: light-dark(#dcfce7, #14532d);
+  color: light-dark(#166534, #86efac);
+}
+
+/* ========================================
+   CONFIG FORM PANEL
+   ======================================== */
+
+body.json2html-config .config-form-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+body.json2html-config .config-form-panel {
+  background: var(--layer-elevated);
+  border: var(--border-s) solid var(--color-border);
+  border-radius: var(--rounding-m);
+  padding: var(--spacing-400);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-300);
+}
+
+body.json2html-config .form-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-200);
+  padding-bottom: var(--spacing-200);
+  border-bottom: var(--border-s) solid var(--color-border);
+}
+
+body.json2html-config .form-panel-header h2 {
+  margin: 0;
+}
+
+/* ========================================
+   TYPE SELECTOR
+   ======================================== */
+
+body.json2html-config .type-selector {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-150);
+}
+
+body.json2html-config .type-selector legend {
+  font-size: var(--detail-size-m);
+  font-weight: var(--weight-medium);
+  color: var(--color-font-grey);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--spacing-150);
+  padding: 0;
+  float: left;
+  width: 100%;
+}
+
+body.json2html-config .type-option {
+  display: flex;
+  cursor: pointer;
+}
+
+body.json2html-config .type-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+body.json2html-config .type-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-50);
+  padding: var(--spacing-200) var(--spacing-300);
+  background: light-dark(var(--gray-50), var(--gray-800));
+  border: var(--border-m) solid var(--color-border);
+  border-radius: var(--rounding-m);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: 100%;
+}
+
+body.json2html-config .type-card strong {
+  font-size: var(--body-size-m);
+  color: var(--color-text);
+}
+
+body.json2html-config .type-card > span {
+  font-size: var(--body-size-s);
+  color: var(--color-font-grey);
+}
+
+body.json2html-config .type-option:hover .type-card {
+  border-color: light-dark(var(--gray-400), var(--gray-500));
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+body.json2html-config .type-option input[type="radio"]:checked + .type-card {
+  border-color: var(--spectrum-blue);
+  background: light-dark(#eff6ff, var(--gray-800));
+  box-shadow: 0 0 0 1px var(--spectrum-blue);
+}
+
+body.json2html-config .type-option input[type="radio"]:focus-visible + .type-card {
+  outline: var(--border-m) solid var(--color-link);
+  outline-offset: var(--border-m);
+}
+
+@media (width >= 600px) {
+  body.json2html-config .type-selector {
+    flex-direction: row;
+  }
+
+  body.json2html-config .type-option {
+    flex: 1;
+  }
+}
+
+/* ========================================
+   TYPE-SPECIFIC FIELDS
+   ======================================== */
+
+body.json2html-config .type-fields {
+  border-top: var(--border-s) solid var(--color-border);
+  padding-top: var(--spacing-200);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-200);
+  margin: 0;
+}
+
+body.json2html-config .type-fields[hidden] {
+  display: none;
+}
+
+/* ========================================
+   FORM GROUPS
+   ======================================== */
+
+body.json2html-config .config-entry-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-200);
+}
+
+body.json2html-config .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-75);
+}
+
+body.json2html-config .form-group label,
+body.json2html-config .form-group .field-label {
+  font-size: var(--body-size-s);
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+  margin: 0;
+}
+
+body.json2html-config .field-hint {
+  font-size: var(--detail-size-m);
+  color: var(--color-font-grey);
+  margin: 0;
+  line-height: var(--line-height-m);
+}
+
+body.json2html-config .field-hint code {
+  font-family: var(--code-font-family);
+  font-size: var(--detail-size-s);
+  background: light-dark(var(--gray-100), var(--gray-800));
+  padding: 1px 4px;
+  border-radius: var(--rounding-xs);
+  color: var(--spectrum-blue);
+}
+
+body.json2html-config .required {
+  color: light-dark(var(--red-700), var(--red-400));
+  font-style: normal;
+}
+
+/* ========================================
+   CUSTOM HEADERS
+   ======================================== */
+
+body.json2html-config .header-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-100);
+  margin-bottom: var(--spacing-100);
+}
+
+body.json2html-config .header-row {
+  display: flex;
+  gap: var(--spacing-100);
+  align-items: center;
+}
+
+body.json2html-config .header-key,
+body.json2html-config .header-value {
+  flex: 1;
+}
+
+body.json2html-config .btn-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: var(--border-s) solid var(--color-border);
+  border-radius: var(--rounding-s);
+  color: var(--color-font-grey);
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+body.json2html-config .btn-icon:hover {
+  background: light-dark(var(--red-100), var(--red-900));
+  border-color: light-dark(var(--red-300), var(--red-700));
+  color: light-dark(var(--red-700), var(--red-400));
+}
+
+/* ========================================
+   ADVANCED SECTION
+   ======================================== */
+
+body.json2html-config .advanced-section {
+  border-top: var(--border-s) solid var(--color-border);
+  padding-top: var(--spacing-200);
+}
+
+body.json2html-config .advanced-section summary {
+  font-size: var(--body-size-s);
+  font-weight: var(--weight-medium);
+  color: var(--color-font-grey);
+  cursor: pointer;
+  padding: var(--spacing-100) 0;
+  user-select: none;
+}
+
+body.json2html-config .advanced-section summary:hover {
+  color: var(--color-text);
+}
+
+body.json2html-config .advanced-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-200);
+  padding-top: var(--spacing-200);
+}
+
+/* ========================================
+   FORM ACTIONS
+   ======================================== */
+
+body.json2html-config .form-actions {
+  display: flex;
+  gap: var(--spacing-200);
+  align-items: center;
+  padding-top: var(--spacing-100);
+  border-top: var(--border-s) solid var(--color-border);
+}
+
+/* ========================================
+   SAVE STATUS
+   ======================================== */
+
+body.json2html-config .save-status {
+  font-size: var(--body-size-s);
+  color: var(--color-font-grey);
+}
+
+body.json2html-config .save-status.status-ok {
+  color: light-dark(var(--green-700), var(--green-400));
+}
+
+body.json2html-config .save-status.status-error {
+  color: light-dark(var(--red-700), var(--red-400));
+}
