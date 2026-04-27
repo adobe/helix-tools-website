@@ -1114,11 +1114,7 @@ function renderChat(container) {
   });
 
   newChatBtn.addEventListener('click', () => {
-    const cfgForNew = getConfig();
-    if (cfgForNew.org) setActiveChatId(cfgForNew.org, null);
-    activeChatId = null;
-    messages = [];
-    renderChat(container);
+    buildSidebarCallbacks(container).onNewChat();
   });
 
   themeBtn.addEventListener('click', () => {
