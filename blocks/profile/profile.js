@@ -405,6 +405,16 @@ async function showModal(block, focusedOrg) {
     dialog.classList.add('profile-modal');
     dialog.id = 'profile-modal';
     dialog.closedBy = 'any';
+    // Bind once: the dialog is reused across showModal calls, so attaching
+    // here avoids stacking duplicate listeners that would each emit
+    // `profile-cancelled` on every close.
+    dialog.addEventListener('close', () => {
+      dialog.classList.remove('edit-mode');
+      // Always fires on close, including after a successful login. Listeners
+      // that care about the login outcome should observe `profile-update`
+      // (dispatched first) and remove themselves before this fires.
+      dispatchProfileEvent('cancelled');
+    });
     block.append(dialog);
   }
 
@@ -423,14 +433,6 @@ async function showModal(block, focusedOrg) {
   closeButton.title = closeButton.textContent;
   closeButton.addEventListener('click', () => dialog.close());
   dialog.append(closeButton);
-
-  dialog.addEventListener('close', () => {
-    dialog.classList.remove('edit-mode');
-    // Always fires on close, including after a successful login. Listeners
-    // that care about the login outcome should observe `profile-update`
-    // (dispatched first) and remove themselves before this fires.
-    dispatchProfileEvent('cancelled');
-  });
 
   dialog.showModal();
 }
