@@ -42,7 +42,7 @@ function requestFnReturning(...statuses) {
     calls.push(i);
     const status = statuses[Math.min(i, statuses.length - 1)];
     i += 1;
-    return { status };
+    return { status, ok: status >= 200 && status < 300 };
   };
   fn.calls = calls;
   return fn;
@@ -208,10 +208,10 @@ describe('executeAdminRequest', () => {
       assert.equal(updateConfigCalls, 1);
     });
 
-    it('runs even on a non-401 error response (server processed the org/site)', async () => {
+    it('does not run on non-2xx responses (404, 500, etc) — server didn\'t validate the org/site', async () => {
       ensureLoginStub = stubReturning(true);
       await executeAdminRequest(requestFnReturning(404), { org: 'adobe' });
-      assert.equal(updateConfigCalls, 1);
+      assert.equal(updateConfigCalls, 0);
     });
 
     it('does not run when the user cancels the preflight login', async () => {

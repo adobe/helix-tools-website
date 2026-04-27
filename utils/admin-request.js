@@ -69,9 +69,12 @@ async function ensureSignedIn(org, site) {
  * complete login (cancels the modal, closes the login window, or
  * profile.js's give-up timer fires).
  *
- * On any non-null result, calls `updateConfig()` to persist the org/site
- * combo to URL params and localStorage. `updateConfig` is a no-op on pages
- * that don't have the org/site fields, so callers don't need to opt in.
+ * On any 2xx result, calls `updateConfig()` to persist the org/site combo
+ * to URL params and localStorage. Non-2xx results don't trigger persistence
+ * — a 4xx/5xx may not actually validate the org/site (404 could mean the
+ * org doesn't exist, 403 could mean wrong permissions on a wrong combo).
+ * `updateConfig` is a no-op on pages without the org/site fields, so
+ * callers don't need to opt in.
  *
  * @template {{ status: number }} T
  * @param {() => Promise<T>} requestFn   returns an AdminResponse-like envelope (`{ status }`)
@@ -99,6 +102,6 @@ export async function executeAdminRequest(requestFn, policy) {
     }
   }
 
-  updateConfig();
+  if (result?.ok) updateConfig();
   return result;
 }
