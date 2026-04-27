@@ -40,16 +40,54 @@ body.eds-agent {
   --eds-code-bg: light-dark(rgb(0 0 0 / 5%), rgb(255 255 255 / 6%));
   --eds-code-bg-strong: light-dark(rgb(0 0 0 / 7%), rgb(255 255 255 / 8%));
   --eds-surface: light-dark(rgb(255 255 255 / 65%), rgb(20 20 20 / 55%));
+  --eds-background-light: radial-gradient(
+    120% 100% at 50% 100%,
+    color-mix(in srgb, var(--blue-500) 32%, transparent) 0%,
+    color-mix(in srgb, var(--blue-400) 16%, transparent) 38%,
+    transparent 64%);
+
+  /* Soft bluish bottom glow: lighter mid blues, low mix — reads subtle on lifted base. */
+  --eds-background-dark: radial-gradient(
+    130% 110% at 50% 100%,
+    color-mix(in srgb, var(--blue-600) 12%, transparent) 0%,
+    color-mix(in srgb, var(--blue-800) 7%, transparent) 34%,
+    color-mix(in srgb, var(--blue-1100) 3.5%, transparent) 54%,
+    transparent 78%);
+  --eds-background-dark-base: color-mix(in srgb, var(--blue-200) 1.8%, var(--gray-900));
   --body-font-family: adobe-clean, 'Trebuchet MS', sans-serif;
   --heading-font-family: var(--body-font-family);
 
-  background:
-    radial-gradient(ellipse 60% 40% at 60% 30%, color-mix(in srgb, var(--blue-900) 4%, transparent), transparent 75%),
-    radial-gradient(ellipse 60% 40% at 60% 70%, color-mix(in srgb, var(--blue-900) 6%, transparent), transparent 75%),
-    var(--layer-base);
-  background-attachment: fixed;
+  min-height: 100dvh;
   font-family: var(--body-font-family);
   color: var(--color-text);
+
+  input:focus, textarea:focus, select:focus, button:focus {
+    outline: 0;
+  }
+}
+
+/* Page background: avoid light-dark() on the background shorthand (invalid/missing in some engines
+   = entire rule dropped and global body background-color shows as a flat field). */
+html[data-theme="light"] body.eds-agent,
+html:not([data-theme]) body.eds-agent {
+  background-color: var(--blue-100);
+  background-image: var(--eds-background-light);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme]) body.eds-agent {
+    background-color: var(--eds-background-dark-base);
+    background-image: var(--eds-background-dark);
+  }
+}
+
+html[data-theme="dark"] body.eds-agent {
+  background-color: var(--eds-background-dark-base);
+  background-image: var(--eds-background-dark);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
 }
 
 .eds-agent-app {
@@ -144,6 +182,7 @@ body.eds-agent {
   align-items: center;
   border-radius: 4px;
   padding: 0;
+  margin-bottom: var(--spacing-xs);
 }
 
 .eds-chat-row:hover {
@@ -151,11 +190,11 @@ body.eds-agent {
 }
 
 .eds-chat-row-active {
-  background: var(--gray-75);
+  background: light-dark(var(--gray-75), var(--gray-800));
 }
 
 .eds-chat-row-active:hover {
-  background: var(--gray-100);
+  background: light-dark(var(--gray-100), var(--gray-800));
 }
 
 .eds-chat-row-title {
@@ -230,6 +269,10 @@ body.eds-agent {
 .eds-chat-row-delete[hidden],
 .eds-chat-row-confirm[hidden] {
   display: none;
+}
+
+.eds-chat-row-confirm button:focus {
+  color: var(--color-white);
 }
 
 .eds-chat-row-confirm-yes {
@@ -591,7 +634,7 @@ body.eds-agent {
   }
 
   .eds-welcome-groups {
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(2, 1fr);
   }
 
   .eds-agent-input-row {
