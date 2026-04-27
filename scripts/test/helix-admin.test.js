@@ -133,4 +133,46 @@ describe('helix-admin.js', () => {
       );
     });
   });
+
+  describe('admin.withRequestInit(extra)', () => {
+    it('merges fetch-init defaults into every request', async () => {
+      const a = admin.withRequestInit({ credentials: 'include', cache: 'no-cache' });
+      await a.config({ org: 'adobe', site: 'x' }).robots();
+      assert.equal(calls[0].init.credentials, 'include');
+      assert.equal(calls[0].init.cache, 'no-cache');
+    });
+
+    it('does not affect calls through the unwrapped client', async () => {
+      admin.withRequestInit({ credentials: 'include' });
+      await admin.config({ org: 'adobe', site: 'x' }).robots();
+      assert.equal(calls[0].init.credentials, undefined);
+    });
+
+    it('chains — later .withRequestInit overrides earlier values', async () => {
+      const a = admin
+        .withRequestInit({ credentials: 'include', cache: 'no-cache' })
+        .withRequestInit({ cache: 'no-store' });
+      await a.config({ org: 'adobe', site: 'x' }).robots();
+      assert.equal(calls[0].init.credentials, 'include');
+      assert.equal(calls[0].init.cache, 'no-store');
+    });
+
+    it('preserves method/body/content-type on top of init defaults', async () => {
+      const a = admin.withRequestInit({ credentials: 'include' });
+      await a.config({ org: 'adobe', site: 'x' }).robots('User-agent: *');
+      assert.equal(calls[0].init.method, 'POST');
+      assert.equal(calls[0].init.body, 'User-agent: *');
+      assert.equal(calls[0].init.credentials, 'include');
+      assert.deepEqual(calls[0].init.headers, { 'content-type': 'text/plain' });
+    });
+
+    it('merges headers from defaults with the per-call content-type', async () => {
+      const a = admin.withRequestInit({ headers: { authorization: 'token abc' } });
+      await a.config({ org: 'adobe', site: 'x' }).robots('User-agent: *');
+      assert.deepEqual(calls[0].init.headers, {
+        authorization: 'token abc',
+        'content-type': 'text/plain',
+      });
+    });
+  });
 });
