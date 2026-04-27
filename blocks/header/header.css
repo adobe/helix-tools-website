@@ -213,7 +213,6 @@ header.header-wrapper {
         left: 50%;
         transform: translateX(-50%);
         margin: 0;
-        z-index: 2;
       }
 
       @media (width >= 1500px) {
@@ -222,6 +221,7 @@ header.header-wrapper {
         width: 300px;
         border-radius: 0;
         transform: rotate(-45deg);
+        z-index: 2;
       }
     }
   }
