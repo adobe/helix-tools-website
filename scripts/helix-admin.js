@@ -51,7 +51,12 @@ function createAdmin(defaults = {}) {
     if (body !== undefined) {
       init.body = body;
       if (contentType) {
-        init.headers = { ...init.headers, 'content-type': contentType };
+        // Normalize via Headers so a defaults.headers passed as a Headers
+        // instance or [k,v] tuples is preserved — a naive object spread
+        // would silently drop those entries.
+        const headers = new Headers(init.headers);
+        headers.set('content-type', contentType);
+        init.headers = headers;
       }
     }
     const resp = await fetch(url, init);

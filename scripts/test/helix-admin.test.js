@@ -80,7 +80,10 @@ describe('helix-admin.js', () => {
       await admin.config({ org: 'adobe', site: 'x' }).robots('User-agent: *\nDisallow:');
       assert.equal(calls[0].init.method, 'POST');
       assert.equal(calls[0].init.body, 'User-agent: *\nDisallow:');
-      assert.deepEqual(calls[0].init.headers, { 'content-type': 'text/plain' });
+      assert.deepEqual(
+        Object.fromEntries(calls[0].init.headers),
+        { 'content-type': 'text/plain' },
+      );
     });
 
     it('treats an empty-string body as POST, not GET', async () => {
@@ -163,16 +166,39 @@ describe('helix-admin.js', () => {
       assert.equal(calls[0].init.method, 'POST');
       assert.equal(calls[0].init.body, 'User-agent: *');
       assert.equal(calls[0].init.credentials, 'include');
-      assert.deepEqual(calls[0].init.headers, { 'content-type': 'text/plain' });
+      assert.deepEqual(
+        Object.fromEntries(calls[0].init.headers),
+        { 'content-type': 'text/plain' },
+      );
     });
 
     it('merges headers from defaults with the per-call content-type', async () => {
       const a = admin.withRequestInit({ headers: { authorization: 'token abc' } });
       await a.config({ org: 'adobe', site: 'x' }).robots('User-agent: *');
-      assert.deepEqual(calls[0].init.headers, {
+      assert.deepEqual(Object.fromEntries(calls[0].init.headers), {
         authorization: 'token abc',
         'content-type': 'text/plain',
       });
+    });
+
+    it('preserves a Headers instance passed via withRequestInit', async () => {
+      // RequestInit.headers legally accepts a Headers instance; a naive
+      // object spread would drop the entries silently.
+      const a = admin.withRequestInit({
+        headers: new Headers({ authorization: 'token abc' }),
+      });
+      await a.config({ org: 'adobe', site: 'x' }).robots('User-agent: *');
+      assert.equal(calls[0].init.headers.get('authorization'), 'token abc');
+      assert.equal(calls[0].init.headers.get('content-type'), 'text/plain');
+    });
+
+    it('preserves headers passed as [name, value] tuples', async () => {
+      const a = admin.withRequestInit({
+        headers: [['authorization', 'token abc']],
+      });
+      await a.config({ org: 'adobe', site: 'x' }).robots('User-agent: *');
+      assert.equal(calls[0].init.headers.get('authorization'), 'token abc');
+      assert.equal(calls[0].init.headers.get('content-type'), 'text/plain');
     });
   });
 });
