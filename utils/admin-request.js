@@ -63,8 +63,6 @@ async function ensureSignedIn(org, site) {
  * Execute an admin API request with optional auth pre-check and 401 retry.
  *
  * The request fn is the unit of retry — it must be safe to invoke up to twice.
- * Don't use this helper for non-idempotent actions (e.g. "create version",
- * "send invite"); call the low-level client directly instead.
  *
  * Returns `null` when auth handling is enabled and the user does not
  * complete login (cancels the modal, closes the login window, or
