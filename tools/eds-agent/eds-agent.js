@@ -1030,6 +1030,7 @@ function renderChat(container) {
   hamburgerBtn.id = 'btn-hamburger';
   hamburgerBtn.title = 'Open chats';
   hamburgerBtn.setAttribute('aria-label', 'Open chats');
+  hamburgerBtn.setAttribute('aria-expanded', 'false');
   loadIcon('S2_Icon_ShowMenu_20_N').then((svg) => hamburgerBtn.appendChild(svg));
 
   const newChatBtn = document.createElement('button');
@@ -1058,8 +1059,10 @@ function renderChat(container) {
   main.appendChild(header);
 
   hamburgerBtn.addEventListener('click', () => {
-    sidebar.classList.toggle('eds-agent-sidebar-open');
-    document.body.classList.toggle('eds-sidebar-open');
+    const willOpen = !sidebar.classList.contains('eds-agent-sidebar-open');
+    sidebar.classList.toggle('eds-agent-sidebar-open', willOpen);
+    document.body.classList.toggle('eds-sidebar-open', willOpen);
+    hamburgerBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
   });
 
   // Messages area
@@ -1147,6 +1150,10 @@ function renderChat(container) {
 
 // --- Initialization ---
 
+// Capture phase + closest() checks let this single document-level listener
+// dismiss the sidebar on outside clicks while ignoring clicks on the sidebar
+// itself or the hamburger toggle (which has its own handler). Both checks
+// are required: removing either re-introduces the bug they prevent.
 function attachSidebarBackdropDismiss() {
   if (sidebarDismissAttached) return;
   sidebarDismissAttached = true;
