@@ -330,6 +330,12 @@ function init() {
 
   elems.viewSelect = document.getElementById('view');
   elems.canvas = document.getElementById('time-series');
+  const chartDownloadPng = document.getElementById('chart-download-png');
+  if (chartDownloadPng) {
+    chartDownloadPng.addEventListener('click', () => {
+      herochart.downloadPng();
+    });
+  }
   elems.timezoneElement = document.getElementById('timezone');
   elems.lowDataWarning = document.getElementById('low-data-warning');
   elems.incognito = document.querySelector('incognito-checkbox');

@@ -1,7 +1,11 @@
 .hlx/*
 coverage/*
 logs/*
-node_modules/*
+node_modules/
+**/lcov.info
+**/junit.xml
+
+.env
 
 helix-importer-ui
 .DS_Store

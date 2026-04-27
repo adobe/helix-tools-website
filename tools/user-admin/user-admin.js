@@ -233,8 +233,10 @@ function createRolesReference() {
   const details = document.createElement('details');
   details.className = 'roles-reference';
   const summary = document.createElement('summary');
-  summary.textContent = 'What do these roles mean?';
+  summary.textContent = 'What do the Roles mean?';
   details.appendChild(summary);
+  const panel = document.createElement('div');
+  panel.className = 'roles-reference-panel';
   const list = document.createElement('dl');
   list.className = 'roles-reference-list';
   ROLES.forEach((role) => {
@@ -251,14 +253,15 @@ function createRolesReference() {
   link.target = '_blank';
   link.className = 'roles-reference-link';
   link.textContent = 'Learn more about roles';
-  details.appendChild(list);
-  details.appendChild(link);
+  panel.appendChild(list);
+  panel.appendChild(link);
+  details.appendChild(panel);
   return details;
 }
 
 let entryIdCounter = 0;
 
-function createUserEntry(entriesContainer, updateSaveLabel) {
+function createUserEntry(entriesContainer, updateSaveLabel, selectedRoles = []) {
   entryIdCounter += 1;
   const entryId = entryIdCounter;
   const entry = document.createElement('div');
@@ -266,15 +269,10 @@ function createUserEntry(entriesContainer, updateSaveLabel) {
 
   const header = document.createElement('div');
   header.className = 'user-entry-header';
-  const label = document.createElement('span');
-  label.className = 'user-entry-label';
-  const num = entriesContainer.querySelectorAll('.user-entry').length + 1;
-  label.textContent = `User ${num}`;
   const removeBtn = document.createElement('button');
   removeBtn.type = 'button';
   removeBtn.className = 'user-entry-remove';
   removeBtn.textContent = 'Remove';
-  header.appendChild(label);
   header.appendChild(removeBtn);
 
   const emailField = document.createElement('div');
@@ -296,7 +294,7 @@ function createUserEntry(entriesContainer, updateSaveLabel) {
   const rolesLabel = document.createElement('label');
   rolesLabel.id = rolesFieldId;
   rolesLabel.textContent = 'Roles';
-  const rolesContainer = createCompactRoleCheckboxes();
+  const rolesContainer = createCompactRoleCheckboxes(selectedRoles);
   rolesContainer.setAttribute('role', 'group');
   rolesContainer.setAttribute('aria-labelledby', rolesFieldId);
   rolesField.appendChild(rolesLabel);
@@ -306,15 +304,8 @@ function createUserEntry(entriesContainer, updateSaveLabel) {
   entry.appendChild(emailField);
   entry.appendChild(rolesField);
 
-  const renumber = () => {
-    entriesContainer.querySelectorAll('.user-entry').forEach((e, i) => {
-      e.querySelector('.user-entry-label').textContent = `User ${i + 1}`;
-    });
-  };
-
   removeBtn.addEventListener('click', () => {
     entry.remove();
-    renumber();
     updateSaveLabel();
   });
 
@@ -456,54 +447,13 @@ function openAddUsersModal(onSave) {
   const entriesContainer = document.createElement('div');
   entriesContainer.className = 'user-entries';
 
-  const presetsDiv = document.createElement('div');
-  presetsDiv.className = 'modal-toolbar';
-  const presetsLabel = document.createElement('span');
-  presetsLabel.className = 'presets-label';
-  presetsLabel.textContent = 'Roles (Apply to all)';
-  presetsDiv.appendChild(presetsLabel);
-  const presetsBtnRow = document.createElement('div');
-  presetsBtnRow.className = 'presets-btn-row';
-  const syncPresets = () => {
-    presetsBtnRow.querySelectorAll('.role-preset-btn').forEach((btn) => {
-      const { role } = btn.dataset;
-      const cbs = entriesContainer.querySelectorAll(`input[type="checkbox"][value="${role}"]`);
-      const allChecked = cbs.length > 0 && [...cbs].every((cb) => cb.checked);
-      btn.classList.toggle('active', allChecked);
-    });
-  };
-
-  ROLES.forEach((role) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'role-preset-btn';
-    btn.dataset.role = role;
-    btn.textContent = ROLE_DESCRIPTIONS[role].label;
-    btn.addEventListener('click', () => {
-      const cbs = entriesContainer.querySelectorAll(`input[type="checkbox"][value="${role}"]`);
-      const allChecked = cbs.length > 0 && [...cbs].every((cb) => cb.checked);
-      cbs.forEach((cb) => { cb.checked = !allChecked; });
-      entriesContainer.querySelectorAll('.user-entry.has-error').forEach((entry) => {
-        entry.classList.remove('has-error');
-      });
-      syncPresets();
-    });
-    presetsBtnRow.appendChild(btn);
-  });
-  presetsDiv.appendChild(presetsBtnRow);
-  presetsDiv.appendChild(createRolesReference());
-
-  entriesContainer.addEventListener('change', syncPresets);
-  const presetsObserver = new MutationObserver(syncPresets);
-  presetsObserver.observe(entriesContainer, { childList: true });
-
   const {
-    dialog, content, bodyDiv, saveBtn, closeModal, setConfirmClose,
-  } = createModal('Add Users', 'Add 2 Users');
+    dialog, bodyDiv, footerDiv, saveBtn, closeModal, setConfirmClose,
+  } = createModal('Add Users', 'Add 1 User');
 
-  dialog.addEventListener('close', () => presetsObserver.disconnect());
-
-  content.insertBefore(presetsDiv, bodyDiv);
+  const rolesReference = createRolesReference();
+  rolesReference.classList.add('footer-roles-reference');
+  footerDiv.prepend(rolesReference);
 
   setConfirmClose(async () => {
     const emails = dialog.querySelectorAll('input[type="email"]');
@@ -531,11 +481,15 @@ function openAddUsersModal(onSave) {
   };
 
   const firstEntry = createUserEntry(entriesContainer, updateSaveLabel);
-  createUserEntry(entriesContainer, updateSaveLabel);
   firstEntry.querySelector('input[type="email"]').focus();
 
   addAnotherBtn.addEventListener('click', () => {
-    const entry = createUserEntry(entriesContainer, updateSaveLabel);
+    const previousEntries = entriesContainer.querySelectorAll('.user-entry');
+    const previousEntry = previousEntries[previousEntries.length - 1];
+    const previousRoles = previousEntry
+      ? [...previousEntry.querySelectorAll('input[type="checkbox"]:checked')].map((cb) => cb.value)
+      : [];
+    const entry = createUserEntry(entriesContainer, updateSaveLabel, previousRoles);
     entry.querySelector('input[type="email"]').focus();
     entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
@@ -610,9 +564,6 @@ function openAddUsersModal(onSave) {
       const added = err.addedCount || 0;
       if (added > 0) {
         validEntries.slice(0, added).forEach((entry) => entry.remove());
-        entriesContainer.querySelectorAll('.user-entry').forEach((el, i) => {
-          el.querySelector('.user-entry-label').textContent = `User ${i + 1}`;
-        });
         const failed = users.length - added;
         showModalError(dialog, `${added} user(s) added, ${failed} failed: ${err.message}`);
       } else {
@@ -756,23 +707,33 @@ function createUserCard(user) {
     badgesDiv.appendChild(badge);
   });
 
-  const actionsDiv = document.createElement('div');
-  actionsDiv.className = 'card-item-actions';
-  const editBtn = document.createElement('button');
-  editBtn.type = 'button';
-  editBtn.className = 'card-item-btn edit-btn';
-  editBtn.innerHTML = `${icon('edit')} Edit`;
-
-  editBtn.addEventListener('click', () => {
+  const openEdit = () => {
     openEditUserModal(user, async (updatedUser) => {
       if (accessConfig.type === 'site') {
         return updateSiteUserRoles(updatedUser);
       }
       return updateOrgUserRoles(updatedUser);
     });
-  });
+  };
 
+  const actionsDiv = document.createElement('div');
+  actionsDiv.className = 'card-item-actions';
+  const editBtn = document.createElement('button');
+  editBtn.type = 'button';
+  editBtn.className = 'card-item-btn edit-btn';
+  editBtn.innerHTML = `${icon('edit')} Edit`;
+  editBtn.addEventListener('click', (e) => {
+    // prevent the card-level click handler from firing a second time
+    e.stopPropagation();
+    openEdit();
+  });
   actionsDiv.appendChild(editBtn);
+
+  // make the entire card a click target as a UX convenience; the button
+  // above remains the semantic/a11y entry point for keyboard and AT users.
+  // dialog backdrop clicks won't reach the card because the open <dialog>
+  // is modal and catches those clicks itself.
+  card.addEventListener('click', openEdit);
 
   card.appendChild(infoDiv);
   card.appendChild(badgesDiv);

@@ -61,13 +61,24 @@ const ENV_HEADERS = {
     ETag: 'etag',
     'Cache Keys': ['surrogate-key', 'cache-tag', 'x-surogate-key'],
   },
-  Preview: {
-    Stack: ['via'],
-    'Content Length': 'content-length',
-    'Last Modified': 'last-modified',
-    ETag: 'etag',
-    'Cache Keys': ['surrogate-key', 'cache-tag', 'x-surogate-key'],
-  },
+};
+
+const REFERENCE_REGION = 'us-east-1';
+
+/**
+ * Picks a representative POP's response to use as the env-level headers/status.
+ * Falls back to the first POP with a response if the preferred region is missing.
+ * @param {Array<object>} pops POP entries with optional `region` and `response` fields
+ * @returns {{status?: number, headers: Record<string,string>}}
+ */
+const getReferenceResponse = (pops) => {
+  if (!Array.isArray(pops)) return { headers: {} };
+  const preferred = pops.find((p) => p.region === REFERENCE_REGION && p.response);
+  const fallback = preferred ?? pops.find((p) => p.response);
+  return {
+    status: fallback?.response?.status,
+    headers: fallback?.response?.headers ?? {},
+  };
 };
 
 const purge = (liveHost, keys, paths) => fetch(`${API}/purge`, {
@@ -375,8 +386,8 @@ const tileTemplate = (
       // escape plain text values
       val = escapeHtml(val);
     }
-    if ((key === 'Content Length' && !contentLengthMatches && env !== 'Preview')
-      || (key === 'Last Modified' && !lastModMatches && env !== 'Preview')
+    if ((key === 'Content Length' && !contentLengthMatches)
+      || (key === 'Last Modified' && !lastModMatches)
     ) {
       valCls = 'bad';
     }
@@ -530,22 +541,36 @@ const renderDetails = (data) => {
     </div>
   `);
 
+  // The backend no longer aggregates env-level headers; use a representative POP
+  // (preferring us-east-1) from each env's pops as the reference for tile rendering
+  // and cross-env comparison.
+  const cdnRef = getReferenceResponse(data.cdn?.pops);
+  const liveRef = getReferenceResponse(data.live?.pops);
+  if (data.cdn) {
+    data.cdn.headers = cdnRef.headers;
+    data.cdn.status = cdnRef.status ?? data.cdn.status;
+  }
+  if (data.live) {
+    data.live.headers = liveRef.headers;
+    data.live.status = liveRef.status ?? data.live.status;
+  }
+
   const opts = {
     contentLengthMatches: true,
     lastModMatches: true,
-    liveHeaders: data.live?.headers,
+    liveHeaders: liveRef.headers,
   };
-  const cdnLen = data.cdn?.headers?.['content-length'] ?? data.cdn?.headers?.content_length;
-  const liveLen = data.live?.headers?.['content-length'] ?? data.live?.headers?.content_length;
+  const cdnLen = cdnRef.headers['content-length'] ?? cdnRef.headers.content_length;
+  const liveLen = liveRef.headers['content-length'] ?? liveRef.headers.content_length;
   if (String(cdnLen ?? '').trim() !== String(liveLen ?? '').trim()) {
     opts.contentLengthMatches = false;
   }
-  if (data.cdn.headers['last-modified'] !== data.live.headers['last-modified']) {
+  if (cdnRef.headers['last-modified'] !== liveRef.headers['last-modified']) {
     opts.lastModMatches = false;
   }
 
   // append env tiles
-  ['CDN', 'Live', 'Preview'].forEach((env) => {
+  ['CDN', 'Live'].forEach((env) => {
     const tile = tileTemplate(env, data[env.toLowerCase()], opts);
     resultsContainer.insertAdjacentHTML('beforeend', tile);
   });
