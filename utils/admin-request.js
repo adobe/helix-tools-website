@@ -51,16 +51,6 @@ function waitForLogin(org) {
 }
 
 /**
- * Ensure the user is signed in, awaiting the modal flow if needed.
- * Resolves true if signed in (now or after the user completes the modal),
- * false if the user cancels or times out.
- */
-async function ensureSignedIn(org, site) {
-  if (await ensureLogin(org, site)) return true;
-  return waitForLogin(org);
-}
-
-/**
  * Execute an admin API request with optional auth pre-check and 401 retry.
  *
  * The request fn is the unit of retry — it must be safe to invoke up to twice.
@@ -88,18 +78,17 @@ export async function executeAdminRequest(requestFn, policy) {
   const { org, site, auth = AuthMode.RETRY_ON_401 } = policy;
 
   if (auth === AuthMode.PREFLIGHT_AND_RETRY) {
-    if (!await ensureSignedIn(org, site)) return null;
+    const signedIn = await ensureLogin(org, site) || await waitForLogin(org);
+    if (!signedIn) return null;
   }
 
   let result = await requestFn();
 
   const retry = auth === AuthMode.RETRY_ON_401 || auth === AuthMode.PREFLIGHT_AND_RETRY;
   if (retry && result?.status === 401) {
-    if (await ensureSignedIn(org, site)) {
-      result = await requestFn();
-    } else {
-      return null;
-    }
+    const signedIn = await ensureLogin(org, site) || await waitForLogin(org);
+    if (!signedIn) return null;
+    result = await requestFn();
   }
 
   if (result?.ok) updateConfig();
