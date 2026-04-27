@@ -1,5 +1,6 @@
 const CHATS_KEY_PREFIX = 'eds-agent-chats:';
 const ACTIVE_KEY_PREFIX = 'eds-agent-active-chat:';
+const LEGACY_MESSAGES_KEY = 'eds-agent-messages';
 const TITLE_MAX = 40;
 
 function chatsKey(org) {
@@ -99,13 +100,49 @@ export function appendMessage(org, id, message) {
   return chat;
 }
 
-// Stubs filled in by Task 3. Exported here only so the test file's
-// destructured import doesn't fail before that task lands.
-
-// eslint-disable-next-line no-unused-vars
-export function migrateLegacyMessages(org, site) { return false; }
-export function groupChatsByDate(chats) {
-  return {
-    today: chats, yesterday: [], last7: [], last30: [], older: [],
+export function migrateLegacyMessages(org, site) {
+  const raw = sessionStorage.getItem(LEGACY_MESSAGES_KEY);
+  if (!raw) return false;
+  sessionStorage.removeItem(LEGACY_MESSAGES_KEY);
+  if (!org) return false;
+  let parsed;
+  try { parsed = JSON.parse(raw); } catch { return false; }
+  if (!Array.isArray(parsed) || parsed.length === 0) return false;
+  const firstUser = parsed.find((m) => m.role === 'user');
+  const titleSource = firstUser ? firstUser.content : '(legacy chat)';
+  const now = Date.now();
+  const chat = {
+    id: crypto.randomUUID(),
+    title: makeTitle(typeof titleSource === 'string' ? titleSource : '(legacy chat)'),
+    createdAt: now,
+    updatedAt: now,
+    site: site || '',
+    messages: parsed,
   };
+  const chats = loadChats(org);
+  chats.unshift(chat);
+  saveChats(org, chats);
+  setActiveChatId(org, chat.id);
+  return true;
+}
+
+export function groupChatsByDate(chats, now = Date.now()) {
+  const d = new Date(now);
+  const todayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const oneDay = 24 * 60 * 60 * 1000;
+  const yesterdayStart = todayStart - oneDay;
+  const sevenAgo = todayStart - 7 * oneDay;
+  const thirtyAgo = todayStart - 30 * oneDay;
+  const groups = {
+    today: [], yesterday: [], last7: [], last30: [], older: [],
+  };
+  chats.forEach((c) => {
+    const t = c.createdAt;
+    if (t >= todayStart) groups.today.push(c);
+    else if (t >= yesterdayStart) groups.yesterday.push(c);
+    else if (t >= sevenAgo) groups.last7.push(c);
+    else if (t >= thirtyAgo) groups.last30.push(c);
+    else groups.older.push(c);
+  });
+  return groups;
 }

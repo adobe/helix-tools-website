@@ -28,10 +28,7 @@ const {
   getActiveChatId,
   setActiveChatId,
   appendMessage,
-  // Destructured here so Task 3 can append more describe blocks without re-importing.
-  // eslint-disable-next-line no-unused-vars
   migrateLegacyMessages,
-  // eslint-disable-next-line no-unused-vars
   groupChatsByDate,
 } = await import('../chats.js');
 
@@ -185,5 +182,117 @@ describe('eds-agent:chats.js — appendMessage', () => {
     assert.equal(reloaded.messages.length, 2);
     assert.equal(reloaded.messages[0].content, 'one');
     assert.equal(reloaded.messages[1].content, 'two');
+  });
+});
+
+describe('eds-agent:chats.js — migrateLegacyMessages', () => {
+  it('migrates legacy session-storage messages to a new chat', () => {
+    const legacy = [
+      { role: 'user', content: 'first user message' },
+      { role: 'assistant', content: 'reply' },
+    ];
+    sessionStorage.setItem('eds-agent-messages', JSON.stringify(legacy));
+    const migrated = migrateLegacyMessages('adobe', 'helix');
+    assert.equal(migrated, true);
+
+    const chats = loadChats('adobe');
+    assert.equal(chats.length, 1);
+    assert.equal(chats[0].title, 'first user message');
+    assert.equal(chats[0].site, 'helix');
+    assert.equal(chats[0].messages.length, 2);
+    assert.equal(getActiveChatId('adobe'), chats[0].id);
+    assert.equal(sessionStorage.getItem('eds-agent-messages'), null);
+  });
+
+  it('returns false when no legacy data exists', () => {
+    assert.equal(migrateLegacyMessages('adobe', ''), false);
+  });
+
+  it('returns false and clears legacy when org is missing', () => {
+    sessionStorage.setItem('eds-agent-messages', JSON.stringify([{ role: 'user', content: 'x' }]));
+    assert.equal(migrateLegacyMessages('', ''), false);
+    assert.equal(sessionStorage.getItem('eds-agent-messages'), null);
+  });
+
+  it('returns false and clears legacy when stored data is not an array', () => {
+    sessionStorage.setItem('eds-agent-messages', 'not-json');
+    assert.equal(migrateLegacyMessages('adobe', ''), false);
+    assert.equal(sessionStorage.getItem('eds-agent-messages'), null);
+  });
+
+  it('does not migrate empty arrays', () => {
+    sessionStorage.setItem('eds-agent-messages', '[]');
+    assert.equal(migrateLegacyMessages('adobe', ''), false);
+    assert.equal(loadChats('adobe').length, 0);
+  });
+
+  it('uses first user message for title even when assistant comes first', () => {
+    const legacy = [
+      { role: 'assistant', content: 'preamble' },
+      { role: 'user', content: 'real first user message' },
+    ];
+    sessionStorage.setItem('eds-agent-messages', JSON.stringify(legacy));
+    migrateLegacyMessages('adobe', '');
+    assert.equal(loadChats('adobe')[0].title, 'real first user message');
+  });
+});
+
+describe('eds-agent:chats.js — groupChatsByDate', () => {
+  // Test fixture: 2026-04-27 14:00 local time as the "now"
+  const now = new Date(2026, 3, 27, 14, 0, 0).getTime();
+  const todayMidnight = new Date(2026, 3, 27, 0, 0, 0).getTime();
+  const oneHour = 60 * 60 * 1000;
+  const oneDay = 24 * oneHour;
+
+  function chatAt(ts) {
+    return {
+      id: String(ts), title: '', createdAt: ts, updatedAt: ts, site: '', messages: [],
+    };
+  }
+
+  it('puts a chat created later today into "today"', () => {
+    const groups = groupChatsByDate([chatAt(todayMidnight + oneHour)], now);
+    assert.equal(groups.today.length, 1);
+    assert.equal(groups.yesterday.length, 0);
+  });
+
+  it('puts a chat created exactly at today midnight into "today"', () => {
+    const groups = groupChatsByDate([chatAt(todayMidnight)], now);
+    assert.equal(groups.today.length, 1);
+  });
+
+  it('puts a chat created at midnight one day ago into "yesterday"', () => {
+    const groups = groupChatsByDate([chatAt(todayMidnight - oneDay)], now);
+    assert.equal(groups.yesterday.length, 1);
+    assert.equal(groups.today.length, 0);
+  });
+
+  it('puts a chat created 5 days ago into "last7"', () => {
+    const groups = groupChatsByDate([chatAt(todayMidnight - 5 * oneDay)], now);
+    assert.equal(groups.last7.length, 1);
+  });
+
+  it('puts a chat created 20 days ago into "last30"', () => {
+    const groups = groupChatsByDate([chatAt(todayMidnight - 20 * oneDay)], now);
+    assert.equal(groups.last30.length, 1);
+  });
+
+  it('puts a chat created 60 days ago into "older"', () => {
+    const groups = groupChatsByDate([chatAt(todayMidnight - 60 * oneDay)], now);
+    assert.equal(groups.older.length, 1);
+  });
+
+  it('preserves order within each bucket', () => {
+    const a = chatAt(todayMidnight + 2 * oneHour);
+    const b = chatAt(todayMidnight + 3 * oneHour);
+    const groups = groupChatsByDate([b, a], now);
+    assert.deepEqual(groups.today.map((c) => c.id), [b.id, a.id]);
+  });
+
+  it('returns empty arrays for buckets with no matches', () => {
+    const groups = groupChatsByDate([], now);
+    assert.deepEqual(groups, {
+      today: [], yesterday: [], last7: [], last30: [], older: [],
+    });
   });
 });
