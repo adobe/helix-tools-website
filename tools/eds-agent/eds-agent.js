@@ -1,5 +1,13 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import getToolIcon from './utils.js';
+import {
+  loadChats,
+  saveChats,
+  createChat,
+  getActiveChatId,
+  setActiveChatId,
+  migrateLegacyMessages,
+} from './chats.js';
 
 const iconCache = new Map();
 
@@ -66,7 +74,6 @@ const AGENT_ENDPOINT = (window.location.hostname === 'localhost' || window.locat
 const STORAGE_KEY_ORG = 'eds-agent-org';
 const STORAGE_KEY_SITE = 'eds-agent-site';
 const STORAGE_KEY_TOKEN = 'eds-agent-token';
-const STORAGE_KEY_MESSAGES = 'eds-agent-messages';
 const STORAGE_KEY_THEME = 'eds-agent-theme';
 
 const WELCOME_GROUPS = [
@@ -117,6 +124,7 @@ let isStreaming = false;
 let currentAbortController = null;
 let authToken = localStorage.getItem(STORAGE_KEY_TOKEN) || '';
 let thinkingInterval = null;
+let activeChatId = null;
 
 const sendBtnState = {
   el: null,
@@ -176,27 +184,6 @@ function applyTheme(theme) {
 
 function themeTitle(theme) {
   return `Theme: ${theme} (click to switch)`;
-}
-
-function saveMessages() {
-  try {
-    const toSave = messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
-    sessionStorage.setItem(STORAGE_KEY_MESSAGES, JSON.stringify(toSave));
-  } catch { /* session storage full or unavailable */ }
-}
-
-function loadMessages() {
-  try {
-    const stored = sessionStorage.getItem(STORAGE_KEY_MESSAGES);
-    if (stored) {
-      messages = JSON.parse(stored);
-      return true;
-    }
-  } catch { /* ignore */ }
-  return false;
 }
 
 // --- Markdown rendering (lightweight) ---
@@ -332,6 +319,22 @@ function getMessageText(msg) {
       .join('');
   }
   return '';
+}
+
+function getActiveChat(org) {
+  if (!activeChatId) return null;
+  const chats = loadChats(org);
+  return chats.find((c) => c.id === activeChatId) ?? null;
+}
+
+function persistMessages(org) {
+  if (!org || !activeChatId) return;
+  const chats = loadChats(org);
+  const chat = chats.find((c) => c.id === activeChatId);
+  if (!chat) return;
+  chat.messages = messages.slice();
+  chat.updatedAt = Date.now();
+  saveChats(org, chats);
 }
 
 // --- Message rendering ---
@@ -696,6 +699,13 @@ async function sendMessage(textarea, messagesEl) {
   setSendButtonMode('stop');
 
   const userMsg = { role: 'user', content: text };
+
+  if (!activeChatId) {
+    const newChat = createChat(config.org, text, config.site);
+    activeChatId = newChat.id;
+    setActiveChatId(config.org, newChat.id);
+  }
+
   messages.push(userMsg);
   renderMessageBubble(messagesEl, userMsg);
 
@@ -711,7 +721,7 @@ async function sendMessage(textarea, messagesEl) {
     isStreaming = false;
     setSendButtonMode('send');
     textarea.focus();
-    saveMessages();
+    persistMessages(getConfig().org);
   }
 }
 
@@ -811,6 +821,7 @@ async function openSetupModal({ mode = 'required', errorText = '' } = {}) {
     if (!token) { tokenInput.focus(); return; }
     if (!org) { orgInput.focus(); return; }
     saveConfig(token, org, site);
+    activeChatId = getActiveChatId(org);
     closeModal();
     const appContainer = document.getElementById('agent-app');
     renderChat(appContainer); // eslint-disable-line no-use-before-define
@@ -899,11 +910,16 @@ function renderChat(container) {
   sendBtnState.el = sendBtn;
   sendBtnState.sendIconHTML = sendBtn.innerHTML;
 
-  if (!loadMessages() || messages.length === 0) {
+  const cfgForLoad = getConfig();
+  const active = cfgForLoad.org ? getActiveChat(cfgForLoad.org) : null;
+  if (active) {
+    activeChatId = active.id;
+    messages = active.messages.slice();
+    renderAllMessages(messagesEl);
+  } else {
+    activeChatId = null;
     messages = [];
     renderWelcome(messagesEl, textarea);
-  } else {
-    renderAllMessages(messagesEl);
   }
 
   textarea.addEventListener('input', () => {
@@ -927,8 +943,10 @@ function renderChat(container) {
   });
 
   newChatBtn.addEventListener('click', () => {
+    const cfgForNew = getConfig();
+    if (cfgForNew.org) setActiveChatId(cfgForNew.org, null);
+    activeChatId = null;
     messages = [];
-    sessionStorage.removeItem(STORAGE_KEY_MESSAGES);
     renderChat(container);
   });
 
@@ -954,6 +972,11 @@ function initEdsAgent() {
   applyTheme(getStoredTheme());
 
   const config = getConfig();
+  if (config.org) {
+    migrateLegacyMessages(config.org, config.site);
+    activeChatId = getActiveChatId(config.org);
+  }
+
   if (config.authToken && config.org) {
     renderChat(appContainer);
   } else {
