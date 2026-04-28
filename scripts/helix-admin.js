@@ -85,12 +85,7 @@ function createAdmin(defaults = {}) {
 
     const headersUrl = `${siteUrl}/headers.json`;
     /**
-     * Get or replace the site's per-path response-headers config.
-     *
-     * Also exposes:
-     *   - `.url` — canonical URL of this resource
-     *   - `.remove()` — DELETE the headers config entirely (use when callers
-     *     want to clear the resource, not when they want to set it to `{}`)
+     * `.remove()` DELETEs the resource — use to clear it, not POST `{}`.
      *
      * @param {object} [data] omit to GET; pass an object to POST as JSON
      * @returns {Promise<AdminResponse>}
