@@ -7,12 +7,10 @@ import {
   getActiveChatId,
   setActiveChatId,
   migrateLegacyMessages,
-  groupChatsByDate,
 } from './helpers/chats.js';
 import {
   AGENT_ENDPOINT,
   DESKTOP_BREAKPOINT,
-  DATE_GROUP_LABELS,
 } from './helpers/constants.js';
 import { escapeHtml } from './helpers/markdown.js';
 import {
@@ -45,12 +43,15 @@ import {
 } from './helpers/messages-view.js';
 import { readStream } from './helpers/sse-parser.js';
 import { renderWelcome } from './helpers/welcome-view.js';
+import {
+  renderSidebar,
+  attachSidebarBackdropDismiss,
+} from './helpers/sidebar-view.js';
 
 let messages = [];
 let isStreaming = false;
 let currentAbortController = null;
 let activeChatId = null;
-let sidebarDismissAttached = false;
 
 const sendBtnState = {
   el: null,
@@ -185,8 +186,12 @@ async function sendMessage(textarea, messagesEl) {
     setActiveChatId(config.org, newChat.id);
     const sidebarEl = document.querySelector('.eds-agent-sidebar');
     if (sidebarEl) {
-      // eslint-disable-next-line no-use-before-define
-      renderSidebar(sidebarEl, buildSidebarCallbacks(document.getElementById('agent-app')));
+      renderSidebar(sidebarEl, {
+        activeChatId,
+        config: getConfig(),
+        // eslint-disable-next-line no-use-before-define
+        callbacks: buildSidebarCallbacks(document.getElementById('agent-app')),
+      });
     }
   }
 
@@ -209,130 +214,6 @@ async function sendMessage(textarea, messagesEl) {
     textarea.focus();
     if (activeChatId === sendChatId) persistMessages(config.org);
   }
-}
-
-// --- UI Rendering ---
-
-function renderChatRow(chat, isActive, callbacks) {
-  const row = document.createElement('div');
-  row.className = `eds-chat-row${isActive ? ' eds-chat-row-active' : ''}`;
-  row.dataset.chatId = chat.id;
-  row.innerHTML = `
-    <button class="eds-chat-row-title" type="button" title="${escapeHtml(chat.title)}">${escapeHtml(chat.title || '(untitled)')}</button>
-    <button class="eds-chat-row-delete" type="button" aria-label="Delete chat"></button>
-    <span class="eds-chat-row-confirm" hidden>
-      <button class="eds-chat-row-confirm-yes" type="button">Delete?</button>
-      <button class="eds-chat-row-confirm-no" type="button" aria-label="Cancel">×</button>
-    </span>
-  `;
-  loadIcon('trash').then((svg) => {
-    const btn = row.querySelector('.eds-chat-row-delete');
-    if (btn) btn.appendChild(svg);
-  });
-  row.querySelector('.eds-chat-row-title').addEventListener('click', () => callbacks.onSwitchChat(chat.id));
-  const deleteBtn = row.querySelector('.eds-chat-row-delete');
-  const confirmEl = row.querySelector('.eds-chat-row-confirm');
-  const yesBtn = row.querySelector('.eds-chat-row-confirm-yes');
-  const noBtn = row.querySelector('.eds-chat-row-confirm-no');
-  deleteBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    deleteBtn.hidden = true;
-    confirmEl.hidden = false;
-  });
-  noBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    deleteBtn.hidden = false;
-    confirmEl.hidden = true;
-  });
-  yesBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    callbacks.onDeleteChat(chat.id);
-  });
-  return row;
-}
-
-function renderSidebar(container, callbacks) {
-  const config = getConfig();
-  const chats = config.org ? loadChats(config.org) : [];
-  const groups = groupChatsByDate(chats);
-
-  container.innerHTML = '';
-  container.className = 'eds-agent-sidebar';
-
-  const top = document.createElement('div');
-  top.className = 'eds-sidebar-top';
-  const newBtn = document.createElement('button');
-  newBtn.className = 'eds-btn eds-btn-accent eds-sidebar-new-chat';
-  newBtn.type = 'button';
-  newBtn.textContent = '+ New chat';
-  newBtn.addEventListener('click', () => callbacks.onNewChat());
-  top.appendChild(newBtn);
-  container.appendChild(top);
-
-  const list = document.createElement('div');
-  list.className = 'eds-sidebar-list';
-
-  let totalRendered = 0;
-  Object.entries(DATE_GROUP_LABELS).forEach(([key, label]) => {
-    const bucket = groups[key];
-    if (!bucket.length) return;
-    const heading = document.createElement('div');
-    heading.className = 'eds-date-group-label';
-    heading.textContent = label;
-    list.appendChild(heading);
-    bucket.forEach((chat) => {
-      list.appendChild(renderChatRow(chat, activeChatId === chat.id, callbacks));
-      totalRendered += 1;
-    });
-  });
-
-  if (!totalRendered) {
-    const empty = document.createElement('div');
-    empty.className = 'eds-sidebar-empty';
-    empty.textContent = 'No chats yet';
-    list.appendChild(empty);
-  }
-
-  container.appendChild(list);
-
-  const footer = document.createElement('button');
-  footer.className = 'eds-sidebar-footer';
-  footer.type = 'button';
-  footer.setAttribute('aria-label', 'Open settings');
-  if (config.org) {
-    footer.innerHTML = `
-      <div class="eds-sidebar-footer-text">
-        <div class="eds-sidebar-org">${escapeHtml(config.org)}</div>
-        ${config.site ? `<div class="eds-sidebar-site">${escapeHtml(config.site)}</div>` : ''}
-      </div>
-      <span class="eds-sidebar-footer-icon" aria-hidden="true"></span>
-    `;
-  } else {
-    footer.innerHTML = `
-      <div class="eds-sidebar-footer-text">
-        <div class="eds-sidebar-org eds-sidebar-org-empty">Not connected</div>
-      </div>
-      <span class="eds-sidebar-footer-icon" aria-hidden="true"></span>
-    `;
-  }
-  loadIcon('S2_Icon_Settings_20_N').then((svg) => {
-    const slot = footer.querySelector('.eds-sidebar-footer-icon');
-    if (slot) slot.replaceWith(svg);
-  });
-  footer.addEventListener('click', () => callbacks.onOpenSettings());
-
-  const collapseBtn = document.createElement('button');
-  collapseBtn.className = 'eds-sidebar-collapse';
-  collapseBtn.type = 'button';
-  collapseBtn.title = 'Collapse sidebar';
-  collapseBtn.setAttribute('aria-label', 'Collapse sidebar');
-  loadIcon('Smock_ChevronLeft_18_N').then((svg) => collapseBtn.appendChild(svg));
-  collapseBtn.addEventListener('click', () => setSidebarCollapsed(true));
-
-  const footerRow = document.createElement('div');
-  footerRow.className = 'eds-sidebar-footer-row';
-  footerRow.append(footer, collapseBtn);
-  container.appendChild(footerRow);
 }
 
 function closeModal() {
@@ -540,7 +421,11 @@ function renderChat(container) {
   `;
   main.appendChild(inputArea);
 
-  renderSidebar(sidebar, buildSidebarCallbacks(container));
+  renderSidebar(sidebar, {
+    activeChatId,
+    config: getConfig(),
+    callbacks: buildSidebarCallbacks(container),
+  });
 
   container.appendChild(app);
 
@@ -600,25 +485,6 @@ function renderChat(container) {
 }
 
 // --- Initialization ---
-
-// Capture phase + closest() checks let this single document-level listener
-// dismiss the sidebar on outside clicks while ignoring clicks on the sidebar
-// itself or the hamburger toggle (which has its own handler). Both checks
-// are required: removing either re-introduces the bug they prevent.
-function attachSidebarBackdropDismiss() {
-  if (sidebarDismissAttached) return;
-  sidebarDismissAttached = true;
-  document.addEventListener('click', (e) => {
-    if (!document.body.classList.contains('eds-sidebar-open')) return;
-    if (e.target.closest('.eds-agent-sidebar')) return;
-    if (e.target.closest('.eds-hamburger-btn')) return;
-    document.body.classList.remove('eds-sidebar-open');
-    const sidebarEl = document.querySelector('.eds-agent-sidebar');
-    if (sidebarEl) sidebarEl.classList.remove('eds-agent-sidebar-open');
-    const hamburgerEl = document.querySelector('.eds-hamburger-btn');
-    if (hamburgerEl) hamburgerEl.setAttribute('aria-expanded', 'false');
-  }, { capture: true });
-}
 
 function initEdsAgent() {
   const appContainer = document.getElementById('agent-app');
