@@ -40,6 +40,7 @@ export function parseSSELine(line, state, messagesEl, messages, view) {
       }
       state.accumulatedText = '';
       view.finalizeStreamingMessage(messagesEl);
+      view.showStatusRow(messagesEl);
       break;
 
     case 'tool-call':
@@ -53,6 +54,7 @@ export function parseSSELine(line, state, messagesEl, messages, view) {
           type: 'tool-call', toolCallId, toolName, input,
         }],
       });
+      view.showStatusRow(messagesEl);
       break;
     }
 
@@ -102,6 +104,7 @@ export function parseSSELine(line, state, messagesEl, messages, view) {
         state.accumulatedText = '';
       }
       view.finalizeStreamingMessage(messagesEl);
+      view.hideStatusRow();
       break;
 
     case 'error':
@@ -125,16 +128,25 @@ export async function readStream(reader, decoder, messagesEl, messages, view) {
   let buffer = '';
   let reading = true;
 
-  while (reading) {
-    // eslint-disable-next-line no-await-in-loop
-    const { done, value } = await reader.read();
-    if (done) {
-      reading = false;
-    } else {
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
-      lines.forEach((line) => parseSSELine(line, state, messagesEl, messages, view));
+  try {
+    while (reading) {
+      // eslint-disable-next-line no-await-in-loop
+      const { done, value } = await reader.read();
+      if (done) {
+        reading = false;
+      } else {
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+        lines.forEach((line) => parseSSELine(line, state, messagesEl, messages, view));
+      }
+    }
+  } finally {
+    // Flush any in-flight assistant text so an abort mid-stream still
+    // preserves the partial response on the originating chat.
+    if (state.accumulatedText) {
+      messages.push({ role: 'assistant', content: state.accumulatedText });
+      state.accumulatedText = '';
     }
   }
 

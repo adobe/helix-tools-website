@@ -14,6 +14,7 @@ import {
 function buildView() {
   return {
     hideStatusRow,
+    showStatusRow,
     hasStreamingBubble: (el) => !!el.querySelector('.eds-msg-streaming'),
     renderMessageBubble,
     updateStreamingMessage,

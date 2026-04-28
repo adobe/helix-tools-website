@@ -11,6 +11,7 @@ function makeStubView() {
     updateStreamingMessage: (...args) => { calls.push(['updateStreamingMessage', args]); },
     finalizeStreamingMessage: (...args) => { calls.push(['finalizeStreamingMessage', args]); },
     hideStatusRow: () => { calls.push(['hideStatusRow', []]); },
+    showStatusRow: (...args) => { calls.push(['showStatusRow', args]); },
     hasStreamingBubble: () => false,
   };
 }

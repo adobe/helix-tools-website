@@ -40,19 +40,6 @@ body.eds-agent {
   --eds-code-bg: light-dark(rgb(0 0 0 / 5%), rgb(255 255 255 / 6%));
   --eds-code-bg-strong: light-dark(rgb(0 0 0 / 7%), rgb(255 255 255 / 8%));
   --eds-surface: light-dark(rgb(255 255 255 / 65%), rgb(20 20 20 / 55%));
-  --eds-background-light: radial-gradient(
-    120% 100% at 50% 100%,
-    color-mix(in srgb, var(--blue-500) 32%, transparent) 0%,
-    color-mix(in srgb, var(--blue-400) 16%, transparent) 38%,
-    transparent 64%);
-
-  /* Soft bluish bottom glow: lighter mid blues, low mix — reads subtle on lifted base. */
-  --eds-background-dark: radial-gradient(
-    130% 110% at 50% 100%,
-    color-mix(in srgb, var(--blue-600) 12%, transparent) 0%,
-    color-mix(in srgb, var(--blue-800) 7%, transparent) 34%,
-    color-mix(in srgb, var(--blue-1100) 3.5%, transparent) 54%,
-    transparent 78%);
   --eds-background-dark-base: color-mix(in srgb, var(--blue-200) 1.8%, var(--gray-900));
   --body-font-family: adobe-clean, 'Trebuchet MS', sans-serif;
   --heading-font-family: var(--body-font-family);
@@ -782,6 +769,10 @@ html[data-theme="dark"] body.eds-agent {
   justify-content: center;
   flex-shrink: 0;
   transition: background 0.15s;
+
+  &:focus {
+    color: var(--color-white);
+  }
 }
 
 .eds-agent-send:hover {

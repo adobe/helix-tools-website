@@ -74,12 +74,12 @@ function getActiveChat(org) {
   return chats.find((c) => c.id === activeChatId) ?? null;
 }
 
-function persistMessages(org) {
-  if (!org || !activeChatId) return;
+function persistMessages(org, chatId, messagesToSave) {
+  if (!org || !chatId) return;
   const chats = loadChats(org);
-  const chat = chats.find((c) => c.id === activeChatId);
+  const chat = chats.find((c) => c.id === chatId);
   if (!chat) return;
-  chat.messages = messages.slice();
+  chat.messages = messagesToSave.slice();
   chat.updatedAt = Date.now();
   saveChats(org, chats);
 }
@@ -117,13 +117,18 @@ async function sendMessage(textarea, messagesEl) {
   }
 
   const sendChatId = activeChatId;
+  // Capture the messages array reference now. If the user switches chats
+  // mid-stream, the module-level `messages` gets reassigned to the new chat's
+  // array — but the stream and its parser still mutate this captured one,
+  // so the partial response can be persisted to the originating chat.
+  const localMessages = messages;
 
-  messages.push(userMsg);
+  localMessages.push(userMsg);
   renderMessageBubble(messagesEl, userMsg);
 
   try {
     await streamChat(messagesEl, {
-      messages,
+      messages: localMessages,
       config,
       setAbortController: (c) => { currentAbortController = c; },
       onAuthError: (errorText) => openSetupModal({
@@ -137,12 +142,14 @@ async function sendMessage(textarea, messagesEl) {
       showError(err.message || 'Failed to connect to agent');
     }
   } finally {
-    hideStatusRow();
-    finalizeStreamingMessage(messagesEl);
     isStreaming = false;
     setSendButtonMode('send');
-    textarea.focus();
-    if (activeChatId === sendChatId) persistMessages(config.org);
+    if (activeChatId === sendChatId) {
+      hideStatusRow();
+      finalizeStreamingMessage(messagesEl);
+      textarea.focus();
+    }
+    persistMessages(config.org, sendChatId, localMessages);
   }
 }
 

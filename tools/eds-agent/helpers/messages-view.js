@@ -38,6 +38,7 @@ export function hideStatusRow() {
 }
 
 export function showStatusRow(messagesEl) {
+  if (document.getElementById('eds-status')) return;
   hideStatusRow();
   const startIdx = Math.floor(Math.random() * THINKING_WORDS.length);
   const el = document.createElement('div');
