@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import deriveReindexPaths from '../utils.js';
+import deriveReindexPaths from '../../../tools/index-admin/utils.js';
 
 describe('index-admin:utils.js', () => {
   describe('deriveReindexPaths', () => {

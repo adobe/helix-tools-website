@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { escapeXml, parseHreflang, collectSitemapEntries } from '../utils.js';
+import { escapeXml, parseHreflang, collectSitemapEntries } from '../../../tools/sitemap-admin/utils.js';
 
 describe('sitemap-admin:utils.js', () => {
   describe('escapeXml', () => {

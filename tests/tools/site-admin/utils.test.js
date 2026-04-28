@@ -6,7 +6,7 @@ import {
   getScoreClass,
   isExpired,
   getDAEditorURL,
-} from '../helpers/utils.js';
+} from '../../../tools/site-admin/helpers/utils.js';
 
 describe('site-admin:utils.js', () => {
   describe('escapeHtml', () => {

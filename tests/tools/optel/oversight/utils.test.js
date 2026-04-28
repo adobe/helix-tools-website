@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   truncate, escapeHTML, formatRelativeDate,
-} from '../utils.js';
+} from '../../../../tools/optel/oversight/utils.js';
 
 describe('optel/oversight:utils.js', () => {
   describe('truncate', () => {
