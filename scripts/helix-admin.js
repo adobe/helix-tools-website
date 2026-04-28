@@ -29,6 +29,8 @@ const ADMIN_BASE = 'https://admin.hlx.page';
  * @param {RequestInit} [defaults] merged into every request's init
  */
 function createAdmin(defaults = {}) {
+  // Tools shouldn't call this directly — use the resource methods on the
+  // returned `admin` object.
   async function request({
     method, url, body, contentType,
   }) {
