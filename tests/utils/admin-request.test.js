@@ -14,11 +14,11 @@ let updateConfigCalls;
 mock.module('../../blocks/profile/profile.js', {
   namedExports: { ensureLogin: (...args) => ensureLoginStub(...args) },
 });
-mock.module('../config/config.js', {
+mock.module('../../utils/config/config.js', {
   namedExports: { updateConfig: () => { updateConfigCalls += 1; } },
 });
 
-const { executeAdminRequest, AuthMode } = await import('../admin-request.js');
+const { executeAdminRequest, AuthMode } = await import('../../utils/admin-request.js');
 
 // Minimal `window` shim — just enough for addEventListener/removeEventListener
 // and dispatchEvent. Not a DOM, just an EventTarget under a `window` name.

@@ -3,7 +3,7 @@ import {
   describe, it, beforeEach, afterEach,
 } from 'node:test';
 import assert from 'node:assert/strict';
-import admin from '../helix-admin.js';
+import admin from '../../scripts/helix-admin.js';
 
 // Thin fetch spy: captures calls and returns whatever `respond` is set to.
 // We're testing the wrapper itself, so the spy IS the system under test from

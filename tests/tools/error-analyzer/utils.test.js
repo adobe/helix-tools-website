@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatNumber, formatRelativeDate } from '../utils.js';
+import { formatNumber, formatRelativeDate } from '../../../tools/error-analyzer/utils.js';
 
 // Build a Date that is exactly `n` UTC days before today's UTC midnight.
 function daysAgo(n) {

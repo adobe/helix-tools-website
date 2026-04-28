@@ -7,7 +7,7 @@ import {
   getPerformanceColor,
   calculatePerformanceScore,
   significancetest,
-} from '../utils.js';
+} from '../../../tools/deep-psi/utils.js';
 
 describe('deep-psi:utils.js', () => {
   describe('mean', () => {
