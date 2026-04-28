@@ -1,5 +1,5 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import getToolIcon from './utils.js';
+import getToolIcon from './helpers/tool-icon.js';
 import {
   loadChats,
   saveChats,

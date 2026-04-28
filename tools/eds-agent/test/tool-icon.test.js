@@ -1,8 +1,8 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import getToolIcon from '../utils.js';
+import getToolIcon from '../helpers/tool-icon.js';
 
-describe('eds-agent:utils.js', () => {
+describe('eds-agent:tool-icon.js', () => {
   describe('getToolIcon', () => {
     it('returns the default icon for empty input', () => {
       assert.equal(getToolIcon(''), 'S2_Icon_InfoCircleBlue_20_N');
