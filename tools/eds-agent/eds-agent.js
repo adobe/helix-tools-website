@@ -12,7 +12,6 @@ import {
 } from './helpers/chats.js';
 import {
   AGENT_ENDPOINT,
-  STORAGE_KEYS,
   DESKTOP_BREAKPOINT,
   WELCOME_GROUPS,
   THINKING_WORDS,
@@ -25,6 +24,12 @@ import {
   applyTheme,
   themeTitle,
 } from './helpers/theme.js';
+import {
+  getConfig,
+  saveConfig,
+  getSidebarCollapsed,
+  setSidebarCollapsed,
+} from './helpers/config-storage.js';
 
 const iconCache = new Map();
 
@@ -88,7 +93,6 @@ function attachCopyDelegation(messagesEl) {
 let messages = [];
 let isStreaming = false;
 let currentAbortController = null;
-let authToken = localStorage.getItem(STORAGE_KEYS.TOKEN) || '';
 let thinkingInterval = null;
 let activeChatId = null;
 let sidebarDismissAttached = false;
@@ -113,37 +117,8 @@ function setSendButtonMode(mode) {
   }
 }
 
-function getConfig() {
-  return {
-    authToken,
-    org: localStorage.getItem(STORAGE_KEYS.ORG) || '',
-    site: localStorage.getItem(STORAGE_KEYS.SITE) || '',
-  };
-}
-
-function saveConfig(token, org, site) {
-  authToken = token;
-  localStorage.setItem(STORAGE_KEYS.TOKEN, token);
-  localStorage.setItem(STORAGE_KEYS.ORG, org);
-  localStorage.setItem(STORAGE_KEYS.SITE, site);
-}
-
 function isDesktopViewport() {
   return window.matchMedia(DESKTOP_BREAKPOINT).matches;
-}
-
-function getSidebarCollapsed() {
-  return localStorage.getItem(STORAGE_KEYS.SIDEBAR_COLLAPSED) === '1';
-}
-
-function setSidebarCollapsed(collapsed) {
-  if (collapsed) {
-    localStorage.setItem(STORAGE_KEYS.SIDEBAR_COLLAPSED, '1');
-    document.body.classList.add('eds-sidebar-collapsed');
-  } else {
-    localStorage.removeItem(STORAGE_KEYS.SIDEBAR_COLLAPSED);
-    document.body.classList.remove('eds-sidebar-collapsed');
-  }
 }
 
 // --- Helper functions ---
