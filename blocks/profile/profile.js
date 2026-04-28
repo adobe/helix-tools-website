@@ -147,26 +147,36 @@ function createLoginButton(org, loginInfo, closeModal) {
     loginUrl.searchParams.append('extensionId', getSidekickId());
     const loginWindow = window.open(loginUrl.toString(), '_blank');
 
+    // give up tracking the login window after 60 seconds; signal cancellation
+    // so listeners (e.g. executeAdminRequest) can stop awaiting login.
+    let giveUpTimer;
+
     // wait for login window to be closed, then dispatch event
     const checkLoginWindow = setInterval(async () => {
       if (loginWindow.closed) {
         clearInterval(checkLoginWindow);
+        clearTimeout(giveUpTimer);
         loginButton.disabled = false;
         setTimeout(async () => {
           const newLoginInfo = await getLoginInfo();
           const orgTitle = loginButton.parentElement.parentElement;
           loginButton.replaceWith(createLoginButton(org, newLoginInfo));
           fetchUserInfo(orgTitle.querySelector('.user-info'), org, selectedSite, newLoginInfo);
+          // dispatch profile-update before closing so listeners observe the
+          // login outcome before the dialog's close handler fires profile-cancelled
           dispatchProfileEvent('update', newLoginInfo);
+          if (closeModal) {
+            document.querySelector('#profile-modal').close();
+          }
         }, 200);
-        if (closeModal) {
-          // close modal after login
-          document.querySelector('#profile-modal').close();
-        }
       }
     }, 500);
-    // stop waiting after 60 seconds
-    setTimeout(() => clearInterval(checkLoginWindow), 60000);
+
+    giveUpTimer = setTimeout(() => {
+      clearInterval(checkLoginWindow);
+      loginButton.disabled = false;
+      dispatchProfileEvent('cancelled');
+    }, 60000);
   });
 
   // enter ops mode if alt key is pressed
@@ -395,6 +405,16 @@ async function showModal(block, focusedOrg) {
     dialog.classList.add('profile-modal');
     dialog.id = 'profile-modal';
     dialog.closedBy = 'any';
+    // Bind once: the dialog is reused across showModal calls, so attaching
+    // here avoids stacking duplicate listeners that would each emit
+    // `profile-cancelled` on every close.
+    dialog.addEventListener('close', () => {
+      dialog.classList.remove('edit-mode');
+      // Always fires on close, including after a successful login. Listeners
+      // that care about the login outcome should observe `profile-update`
+      // (dispatched first) and remove themselves before this fires.
+      dispatchProfileEvent('cancelled');
+    });
     block.append(dialog);
   }
 
@@ -413,10 +433,6 @@ async function showModal(block, focusedOrg) {
   closeButton.title = closeButton.textContent;
   closeButton.addEventListener('click', () => dialog.close());
   dialog.append(closeButton);
-
-  dialog.addEventListener('close', () => {
-    dialog.classList.remove('edit-mode');
-  });
 
   dialog.showModal();
 }

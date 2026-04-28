@@ -6,6 +6,6 @@ vendor/.vendor-hash
 LICENSE
 package.json
 package-lock.json
-**/test/**
+tests/**
 **/lcov.info
 **/junit.xml

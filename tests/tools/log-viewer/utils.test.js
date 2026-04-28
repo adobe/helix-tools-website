@@ -6,7 +6,7 @@ import {
   toUTCDate,
   toISODate,
   calculatePastDate,
-} from '../utils.js';
+} from '../../../tools/log-viewer/utils.js';
 
 describe('log-viewer:utils.js', () => {
   describe('pad', () => {

@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { truncate, escapeHTML } from '../utils.js';
+import { truncate, escapeHTML } from '../../../../tools/optel/explorer/utils.js';
 
 describe('optel/explorer:utils.js', () => {
   describe('truncate', () => {
