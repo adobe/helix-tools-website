@@ -147,8 +147,7 @@ function createLoginButton(org, loginInfo, closeModal) {
     loginUrl.searchParams.append('extensionId', getSidekickId());
     const loginWindow = window.open(loginUrl.toString(), '_blank');
 
-    // give up tracking the login window after 60 seconds; signal cancellation
-    // so listeners (e.g. executeAdminRequest) can stop awaiting login.
+    // 60s safety net: fire `profile-cancelled` if the login window is left open.
     let giveUpTimer;
 
     // wait for login window to be closed, then dispatch event
@@ -162,8 +161,8 @@ function createLoginButton(org, loginInfo, closeModal) {
           const orgTitle = loginButton.parentElement.parentElement;
           loginButton.replaceWith(createLoginButton(org, newLoginInfo));
           fetchUserInfo(orgTitle.querySelector('.user-info'), org, selectedSite, newLoginInfo);
-          // dispatch profile-update before closing so listeners observe the
-          // login outcome before the dialog's close handler fires profile-cancelled
+          // fire profile-update before close so listeners see the outcome
+          // before the close handler fires profile-cancelled.
           dispatchProfileEvent('update', newLoginInfo);
           if (closeModal) {
             document.querySelector('#profile-modal').close();
@@ -405,14 +404,12 @@ async function showModal(block, focusedOrg) {
     dialog.classList.add('profile-modal');
     dialog.id = 'profile-modal';
     dialog.closedBy = 'any';
-    // Bind once: the dialog is reused across showModal calls, so attaching
-    // here avoids stacking duplicate listeners that would each emit
-    // `profile-cancelled` on every close.
+    // Bind once — the dialog is reused; rebinding stacks duplicate emissions.
     dialog.addEventListener('close', () => {
       dialog.classList.remove('edit-mode');
-      // Always fires on close, including after a successful login. Listeners
-      // that care about the login outcome should observe `profile-update`
-      // (dispatched first) and remove themselves before this fires.
+      // Fires on every close, including post-login. Listeners that care about
+      // the login outcome should observe `profile-update` (dispatched first)
+      // and remove themselves before this fires.
       dispatchProfileEvent('cancelled');
     });
     block.append(dialog);

@@ -66,8 +66,8 @@ Avoid mocks whenever possible. They're expensive to maintain and give false conf
 
 Mocks are acceptable, and sometimes the right call, in a narrow case: **shared library or orchestration code where the unit under test IS the contract with a collaborator**, and that contract is the very thing you want to pin. The mock is the system under test, not a stand-in for it. Examples:
 
-- `scripts/test/helix-admin.test.js` — fetches are spied because the wrapper's job is to construct fetch arguments and shape the response. The spy *is* the SUT.
-- `utils/test/admin-request.test.js` — `ensureLogin` is mocked via `node:test`'s `mock.module` and `window` events are dispatched against an `EventTarget`, because the helper's job is to orchestrate those collaborators into a result. The orchestration logic itself is the contract under test.
+- `tests/scripts/helix-admin.test.js` — fetches are spied because the wrapper's job is to construct fetch arguments and shape the response. The spy *is* the SUT.
+- `tests/utils/admin-request.test.js` — `ensureLogin` is mocked via `node:test`'s `mock.module` and `window` events are dispatched against an `EventTarget`, because the helper's job is to orchestrate those collaborators into a result. The orchestration logic itself is the contract under test.
 
 If you find yourself reaching for a mock outside this case, stop and refactor. The pull toward "I'll just mock this one fetch" is exactly when the test starts giving false confidence.
 
@@ -79,14 +79,14 @@ Conventions when mocking *is* used:
 ## Test Conventions
 
 - **Framework**: Node.js built-in `node:test` + `node:assert/strict`
-- **Location**: `tools/{toolname}/test/{module}.test.js` — name the test file after the module it tests
-- **Run**: `npm test` (executes all `**/test/*.test.js`)
+- **Location**: `tests/{path-mirroring-source}/{module}.test.js` — all tests live under the top-level `tests/` directory, mirroring the layout of the code under test (e.g. `tools/bulk/utils.js` → `tests/tools/bulk/utils.test.js`). Name the test file after the module it tests.
+- **Run**: `npm test` (executes all `tests/**/*.test.js`)
 - **Mocks**: avoid whenever possible; see "When Mocking Is Acceptable" for the narrow exception
 
 See existing tests for reference:
-- `tools/bulk/test/utils.test.js` — URL sanitization and normalization
-- `tools/error-analyzer/test/utils.test.js` — formatting with edge cases
-- `tools/index-admin/test/utils.test.js` — path derivation with branching logic
-- `tools/log-viewer/test/utils.test.js` — date utility extraction from a larger script
-- `scripts/test/helix-admin.test.js` — orchestration code with a fetch spy as SUT
-- `utils/test/admin-request.test.js` — orchestration code with `mock.module` and a `window` event-target shim
+- `tests/tools/bulk/utils.test.js` — URL sanitization and normalization
+- `tests/tools/error-analyzer/utils.test.js` — formatting with edge cases
+- `tests/tools/index-admin/utils.test.js` — path derivation with branching logic
+- `tests/tools/log-viewer/utils.test.js` — date utility extraction from a larger script
+- `tests/scripts/helix-admin.test.js` — orchestration code with a fetch spy as SUT
+- `tests/utils/admin-request.test.js` — orchestration code with `mock.module` and a `window` event-target shim

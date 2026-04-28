@@ -184,9 +184,9 @@ async function init() {
       () => (Object.keys(patchedHeaders).length === 0
         ? cfg.headers.remove()
         : cfg.headers(patchedHeaders)),
-      { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
+      { org: org.value, site: site.value },
     );
-    if (!result) return; // user cancelled login
+    if (!result) return;
     const { method, url } = result.request;
     logResponse(consoleBlock, result.status, [method, url, result.error]);
   });
@@ -199,13 +199,12 @@ async function init() {
       return;
     }
 
-    // Preflight on Fetch (the natural entry point: fetch → edit → save).
-    // Once the fetch succeeds, the user has an active session for any later save.
+    // Preflight on the fetch (entry point); the resulting session covers later saves.
     const result = await executeAdminRequest(
       () => admin.config({ org: org.value, site: site.value }).headers(),
       { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
     );
-    if (!result) return; // user cancelled login or timed out
+    if (!result) return;
     headersList.innerHTML = '';
     const buttonBar = document.querySelector('.button-bar');
     const pathSelector = document.querySelector('.path-selector');

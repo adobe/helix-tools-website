@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { analyzeUrls, extractOrgSite } from '../utils.js';
+import { analyzeUrls, extractOrgSite } from '../../../tools/bulk/utils.js';
 
 describe('bulk:utils.js', () => {
   describe('extractOrgSite', () => {
