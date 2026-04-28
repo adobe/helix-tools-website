@@ -10,6 +10,14 @@ import {
   migrateLegacyMessages,
   groupChatsByDate,
 } from './helpers/chats.js';
+import {
+  AGENT_ENDPOINT,
+  STORAGE_KEYS,
+  DESKTOP_BREAKPOINT,
+  WELCOME_GROUPS,
+  THINKING_WORDS,
+  DATE_GROUP_LABELS,
+} from './helpers/constants.js';
 
 const iconCache = new Map();
 
@@ -70,63 +78,10 @@ function attachCopyDelegation(messagesEl) {
   });
 }
 
-const AGENT_ENDPOINT = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  ? 'http://localhost:8787'
-  : 'https://helix-admin-agent.adobe.workers.dev';
-const STORAGE_KEY_ORG = 'eds-agent-org';
-const STORAGE_KEY_SITE = 'eds-agent-site';
-const STORAGE_KEY_TOKEN = 'eds-agent-token';
-const STORAGE_KEY_THEME = 'eds-agent-theme';
-const STORAGE_KEY_SIDEBAR_COLLAPSED = 'eds-agent-sidebar-collapsed';
-const DESKTOP_BREAKPOINT = '(min-width: 900px)';
-
-const WELCOME_GROUPS = [
-  {
-    label: 'Sites & config',
-    prompts: [
-      'List all sites in my organization',
-      'Show the sidekick config for my site',
-    ],
-  },
-  {
-    label: 'Status & logs',
-    prompts: [
-      'What happened in the last hour?',
-      'Audit log for the last deploy',
-    ],
-  },
-  {
-    label: 'Help & docs',
-    prompts: [
-      'How do I set up a custom domain?',
-      'Search EDS docs for redirects',
-    ],
-  },
-];
-
-const THINKING_WORDS = [
-  'Contacting the Edge Delivery Gods',
-  'Pondering',
-  'Cogitating',
-  'Ruminating',
-  'Musing',
-  'Mulling',
-  'Noodling',
-  'Percolating',
-  'Churning',
-  'Brewing',
-  'Contemplating',
-  'Deliberating',
-  'Reasoning',
-  'Processing',
-  'Reflecting',
-  'Simmering',
-];
-
 let messages = [];
 let isStreaming = false;
 let currentAbortController = null;
-let authToken = localStorage.getItem(STORAGE_KEY_TOKEN) || '';
+let authToken = localStorage.getItem(STORAGE_KEYS.TOKEN) || '';
 let thinkingInterval = null;
 let activeChatId = null;
 let sidebarDismissAttached = false;
@@ -154,20 +109,20 @@ function setSendButtonMode(mode) {
 function getConfig() {
   return {
     authToken,
-    org: localStorage.getItem(STORAGE_KEY_ORG) || '',
-    site: localStorage.getItem(STORAGE_KEY_SITE) || '',
+    org: localStorage.getItem(STORAGE_KEYS.ORG) || '',
+    site: localStorage.getItem(STORAGE_KEYS.SITE) || '',
   };
 }
 
 function saveConfig(token, org, site) {
   authToken = token;
-  localStorage.setItem(STORAGE_KEY_TOKEN, token);
-  localStorage.setItem(STORAGE_KEY_ORG, org);
-  localStorage.setItem(STORAGE_KEY_SITE, site);
+  localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+  localStorage.setItem(STORAGE_KEYS.ORG, org);
+  localStorage.setItem(STORAGE_KEYS.SITE, site);
 }
 
 function getStoredTheme() {
-  const v = localStorage.getItem(STORAGE_KEY_THEME);
+  const v = localStorage.getItem(STORAGE_KEYS.THEME);
   return (v === 'light' || v === 'dark') ? v : null;
 }
 
@@ -180,10 +135,10 @@ function applyTheme(theme) {
   const root = document.documentElement;
   if (theme === 'light' || theme === 'dark') {
     root.setAttribute('data-theme', theme);
-    localStorage.setItem(STORAGE_KEY_THEME, theme);
+    localStorage.setItem(STORAGE_KEYS.THEME, theme);
   } else {
     root.removeAttribute('data-theme');
-    localStorage.removeItem(STORAGE_KEY_THEME);
+    localStorage.removeItem(STORAGE_KEYS.THEME);
   }
 }
 
@@ -196,15 +151,15 @@ function isDesktopViewport() {
 }
 
 function getSidebarCollapsed() {
-  return localStorage.getItem(STORAGE_KEY_SIDEBAR_COLLAPSED) === '1';
+  return localStorage.getItem(STORAGE_KEYS.SIDEBAR_COLLAPSED) === '1';
 }
 
 function setSidebarCollapsed(collapsed) {
   if (collapsed) {
-    localStorage.setItem(STORAGE_KEY_SIDEBAR_COLLAPSED, '1');
+    localStorage.setItem(STORAGE_KEYS.SIDEBAR_COLLAPSED, '1');
     document.body.classList.add('eds-sidebar-collapsed');
   } else {
-    localStorage.removeItem(STORAGE_KEY_SIDEBAR_COLLAPSED);
+    localStorage.removeItem(STORAGE_KEYS.SIDEBAR_COLLAPSED);
     document.body.classList.remove('eds-sidebar-collapsed');
   }
 }
@@ -782,14 +737,6 @@ function renderWelcome(messagesEl, textarea) {
     });
   });
 }
-
-const DATE_GROUP_LABELS = {
-  today: 'Today',
-  yesterday: 'Yesterday',
-  last7: 'Previous 7 days',
-  last30: 'Previous 30 days',
-  older: 'Older',
-};
 
 function renderChatRow(chat, isActive, callbacks) {
   const row = document.createElement('div');

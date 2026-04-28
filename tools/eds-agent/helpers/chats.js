@@ -1,14 +1,13 @@
-const CHATS_KEY_PREFIX = 'eds-agent-chats:';
-const ACTIVE_KEY_PREFIX = 'eds-agent-active-chat:';
-const LEGACY_MESSAGES_KEY = 'eds-agent-messages';
+import { STORAGE_KEYS } from './constants.js';
+
 const TITLE_MAX = 40;
 
 function chatsKey(org) {
-  return `${CHATS_KEY_PREFIX}${org}`;
+  return `${STORAGE_KEYS.CHATS_PREFIX}${org}`;
 }
 
 function activeKey(org) {
-  return `${ACTIVE_KEY_PREFIX}${org}`;
+  return `${STORAGE_KEYS.ACTIVE_PREFIX}${org}`;
 }
 
 function makeTitle(message) {
@@ -101,9 +100,9 @@ export function appendMessage(org, id, message) {
 }
 
 export function migrateLegacyMessages(org, site) {
-  const raw = sessionStorage.getItem(LEGACY_MESSAGES_KEY);
+  const raw = sessionStorage.getItem(STORAGE_KEYS.LEGACY_MESSAGES);
   if (!raw) return false;
-  sessionStorage.removeItem(LEGACY_MESSAGES_KEY);
+  sessionStorage.removeItem(STORAGE_KEYS.LEGACY_MESSAGES);
   if (!org) return false;
   let parsed;
   try { parsed = JSON.parse(raw); } catch { return false; }

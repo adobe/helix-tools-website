@@ -19,6 +19,7 @@ function makeStorageShim() {
 // in test files might. Setting globals here covers both.
 globalThis.localStorage = makeStorageShim();
 globalThis.sessionStorage = makeStorageShim();
+globalThis.window = { location: { hostname: 'localhost' } };
 
 const {
   loadChats,
