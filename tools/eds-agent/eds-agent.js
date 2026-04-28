@@ -12,7 +12,6 @@ import {
 import {
   AGENT_ENDPOINT,
   DESKTOP_BREAKPOINT,
-  WELCOME_GROUPS,
   DATE_GROUP_LABELS,
 } from './helpers/constants.js';
 import { escapeHtml } from './helpers/markdown.js';
@@ -45,6 +44,7 @@ import {
   renderAllMessages,
 } from './helpers/messages-view.js';
 import { readStream } from './helpers/sse-parser.js';
+import { renderWelcome } from './helpers/welcome-view.js';
 
 let messages = [];
 let isStreaming = false;
@@ -212,32 +212,6 @@ async function sendMessage(textarea, messagesEl) {
 }
 
 // --- UI Rendering ---
-
-function renderWelcome(messagesEl, textarea) {
-  const welcome = document.createElement('div');
-  welcome.className = 'eds-welcome';
-  welcome.innerHTML = `
-    <h2>How can I help?</h2>
-    <p>I can manage your AEM EDS configurations, check page status, query audit logs, search documentation, and more.</p>
-    <div class="eds-welcome-groups">
-      ${WELCOME_GROUPS.map((g) => `
-        <div class="eds-welcome-group">
-          <div class="eds-welcome-label">${escapeHtml(g.label)}</div>
-          ${g.prompts.map((p) => `<button class="eds-suggestion-chip">${escapeHtml(p)}</button>`).join('')}
-        </div>
-      `).join('')}
-    </div>
-  `;
-  messagesEl.appendChild(welcome);
-
-  welcome.querySelectorAll('.eds-suggestion-chip').forEach((chip) => {
-    chip.addEventListener('click', () => {
-      textarea.value = chip.textContent;
-      textarea.dispatchEvent(new Event('input'));
-      sendMessage(textarea, messagesEl);
-    });
-  });
-}
 
 function renderChatRow(chat, isActive, callbacks) {
   const row = document.createElement('div');
@@ -583,7 +557,13 @@ function renderChat(container) {
   } else {
     activeChatId = null;
     messages = [];
-    renderWelcome(messagesEl, textarea);
+    renderWelcome(messagesEl, {
+      onPromptClick: (prompt) => {
+        textarea.value = prompt;
+        textarea.dispatchEvent(new Event('input'));
+        sendMessage(textarea, messagesEl);
+      },
+    });
   }
 
   textarea.addEventListener('input', () => {
