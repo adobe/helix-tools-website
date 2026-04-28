@@ -912,59 +912,6 @@ html[data-theme="dark"] body.eds-agent {
   color: var(--red-1000);
 }
 
-.eds-toolcall {
-  background: var(--layer-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--eds-card-radius);
-  font-size: 12px;
-  color: var(--color-text);
-  overflow: hidden;
-}
-
-.eds-toolcall summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  cursor: pointer;
-  list-style: none;
-}
-
-.eds-toolcall summary::-webkit-details-marker {
-  display: none;
-}
-
-.eds-toolcall summary svg {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-}
-
-.eds-toolcall-name {
-  font-family: var(--code-font-family);
-  font-size: 11px;
-  color: var(--color-text);
-  font-weight: 500;
-}
-
-.eds-toolcall-status {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--color-font-grey);
-}
-
-.eds-toolcall-body {
-  border-top: 1px solid var(--color-border);
-  padding: 8px 10px;
-  background: var(--layer-base);
-  font-family: var(--code-font-family);
-  font-size: 11px;
-  line-height: 1.4;
-  white-space: pre-wrap;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
 .eds-msg .eds-body pre {
   position: relative;
 }

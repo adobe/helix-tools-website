@@ -1,7 +1,6 @@
 import { THINKING_WORDS } from './constants.js';
 import { loadIcon, injectCopyButtons } from './icons.js';
 import { renderMarkdown, escapeHtml } from './markdown.js';
-import getToolIcon from './tool-icon.js';
 
 let thinkingInterval = null;
 
@@ -165,36 +164,6 @@ export function renderApprovalCard(messagesEl, approval) {
       resolve(false);
     });
   });
-}
-
-export function renderToolCallCard(messagesEl, { toolCallId, toolName, input }) {
-  const card = document.createElement('details');
-  card.className = 'eds-toolcall';
-  card.dataset.toolCallId = toolCallId;
-  card.innerHTML = `
-    <summary>
-      <span class="eds-toolcall-icon"></span>
-      <span class="eds-toolcall-name">${escapeHtml(toolName || 'tool')}</span>
-      <span class="eds-toolcall-status">running…</span>
-    </summary>
-    <div class="eds-toolcall-body">${escapeHtml(JSON.stringify({ input }, null, 2))}</div>
-  `;
-  loadIcon(getToolIcon(toolName)).then((svg) => {
-    card.querySelector('.eds-toolcall-icon').replaceWith(svg);
-  });
-  messagesEl.appendChild(card);
-  scrollToBottom();
-  return card;
-}
-
-export function updateToolCallCard(messagesEl, { toolCallId, output }) {
-  const card = messagesEl.querySelector(`.eds-toolcall[data-tool-call-id="${CSS.escape(toolCallId)}"]`);
-  if (!card) return;
-  card.querySelector('.eds-toolcall-status').textContent = 'done';
-  const body = card.querySelector('.eds-toolcall-body');
-  body.textContent = typeof output === 'string'
-    ? output
-    : JSON.stringify(output, null, 2);
 }
 
 export function renderAllMessages(messagesEl, messages) {

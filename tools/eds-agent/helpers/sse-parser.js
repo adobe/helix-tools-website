@@ -44,11 +44,9 @@ export function parseSSELine(line, state, messagesEl, messages, view) {
 
     case 'tool-call':
     case 'tool-input-available': {
-      view.hideStatusRow();
       const { toolCallId, toolName } = part;
       const input = part.input ?? part.args ?? {};
       state.toolCallsById[toolCallId] = { toolName, input };
-      view.renderToolCallCard(messagesEl, { toolCallId, toolName, input });
       messages.push({
         role: 'assistant',
         content: [{
@@ -83,7 +81,6 @@ export function parseSSELine(line, state, messagesEl, messages, view) {
       const { toolCallId } = part;
       const output = part.output ?? part.result;
       const toolName = part.toolName ?? state.toolCallsById[toolCallId]?.toolName;
-      view.updateToolCallCard(messagesEl, { toolCallId, output });
       messages.push({
         role: 'tool',
         content: [{

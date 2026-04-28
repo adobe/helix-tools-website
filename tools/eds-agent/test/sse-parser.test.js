@@ -10,8 +10,6 @@ function makeStubView() {
     renderMessageBubble: (...args) => { calls.push(['renderMessageBubble', args]); },
     updateStreamingMessage: (...args) => { calls.push(['updateStreamingMessage', args]); },
     finalizeStreamingMessage: (...args) => { calls.push(['finalizeStreamingMessage', args]); },
-    renderToolCallCard: (...args) => { calls.push(['renderToolCallCard', args]); },
-    updateToolCallCard: (...args) => { calls.push(['updateToolCallCard', args]); },
     hideStatusRow: () => { calls.push(['hideStatusRow', []]); },
     hasStreamingBubble: () => false,
   };
@@ -96,7 +94,6 @@ describe('eds-agent:sse-parser.js — parseSSELine', () => {
         type: 'tool-call', toolCallId: 't1', toolName: 'list_sites', input: { org: 'adobe' },
       }],
     }]);
-    assert.ok(view.calls.find(([n]) => n === 'renderToolCallCard'));
   });
 
   it('tool-approval-request appends approval part to matching tool-call message', () => {
@@ -122,7 +119,7 @@ describe('eds-agent:sse-parser.js — parseSSELine', () => {
     }]);
   });
 
-  it('tool-result updates the card and pushes a tool message', () => {
+  it('tool-result pushes a tool message', () => {
     state.toolCallsById.t1 = { toolName: 'list_sites', input: {} };
     parseSSELine(
       'data: {"type":"tool-result","toolCallId":"t1","output":{"sites":["a"]}}',
@@ -131,7 +128,6 @@ describe('eds-agent:sse-parser.js — parseSSELine', () => {
       messages,
       view,
     );
-    assert.ok(view.calls.find(([n]) => n === 'updateToolCallCard'));
     assert.deepEqual(messages, [{
       role: 'tool',
       content: [{

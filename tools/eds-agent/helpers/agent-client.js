@@ -8,8 +8,6 @@ import {
   renderMessageBubble,
   updateStreamingMessage,
   finalizeStreamingMessage,
-  renderToolCallCard,
-  updateToolCallCard,
   renderApprovalCard,
 } from './messages-view.js';
 
@@ -20,8 +18,6 @@ function buildView() {
     renderMessageBubble,
     updateStreamingMessage,
     finalizeStreamingMessage,
-    renderToolCallCard,
-    updateToolCallCard,
   };
 }
 
