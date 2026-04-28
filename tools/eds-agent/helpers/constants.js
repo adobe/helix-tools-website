@@ -41,21 +41,15 @@ export const WELCOME_GROUPS = [
 
 export const THINKING_WORDS = [
   'Contacting the Edge Delivery Gods',
-  'Pondering',
-  'Cogitating',
-  'Ruminating',
-  'Musing',
-  'Mulling',
-  'Noodling',
-  'Percolating',
-  'Churning',
-  'Brewing',
-  'Contemplating',
-  'Deliberating',
-  'Reasoning',
-  'Processing',
-  'Reflecting',
-  'Simmering',
+  'Document Authoring',
+  'Renaming Helix',
+  'Re-inventing the wheel',
+  'Consulting the Oracle',
+  'Conducting Research',
+  'Planning Adobe Summit',
+  'Analyzing the data',
+  'Checking the gravitational constant in your locale',
+  'Replacing the stars with potatoes',
 ];
 
 export const DATE_GROUP_LABELS = {

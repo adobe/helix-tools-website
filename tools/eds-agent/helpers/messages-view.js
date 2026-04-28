@@ -115,7 +115,7 @@ export function finalizeStreamingMessage(messagesEl) {
 
 async function resolveApprovalCard(card, approved) {
   const actionsEl = card.querySelector('.eds-approval-actions');
-  const iconName = approved ? 'S2_Icon_CheckmarkCircleGreen_20_N' : 'S2_Icon_CloseCircle_20_N';
+  const iconName = approved ? 'S2_Icon_Checkmark_20_N' : 'S2_Icon_CloseCircle_20_N';
   const cls = approved ? 'eds-approved' : 'eds-rejected';
   const label = approved ? 'Approved' : 'Rejected';
   const chip = document.createElement('span');
