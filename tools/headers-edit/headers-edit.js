@@ -184,7 +184,7 @@ async function init() {
       () => (Object.keys(patchedHeaders).length === 0
         ? cfg.headers.remove()
         : cfg.headers(patchedHeaders)),
-      { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
+      { org: org.value, site: site.value },
     );
     if (!result) return; // user cancelled login
     const { method, url } = result.request;
