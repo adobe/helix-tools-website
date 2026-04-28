@@ -3,47 +3,29 @@ const ADMIN_BASE = 'https://admin.hlx.page';
 /**
  * Normalized response envelope returned by every admin API call.
  *
- * Methods do not throw on non-2xx — `ok`/`status` carry the outcome and
- * `error` carries the `x-error` response header. `text()` and `json()` are
- * thin pass-throughs to the underlying Response, which is single-use; call
- * one of them, not both, and only once.
- *
- * Tools can reference this typedef from other modules:
- *   import('./helix-admin.js').AdminResponse
+ * Non-2xx is carried via `ok`/`status`/`error`, never thrown. `text()` and
+ * `json()` wrap the underlying Response body, which is single-use — call
+ * one, not both, and only once.
  *
  * @typedef {object} AdminResponse
- * @property {boolean} ok                              `resp.ok`
- * @property {number} status                           HTTP status code
- * @property {() => Promise<string>} text              read response body as text
- * @property {() => Promise<any>} json                 read response body as JSON
- * @property {string} error                            `x-error` response header, '' if absent
- * @property {{method: string, url: string}} request   method+url echo for logging
+ * @property {boolean} ok
+ * @property {number} status
+ * @property {() => Promise<string>} text
+ * @property {() => Promise<any>} json
+ * @property {string} error                            `x-error` header, '' if absent
+ * @property {{method: string, url: string}} request   echo for logging
  */
 
 /**
- * Build an admin client with optional request-init defaults applied to every
- * call. The default export is built with no defaults — equivalent to plain
- * `fetch(url, {method, body, headers})`. Use `admin.withRequestInit(...)` to
- * derive a client with overridden defaults (e.g. `{credentials: 'include'}`
- * for cookie-bearing cross-origin calls, or `{cache: 'no-cache'}` to bypass
- * the HTTP cache on polling endpoints).
+ * Build an admin client. The default export has no init defaults; use
+ * `admin.withRequestInit(...)` to derive one with e.g. `credentials: 'include'`
+ * or `cache: 'no-cache'`.
  *
  * @param {RequestInit} [defaults] merged into every request's init
  */
 function createAdmin(defaults = {}) {
-  /**
-   * Issue an admin API request and return a normalized envelope.
-   *
-   * Resource methods on the returned `admin` object are thin wrappers around
-   * this; tools shouldn't call it directly.
-   *
-   * @param {object} args
-   * @param {string} args.method            HTTP method
-   * @param {string} args.url               fully-qualified admin API URL
-   * @param {string|FormData} [args.body]   request body, omit for GET
-   * @param {string} [args.contentType]     value for the content-type header
-   * @returns {Promise<AdminResponse>}
-   */
+  // Tools shouldn't call this directly — use the resource methods on the
+  // returned `admin` object.
   async function request({
     method, url, body, contentType,
   }) {
@@ -71,22 +53,16 @@ function createAdmin(defaults = {}) {
   }
 
   /**
-   * Bind a config-API context to a site (or just an org).
-   *
-   * The returned object exposes `url` (the URL prefix of this context) and
-   * resource methods. Site-scoped resources are only present when `site` is
-   * provided — calling them on an org-only context yields a TypeError at the
-   * call site, which is the intended failure mode.
-   *
-   * Each resource method is a callable that also exposes `.url` (the canonical
-   * URL of that resource) for test assertions and debugging.
+   * Bind a config-API context to an org (and optionally a site). The returned
+   * object exposes `url` and resource methods; each resource method also has
+   * a `.url` for test assertions. Site-scoped resources are absent on an
+   * org-only context — calling them throws a TypeError, by design.
    *
    * @param {{org: string, site?: string}} coords
    */
   function config({ org, site }) {
     const orgUrl = `${ADMIN_BASE}/config/${org}`;
 
-    // Org-scoped context — site-only resources are deliberately absent.
     if (!site) {
       return { url: orgUrl };
     }
@@ -95,11 +71,6 @@ function createAdmin(defaults = {}) {
 
     const robotsUrl = `${siteUrl}/robots.txt`;
     /**
-     * Get or replace the site's robots.txt.
-     *
-     * Also exposes a `.url` property (the canonical URL of this resource) for
-     * test assertions and debugging.
-     *
      * @param {string} [body] omit to GET; pass text to POST as `text/plain`
      * @returns {Promise<AdminResponse>}
      */
@@ -145,15 +116,10 @@ function createAdmin(defaults = {}) {
   }
 
   /**
-   * Derive an admin client whose request init defaults are merged with `extra`
-   * (later wins). Use for tools whose calls need non-default fetch options:
+   * Derive a client whose init defaults are merged with `extra` (later wins).
+   * The original client is unaffected; chainable.
    *
-   *   const admin2 = admin.withRequestInit({ credentials: 'include' });
-   *   await admin2.config({ org, site }).headers();
-   *
-   * Calls made through the original `admin` are unaffected. Compose by chaining.
-   *
-   * @param {RequestInit} extra  init fields to merge over current defaults
+   * @param {RequestInit} extra
    */
   function withRequestInit(extra) {
     return createAdmin({ ...defaults, ...extra });
