@@ -8,10 +8,7 @@ import {
   setActiveChatId,
   migrateLegacyMessages,
 } from './helpers/chats.js';
-import {
-  AGENT_ENDPOINT,
-  DESKTOP_BREAKPOINT,
-} from './helpers/constants.js';
+import { DESKTOP_BREAKPOINT } from './helpers/constants.js';
 import {
   getStoredTheme,
   effectiveTheme,
@@ -30,22 +27,17 @@ import {
 import {
   showError,
   hideStatusRow,
-  showStatusRow,
   renderMessageBubble,
-  updateStreamingMessage,
   finalizeStreamingMessage,
-  renderApprovalCard,
-  renderToolCallCard,
-  updateToolCallCard,
   renderAllMessages,
 } from './helpers/messages-view.js';
-import { readStream } from './helpers/sse-parser.js';
 import { renderWelcome } from './helpers/welcome-view.js';
 import {
   renderSidebar,
   attachSidebarBackdropDismiss,
 } from './helpers/sidebar-view.js';
 import { openSetupModal } from './helpers/setup-modal.js';
+import { streamChat } from './helpers/agent-client.js';
 
 let messages = [];
 let isStreaming = false;
@@ -92,80 +84,6 @@ function persistMessages(org) {
   saveChats(org, chats);
 }
 
-async function streamChat(messagesEl, config) {
-  currentAbortController = new AbortController();
-  showStatusRow(messagesEl);
-
-  const payload = {
-    messages: messages.filter(
-      (m) => m.role === 'user' || m.role === 'assistant' || m.role === 'tool',
-    ),
-    authToken: config.authToken,
-    context: {
-      ...(config.org ? { org: config.org } : {}),
-      ...(config.site ? { site: config.site } : {}),
-    },
-  };
-
-  const response = await fetch(`${AGENT_ENDPOINT}/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-    signal: currentAbortController.signal,
-  });
-
-  if (!response.ok) {
-    if (response.status === 401 || response.status === 403) {
-      openSetupModal({
-        mode: 'required',
-        errorText: 'Authentication failed — please re-enter your API key.',
-        onConnect: () => renderChat(document.getElementById('agent-app')), // eslint-disable-line no-use-before-define
-      });
-      return;
-    }
-    const errText = await response.text().catch(() => '');
-    throw new Error(`Agent returned ${response.status}: ${errText || response.statusText}`);
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  const view = {
-    hideStatusRow,
-    hasStreamingBubble: (el) => !!el.querySelector('.eds-msg-streaming'),
-    renderMessageBubble,
-    updateStreamingMessage,
-    finalizeStreamingMessage,
-    renderToolCallCard,
-    updateToolCallCard,
-  };
-  const state = await readStream(reader, decoder, messagesEl, messages, view);
-
-  if (state.hasError) {
-    showError(state.errorText ? `Agent error: ${state.errorText}` : 'Agent encountered an error');
-  }
-
-  const actionable = state.pendingApprovals.filter((a) => a.approvalId);
-  // eslint-disable-next-line no-restricted-syntax
-  for (const approval of actionable) {
-    finalizeStreamingMessage(messagesEl);
-    // eslint-disable-next-line no-await-in-loop
-    const approved = await renderApprovalCard(messagesEl, approval);
-    messages.push({
-      role: 'tool',
-      content: [{
-        type: 'tool-approval-response',
-        approvalId: approval.approvalId,
-        toolCallId: approval.toolCallId,
-        approved,
-      }],
-    });
-  }
-
-  if (actionable.length > 0) {
-    await streamChat(messagesEl, config);
-  }
-}
-
 async function sendMessage(textarea, messagesEl) {
   const text = textarea.value.trim();
   if (!text) return;
@@ -204,7 +122,16 @@ async function sendMessage(textarea, messagesEl) {
   renderMessageBubble(messagesEl, userMsg);
 
   try {
-    await streamChat(messagesEl, config);
+    await streamChat(messagesEl, {
+      messages,
+      config,
+      setAbortController: (c) => { currentAbortController = c; },
+      onAuthError: (errorText) => openSetupModal({
+        mode: 'required',
+        errorText,
+        onConnect: () => renderChat(document.getElementById('agent-app')), // eslint-disable-line no-use-before-define
+      }),
+    });
   } catch (err) {
     if (err.name !== 'AbortError') {
       showError(err.message || 'Failed to connect to agent');
