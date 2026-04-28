@@ -21,6 +21,11 @@ const ADMIN_BASE = 'https://admin.hlx.page';
  * `admin.withRequestInit(...)` to derive one with e.g. `credentials: 'include'`
  * or `cache: 'no-cache'`.
  *
+ * Resources are bound to coords and return `Promise<AdminResponse>`. Single-
+ * purpose resources are arity-overloaded callables (no arg → GET, arg → POST);
+ * multi-operation resources are objects with named methods. Both flavors
+ * expose a `.url` for test assertions.
+ *
  * @param {RequestInit} [defaults] merged into every request's init
  */
 function createAdmin(defaults = {}) {
@@ -53,10 +58,9 @@ function createAdmin(defaults = {}) {
   }
 
   /**
-   * Bind a config-API context to an org (and optionally a site). The returned
-   * object exposes `url` and resource methods; each resource method also has
-   * a `.url` for test assertions. Site-scoped resources are absent on an
-   * org-only context — calling them throws a TypeError, by design.
+   * Bind a config-API context to an org (and optionally a site). Site-scoped
+   * resources are absent on an org-only context — calling them throws a
+   * TypeError, by design.
    *
    * @param {{org: string, site?: string}} coords
    */
@@ -70,10 +74,6 @@ function createAdmin(defaults = {}) {
     const siteUrl = `${orgUrl}/sites/${site}`;
 
     const robotsUrl = `${siteUrl}/robots.txt`;
-    /**
-     * @param {string} [body] omit to GET; pass text to POST as `text/plain`
-     * @returns {Promise<AdminResponse>}
-     */
     function robots(body) {
       return body === undefined
         ? request({ method: 'GET', url: robotsUrl })
@@ -83,9 +83,24 @@ function createAdmin(defaults = {}) {
     }
     robots.url = robotsUrl;
 
+    const headersUrl = `${siteUrl}/headers.json`;
+    function headers(data) {
+      return data === undefined
+        ? request({ method: 'GET', url: headersUrl })
+        : request({
+          method: 'POST',
+          url: headersUrl,
+          body: JSON.stringify(data),
+          contentType: 'application/json',
+        });
+    }
+    headers.url = headersUrl;
+    headers.remove = () => request({ method: 'DELETE', url: headersUrl });
+
     return {
       url: siteUrl,
       robots,
+      headers,
     };
   }
 
