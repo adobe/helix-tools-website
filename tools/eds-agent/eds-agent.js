@@ -8,7 +8,7 @@ import {
   setActiveChatId,
   migrateLegacyMessages,
 } from './helpers/chats.js';
-import { DESKTOP_BREAKPOINT } from './helpers/constants.js';
+import { DESKTOP_BREAKPOINT, ANONYMOUS_ORG_KEY } from './helpers/constants.js';
 import {
   getStoredTheme,
   effectiveTheme,
@@ -43,6 +43,15 @@ let messages = [];
 let isStreaming = false;
 let currentAbortController = null;
 let activeChatId = null;
+
+/**
+ * Org key used for chat-storage scoping. Falls back to ANONYMOUS_ORG_KEY
+ * when the user hasn't set a real org so knowledge-only chats still
+ * persist across reloads under their own bucket.
+ */
+function effectiveOrg(config) {
+  return config?.org || ANONYMOUS_ORG_KEY;
+}
 
 const sendBtnState = {
   el: null,
@@ -103,9 +112,9 @@ async function sendMessage(textarea, messagesEl) {
   const userMsg = { role: 'user', content: text };
 
   if (!activeChatId) {
-    const newChat = createChat(config.org, text, config.site);
+    const newChat = createChat(effectiveOrg(config), text, config.site);
     activeChatId = newChat.id;
-    setActiveChatId(config.org, newChat.id);
+    setActiveChatId(effectiveOrg(config), newChat.id);
     const sidebarEl = document.querySelector('.eds-agent-sidebar');
     if (sidebarEl) {
       renderSidebar(sidebarEl, {
@@ -150,7 +159,7 @@ async function sendMessage(textarea, messagesEl) {
       finalizeStreamingMessage(messagesEl);
       textarea.focus();
     }
-    persistMessages(config.org, sendChatId, localMessages);
+    persistMessages(effectiveOrg(config), sendChatId, localMessages);
   }
 }
 
@@ -179,11 +188,11 @@ function buildSidebarCallbacks(container) {
     onDeleteChat: (id) => {
       cancelStreamIfActive();
       const cfg = getConfig();
-      if (!cfg.org) return;
-      const result = deleteChat(cfg.org, id);
+      const orgKey = effectiveOrg(cfg);
+      const result = deleteChat(orgKey, id);
       if (activeChatId === id) {
         activeChatId = result.nextActiveId;
-        setActiveChatId(cfg.org, result.nextActiveId);
+        setActiveChatId(orgKey, result.nextActiveId);
       }
       renderChat(container); // eslint-disable-line no-use-before-define
     },
@@ -294,7 +303,7 @@ function renderChat(container) {
   sendBtnState.el = sendBtn;
   sendBtnState.sendIconHTML = sendBtn.innerHTML;
 
-  const active = config.org ? getActiveChat(config.org) : null;
+  const active = getActiveChat(effectiveOrg(config));
   if (active) {
     activeChatId = active.id;
     messages = active.messages.slice();
@@ -303,6 +312,7 @@ function renderChat(container) {
     activeChatId = null;
     messages = [];
     renderWelcome(messagesEl, {
+      config,
       onPromptClick: (prompt) => {
         textarea.value = prompt;
         textarea.dispatchEvent(new Event('input'));
@@ -357,8 +367,8 @@ function initEdsAgent() {
   const config = getConfig();
   if (config.org) {
     migrateLegacyMessages(config.org, config.site);
-    activeChatId = getActiveChatId(config.org);
   }
+  activeChatId = getActiveChatId(effectiveOrg(config));
 
   // Knowledge / docs questions work without context. The chat opens directly;
   // the user sets org/site/token via the settings button when they want to

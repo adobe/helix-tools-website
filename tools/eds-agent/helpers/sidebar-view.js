@@ -1,4 +1,4 @@
-import { DATE_GROUP_LABELS } from './constants.js';
+import { DATE_GROUP_LABELS, ANONYMOUS_ORG_KEY } from './constants.js';
 import { loadIcon } from './icons.js';
 import { escapeHtml } from './markdown.js';
 import { loadChats, groupChatsByDate } from './chats.js';
@@ -45,7 +45,7 @@ export function renderChatRow(chat, isActive, callbacks) {
 }
 
 export function renderSidebar(container, { activeChatId, config, callbacks }) {
-  const chats = config.org ? loadChats(config.org) : [];
+  const chats = loadChats(config.org || ANONYMOUS_ORG_KEY);
   const groups = groupChatsByDate(chats);
 
   // eslint-disable-next-line no-param-reassign
