@@ -32,6 +32,10 @@ export async function openSetupModal({ mode = 'required', errorText = '', onConn
       <label for="setup-site">Site (optional)</label>
       <input type="text" id="setup-site" placeholder="e.g. my-site" value="${escapeHtml(config.site)}" />
     </div>
+    <div class="eds-modal-field">
+      <label for="setup-domainkey">RUM domain key (optional)</label>
+      <input type="text" id="setup-domainkey" placeholder="public RUM key for Core Web Vitals" value="${escapeHtml(config.domainkey)}" />
+    </div>
     <div class="eds-modal-actions">
       <button class="eds-btn eds-btn-accent" id="setup-connect">Connect</button>
     </div>
@@ -61,21 +65,23 @@ export async function openSetupModal({ mode = 'required', errorText = '', onConn
   const tokenInput = modal.querySelector('#setup-token');
   const orgInput = modal.querySelector('#setup-org');
   const siteInput = modal.querySelector('#setup-site');
+  const domainkeyInput = modal.querySelector('#setup-domainkey');
   const connectBtn = modal.querySelector('#setup-connect');
 
   const submit = () => {
     const token = tokenInput.value.trim();
     const org = orgInput.value.trim();
     const site = siteInput.value.trim();
+    const domainkey = domainkeyInput.value.trim();
     if (!token) { tokenInput.focus(); return; }
     if (!org) { orgInput.focus(); return; }
-    saveConfig(token, org, site);
+    saveConfig(token, org, site, domainkey);
     closeModal();
     if (onConnect) onConnect();
   };
 
   connectBtn.addEventListener('click', submit);
-  [tokenInput, orgInput, siteInput].forEach((input) => {
+  [tokenInput, orgInput, siteInput, domainkeyInput].forEach((input) => {
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
   });
 

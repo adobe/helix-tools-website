@@ -5,13 +5,19 @@ export function getConfig() {
     authToken: localStorage.getItem(STORAGE_KEYS.TOKEN) || '',
     org: localStorage.getItem(STORAGE_KEYS.ORG) || '',
     site: localStorage.getItem(STORAGE_KEYS.SITE) || '',
+    domainkey: localStorage.getItem(STORAGE_KEYS.DOMAINKEY) || '',
   };
 }
 
-export function saveConfig(token, org, site) {
+export function saveConfig(token, org, site, domainkey = '') {
   localStorage.setItem(STORAGE_KEYS.TOKEN, token);
   localStorage.setItem(STORAGE_KEYS.ORG, org);
   localStorage.setItem(STORAGE_KEYS.SITE, site);
+  if (domainkey) {
+    localStorage.setItem(STORAGE_KEYS.DOMAINKEY, domainkey);
+  } else {
+    localStorage.removeItem(STORAGE_KEYS.DOMAINKEY);
+  }
 }
 
 export function getSidebarCollapsed() {

@@ -6,6 +6,7 @@ export const STORAGE_KEYS = {
   ORG: 'eds-agent-org',
   SITE: 'eds-agent-site',
   TOKEN: 'eds-agent-token',
+  DOMAINKEY: 'eds-agent-domainkey',
   THEME: 'eds-agent-theme',
   SIDEBAR_COLLAPSED: 'eds-agent-sidebar-collapsed',
   CHATS_PREFIX: 'eds-agent-chats:',

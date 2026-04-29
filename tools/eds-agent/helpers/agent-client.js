@@ -38,6 +38,7 @@ export async function streamChat(messagesEl, ctx) {
     context: {
       ...(config.org ? { org: config.org } : {}),
       ...(config.site ? { site: config.site } : {}),
+      ...(config.domainkey ? { domainkey: config.domainkey } : {}),
     },
   };
 
