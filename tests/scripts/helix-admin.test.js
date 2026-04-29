@@ -26,20 +26,6 @@ afterEach(() => {
 });
 
 describe('helix-admin.js', () => {
-  describe('admin.config(coords).url', () => {
-    it('exposes the site-scoped URL prefix', () => {
-      const cfg = admin.config({ org: 'adobe', site: 'helix-tools-website' });
-      assert.equal(cfg.url, 'https://admin.hlx.page/config/adobe/sites/helix-tools-website');
-    });
-
-    it('exposes the org-scoped URL prefix when site is omitted', () => {
-      assert.equal(
-        admin.config({ org: 'adobe' }).url,
-        'https://admin.hlx.page/config/adobe',
-      );
-    });
-  });
-
   describe('site-only resource gating', () => {
     it('robots is present on a site-scoped context', () => {
       const cfg = admin.config({ org: 'adobe', site: 'x' });
@@ -63,25 +49,15 @@ describe('helix-admin.js', () => {
       const cfg = admin.config({ org: 'adobe' });
       assert.equal(cfg.headers, undefined);
     });
-  });
 
-  describe('admin.config(coords).robots.url', () => {
-    it('exposes the canonical URL of the resource', () => {
-      const cfg = admin.config({ org: 'adobe', site: 'helix-tools-website' });
-      assert.equal(
-        cfg.robots.url,
-        'https://admin.hlx.page/config/adobe/sites/helix-tools-website/robots.txt',
-      );
+    it('index is present on a site-scoped context', () => {
+      const cfg = admin.config({ org: 'adobe', site: 'x' });
+      assert.equal(typeof cfg.index, 'function');
     });
-  });
 
-  describe('admin.config(coords).headers.url', () => {
-    it('exposes the canonical URL of the resource', () => {
-      const cfg = admin.config({ org: 'adobe', site: 'helix-tools-website' });
-      assert.equal(
-        cfg.headers.url,
-        'https://admin.hlx.page/config/adobe/sites/helix-tools-website/headers.json',
-      );
+    it('index is absent on an org-only context', () => {
+      const cfg = admin.config({ org: 'adobe' });
+      assert.equal(cfg.index, undefined);
     });
   });
 
@@ -153,6 +129,89 @@ describe('helix-admin.js', () => {
         calls[0].url,
         'https://admin.hlx.page/config/adobe/sites/x/headers.json',
       );
+      assert.equal(calls[0].init.body, undefined);
+    });
+  });
+
+  describe('admin.config(coords).index', () => {
+    it('GETs content/query.yaml when no body is passed', async () => {
+      await admin.config({ org: 'adobe', site: 'x' }).index();
+      assert.equal(
+        calls[0].url,
+        'https://admin.hlx.page/config/adobe/sites/x/content/query.yaml',
+      );
+      assert.equal(calls[0].init.method, 'GET');
+      assert.equal(calls[0].init.body, undefined);
+    });
+
+    it('POSTs with text/yaml when a body is passed', async () => {
+      await admin.config({ org: 'adobe', site: 'x' }).index('indices: {}\n');
+      assert.equal(calls[0].init.method, 'POST');
+      assert.equal(calls[0].init.body, 'indices: {}\n');
+      assert.deepEqual(
+        Object.fromEntries(calls[0].init.headers),
+        { 'content-type': 'text/yaml' },
+      );
+    });
+
+    it('treats an empty-string body as POST, not GET', async () => {
+      // Same regression-pin as robots: a truthiness check would silently
+      // turn a clear-content POST into a GET.
+      await admin.config({ org: 'adobe', site: 'x' }).index('');
+      assert.equal(calls[0].init.method, 'POST');
+      assert.equal(calls[0].init.body, '');
+    });
+  });
+
+  describe('admin.index(coords)', () => {
+    it('.bulk(payload) POSTs application/json with the JSON-stringified payload', async () => {
+      const payload = { paths: ['/'], indexNames: ['default'] };
+      await admin.index({ org: 'adobe', site: 'x' }).bulk(payload);
+      assert.equal(
+        calls[0].url,
+        'https://admin.hlx.page/index/adobe/x/main/*',
+      );
+      assert.equal(calls[0].init.method, 'POST');
+      assert.equal(calls[0].init.body, JSON.stringify(payload));
+      assert.deepEqual(
+        Object.fromEntries(calls[0].init.headers),
+        { 'content-type': 'application/json' },
+      );
+    });
+  });
+
+  describe('admin.job(coords)', () => {
+    it('.list(topic) GETs /job/{org}/{site}/main/{topic}', async () => {
+      await admin.job({ org: 'adobe', site: 'x' }).list('index');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/job/adobe/x/main/index');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('.status(topic, name) GETs /job/{org}/{site}/main/{topic}/{name}', async () => {
+      await admin.job({ org: 'adobe', site: 'x' }).status('index', 'job-123');
+      assert.equal(
+        calls[0].url,
+        'https://admin.hlx.page/job/adobe/x/main/index/job-123',
+      );
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('.details(topic, name) GETs the .../details suffix', async () => {
+      await admin.job({ org: 'adobe', site: 'x' }).details('index', 'job-123');
+      assert.equal(
+        calls[0].url,
+        'https://admin.hlx.page/job/adobe/x/main/index/job-123/details',
+      );
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('.stop(topic, name) DELETEs /job/{org}/{site}/main/{topic}/{name}', async () => {
+      await admin.job({ org: 'adobe', site: 'x' }).stop('index', 'job-123');
+      assert.equal(
+        calls[0].url,
+        'https://admin.hlx.page/job/adobe/x/main/index/job-123',
+      );
+      assert.equal(calls[0].init.method, 'DELETE');
       assert.equal(calls[0].init.body, undefined);
     });
   });
