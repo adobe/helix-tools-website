@@ -29,7 +29,6 @@ const {
   getActiveChatId,
   setActiveChatId,
   appendMessage,
-  migrateLegacyMessages,
   groupChatsByDate,
 } = await import('../helpers/chats.js');
 
@@ -183,58 +182,6 @@ describe('eds-agent:chats.js — appendMessage', () => {
     assert.equal(reloaded.messages.length, 2);
     assert.equal(reloaded.messages[0].content, 'one');
     assert.equal(reloaded.messages[1].content, 'two');
-  });
-});
-
-describe('eds-agent:chats.js — migrateLegacyMessages', () => {
-  it('migrates legacy session-storage messages to a new chat', () => {
-    const legacy = [
-      { role: 'user', content: 'first user message' },
-      { role: 'assistant', content: 'reply' },
-    ];
-    sessionStorage.setItem('eds-agent-messages', JSON.stringify(legacy));
-    const migrated = migrateLegacyMessages('adobe', 'helix');
-    assert.equal(migrated, true);
-
-    const chats = loadChats('adobe');
-    assert.equal(chats.length, 1);
-    assert.equal(chats[0].title, 'first user message');
-    assert.equal(chats[0].site, 'helix');
-    assert.equal(chats[0].messages.length, 2);
-    assert.equal(getActiveChatId('adobe'), chats[0].id);
-    assert.equal(sessionStorage.getItem('eds-agent-messages'), null);
-  });
-
-  it('returns false when no legacy data exists', () => {
-    assert.equal(migrateLegacyMessages('adobe', ''), false);
-  });
-
-  it('returns false and clears legacy when org is missing', () => {
-    sessionStorage.setItem('eds-agent-messages', JSON.stringify([{ role: 'user', content: 'x' }]));
-    assert.equal(migrateLegacyMessages('', ''), false);
-    assert.equal(sessionStorage.getItem('eds-agent-messages'), null);
-  });
-
-  it('returns false and clears legacy when stored data is not an array', () => {
-    sessionStorage.setItem('eds-agent-messages', 'not-json');
-    assert.equal(migrateLegacyMessages('adobe', ''), false);
-    assert.equal(sessionStorage.getItem('eds-agent-messages'), null);
-  });
-
-  it('does not migrate empty arrays', () => {
-    sessionStorage.setItem('eds-agent-messages', '[]');
-    assert.equal(migrateLegacyMessages('adobe', ''), false);
-    assert.equal(loadChats('adobe').length, 0);
-  });
-
-  it('uses first user message for title even when assistant comes first', () => {
-    const legacy = [
-      { role: 'assistant', content: 'preamble' },
-      { role: 'user', content: 'real first user message' },
-    ];
-    sessionStorage.setItem('eds-agent-messages', JSON.stringify(legacy));
-    migrateLegacyMessages('adobe', '');
-    assert.equal(loadChats('adobe')[0].title, 'real first user message');
   });
 });
 

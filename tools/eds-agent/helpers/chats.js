@@ -99,32 +99,6 @@ export function appendMessage(org, id, message) {
   return chat;
 }
 
-export function migrateLegacyMessages(org, site) {
-  const raw = sessionStorage.getItem(STORAGE_KEYS.LEGACY_MESSAGES);
-  if (!raw) return false;
-  sessionStorage.removeItem(STORAGE_KEYS.LEGACY_MESSAGES);
-  if (!org) return false;
-  let parsed;
-  try { parsed = JSON.parse(raw); } catch { return false; }
-  if (!Array.isArray(parsed) || parsed.length === 0) return false;
-  const firstUser = parsed.find((m) => m.role === 'user');
-  const titleSource = firstUser ? firstUser.content : '(legacy chat)';
-  const now = Date.now();
-  const chat = {
-    id: crypto.randomUUID(),
-    title: makeTitle(typeof titleSource === 'string' ? titleSource : '(legacy chat)'),
-    createdAt: now,
-    updatedAt: now,
-    site: site || '',
-    messages: parsed,
-  };
-  const chats = loadChats(org);
-  chats.unshift(chat);
-  saveChats(org, chats);
-  setActiveChatId(org, chat.id);
-  return true;
-}
-
 export function groupChatsByDate(chats, now = Date.now()) {
   const d = new Date(now);
   const todayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();

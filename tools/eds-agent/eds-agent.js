@@ -6,7 +6,6 @@ import {
   deleteChat,
   getActiveChatId,
   setActiveChatId,
-  migrateLegacyMessages,
 } from './helpers/chats.js';
 import { DESKTOP_BREAKPOINT, ANONYMOUS_ORG_KEY } from './helpers/constants.js';
 import {
@@ -365,9 +364,6 @@ function initEdsAgent() {
   attachSidebarBackdropDismiss();
 
   const config = getConfig();
-  if (config.org) {
-    migrateLegacyMessages(config.org, config.site);
-  }
   activeChatId = getActiveChatId(effectiveOrg(config));
 
   // Knowledge / docs questions work without context. The chat opens directly;

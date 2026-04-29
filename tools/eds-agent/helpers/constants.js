@@ -10,7 +10,6 @@ export const STORAGE_KEYS = {
   SIDEBAR_COLLAPSED: 'eds-agent-sidebar-collapsed',
   CHATS_PREFIX: 'eds-agent-chats:',
   ACTIVE_PREFIX: 'eds-agent-active-chat:',
-  LEGACY_MESSAGES: 'eds-agent-messages',
 };
 
 export const DESKTOP_BREAKPOINT = '(min-width: 900px)';
