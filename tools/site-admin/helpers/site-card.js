@@ -22,9 +22,11 @@ import {
  * Create a site card element
  * @param {Object} site - Site object with name property
  * @param {string} orgValue - Organization value
+ * @param {Object} [options] - Card options
+ * @param {boolean} [options.singleSite=false] - Hide org-level actions (e.g. clone)
  * @returns {HTMLElement} The site card element
  */
-export default function createSiteCard(site, orgValue) {
+export default function createSiteCard(site, orgValue, { singleSite = false } = {}) {
   const card = document.createElement('div');
   card.className = 'site-card';
   card.dataset.site = site.name;
@@ -45,8 +47,10 @@ export default function createSiteCard(site, orgValue) {
         <button type="button" class="favorite-btn ${favorited ? 'active' : ''}" aria-label="Favorite" title="${favorited ? 'Remove from favorites' : 'Add to favorites'}">${icon('star')}</button>
         <button type="button" class="menu-trigger" aria-label="Site actions">${icon('more-vertical')}</button>
         <div class="menu-dropdown">
-          <button type="button" class="menu-item" data-action="clone">${icon('copy')}<span>Clone Site Config</span></button>
-          <div class="menu-divider"></div>
+          ${singleSite ? '' : `
+            <button type="button" class="menu-item" data-action="clone">${icon('copy')}<span>Clone Site Config</span></button>
+            <div class="menu-divider"></div>
+          `}
           <button type="button" class="menu-item" data-action="lighthouse">${icon('activity')}<span>Run Lighthouse</span></button>
           <button type="button" class="menu-item" data-action="sitemap">${icon('document')}<span>Manage Sitemaps</span></button>
           <button type="button" class="menu-item" data-action="index">${icon('search')}<span>Manage Indexes</span></button>

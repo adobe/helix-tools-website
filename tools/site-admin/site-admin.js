@@ -122,7 +122,7 @@ const displaySites = (sites, { singleSite = false } = {}) => {
   const header = document.createElement('div');
   header.className = 'sites-header';
   header.innerHTML = `
-    <span class="sites-count">${sites.length} site${sites.length !== 1 ? 's' : ''}</span>
+    ${singleSite ? '' : `<span class="sites-count">${sites.length} site${sites.length !== 1 ? 's' : ''}</span>`}
     <div class="sites-actions">
       ${singleSite ? '' : `
         <div class="sites-search">
@@ -191,7 +191,7 @@ const displaySites = (sites, { singleSite = false } = {}) => {
   }, { rootMargin: '200px' });
 
   sortedSites.forEach((s) => {
-    const card = createSiteCard(s, org.value);
+    const card = createSiteCard(s, org.value, { singleSite });
     grid.appendChild(card);
     detailsObserver.observe(card);
   });
