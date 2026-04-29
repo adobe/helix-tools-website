@@ -119,7 +119,7 @@ function createAdmin(defaults = {}) {
     const base = `${ADMIN_BASE}/job/${org}/${site}/main`;
     return {
       list: (topic) => request({ method: 'GET', url: `${base}/${topic}` }),
-      get: (topic, name) => request({ method: 'GET', url: `${base}/${topic}/${name}` }),
+      status: (topic, name) => request({ method: 'GET', url: `${base}/${topic}/${name}` }),
       details: (topic, name) => request({ method: 'GET', url: `${base}/${topic}/${name}/details` }),
       stop: (topic, name) => request({ method: 'DELETE', url: `${base}/${topic}/${name}` }),
     };

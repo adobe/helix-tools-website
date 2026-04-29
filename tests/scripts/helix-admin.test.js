@@ -187,8 +187,8 @@ describe('helix-admin.js', () => {
       assert.equal(calls[0].init.method, 'GET');
     });
 
-    it('.get(topic, name) GETs /job/{org}/{site}/main/{topic}/{name}', async () => {
-      await admin.job({ org: 'adobe', site: 'x' }).get('index', 'job-123');
+    it('.status(topic, name) GETs /job/{org}/{site}/main/{topic}/{name}', async () => {
+      await admin.job({ org: 'adobe', site: 'x' }).status('index', 'job-123');
       assert.equal(
         calls[0].url,
         'https://admin.hlx.page/job/adobe/x/main/index/job-123',
