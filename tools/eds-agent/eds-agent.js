@@ -88,11 +88,12 @@ async function sendMessage(textarea, messagesEl) {
   const text = textarea.value.trim();
   if (!text) return;
 
+  // No client-side gate on auth — knowledge questions don't need it. The
+  // worker sees an empty authToken and the agent answers conceptually,
+  // telling the user what's missing if they request a site-specific action.
+  // The auth-error path (onAuthError below) re-opens the setup modal when
+  // an action attempt actually 401s.
   const config = getConfig();
-  if (!config.authToken) {
-    showError('No API key configured. Go to Settings.');
-    return;
-  }
 
   textarea.value = '';
   textarea.style.height = 'auto';
@@ -359,15 +360,11 @@ function initEdsAgent() {
     activeChatId = getActiveChatId(config.org);
   }
 
-  if (config.authToken && config.org) {
-    renderChat(appContainer);
-  } else {
-    renderChat(appContainer);
-    openSetupModal({
-      mode: 'required',
-      onConnect: () => renderChat(appContainer),
-    });
-  }
+  // Knowledge / docs questions work without context. The chat opens directly;
+  // the user sets org/site/token via the settings button when they want to
+  // perform site-specific actions (or the auth-error path forces the modal
+  // when an action attempt 401s).
+  renderChat(appContainer);
 }
 
 registerToolReady(new Promise((resolve) => {
