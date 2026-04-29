@@ -179,11 +179,11 @@ async function init() {
       }
     });
 
-    const cfg = admin.config({ org: org.value, site: site.value });
+    const headers = admin.config({ org: org.value, site: site.value }).select('headers.json');
     const result = await executeAdminRequest(
       () => (Object.keys(patchedHeaders).length === 0
-        ? cfg.headers.remove()
-        : cfg.headers(patchedHeaders)),
+        ? headers.remove()
+        : headers.update(JSON.stringify(patchedHeaders))),
       { org: org.value, site: site.value },
     );
     if (!result) return;
@@ -201,7 +201,7 @@ async function init() {
 
     // Preflight on the fetch (entry point); the resulting session covers later saves.
     const result = await executeAdminRequest(
-      () => admin.config({ org: org.value, site: site.value }).headers(),
+      () => admin.config({ org: org.value, site: site.value }).select('headers.json').read(),
       { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
     );
     if (!result) return;

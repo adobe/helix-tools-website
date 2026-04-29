@@ -163,7 +163,7 @@ function displayIndexDetails(indexName, indexDef, newIndex = false) {
     await ensureYaml();
     const yamlText = YAML.stringify(loadedIndices);
     const result = await executeAdminRequest(
-      () => admin.config({ org: org.value, site: site.value }).index(yamlText),
+      () => admin.config({ org: org.value, site: site.value }).select('content/query.yaml').update(yamlText),
       { org: org.value, site: site.value },
     );
     if (!result) return;
@@ -268,7 +268,7 @@ async function removeIndex(name) {
   await ensureYaml();
   const yamlText = YAML.stringify(loadedIndices);
   const result = await executeAdminRequest(
-    () => admin.config({ org: org.value, site: site.value }).index(yamlText),
+    () => admin.config({ org: org.value, site: site.value }).select('content/query.yaml').update(yamlText),
     { org: org.value, site: site.value },
   );
   if (!result) return;
@@ -452,7 +452,7 @@ async function init() {
     try {
       // Preflight on the fetch (entry point); the resulting session covers later saves.
       const result = await executeAdminRequest(
-        () => admin.config({ org: org.value, site: site.value }).index(),
+        () => admin.config({ org: org.value, site: site.value }).select('content/query.yaml').read(),
         { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
       );
       if (!result) return;

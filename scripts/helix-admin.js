@@ -1,5 +1,26 @@
 const ADMIN_BASE = 'https://admin.hlx.page';
 
+const CONTENT_TYPES = {
+  json: 'application/json',
+  yaml: 'text/yaml',
+  yml: 'text/yaml',
+  txt: 'text/plain',
+  html: 'text/html',
+};
+
+function leafExtension(url) {
+  return url.match(/\.([^./]+)$/)?.[1];
+}
+
+function deriveContentType(url) {
+  const ext = leafExtension(url);
+  const ct = ext && CONTENT_TYPES[ext];
+  if (!ct) {
+    throw new Error(`helix-admin: cannot derive content-type for "${url}"`);
+  }
+  return ct;
+}
+
 /**
  * Normalized response envelope returned by every admin API call.
  *
@@ -55,55 +76,52 @@ function createAdmin(defaults = {}) {
   }
 
   /**
-   * Bind a config-API context to an org (and optionally a site). Site-scoped
-   * resources are absent on an org-only context — calling them throws a
-   * TypeError, by design.
+   * Bind a config-API node to a URL. Recursive: `.select(subpath)` returns
+   * the same shape, descending the path. `.read()`, `.update(body)`,
+   * `.create(body)`, `.remove()` operate on the bound URL.
+   *
+   * Body must be a string. Content-type for write ops is derived from the
+   * URL's leaf extension; an extensionless leaf throws on write but reads
+   * and deletes fine.
+   *
+   * `.select` strips the leaf extension before descending — the AEM admin
+   * convention is that a config file (e.g. `cdn.json`) and the directory of
+   * subconfigs at the same name (`cdn/`) are two views of the same node.
+   * So `select('cdn.json').select('prod.json')` resolves to `cdn/prod.json`.
+   *
+   * @param {string} url
+   */
+  function bindConfig(url) {
+    return {
+      select(subpath) {
+        // Treat current node as a directory — strip its file-view extension.
+        const dirUrl = url.replace(/\.[^./]+$/, '');
+        const clean = String(subpath).replace(/^\/+|\/+$/g, '');
+        return bindConfig(`${dirUrl}/${clean}`);
+      },
+      read: () => request({ method: 'GET', url }),
+      update: (body) => request({
+        method: 'POST', url, body, contentType: deriveContentType(url),
+      }),
+      create: (body) => request({
+        method: 'PUT', url, body, contentType: deriveContentType(url),
+      }),
+      remove: () => request({ method: 'DELETE', url }),
+    };
+  }
+
+  /**
+   * Bind a config-API context to an org (and optionally a site). Returns a
+   * recursive node — `.select(...)` to descend, `.read/update/create/remove`
+   * to operate on the bound URL.
    *
    * @param {{org: string, site?: string}} coords
    */
   function config({ org, site }) {
-    if (!site) {
-      return {};
-    }
-
-    const siteUrl = `${ADMIN_BASE}/config/${org}/sites/${site}`;
-
-    const robotsUrl = `${siteUrl}/robots.txt`;
-    function robots(body) {
-      return body === undefined
-        ? request({ method: 'GET', url: robotsUrl })
-        : request({
-          method: 'POST', url: robotsUrl, body, contentType: 'text/plain',
-        });
-    }
-
-    const headersUrl = `${siteUrl}/headers.json`;
-    function headers(data) {
-      return data === undefined
-        ? request({ method: 'GET', url: headersUrl })
-        : request({
-          method: 'POST',
-          url: headersUrl,
-          body: JSON.stringify(data),
-          contentType: 'application/json',
-        });
-    }
-    headers.remove = () => request({ method: 'DELETE', url: headersUrl });
-
-    const indexConfigUrl = `${siteUrl}/content/query.yaml`;
-    function indexConfig(body) {
-      return body === undefined
-        ? request({ method: 'GET', url: indexConfigUrl })
-        : request({
-          method: 'POST', url: indexConfigUrl, body, contentType: 'text/yaml',
-        });
-    }
-
-    return {
-      robots,
-      headers,
-      index: indexConfig,
-    };
+    const base = site
+      ? `${ADMIN_BASE}/config/${org}/sites/${site}`
+      : `${ADMIN_BASE}/config/${org}`;
+    return bindConfig(base);
   }
 
   function index({ org, site }) {
@@ -112,6 +130,13 @@ function createAdmin(defaults = {}) {
       bulk: (payload) => request({
         method: 'POST', url, body: JSON.stringify(payload), contentType: 'application/json',
       }),
+    };
+  }
+
+  function sitemap({ org, site }) {
+    const base = `${ADMIN_BASE}/sitemap/${org}/${site}/main`;
+    return {
+      generate: (p) => request({ method: 'POST', url: `${base}${p}` }),
     };
   }
 
@@ -136,7 +161,7 @@ function createAdmin(defaults = {}) {
   }
 
   return {
-    config, index, job, withRequestInit,
+    config, index, sitemap, job, withRequestInit,
   };
 }
 
