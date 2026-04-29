@@ -23,8 +23,7 @@ const ADMIN_BASE = 'https://admin.hlx.page';
  *
  * Resources are bound to coords and return `Promise<AdminResponse>`. Single-
  * purpose resources are arity-overloaded callables (no arg → GET, arg → POST);
- * multi-operation resources are objects with named methods. Both flavors
- * expose a `.url` for test assertions.
+ * multi-operation resources are objects with named methods.
  *
  * @param {RequestInit} [defaults] merged into every request's init
  */
@@ -63,13 +62,11 @@ function createAdmin(defaults = {}) {
    * @param {{org: string, site?: string}} coords
    */
   function config({ org, site }) {
-    const orgUrl = `${ADMIN_BASE}/config/${org}`;
-
     if (!site) {
-      return { url: orgUrl };
+      return {};
     }
 
-    const siteUrl = `${orgUrl}/sites/${site}`;
+    const siteUrl = `${ADMIN_BASE}/config/${org}/sites/${site}`;
 
     const robotsUrl = `${siteUrl}/robots.txt`;
     function robots(body) {
@@ -79,7 +76,6 @@ function createAdmin(defaults = {}) {
           method: 'POST', url: robotsUrl, body, contentType: 'text/plain',
         });
     }
-    robots.url = robotsUrl;
 
     const headersUrl = `${siteUrl}/headers.json`;
     function headers(data) {
@@ -92,7 +88,6 @@ function createAdmin(defaults = {}) {
           contentType: 'application/json',
         });
     }
-    headers.url = headersUrl;
     headers.remove = () => request({ method: 'DELETE', url: headersUrl });
 
     const indexConfigUrl = `${siteUrl}/content/query.yaml`;
@@ -103,10 +98,8 @@ function createAdmin(defaults = {}) {
           method: 'POST', url: indexConfigUrl, body, contentType: 'text/yaml',
         });
     }
-    indexConfig.url = indexConfigUrl;
 
     return {
-      url: siteUrl,
       robots,
       headers,
       index: indexConfig,
@@ -116,7 +109,6 @@ function createAdmin(defaults = {}) {
   function index({ org, site }) {
     const url = `${ADMIN_BASE}/index/${org}/${site}/main/*`;
     return {
-      url,
       bulk: (payload) => request({
         method: 'POST', url, body: JSON.stringify(payload), contentType: 'application/json',
       }),

@@ -26,20 +26,6 @@ afterEach(() => {
 });
 
 describe('helix-admin.js', () => {
-  describe('admin.config(coords).url', () => {
-    it('exposes the site-scoped URL prefix', () => {
-      const cfg = admin.config({ org: 'adobe', site: 'helix-tools-website' });
-      assert.equal(cfg.url, 'https://admin.hlx.page/config/adobe/sites/helix-tools-website');
-    });
-
-    it('exposes the org-scoped URL prefix when site is omitted', () => {
-      assert.equal(
-        admin.config({ org: 'adobe' }).url,
-        'https://admin.hlx.page/config/adobe',
-      );
-    });
-  });
-
   describe('site-only resource gating', () => {
     it('robots is present on a site-scoped context', () => {
       const cfg = admin.config({ org: 'adobe', site: 'x' });
@@ -72,26 +58,6 @@ describe('helix-admin.js', () => {
     it('index is absent on an org-only context', () => {
       const cfg = admin.config({ org: 'adobe' });
       assert.equal(cfg.index, undefined);
-    });
-  });
-
-  describe('admin.config(coords).robots.url', () => {
-    it('exposes the canonical URL of the resource', () => {
-      const cfg = admin.config({ org: 'adobe', site: 'helix-tools-website' });
-      assert.equal(
-        cfg.robots.url,
-        'https://admin.hlx.page/config/adobe/sites/helix-tools-website/robots.txt',
-      );
-    });
-  });
-
-  describe('admin.config(coords).headers.url', () => {
-    it('exposes the canonical URL of the resource', () => {
-      const cfg = admin.config({ org: 'adobe', site: 'helix-tools-website' });
-      assert.equal(
-        cfg.headers.url,
-        'https://admin.hlx.page/config/adobe/sites/helix-tools-website/headers.json',
-      );
     });
   });
 
@@ -168,14 +134,6 @@ describe('helix-admin.js', () => {
   });
 
   describe('admin.config(coords).index', () => {
-    it('exposes the canonical URL of the resource', () => {
-      const cfg = admin.config({ org: 'adobe', site: 'helix-tools-website' });
-      assert.equal(
-        cfg.index.url,
-        'https://admin.hlx.page/config/adobe/sites/helix-tools-website/content/query.yaml',
-      );
-    });
-
     it('GETs content/query.yaml when no body is passed', async () => {
       await admin.config({ org: 'adobe', site: 'x' }).index();
       assert.equal(
@@ -206,13 +164,6 @@ describe('helix-admin.js', () => {
   });
 
   describe('admin.index(coords)', () => {
-    it('exposes the bulk-index URL', () => {
-      assert.equal(
-        admin.index({ org: 'adobe', site: 'x' }).url,
-        'https://admin.hlx.page/index/adobe/x/main/*',
-      );
-    });
-
     it('.bulk(payload) POSTs application/json with the JSON-stringified payload', async () => {
       const payload = { paths: ['/'], indexNames: ['default'] };
       await admin.index({ org: 'adobe', site: 'x' }).bulk(payload);
