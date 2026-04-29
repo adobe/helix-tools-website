@@ -17,6 +17,10 @@ export function renderMarkdown(text) {
   );
 
   // Tables: | h1 | h2 |\n|---|---|\n| c1 | c2 |\n...
+  // LLMs sometimes emit blank lines between table rows, which breaks the
+  // contiguous-row pattern below. Collapse any blank lines that sit between
+  // two pipe-delimited rows so the table regex still matches.
+  html = html.replace(/^(\|.*\|)\n(?:[ \t]*\n)+(?=\|)/gm, '$1\n');
   const cellsOf = (row) => row.split('|').slice(1, -1).map((s) => s.trim());
   html = html.replace(
     /^(\|.+\|)\n\|[-:\s|]+\|\n((?:\|.*\|\n?)+)/gm,
