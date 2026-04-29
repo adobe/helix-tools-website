@@ -127,14 +127,47 @@ async function resolveApprovalCard(card, approved) {
   actionsEl.replaceWith(chip);
 }
 
+/**
+ * Pretty-print a sub-config slug for display. Most slugs are single words
+ * (`headers`, `access`, `metadata`); `cdn/prod` is a path-style outlier
+ * that we render as "CDN Prod" rather than the title-cased default.
+ */
+function prettySubConfig(slug) {
+  if (typeof slug !== 'string' || !slug) return null;
+  if (slug === 'cdn/prod') return 'CDN Prod';
+  return slug
+    .split(/[/_-]/)
+    .filter(Boolean)
+    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+    .join(' ');
+}
+
+/**
+ * Tool name + args → human label for the approval-card header. Polymorphic
+ * write tools (notably `update_site_sub_config`) carry the actual surface
+ * in their args; the default toolName-based label is too generic for them.
+ */
+function formatToolLabel(toolName, args) {
+  if (toolName === 'update_site_sub_config') {
+    const sub = prettySubConfig(args?.subConfig);
+    if (sub) return `Update Site ${sub} Config`;
+  }
+  if (toolName === 'purge_cache') {
+    const p = args?.path;
+    if (p === '*' || !p) return 'Purge Cache (Site-Wide)';
+    return `Purge Cache (${p})`;
+  }
+  return (toolName || 'unknown')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export function renderApprovalCard(messagesEl, approval) {
   const card = document.createElement('div');
   card.className = 'eds-approval';
   card.dataset.approvalId = approval.approvalId;
 
-  const toolLabel = (approval.toolName || 'unknown')
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  const toolLabel = formatToolLabel(approval.toolName, approval.args);
 
   card.innerHTML = `
     <div class="eds-approval-header">
