@@ -50,10 +50,16 @@ function deriveContentType(url) {
  */
 function createAdmin(defaults = {}) {
   async function request({
-    method, url, body, contentType,
+    method, url, body, contentType, params,
   }) {
+    let finalUrl = url;
+    if (params) {
+      const qs = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => qs.set(k, v));
+      finalUrl = `${url}${url.includes('?') ? '&' : '?'}${qs.toString()}`;
+    }
     const init = { method, ...defaults };
-    if (body !== undefined) {
+    if (body !== undefined && body !== null) {
       init.body = body;
       if (contentType) {
         // Normalize via Headers so a defaults.headers passed as a Headers
@@ -64,14 +70,14 @@ function createAdmin(defaults = {}) {
         init.headers = headers;
       }
     }
-    const resp = await fetch(url, init);
+    const resp = await fetch(finalUrl, init);
     return {
       ok: resp.ok,
       status: resp.status,
       text: () => resp.text(),
       json: () => resp.json(),
       error: resp.headers.get('x-error') || '',
-      request: { method, url },
+      request: { method, url: finalUrl },
     };
   }
 
@@ -80,9 +86,17 @@ function createAdmin(defaults = {}) {
    * the same shape, descending the path. `.read()`, `.update(body)`,
    * `.create(body)`, `.remove()` operate on the bound URL.
    *
-   * Body must be a string. Content-type for write ops is derived from the
-   * URL's leaf extension; an extensionless leaf throws on write but reads
-   * and deletes fine.
+   * Body must be a string. `undefined` or `null` mean "no body" (POST/PUT
+   * is sent without one and content-type derivation is skipped) — used for
+   * action-style writes carrying state via `opts.params`. Empty string `''`
+   * is a valid body and still triggers content-type derivation.
+   *
+   * Content-type for write ops with a body is derived from the URL's leaf
+   * extension; an extensionless leaf throws on write-with-body but reads
+   * and deletes fine. Reads and deletes also accept `opts`.
+   *
+   * `opts.params` is `Record<string, string|number>` and is appended as a
+   * query string via `URLSearchParams` (handles encoding).
    *
    * `.select` strips the leaf extension before descending — the AEM admin
    * convention is that a config file (e.g. `cdn.json`) and the directory of
@@ -92,6 +106,14 @@ function createAdmin(defaults = {}) {
    * @param {string} url
    */
   function bindConfig(url) {
+    const write = (method, body, opts) => {
+      const init = { method, url, params: opts?.params };
+      if (body !== undefined && body !== null) {
+        init.body = body;
+        init.contentType = deriveContentType(url);
+      }
+      return request(init);
+    };
     return {
       select(subpath) {
         // Treat current node as a directory — strip its file-view extension.
@@ -99,29 +121,29 @@ function createAdmin(defaults = {}) {
         const clean = String(subpath).replace(/^\/+|\/+$/g, '');
         return bindConfig(`${dirUrl}/${clean}`);
       },
-      read: () => request({ method: 'GET', url }),
-      update: (body) => request({
-        method: 'POST', url, body, contentType: deriveContentType(url),
-      }),
-      create: (body) => request({
-        method: 'PUT', url, body, contentType: deriveContentType(url),
-      }),
-      remove: () => request({ method: 'DELETE', url }),
+      read: (opts) => request({ method: 'GET', url, params: opts?.params }),
+      update: (body, opts) => write('POST', body, opts),
+      create: (body, opts) => write('PUT', body, opts),
+      remove: (opts) => request({ method: 'DELETE', url, params: opts?.params }),
     };
   }
 
   /**
-   * Bind a config-API context to an org (and optionally a site). Returns a
-   * recursive node — `.select(...)` to descend, `.read/update/create/remove`
-   * to operate on the bound URL.
+   * Bind a config-API context. Coords accept org-only, `{org, site}`, or
+   * `{org, profile}` — site and profile are mutually exclusive (throws).
+   * Returns a recursive node — `.select(...)` to descend, `.read/update/
+   * create/remove` to operate on the bound URL.
    *
-   * @param {{org: string, site?: string}} coords
+   * @param {{org: string, site?: string, profile?: string}} coords
    */
-  function config({ org, site }) {
-    const base = site
-      ? `${ADMIN_BASE}/config/${org}/sites/${site}.json`
-      : `${ADMIN_BASE}/config/${org}.json`;
-    return bindConfig(base);
+  function config({ org, site, profile }) {
+    if (site && profile) {
+      throw new Error('helix-admin: config coords cannot include both site and profile');
+    }
+    let base = `${ADMIN_BASE}/config/${org}`;
+    if (site) base += `/sites/${site}`;
+    else if (profile) base += `/profiles/${profile}`;
+    return bindConfig(`${base}.json`);
   }
 
   function index({ org, site }) {

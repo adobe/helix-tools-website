@@ -43,6 +43,36 @@ describe('helix-admin.js', () => {
       assert.equal(typeof cfg.select, 'function');
       assert.equal(typeof cfg.read, 'function');
     });
+
+    it('exposes select + CRUD on a profile-scoped context', () => {
+      const cfg = admin.config({ org: 'adobe', profile: 'p' });
+      assert.equal(typeof cfg.select, 'function');
+      assert.equal(typeof cfg.read, 'function');
+    });
+
+    it('throws when coords include both site and profile', () => {
+      assert.throws(
+        () => admin.config({ org: 'adobe', site: 'x', profile: 'p' }),
+        /cannot include both site and profile/,
+      );
+    });
+  });
+
+  describe('coord-vs-select equivalence', () => {
+    // Both shapes resolve to identical wire calls. Documenting the
+    // equivalence in a test guards against future refactors breaking one
+    // path silently.
+    it('config({org, site}) ≡ config({org}).select(`sites/{site}.json`)', async () => {
+      await admin.config({ org: 'adobe', site: 'x' }).read();
+      await admin.config({ org: 'adobe' }).select('sites/x.json').read();
+      assert.equal(calls[0].url, calls[1].url);
+    });
+
+    it('config({org, profile}) ≡ config({org}).select(`profiles/{profile}.json`)', async () => {
+      await admin.config({ org: 'adobe', profile: 'p' }).read();
+      await admin.config({ org: 'adobe' }).select('profiles/p.json').read();
+      assert.equal(calls[0].url, calls[1].url);
+    });
   });
 
   describe('admin.config(coords).select()', () => {
@@ -147,6 +177,15 @@ describe('helix-admin.js', () => {
       assert.equal(calls[0].init.method, 'GET');
     });
 
+    it('.read() at the bound profile root reads /profiles/{profile}.json', async () => {
+      await admin.config({ org: 'adobe', profile: 'p' }).read();
+      assert.equal(
+        calls[0].url,
+        'https://admin.hlx.page/config/adobe/profiles/p.json',
+      );
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
     it('.update(body) POSTs the body to the bound URL', async () => {
       await admin.config({ org: 'adobe', site: 'x' })
         .select('content/sitemap.yaml')
@@ -205,6 +244,140 @@ describe('helix-admin.js', () => {
         () => admin.config({ org: 'adobe', site: 'x' }).select('robots').update('data'),
         /cannot derive content-type/,
       );
+    });
+  });
+
+  describe('opts.params (query string)', () => {
+    it('.read({ params }) appends the query string', async () => {
+      await admin.config({ org: 'adobe', site: 'x' })
+        .select('versions/3.json')
+        .read({ params: { detail: 'full' } });
+      assert.equal(
+        calls[0].url,
+        'https://admin.hlx.page/config/adobe/sites/x/versions/3.json?detail=full',
+      );
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('.remove({ params }) appends the query string', async () => {
+      await admin.config({ org: 'adobe', site: 'x' })
+        .select('versions/3.json')
+        .remove({ params: { force: 'true' } });
+      assert.equal(
+        calls[0].url,
+        'https://admin.hlx.page/config/adobe/sites/x/versions/3.json?force=true',
+      );
+      assert.equal(calls[0].init.method, 'DELETE');
+    });
+
+    it('.update(body, { params }) appends params and still derives content-type', async () => {
+      // The version-rename case: ?name=<encoded> AND a JSON body — the
+      // server today wants both.
+      await admin.config({ org: 'adobe', site: 'x' })
+        .select('versions/3.json')
+        .update('{"name":"v1"}', { params: { name: 'v1' } });
+      assert.equal(
+        calls[0].url,
+        'https://admin.hlx.page/config/adobe/sites/x/versions/3.json?name=v1',
+      );
+      assert.equal(calls[0].init.method, 'POST');
+      assert.equal(calls[0].init.body, '{"name":"v1"}');
+      assert.equal(calls[0].init.headers.get('content-type'), 'application/json');
+    });
+
+    it('.create(body, { params }) appends params and derives content-type', async () => {
+      await admin.config({ org: 'adobe', site: 'x' })
+        .select('headers.json')
+        .create('{}', { params: { versionName: 'init' } });
+      assert.equal(
+        calls[0].url,
+        'https://admin.hlx.page/config/adobe/sites/x/headers.json?versionName=init',
+      );
+      assert.equal(calls[0].init.method, 'PUT');
+      assert.equal(calls[0].init.body, '{}');
+      assert.equal(calls[0].init.headers.get('content-type'), 'application/json');
+    });
+
+    it('encodes special characters via URLSearchParams', async () => {
+      await admin.config({ org: 'adobe', site: 'x' })
+        .select('versions/3.json')
+        .update('{"name":"v 1 & co"}', { params: { name: 'v 1 & co' } });
+      // URLSearchParams encodes ' ' as '+' and '&' as '%26'.
+      assert.equal(
+        calls[0].url,
+        'https://admin.hlx.page/config/adobe/sites/x/versions/3.json?name=v+1+%26+co',
+      );
+    });
+
+    it('serializes multiple params with &', async () => {
+      await admin.config({ org: 'adobe', site: 'x' })
+        .read({ params: { foo: 'a', bar: 'b' } });
+      assert.equal(
+        calls[0].url,
+        'https://admin.hlx.page/config/adobe/sites/x.json?foo=a&bar=b',
+      );
+    });
+
+    it('coerces number values to strings', async () => {
+      await admin.config({ org: 'adobe', site: 'x' })
+        .update(null, { params: { restoreVersion: 5 } });
+      assert.equal(
+        calls[0].url,
+        'https://admin.hlx.page/config/adobe/sites/x.json?restoreVersion=5',
+      );
+    });
+
+    it('echoes the final URL with params on the request descriptor', async () => {
+      const result = await admin.config({ org: 'adobe', site: 'x' })
+        .read({ params: { foo: 'bar' } });
+      assert.equal(
+        result.request.url,
+        'https://admin.hlx.page/config/adobe/sites/x.json?foo=bar',
+      );
+    });
+  });
+
+  describe('write with no body (action-style POST/PUT)', () => {
+    // Carries state via opts.params instead of a body. Used today for
+    // version-restore (?restoreVersion=N on the config root).
+    it('.update(undefined) sends no body and skips content-type', async () => {
+      await admin.config({ org: 'adobe', site: 'x' })
+        .update(undefined, { params: { restoreVersion: 3 } });
+      assert.equal(calls[0].init.method, 'POST');
+      assert.equal(calls[0].init.body, undefined);
+      assert.equal(calls[0].init.headers, undefined);
+    });
+
+    it('.update(null) is treated the same as undefined', async () => {
+      await admin.config({ org: 'adobe', site: 'x' })
+        .update(null, { params: { restoreVersion: 3 } });
+      assert.equal(calls[0].init.method, 'POST');
+      assert.equal(calls[0].init.body, undefined);
+    });
+
+    it('.update(\'\') is a real empty body and still derives content-type', async () => {
+      // Empty string is a valid body for an empty file write — keep this
+      // distinct from undefined/null.
+      await admin.config({ org: 'adobe', site: 'x' }).select('robots.txt').update('');
+      assert.equal(calls[0].init.method, 'POST');
+      assert.equal(calls[0].init.body, '');
+      assert.equal(calls[0].init.headers.get('content-type'), 'text/plain');
+    });
+
+    it('.update(undefined) does not throw on an extensionless leaf', async () => {
+      // No body → no content-type derivation → no throw. The HTTP request
+      // goes through; the server decides what to do.
+      await admin.config({ org: 'adobe', site: 'x' })
+        .select('versions')
+        .update(undefined, { params: { something: 'x' } });
+      assert.equal(calls[0].init.method, 'POST');
+    });
+
+    it('.create(null) sends no body and skips content-type', async () => {
+      await admin.config({ org: 'adobe', site: 'x' })
+        .create(null, { params: { foo: 'bar' } });
+      assert.equal(calls[0].init.method, 'PUT');
+      assert.equal(calls[0].init.body, undefined);
     });
   });
 
