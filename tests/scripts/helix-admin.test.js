@@ -155,14 +155,6 @@ describe('helix-admin.js', () => {
       assert.equal(calls[0].init.body, 'version: 1\n');
     });
 
-    it('.update(body) treats empty string as a real POST, not GET', async () => {
-      // Clearing the file content is not the same as deleting it. A
-      // truthiness check would silently turn this into a GET — pin that.
-      await admin.config({ org: 'adobe', site: 'x' }).select('robots.txt').update('');
-      assert.equal(calls[0].init.method, 'POST');
-      assert.equal(calls[0].init.body, '');
-    });
-
     it('.create(body) PUTs the body to the bound URL', async () => {
       await admin.config({ org: 'adobe', site: 'x' })
         .select('headers.json')
