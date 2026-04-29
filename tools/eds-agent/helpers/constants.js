@@ -36,6 +36,7 @@ const WELCOME_GROUPS_AUTHED = [
       'How do I set up AEM Assets for a DA site?',
       'How do I set up permissions for my site?',
       'How do I configure the CDN for my site?',
+      'How can I set up external integrations on an Edge Delivery site?',
     ],
   },
   {
@@ -67,6 +68,7 @@ const WELCOME_GROUPS_ANONYMOUS = [
     label: 'Setup & migration',
     prompts: [
       'How do I set up AEM Assets for a DA site?',
+      'How can I set up external integrations on an Edge Delivery site?',
       'How do I migrate from fstab.yaml to the Configuration Service?',
     ],
   },
@@ -83,16 +85,18 @@ export function getWelcomeGroups({ org } = {}) {
 }
 
 export const THINKING_WORDS = [
-  'Contacting the Edge Delivery Gods',
-  'Document Authoring',
-  'Renaming Helix',
+  'Contacting the edge delivery Gods',
+  'Document authoring',
+  'Renaming helix for the final time',
   'Re-inventing the wheel',
-  'Consulting the Oracle',
-  'Conducting Research',
-  'Planning Adobe Summit',
+  'Consulting the oracle',
+  'Conducting research',
+  'Planning the next Adobe Summit',
   'Analyzing the data',
   'Checking the gravitational constant in your locale',
   'Replacing the stars with potatoes',
+  'Wandering the halls of the AEM Gods',
+  'Writing hand-written artisanal code',
 ];
 
 export const DATE_GROUP_LABELS = {
