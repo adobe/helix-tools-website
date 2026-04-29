@@ -119,8 +119,8 @@ function createAdmin(defaults = {}) {
    */
   function config({ org, site }) {
     const base = site
-      ? `${ADMIN_BASE}/config/${org}/sites/${site}`
-      : `${ADMIN_BASE}/config/${org}`;
+      ? `${ADMIN_BASE}/config/${org}/sites/${site}.json`
+      : `${ADMIN_BASE}/config/${org}.json`;
     return bindConfig(base);
   }
 

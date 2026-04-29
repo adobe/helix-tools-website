@@ -46,11 +46,21 @@ describe('helix-admin.js', () => {
   });
 
   describe('admin.config(coords).select()', () => {
-    it('descends one segment', async () => {
+    it('descends one segment (strips the root .json before appending)', async () => {
+      // Root URL is /config/adobe/sites/x.json — descent strips that
+      // extension, then appends robots.txt → /config/adobe/sites/x/robots.txt.
       await admin.config({ org: 'adobe', site: 'x' }).select('robots.txt').read();
       assert.equal(
         calls[0].url,
         'https://admin.hlx.page/config/adobe/sites/x/robots.txt',
+      );
+    });
+
+    it('descends from an org-only root', async () => {
+      await admin.config({ org: 'adobe' }).select('aggregated/x.json').read();
+      assert.equal(
+        calls[0].url,
+        'https://admin.hlx.page/config/adobe/aggregated/x.json',
       );
     });
 
@@ -136,9 +146,18 @@ describe('helix-admin.js', () => {
       assert.equal(calls[0].init.method, 'GET');
     });
 
-    it('.read() works at the bound root (no select)', async () => {
+    it('.read() at the bound site root reads {site}.json', async () => {
+      // The root config endpoint is /config/{org}/sites/{site}.json; the
+      // extension-strip on .select() means descents drop the .json before
+      // appending, so this stays consistent.
       await admin.config({ org: 'adobe', site: 'x' }).read();
-      assert.equal(calls[0].url, 'https://admin.hlx.page/config/adobe/sites/x');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/config/adobe/sites/x.json');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('.read() at the bound org root reads {org}.json', async () => {
+      await admin.config({ org: 'adobe' }).read();
+      assert.equal(calls[0].url, 'https://admin.hlx.page/config/adobe.json');
       assert.equal(calls[0].init.method, 'GET');
     });
 
