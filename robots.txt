@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /tools/
-
-Sitemap: https://tools.aem.live/sitemap-index.xml
