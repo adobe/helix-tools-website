@@ -1,6 +1,6 @@
 export const AGENT_ENDPOINT = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ? 'http://localhost:8787'
-  : 'https://helix-admin-agent.adobe.workers.dev';
+  : 'https://helix-admin-agent.aem-poc-lab.workers.dev';
 
 export const STORAGE_KEYS = {
   ORG: 'eds-agent-org',
