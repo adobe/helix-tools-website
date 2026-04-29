@@ -29,8 +29,6 @@ const ADMIN_BASE = 'https://admin.hlx.page';
  * @param {RequestInit} [defaults] merged into every request's init
  */
 function createAdmin(defaults = {}) {
-  // Tools shouldn't call this directly — use the resource methods on the
-  // returned `admin` object.
   async function request({
     method, url, body, contentType,
   }) {
@@ -97,10 +95,41 @@ function createAdmin(defaults = {}) {
     headers.url = headersUrl;
     headers.remove = () => request({ method: 'DELETE', url: headersUrl });
 
+    const indexConfigUrl = `${siteUrl}/content/query.yaml`;
+    function indexConfig(body) {
+      return body === undefined
+        ? request({ method: 'GET', url: indexConfigUrl })
+        : request({
+          method: 'POST', url: indexConfigUrl, body, contentType: 'text/yaml',
+        });
+    }
+    indexConfig.url = indexConfigUrl;
+
     return {
       url: siteUrl,
       robots,
       headers,
+      index: indexConfig,
+    };
+  }
+
+  function index({ org, site }) {
+    const url = `${ADMIN_BASE}/index/${org}/${site}/main/*`;
+    return {
+      url,
+      bulk: (payload) => request({
+        method: 'POST', url, body: JSON.stringify(payload), contentType: 'application/json',
+      }),
+    };
+  }
+
+  function job({ org, site }) {
+    const base = `${ADMIN_BASE}/job/${org}/${site}/main`;
+    return {
+      list: (topic) => request({ method: 'GET', url: `${base}/${topic}` }),
+      get: (topic, name) => request({ method: 'GET', url: `${base}/${topic}/${name}` }),
+      details: (topic, name) => request({ method: 'GET', url: `${base}/${topic}/${name}/details` }),
+      stop: (topic, name) => request({ method: 'DELETE', url: `${base}/${topic}/${name}` }),
     };
   }
 
@@ -114,7 +143,9 @@ function createAdmin(defaults = {}) {
     return createAdmin({ ...defaults, ...extra });
   }
 
-  return { config, withRequestInit };
+  return {
+    config, index, job, withRequestInit,
+  };
 }
 
 const admin = createAdmin();

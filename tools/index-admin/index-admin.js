@@ -1,7 +1,8 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import { initConfigField, updateConfig } from '../../utils/config/config.js';
+import { initConfigField } from '../../utils/config/config.js';
 import { toClassName } from '../../scripts/aem.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
+import admin from '../../scripts/helix-admin.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { logResponse } from '../../blocks/console/console.js';
 import deriveReindexPaths from './utils.js';
 
@@ -161,17 +162,15 @@ function displayIndexDetails(indexName, indexDef, newIndex = false) {
 
     await ensureYaml();
     const yamlText = YAML.stringify(loadedIndices);
-    const resp = await fetch(`https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'text/yaml',
-      },
-      body: yamlText,
-    });
+    const result = await executeAdminRequest(
+      () => admin.config({ org: org.value, site: site.value }).index(yamlText),
+      { org: org.value, site: site.value },
+    );
+    if (!result) return;
+    const { method, url } = result.request;
+    logResponse(consoleBlock, result.status, [method, url, result.error]);
 
-    logResponse(consoleBlock, resp.status, ['POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`, resp.headers.get('x-error') || '']);
-
-    if (resp.ok) {
+    if (result.ok) {
       indexDetails.close();
 
       const indexesList = document.getElementById('indexes-list');
@@ -232,55 +231,30 @@ function showJobStatus(jobDetails) {
 }
 
 async function reIndex(indexNames, paths) {
-  const indexUrl = `https://admin.hlx.page/index/${org.value}/${site.value}/main/*`;
-  const payload = {
-    paths,
-    indexNames,
-  };
+  const result = await executeAdminRequest(
+    () => admin.index({ org: org.value, site: site.value }).bulk({ paths, indexNames }),
+    { org: org.value, site: site.value },
+  );
+  if (!result) return { success: false };
+  const { method, url } = result.request;
+  logResponse(consoleBlock, result.status, [method, url, result.error]);
 
-  try {
-    const resp = await fetch(indexUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const errorMsg = resp.headers.get('x-error') || '';
-    logResponse(consoleBlock, resp.status, ['POST', indexUrl, errorMsg]);
-
-    // If 202 status, return job info
-    if (resp.status === 202) {
-      const jobResponse = await resp.json();
-      const selfLink = jobResponse.links?.self;
-
-      if (selfLink) {
-        return { success: true, detailsUrl: `${selfLink}/details` };
-      }
-      return { success: true, detailsUrl: null };
-    }
-
-    return { success: false, status: resp.status, error: errorMsg };
-  } catch (error) {
-    logResponse(consoleBlock, 0, ['POST', indexUrl, error.message]);
-    return { success: false, error: error.message };
+  if (result.status === 202) {
+    const { job: jobInfo } = await result.json();
+    return { success: true, topic: jobInfo?.topic, name: jobInfo?.name };
   }
+  return { success: false, status: result.status, error: result.error };
 }
 
-async function fetchJobDetails(detailsUrl) {
-  try {
-    const detailsResp = await fetch(detailsUrl);
-    logResponse(consoleBlock, detailsResp.status, ['GET', detailsUrl, detailsResp.headers.get('x-error') || '']);
-
-    if (detailsResp.ok) {
-      return await detailsResp.json();
-    }
-    return null;
-  } catch (error) {
-    logResponse(consoleBlock, 0, ['GET', detailsUrl, error.message]);
-    return null;
-  }
+async function fetchJobDetails(topic, name) {
+  const result = await executeAdminRequest(
+    () => admin.job({ org: org.value, site: site.value }).details(topic, name),
+    { org: org.value, site: site.value },
+  );
+  if (!result) return null;
+  const { method, url } = result.request;
+  logResponse(consoleBlock, result.status, [method, url, result.error]);
+  return result.ok ? result.json() : null;
 }
 
 async function removeIndex(name) {
@@ -293,17 +267,15 @@ async function removeIndex(name) {
 
   await ensureYaml();
   const yamlText = YAML.stringify(loadedIndices);
-  const resp = await fetch(`https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'text/yaml',
-    },
-    body: yamlText,
-  });
+  const result = await executeAdminRequest(
+    () => admin.config({ org: org.value, site: site.value }).index(yamlText),
+    { org: org.value, site: site.value },
+  );
+  if (!result) return;
+  const { method, url } = result.request;
+  logResponse(consoleBlock, result.status, [method, url, result.error]);
 
-  logResponse(consoleBlock, resp.status, ['POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`, resp.headers.get('x-error') || '']);
-
-  if (resp.ok) {
+  if (result.ok) {
     const indexesList = document.getElementById('indexes-list');
     indexesList.innerHTML = '';
     adminForm.dispatchEvent(new Event('submit'));
@@ -341,14 +313,14 @@ function populateIndexes(indexes) {
     });
 
     const reindexBtn = indexItem.querySelector('.reindex-btn');
-    let detailsUrl = null;
+    let activeJob = null;
     let jobStatusPoll = null;
 
     reindexBtn.addEventListener('click', async (e) => {
       e.preventDefault();
 
-      if (detailsUrl) {
-        const jobDetails = await fetchJobDetails(detailsUrl);
+      if (activeJob) {
+        const jobDetails = await fetchJobDetails(activeJob.topic, activeJob.name);
         if (jobDetails) {
           showJobStatus(jobDetails);
         }
@@ -368,12 +340,12 @@ function populateIndexes(indexes) {
 
       const result = await reIndex([name], paths);
 
-      if (result.success && result.detailsUrl) {
-        detailsUrl = result.detailsUrl;
+      if (result.success && result.topic && result.name) {
+        activeJob = { topic: result.topic, name: result.name };
 
         jobStatusPoll = window.setInterval(async () => {
           try {
-            const jobDetails = await fetchJobDetails(detailsUrl);
+            const jobDetails = await fetchJobDetails(activeJob.topic, activeJob.name);
             if (jobDetails) {
               const {
                 state,
@@ -388,7 +360,7 @@ function populateIndexes(indexes) {
               if (state === 'stopped') {
                 window.clearInterval(jobStatusPoll);
                 jobStatusPoll = null;
-                detailsUrl = null;
+                activeJob = null;
 
                 const duration = stopTime && startTime
                   ? ((new Date(stopTime) - new Date(startTime)) / 1000).toFixed(1)
@@ -401,7 +373,7 @@ function populateIndexes(indexes) {
               } else if (state === 'failed') {
                 window.clearInterval(jobStatusPoll);
                 jobStatusPoll = null;
-                detailsUrl = null;
+                activeJob = null;
 
                 reindexBtn.textContent = 'Reindex Failed';
                 reindexBtn.disabled = false;
@@ -418,7 +390,7 @@ function populateIndexes(indexes) {
             jobStatusPoll = null;
             reindexBtn.textContent = 'Reindex';
             reindexBtn.disabled = false;
-            detailsUrl = null;
+            activeJob = null;
           }
         }, 10000);
 
@@ -478,26 +450,26 @@ async function init() {
     fetchButton.disabled = true;
 
     try {
-      const indexUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/query.yaml`;
-      const resp = await fetch(indexUrl);
-      logResponse(consoleBlock, resp.status, ['GET', indexUrl, resp.headers.get('x-error') || '']);
+      // Preflight on the fetch (entry point); the resulting session covers later saves.
+      const result = await executeAdminRequest(
+        () => admin.config({ org: org.value, site: site.value }).index(),
+        { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
+      );
+      if (!result) return;
+      const { method, url } = result.request;
+      logResponse(consoleBlock, result.status, [method, url, result.error]);
 
-      if (resp.ok) {
-        updateConfig();
+      if (result.ok) {
         await ensureYaml();
-
-        const yamlText = await resp.text();
+        const yamlText = await result.text();
         loadedIndices = YAML.parse(yamlText);
-
         populateIndexes(loadedIndices.indices);
         addIndexButton.disabled = false;
-      } else if (resp.status === 404) {
+      } else if (result.status === 404) {
         // No index exists yet, but allow creating one
         loadedIndices = { indices: {} };
         populateIndexes(loadedIndices.indices);
         addIndexButton.disabled = false;
-      } else if (resp.status === 401) {
-        ensureLogin(org.value, site.value);
       }
     } finally {
       // Restore button state
