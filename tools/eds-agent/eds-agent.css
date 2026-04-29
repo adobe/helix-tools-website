@@ -40,6 +40,17 @@ body.eds-agent {
   --eds-code-bg: light-dark(rgb(0 0 0 / 5%), rgb(255 255 255 / 6%));
   --eds-code-bg-strong: light-dark(rgb(0 0 0 / 7%), rgb(255 255 255 / 8%));
   --eds-surface: light-dark(rgb(255 255 255 / 65%), rgb(20 20 20 / 55%));
+  --eds-background-light: radial-gradient(
+    120% 100% at 50% 100%,
+    color-mix(in srgb, var(--indigo-300) 32%, transparent) 0%,
+    color-mix(in srgb, var(--indigo-100) 16%, transparent) 38%,
+    transparent 64%);
+  --eds-background-dark: radial-gradient(
+    130% 110% at 50% 100%,
+    color-mix(in srgb, var(--blue-600) 12%, transparent) 0%,
+    color-mix(in srgb, var(--blue-800) 7%, transparent) 34%,
+    color-mix(in srgb, var(--blue-1100) 3.5%, transparent) 54%,
+    transparent 78%);
   --eds-background-dark-base: color-mix(in srgb, var(--blue-200) 1.8%, var(--gray-900));
   --body-font-family: adobe-clean, 'Trebuchet MS', sans-serif;
   --heading-font-family: var(--body-font-family);
@@ -291,6 +302,7 @@ html[data-theme="dark"] body.eds-agent {
   display: flex;
   align-items: stretch;
   border-top: 1px solid var(--color-border);
+  height: 60px;
 }
 
 .eds-sidebar-footer {
@@ -716,6 +728,7 @@ html[data-theme="dark"] body.eds-agent {
   background: var(--eds-surface);
   backdrop-filter: blur(20px) saturate(140%);
   border-top: 1px solid var(--color-border);
+  height: 60px;
 }
 
 .eds-agent-input-row {

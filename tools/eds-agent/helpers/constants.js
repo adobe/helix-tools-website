@@ -35,16 +35,15 @@ const WELCOME_GROUPS_AUTHED = [
     prompts: [
       'How do I set up AEM Assets for a DA site?',
       'How do I set up permissions for my site?',
-      'How do I configure the CDN for my site?',
       'How can I set up external integrations on an Edge Delivery site?',
     ],
   },
   {
     label: 'Activity',
     prompts: [
-      'What changed on my site this week?',
+      'Give me a recap of this week',
+      'Diagnose a broken page on my site',
       "Who's been editing my site lately?",
-      'Show me the last 24 hours of audit log',
     ],
   },
 ];
@@ -60,7 +59,7 @@ const WELCOME_GROUPS_ANONYMOUS = [
   {
     label: 'Concepts',
     prompts: [
-      "What's the difference between DA and doc-based authoring?",
+      'What authoring modes are available with Edge Delivery Services?',
       'How do permissions work in Edge Delivery?',
     ],
   },
@@ -69,7 +68,6 @@ const WELCOME_GROUPS_ANONYMOUS = [
     prompts: [
       'How do I set up AEM Assets for a DA site?',
       'How can I set up external integrations on an Edge Delivery site?',
-      'How do I migrate from fstab.yaml to the Configuration Service?',
     ],
   },
 ];
