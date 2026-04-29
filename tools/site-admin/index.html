@@ -24,7 +24,7 @@
     <div>
       <h1>Site Admin</h1>
       <p>
-        Manage the sites of an org.
+        Manage the sites of an org, or a single site you have access to.
       </p>
     </div> 
 
@@ -42,10 +42,16 @@
               </p>
             </div>
           </div>
-          <div class="form-field site-field" style="display: none;">
-            <label for="site">Site</label>
-            <input name="site" id="site" list="site-list" autocomplete="off" disabled />
+          <div class="form-field">
+            <label for="site">Site (optional)</label>
+            <input name="site" id="site" list="site-list" autocomplete="off" />
             <datalist id="site-list"></datalist>
+            <div class="field-help-text">
+              <p>
+                Leave blank to list all sites in the org (requires org admin access),
+                or enter a site name to manage just that site.
+              </p>
+            </div>
           </div>
         </section>
         <p class="button-wrapper">

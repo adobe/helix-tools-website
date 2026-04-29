@@ -15,6 +15,7 @@ import { openAddSiteModal } from './helpers/modals.js';
 import createSiteCard from './helpers/site-card.js';
 
 const org = document.getElementById('org');
+const site = document.getElementById('site');
 const consoleBlock = document.querySelector('.console');
 const sitesElem = document.querySelector('div#sites');
 
@@ -112,7 +113,7 @@ const updateSiteCount = () => {
 
 let detailsObserver;
 
-const displaySites = (sites) => {
+const displaySites = (sites, { singleSite = false } = {}) => {
   sitesElem.ariaHidden = false;
   sitesElem.textContent = '';
 
@@ -123,46 +124,52 @@ const displaySites = (sites) => {
   header.innerHTML = `
     <span class="sites-count">${sites.length} site${sites.length !== 1 ? 's' : ''}</span>
     <div class="sites-actions">
-      <div class="sites-search">
-        <input type="text" placeholder="Search sites..." class="search-input" />
-      </div>
-      <div class="view-toggle">
-        <button type="button" class="view-btn ${savedView === 'grid' ? 'active' : ''}" data-view="grid" title="Grid view">
-          ${icon('grid')}
-        </button>
-        <button type="button" class="view-btn ${savedView === 'list' ? 'active' : ''}" data-view="list" title="List view">
-          ${icon('list')}
-        </button>
-      </div>
-      <button class="button add-site-btn">+ Add Site</button>
+      ${singleSite ? '' : `
+        <div class="sites-search">
+          <input type="text" placeholder="Search sites..." class="search-input" />
+        </div>
+        <div class="view-toggle">
+          <button type="button" class="view-btn ${savedView === 'grid' ? 'active' : ''}" data-view="grid" title="Grid view">
+            ${icon('grid')}
+          </button>
+          <button type="button" class="view-btn ${savedView === 'list' ? 'active' : ''}" data-view="list" title="List view">
+            ${icon('list')}
+          </button>
+        </div>
+        <button class="button add-site-btn">+ Add Site</button>
+      `}
     </div>
   `;
 
-  header.querySelector('.add-site-btn').addEventListener('click', () => openAddSiteModal(org.value, '', '', logFn));
+  if (!singleSite) {
+    header.querySelector('.add-site-btn').addEventListener('click', () => openAddSiteModal(org.value, '', '', logFn));
+  }
 
   sitesElem.appendChild(header);
 
   const grid = document.createElement('div');
-  grid.className = `sites-grid ${savedView === 'list' ? 'list-view' : ''}`;
+  grid.className = `sites-grid ${!singleSite && savedView === 'list' ? 'list-view' : ''}`;
 
-  const searchInput = header.querySelector('.search-input');
-  searchInput.addEventListener('input', (e) => {
-    const query = e.target.value.toLowerCase().trim();
-    grid.querySelectorAll('.site-card').forEach((card) => {
-      const siteName = card.dataset.site.toLowerCase();
-      card.setAttribute('aria-hidden', !siteName.includes(query));
+  if (!singleSite) {
+    const searchInput = header.querySelector('.search-input');
+    searchInput.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase().trim();
+      grid.querySelectorAll('.site-card').forEach((card) => {
+        const siteName = card.dataset.site.toLowerCase();
+        card.setAttribute('aria-hidden', !siteName.includes(query));
+      });
     });
-  });
 
-  header.querySelectorAll('.view-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const { view } = btn.dataset;
-      header.querySelectorAll('.view-btn').forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
-      grid.classList.toggle('list-view', view === 'list');
-      localStorage.setItem(VIEW_STORAGE_KEY, view);
+    header.querySelectorAll('.view-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const { view } = btn.dataset;
+        header.querySelectorAll('.view-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        grid.classList.toggle('list-view', view === 'list');
+        localStorage.setItem(VIEW_STORAGE_KEY, view);
+      });
     });
-  });
+  }
 
   const favorites = getFavorites(org.value);
   const sortedSites = [...sites].sort((a, b) => {
@@ -183,8 +190,8 @@ const displaySites = (sites) => {
     });
   }, { rootMargin: '200px' });
 
-  sortedSites.forEach((site) => {
-    const card = createSiteCard(site, org.value);
+  sortedSites.forEach((s) => {
+    const card = createSiteCard(s, org.value);
     grid.appendChild(card);
     detailsObserver.observe(card);
   });
@@ -205,8 +212,20 @@ const displaySitesForOrg = async (orgValue) => {
     if (loggedIn) {
       return displaySitesForOrg(orgValue);
     }
+  } else if (status === 403) {
+    sitesElem.ariaHidden = false;
+    const msg = document.createElement('p');
+    msg.className = 'access-message';
+    msg.textContent = 'You do not have org admin access. Enter a site name above to manage just that site.';
+    sitesElem.appendChild(msg);
   }
   return null;
+};
+
+const displaySingleSite = (orgValue, siteName) => {
+  sitesElem.setAttribute('aria-hidden', 'true');
+  sitesElem.replaceChildren();
+  displaySites([{ name: siteName }], { singleSite: true });
 };
 
 window.addEventListener('sites-refresh', (e) => {
@@ -258,9 +277,15 @@ const initSiteAdmin = async () => {
   await initConfigField();
   if (!org.value) org.value = localStorage.getItem('org') || 'adobe';
   if (org.value) {
-    const loggedIn = await ensureLogin(org.value);
+    const explicitSite = site.dataset.autofill === 'params' ? site.value : '';
+    if (!explicitSite) site.value = '';
+    const loggedIn = await ensureLogin(org.value, explicitSite || undefined);
     if (loggedIn) {
-      displaySitesForOrg(org.value);
+      if (explicitSite) {
+        displaySingleSite(org.value, explicitSite);
+      } else {
+        displaySitesForOrg(org.value);
+      }
     }
   }
 };
