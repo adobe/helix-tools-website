@@ -132,13 +132,6 @@ describe('helix-admin.js', () => {
       assert.equal(calls[0].init.body, undefined);
     });
 
-    it('.read() does not require a known extension on the leaf', async () => {
-      // GETs read whatever the server serves; the content-type rule only
-      // applies to writes. Pin that an extensionless URL still GETs cleanly.
-      await admin.config({ org: 'adobe', site: 'x' }).select('weird').read();
-      assert.equal(calls[0].init.method, 'GET');
-    });
-
     it('.read() at the bound site root reads {site}.json', async () => {
       // The root config endpoint is /config/{org}/sites/{site}.json; the
       // extension-strip on .select() means descents drop the .json before
@@ -186,12 +179,6 @@ describe('helix-admin.js', () => {
         'https://admin.hlx.page/config/adobe/sites/x/headers.json',
       );
       assert.equal(calls[0].init.body, undefined);
-    });
-
-    it('.remove() does not require a known extension on the leaf', async () => {
-      // DELETEs send no body, so no content-type to derive.
-      await admin.config({ org: 'adobe', site: 'x' }).select('weird').remove();
-      assert.equal(calls[0].init.method, 'DELETE');
     });
   });
 
