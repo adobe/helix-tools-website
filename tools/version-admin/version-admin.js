@@ -29,6 +29,7 @@ function coords() {
 }
 
 function logResult(result) {
+  if (!result) return;
   const { method, url } = result.request;
   logResponse(consoleBlock, result.status, [method, url, result.error]);
 }
@@ -38,21 +39,13 @@ function formatDate(dateString) {
   return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
 }
 
-// Run an admin request, log whatever response we got, and return the
-// response on 2xx — null on auth-cancel or HTTP failure. Callers either
-// coerce with `!!` (boolean ops) or `await .json()` (read ops).
-async function call(reqFn, authConfig) {
-  const result = await executeAdminRequest(reqFn, authConfig);
-  if (result) logResult(result);
-  return result?.ok ? result : null;
-}
-
 async function fetchVersions() {
-  const result = await call(
+  const result = await executeAdminRequest(
     () => admin.config(coords()).select('versions.json').read(),
     { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
   );
-  if (!result) return null;
+  logResult(result);
+  if (!result?.ok) return null;
   const data = await result.json();
   currentConfig.versions = data.versions || [];
   currentConfig.currentVersion = data.current;
@@ -60,35 +53,42 @@ async function fetchVersions() {
 }
 
 async function fetchVersionData(versionId) {
-  const result = await call(
+  const result = await executeAdminRequest(
     () => admin.config(coords()).select(`versions/${versionId}.json`).read(),
     { org: org.value, site: site.value },
   );
-  return result ? result.json() : null;
+  logResult(result);
+  return result?.ok ? result.json() : null;
 }
 
 async function updateVersionName(versionId, newName) {
-  return !!(await call(
+  const result = await executeAdminRequest(
     () => admin.config(coords())
       .select(`versions/${versionId}.json`)
       .update(JSON.stringify({ name: newName }), { params: { name: newName } }),
     { org: org.value, site: site.value },
-  ));
+  );
+  logResult(result);
+  return !!result?.ok;
 }
 
 // POST to the config root with ?restoreVersion=<id> and no body.
 async function restoreVersion(versionId) {
-  return !!(await call(
+  const result = await executeAdminRequest(
     () => admin.config(coords()).update(null, { params: { restoreVersion: versionId } }),
     { org: org.value, site: site.value },
-  ));
+  );
+  logResult(result);
+  return !!result?.ok;
 }
 
 async function deleteVersion(versionId) {
-  return !!(await call(
+  const result = await executeAdminRequest(
     () => admin.config(coords()).select(`versions/${versionId}.json`).remove(),
     { org: org.value, site: site.value },
-  ));
+  );
+  logResult(result);
+  return !!result?.ok;
 }
 
 /**
