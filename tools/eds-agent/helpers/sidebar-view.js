@@ -59,7 +59,16 @@ export function renderSidebar(container, { activeChatId, config, callbacks }) {
   newBtn.type = 'button';
   newBtn.textContent = '+ New chat';
   newBtn.addEventListener('click', () => callbacks.onNewChat());
-  top.appendChild(newBtn);
+
+  const collapseBtn = document.createElement('button');
+  collapseBtn.className = 'eds-sidebar-collapse';
+  collapseBtn.type = 'button';
+  collapseBtn.title = 'Collapse sidebar';
+  collapseBtn.setAttribute('aria-label', 'Collapse sidebar');
+  loadIcon('Smock_ChevronLeft_18_N').then((svg) => collapseBtn.appendChild(svg));
+  collapseBtn.addEventListener('click', () => setSidebarCollapsed(true));
+
+  top.append(newBtn, collapseBtn);
   container.appendChild(top);
 
   const list = document.createElement('div');
@@ -87,45 +96,6 @@ export function renderSidebar(container, { activeChatId, config, callbacks }) {
   }
 
   container.appendChild(list);
-
-  const footer = document.createElement('button');
-  footer.className = 'eds-sidebar-footer';
-  footer.type = 'button';
-  footer.setAttribute('aria-label', 'Open settings');
-  if (config.org) {
-    footer.innerHTML = `
-      <div class="eds-sidebar-footer-text">
-        <div class="eds-sidebar-org">${escapeHtml(config.org)}</div>
-        ${config.site ? `<div class="eds-sidebar-site">${escapeHtml(config.site)}</div>` : ''}
-      </div>
-      <span class="eds-sidebar-footer-icon" aria-hidden="true"></span>
-    `;
-  } else {
-    footer.innerHTML = `
-      <div class="eds-sidebar-footer-text">
-        <div class="eds-sidebar-org eds-sidebar-org-empty">Not connected</div>
-      </div>
-      <span class="eds-sidebar-footer-icon" aria-hidden="true"></span>
-    `;
-  }
-  loadIcon('S2_Icon_Settings_20_N').then((svg) => {
-    const slot = footer.querySelector('.eds-sidebar-footer-icon');
-    if (slot) slot.replaceWith(svg);
-  });
-  footer.addEventListener('click', () => callbacks.onOpenSettings());
-
-  const collapseBtn = document.createElement('button');
-  collapseBtn.className = 'eds-sidebar-collapse';
-  collapseBtn.type = 'button';
-  collapseBtn.title = 'Collapse sidebar';
-  collapseBtn.setAttribute('aria-label', 'Collapse sidebar');
-  loadIcon('Smock_ChevronLeft_18_N').then((svg) => collapseBtn.appendChild(svg));
-  collapseBtn.addEventListener('click', () => setSidebarCollapsed(true));
-
-  const footerRow = document.createElement('div');
-  footerRow.className = 'eds-sidebar-footer-row';
-  footerRow.append(footer, collapseBtn);
-  container.appendChild(footerRow);
 }
 
 // Capture phase + closest() checks let this single document-level listener

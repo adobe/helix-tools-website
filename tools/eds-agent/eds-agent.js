@@ -37,6 +37,7 @@ import {
 } from './helpers/sidebar-view.js';
 import { openSetupModal } from './helpers/setup-modal.js';
 import { streamChat } from './helpers/agent-client.js';
+import { escapeHtml } from './helpers/markdown.js';
 
 let messages = [];
 let isStreaming = false;
@@ -195,10 +196,6 @@ function buildSidebarCallbacks(container) {
       }
       renderChat(container); // eslint-disable-line no-use-before-define
     },
-    onOpenSettings: () => openSetupModal({
-      mode: 'optional',
-      onConnect: () => renderChat(container), // eslint-disable-line no-use-before-define
-    }),
   };
 }
 
@@ -276,8 +273,19 @@ function renderChat(container) {
   // Input area
   const inputArea = document.createElement('div');
   inputArea.className = 'eds-agent-input';
+  const ctxConfig = getConfig();
+  const contextLabel = ctxConfig.org
+    ? `<span class="eds-agent-context-org">${escapeHtml(ctxConfig.org)}</span>${ctxConfig.site ? `<span class="eds-agent-context-sep">/</span><span class="eds-agent-context-site">${escapeHtml(ctxConfig.site)}</span>` : ''}`
+    : '<span class="eds-agent-context-org eds-agent-context-empty">Connect</span>';
+  const contextChipHTML = `
+      <button type="button" class="eds-agent-context-chip${ctxConfig.org ? '' : ' eds-agent-context-chip-empty'}" id="btn-context-chip" aria-label="${ctxConfig.org ? 'Change site context' : 'Connect a site'}" title="${ctxConfig.org ? 'Change site / settings' : 'Connect a site'}">
+        <span class="eds-agent-context-icon" aria-hidden="true"></span>
+        ${contextLabel}
+      </button>
+  `;
   inputArea.innerHTML = `
     <div class="eds-agent-input-row">
+      ${contextChipHTML}
       <textarea id="agent-input" rows="1" placeholder="Ask me anything about Edge Delivery Services..."></textarea>
       <button class="eds-agent-send" id="btn-send" aria-label="Send message">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -288,6 +296,16 @@ function renderChat(container) {
     </div>
   `;
   main.appendChild(inputArea);
+
+  const contextChip = inputArea.querySelector('#btn-context-chip');
+  contextChip.addEventListener('click', () => openSetupModal({
+    mode: 'optional',
+    onConnect: () => renderChat(container), // eslint-disable-line no-use-before-define
+  }));
+  loadIcon('S2_Icon_Settings_20_N').then((svg) => {
+    const slot = contextChip.querySelector('.eds-agent-context-icon');
+    if (slot) slot.replaceWith(svg);
+  });
 
   renderSidebar(sidebar, {
     activeChatId,
