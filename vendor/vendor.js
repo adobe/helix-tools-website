@@ -3,9 +3,13 @@
  * Bundles vendor dependencies into single-file browser ESM modules.
  *
  * Run via `npm run vendor` after updating dependencies.
- * Also runs automatically via postinstall and Renovate postUpgradeTasks.
+ * Also runs automatically via postinstall. Renovate bot PRs are updated by
+ * `.github/workflows/vendor-sync.yml` because Mend-hosted Renovate
+ * cannot run custom post-upgrade commands or npm lifecycle scripts.
  *
- * Idempotent: skips rebuild when package-lock.json is unchanged.
+ * Idempotent locally: skips rebuild when package-lock.json is unchanged and
+ * `.vendor-hash` matches. In CI (`CI` env, e.g. GitHub Actions) always rebuilds
+ * so vendored files cannot quietly drift from hand edits without a lockfile change.
  *
  * To add a dependency:
  *   1. Add it to `dependencies` in package.json and run `npm install`
@@ -55,7 +59,7 @@ const [lockfile, storedHash] = await Promise.all([
 
 const currentHash = createHash('sha256').update(lockfile).digest('hex');
 
-if (currentHash === storedHash) {
+if (currentHash === storedHash && !process.env.CI) {
   console.log('vendor: up to date');
   process.exit(0);
 }
