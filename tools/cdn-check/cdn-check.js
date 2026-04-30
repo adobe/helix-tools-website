@@ -141,7 +141,8 @@ async function dnsQueryJson(hostname, typeAaaa) {
 }
 
 /**
- * Resolve hostname to A + AAAA addresses, following a single CNAME chain.
+ * Resolve hostname to IPv4 (A) only, following a single CNAME chain.
+ * Skips AAAA: IPv6 metadata is often unavailable from browser-side providers.
  * @param {string} hostname
  * @returns {Promise<string[]>}
  */
@@ -155,24 +156,19 @@ async function resolveHostnameToIps(hostname, depth = 0, visited = new Set()) {
   }
   visited.add(host);
 
-  const [aData, aaaaData] = await Promise.all([
-    dnsQueryJson(host, 'A'),
-    dnsQueryJson(host, 'AAAA'),
-  ]);
+  const aData = await dnsQueryJson(host, 'A');
 
   const ips = new Set();
   let cnameTarget = null;
 
-  [aData, aaaaData].forEach((data) => {
-    if (!data || !Array.isArray(data.Answer)) return;
-    data.Answer.forEach((row) => {
+  if (aData && Array.isArray(aData.Answer)) {
+    aData.Answer.forEach((row) => {
       if (row.type === DNS_TYPE_A && row.data) ips.add(row.data.trim());
-      if (row.type === DNS_TYPE_AAAA && row.data) ips.add(row.data.trim());
       if (row.type === DNS_TYPE_CNAME && row.data && !cnameTarget) {
         cnameTarget = row.data.replace(/\.$/, '').trim();
       }
     });
-  });
+  }
 
   if (ips.size > 0) {
     return [...ips];
@@ -181,11 +177,10 @@ async function resolveHostnameToIps(hostname, depth = 0, visited = new Set()) {
     return resolveHostnameToIps(cnameTarget, depth + 1, visited);
   }
 
-  const bothNx = aData.Status === 3 && aaaaData.Status === 3;
-  if (bothNx) {
+  if (aData.Status === 3) {
     throw new Error(`No DNS records (NXDOMAIN) for ${host}`);
   }
-  throw new Error(`Could not resolve A/AAAA for ${host}`);
+  throw new Error(`Could not resolve A records for ${host}`);
 }
 
 async function fetchJsonFromResponse(resp, ip, label, requestUrl) {
@@ -585,7 +580,7 @@ async function populateProdNetworkIntel(prodUrlString) {
   if (ips.length === 0) {
     const errLi = document.createElement('li');
     errLi.className = 'prod-network-ip-item prod-network-error prod-network-span-row';
-    errLi.textContent = 'No A or AAAA records found.';
+    errLi.textContent = 'No A records found.';
     listEl.appendChild(errLi);
     return;
   }
