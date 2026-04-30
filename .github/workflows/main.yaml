@@ -1,5 +1,11 @@
 name: Build
-on: [push]
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -11,5 +17,14 @@ jobs:
       with:
         node-version: 24
     - run: npm ci
+    - name: Verify repo matches install output (e.g. vendor/ after lockfile changes)
+      run: |
+        if [ -z "$(git status --porcelain)" ]; then
+          exit 0
+        fi
+        echo "::error::Working tree is dirty after \`npm ci\` (postinstall runs vendoring). Commit the diff — usually \`vendor/\` and \`.vendor-hash\` when \`package-lock.json\` changed."
+        git status
+        git diff --stat HEAD
+        exit 1
     - run: npm run lint
     - run: npm test

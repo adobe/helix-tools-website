@@ -1,0 +1,46 @@
+# Keep vendor/ in sync for Mend-hosted Renovate PRs only. The hosted app does not
+# run npm scripts during lockfile updates and only allows a fixed postUpgradeTasks
+# allowlist, so Renovate cannot run `npm run vendor` itself. Other PRs must update
+# vendor/ manually. Fork PRs are skipped (same-repo + renovate[bot] author only).
+name: Vendor sync
+
+on:
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+
+concurrency:
+  group: vendor-sync-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login == 'renovate[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npm run vendor
+      - name: Commit and push vendor
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet HEAD -- vendor/; then
+            echo "Vendor already matches lockfile."
+            exit 0
+          fi
+          git add vendor/
+          git commit -m "chore: sync vendor bundles after lockfile change"
+          git push origin HEAD:"${HEAD_REF}"
