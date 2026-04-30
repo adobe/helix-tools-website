@@ -1322,7 +1322,8 @@ body.json2html-simulator main .resizer-horizontal {
   }
 }
 
-/* Extra-large screens: cap content width at 1500px (issue #316) */
+/* Extra-large screens: cap content width at 1500px (issue #316).
+   Below 1500px viewport the ribbon is centered/inline and never overlaps content. */
 @media (width >= 1264px) {
   body.json2html-simulator main {
     max-width: 1500px;
@@ -1336,6 +1337,19 @@ body.json2html-simulator main .resizer-horizontal {
   /* Footer content alignment */
   body.json2html-simulator footer section {
     max-width: 1500px;
+  }
+}
+
+/* >= 1500px viewport: the .experimental-ribbon (see blocks/header/header.css) flips
+   into corner mode (rotated -45deg, position fixed top-left, ~220px footprint).
+   To keep our centered 1500px workspace clear of it, narrow max-width until the
+   viewport is wide enough (>= 1940px) to give natural clearance.
+   min(1500px, 100vw - 440px) leaves >=220px on each side for visual symmetry. */
+@media (width >= 1500px) {
+  body.json2html-simulator main,
+  body.json2html-simulator header.header-wrapper .header .header-nav,
+  body.json2html-simulator footer section {
+    max-width: min(1500px, calc(100vw - 440px));
   }
 }
 
