@@ -100,9 +100,15 @@
       </div>
     </div>
 
-    <!-- Check Results -->
+    <!-- CDN setup report -->
     <div id="results-section" aria-hidden="true">
-      <h2>Check Results</h2>
+      <div class="cdn-check-results-heading">
+        <h2>CDN Setup Report</h2>
+        <div id="cdn-check-share" class="cdn-check-share" hidden>
+          <button type="button" id="cdn-check-share-btn" class="button secondary">Copy share link</button>
+          <p id="cdn-check-share-status" class="cdn-check-share-status" role="status" aria-live="polite"></p>
+        </div>
+      </div>
       <ul class="check-list">
         <li id="check-cdn-config" class="check-item pending">
           <div class="check-header">

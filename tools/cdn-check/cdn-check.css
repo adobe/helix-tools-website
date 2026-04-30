@@ -327,8 +327,34 @@
   display: none;
 }
 
-#results-section h2 {
+.cdn-check .cdn-check-results-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-m);
   margin-bottom: var(--spacing-m);
+}
+
+.cdn-check .cdn-check-results-heading h2 {
+  margin: 0;
+}
+
+.cdn-check .cdn-check-share {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--spacing-xs);
+  margin: 0;
+  padding: 0;
+}
+
+.cdn-check .cdn-check-share-status {
+  margin: 0;
+  max-width: 16rem;
+  font-size: var(--body-size-s);
+  text-align: right;
+  color: var(--gray-700);
 }
 
 .check-list {

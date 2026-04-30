@@ -668,6 +668,12 @@ const SCORE_RING = document.querySelector('.score-ring');
 const SCORE_NUMBER = document.querySelector('.score-number');
 const DETECTED_CDN_VALUE = document.getElementById('detected-cdn-value');
 
+/** Payload for “Copy share link” (`p`: type / host / route from admin cdn.prod). */
+let lastCdnProdSharePayload = null;
+
+/** Frozen push-invalidation row for share links (guests do not re-call purge API). */
+let lastPurgeShareSnapshot = null;
+
 // Check configuration with weights for scoring
 const CHECKS = [
   { id: 'check-cdn-config', weight: 20, name: 'CDN Config' },
@@ -735,6 +741,10 @@ function resetChecks() {
     DETECTED_CDN_VALUE.className = 'cdn-value';
   }
   clearProdNetworkSection();
+  lastCdnProdSharePayload = null;
+  lastPurgeShareSnapshot = null;
+  const shareEl = document.getElementById('cdn-check-share');
+  if (shareEl) shareEl.hidden = true;
 }
 
 function updateDetectedCdn(cdnType) {
@@ -838,13 +848,210 @@ function calculateCurrentScore(scores) {
   return totalWeight > 0 ? Math.round(totalScore / totalWeight) : 0;
 }
 
+/** Subset of admin `cdn.prod` for share links: type, host, route only (no purge secrets). */
+function pickCdnProdForShare(cdnConfig) {
+  if (!cdnConfig || typeof cdnConfig !== 'object') return null;
+  const out = {};
+  if (cdnConfig.type) out.type = String(cdnConfig.type);
+  if (cdnConfig.host) out.host = String(cdnConfig.host);
+  if (cdnConfig.route != null && cdnConfig.route !== '') {
+    out.route = Array.isArray(cdnConfig.route) ? cdnConfig.route : cdnConfig.route;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+function encodeCdnProdQueryValue(obj) {
+  const json = JSON.stringify(obj);
+  const bytes = new TextEncoder().encode(json);
+  let bin = '';
+  bytes.forEach((b) => { bin += String.fromCharCode(b); });
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+/** @returns {Record<string, unknown> | null} */
+function decodeCdnProdQueryValue(b64) {
+  if (!b64 || typeof b64 !== 'string') return null;
+  try {
+    const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
+    const standard = b64.replace(/-/g, '+').replace(/_/g, '/') + pad;
+    const bin = atob(standard);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+    const json = new TextDecoder().decode(bytes);
+    const data = JSON.parse(json);
+    return data && typeof data === 'object' && !Array.isArray(data) ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+/** @param {Record<string, unknown>} data */
+function parseCdnProdObject(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+  const picked = {};
+  if (typeof data.type === 'string' && data.type.trim()) picked.type = data.type.trim();
+  if (typeof data.host === 'string' && data.host.trim()) picked.host = data.host.trim();
+  if (data.route != null && data.route !== '') {
+    if (typeof data.route === 'string' || Array.isArray(data.route)) picked.route = data.route;
+  }
+  if (!picked.type) return null;
+  return picked;
+}
+
+const PURGE_SNAPSHOT_STATES = new Set(['pass', 'warning', 'fail', 'skip', 'running', 'pending']);
+const PURGE_LINE_TYPES = new Set(['info', 'success', 'warning', 'error']);
+
+/** @param {Record<string, unknown>} data */
+function parsePurgeSnapshot(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+  const state = typeof data.state === 'string' && PURGE_SNAPSHOT_STATES.has(data.state) ? data.state : null;
+  if (!state) return null;
+  const statusText = typeof data.statusText === 'string' ? data.statusText : '';
+  const rawLines = Array.isArray(data.lines) ? data.lines : [];
+  const lines = [];
+  for (let i = 0; i < rawLines.length; i += 1) {
+    const row = rawLines[i];
+    if (!Array.isArray(row) || row.length < 2) {
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+    const lt = typeof row[0] === 'string' && PURGE_LINE_TYPES.has(row[0]) ? row[0] : 'info';
+    lines.push([lt, String(row[1])]);
+  }
+  const sc = Number(data.score);
+  const score = Number.isFinite(sc) ? sc : 0;
+  return {
+    state,
+    statusText,
+    lines,
+    score,
+    skipped: !!data.skipped,
+  };
+}
+
+/**
+ * Decode `cdnProd` query: v2 envelope `{ v:2, p, purge }` or legacy flat cdn.prod slice.
+ * @returns {{ cdnProd: object | null, purgeReport: object | null }}
+ */
+function parseCdnProdShareFromSearch(params) {
+  const raw = params.get('cdnProd');
+  if (!raw) return { cdnProd: null, purgeReport: null };
+  const data = decodeCdnProdQueryValue(raw);
+  if (!data) return { cdnProd: null, purgeReport: null };
+  if (data.v === 2 && data.p && typeof data.p === 'object' && !Array.isArray(data.p)) {
+    const cdnProd = parseCdnProdObject(data.p);
+    const purgeReport = data.purge ? parsePurgeSnapshot(data.purge) : null;
+    return { cdnProd, purgeReport };
+  }
+  return { cdnProd: parseCdnProdObject(data), purgeReport: null };
+}
+
+/** @returns {{ score: number, skipped?: boolean }} */
+function applyPurgeCheckSnapshot(snap) {
+  const checkId = 'check-purge';
+  const item = document.getElementById(checkId);
+  updateCheckState(checkId, snap.state, snap.statusText);
+  const result = item.querySelector('.check-result');
+  result.innerHTML = '';
+  snap.lines.forEach((row) => {
+    const [lineType, text] = row;
+    const line = document.createElement('div');
+    line.className = `result-line ${lineType}`;
+    line.textContent = text;
+    result.appendChild(line);
+  });
+  const details = item.querySelector('.check-details');
+  details.setAttribute('aria-hidden', snap.lines.length ? 'false' : 'true');
+  return { score: snap.score, skipped: snap.skipped };
+}
+
+function snapshotPurgeCheckFromDom(purgeResult) {
+  const checkId = 'check-purge';
+  const item = document.getElementById(checkId);
+  if (!item) return null;
+  const classes = item.className.split(/\s+/);
+  const state = ['pass', 'warning', 'fail', 'skip', 'running', 'pending'].find((s) => classes.includes(s))
+    || 'pending';
+  const statusText = (item.querySelector('.check-status')?.textContent || '').trim() || 'Pending';
+  const lines = [...item.querySelectorAll('.check-result .result-line')].map((el) => {
+    const clsParts = el.className.split(/\s+/).filter((c) => c && c !== 'result-line');
+    const lineType = PURGE_LINE_TYPES.has(clsParts[0]) ? clsParts[0] : 'info';
+    return [lineType, el.textContent];
+  });
+  return {
+    state,
+    statusText,
+    lines,
+    score: Number.isFinite(purgeResult?.score) ? purgeResult.score : 0,
+    skipped: !!purgeResult?.skipped,
+  };
+}
+
+/**
+ * Render CDN config check from `cdn.prod` (or share payload). Null/undefined => managed.
+ * @returns {{ score: number, cdnConfig: object | null }}
+ */
+function materializeCdnProdCheckResult(cdnConfig) {
+  const checkId = 'check-cdn-config';
+
+  if (!cdnConfig || cdnConfig.type === 'managed') {
+    updateCheckState(checkId, 'pass', 'Managed');
+    addResultLine(checkId, 'Using AEM managed CDN (Fastly)', 'success');
+    addResultLine(checkId, 'No custom cdn.prod configuration - site served directly from .aem.live', 'info');
+    updateDetectedCdn('managed');
+    return { score: 100, cdnConfig: { type: 'managed', host: null } };
+  }
+
+  const hasType = !!cdnConfig.type;
+  const hasHost = !!cdnConfig.host;
+
+  if (!hasType) {
+    updateCheckState(checkId, 'warning', 'Partial Config');
+    addResultLine(checkId, 'CDN type is not set', 'warning');
+    addResultLine(checkId, `Production host: ${cdnConfig.host || 'not set'}`, 'info');
+    return { score: 50, cdnConfig };
+  }
+
+  if (!hasHost) {
+    updateCheckState(checkId, 'warning', 'Partial Config');
+    addResultLine(checkId, `CDN type: ${cdnConfig.type}`, 'success');
+    addResultLine(checkId, 'Production host is not set', 'warning');
+    return { score: 50, cdnConfig };
+  }
+
+  updateCheckState(checkId, 'pass', 'Configured');
+  addResultLine(checkId, `CDN type: ${cdnConfig.type}`, 'success');
+  addResultLine(checkId, `Production host: ${cdnConfig.host}`, 'success');
+  updateDetectedCdn(cdnConfig.type);
+
+  if (cdnConfig.route) {
+    addResultLine(checkId, `Routes: ${Array.isArray(cdnConfig.route) ? cdnConfig.route.join(', ') : cdnConfig.route}`, 'info');
+  }
+
+  return { score: 100, cdnConfig };
+}
+
 // Check implementations
-async function checkCdnConfig(org, site) {
+async function checkCdnConfig(org, site, sharedCdnProd = null) {
   const checkId = 'check-cdn-config';
   updateCheckState(checkId, 'running', 'Checking...');
 
+  if (sharedCdnProd) {
+    try {
+      addResultLine(
+        checkId,
+        'Using CDN production config from this link (admin.hlx.page was not loaded).',
+        'info',
+      );
+      return materializeCdnProdCheckResult(sharedCdnProd);
+    } catch (e) {
+      updateCheckState(checkId, 'fail', 'Error');
+      addResultLine(checkId, `Error: ${e.message}`, 'error');
+      return { score: 0, cdnConfig: null };
+    }
+  }
+
   try {
-    // Fetch aggregated config to get CDN settings
     const configUrl = `https://admin.hlx.page/config/${org}/aggregated/${site}.json`;
     const resp = await fetch(configUrl);
 
@@ -859,48 +1066,7 @@ async function checkCdnConfig(org, site) {
 
     const config = await resp.json();
     const cdnConfig = config.cdn?.prod;
-
-    if (!cdnConfig) {
-      // No custom CDN - site uses AEM's managed CDN (Fastly)
-      updateCheckState(checkId, 'pass', 'Managed');
-      addResultLine(checkId, 'Using AEM managed CDN (Fastly)', 'success');
-      addResultLine(checkId, 'No custom cdn.prod configuration - site served directly from .aem.live', 'info');
-      updateDetectedCdn('managed');
-      // Return a synthetic config for the managed CDN (host will be set by caller)
-      return { score: 100, cdnConfig: { type: 'managed', host: null } };
-    }
-
-    // Check for required fields
-    const hasType = !!cdnConfig.type;
-    const hasHost = !!cdnConfig.host;
-
-    if (!hasType) {
-      updateCheckState(checkId, 'warning', 'Partial Config');
-      addResultLine(checkId, 'CDN type is not set', 'warning');
-      addResultLine(checkId, `Production host: ${cdnConfig.host || 'not set'}`, 'info');
-      return { score: 50, cdnConfig };
-    }
-
-    if (!hasHost) {
-      updateCheckState(checkId, 'warning', 'Partial Config');
-      addResultLine(checkId, `CDN type: ${cdnConfig.type}`, 'success');
-      addResultLine(checkId, 'Production host is not set', 'warning');
-      return { score: 50, cdnConfig };
-    }
-
-    updateCheckState(checkId, 'pass', 'Configured');
-    addResultLine(checkId, `CDN type: ${cdnConfig.type}`, 'success');
-    addResultLine(checkId, `Production host: ${cdnConfig.host}`, 'success');
-
-    // Update the prominent CDN display
-    updateDetectedCdn(cdnConfig.type);
-
-    // Check for additional CDN-specific settings
-    if (cdnConfig.route) {
-      addResultLine(checkId, `Routes: ${Array.isArray(cdnConfig.route) ? cdnConfig.route.join(', ') : cdnConfig.route}`, 'info');
-    }
-
-    return { score: 100, cdnConfig };
+    return materializeCdnProdCheckResult(cdnConfig);
   } catch (e) {
     updateCheckState(checkId, 'fail', 'Error');
     addResultLine(checkId, `Error: ${e.message}`, 'error');
@@ -908,8 +1074,12 @@ async function checkCdnConfig(org, site) {
   }
 }
 
-async function checkPurge(cdnConfig) {
+async function checkPurge(cdnConfig, sharedPurgeSnapshot = null) {
   const checkId = 'check-purge';
+
+  if (sharedPurgeSnapshot) {
+    return applyPurgeCheckSnapshot(sharedPurgeSnapshot);
+  }
 
   // Skip for managed CDN - purge handled automatically
   if (cdnConfig?.type === 'managed' || !cdnConfig?.host) {
@@ -1650,8 +1820,12 @@ async function runChecks(pageUrl, prodPageUrl = null) {
     org, site, branch,
   } = aemUrl;
 
-  // Ensure login
-  if (!await ensureLogin(org, site)) {
+  const { cdnProd: sharedCdnProd, purgeReport: sharedPurgeSnapshot } = parseCdnProdShareFromSearch(
+    new URLSearchParams(window.location.search),
+  );
+
+  // Ensure login (skip when cdn.prod was supplied in the URL — no admin.hlx.page fetch)
+  if (!sharedCdnProd && !await ensureLogin(org, site)) {
     // Wait for login event
     window.addEventListener('profile-update', async ({ detail: loginInfo }) => {
       if (loginInfo.includes(org)) {
@@ -1695,7 +1869,7 @@ async function runChecks(pageUrl, prodPageUrl = null) {
   const scores = {};
 
   // Check 1: CDN Config
-  const configResult = await checkCdnConfig(org, site);
+  const configResult = await checkCdnConfig(org, site, sharedCdnProd);
   scores['check-cdn-config'] = configResult.score;
   updateScore(calculateCurrentScore(scores), true);
   const { cdnConfig } = configResult;
@@ -1712,7 +1886,7 @@ async function runChecks(pageUrl, prodPageUrl = null) {
   }
 
   // Check 2: Push Invalidation
-  const purgeResult = await checkPurge(cdnConfig);
+  const purgeResult = await checkPurge(cdnConfig, sharedPurgeSnapshot);
   scores['check-purge'] = purgeResult.score;
   updateScore(calculateCurrentScore(scores), true);
 
@@ -1745,6 +1919,11 @@ async function runChecks(pageUrl, prodPageUrl = null) {
   // Final score update - remove in-progress state
   const finalScore = calculateCurrentScore(scores);
   updateScore(finalScore, false);
+
+  lastCdnProdSharePayload = pickCdnProdForShare(cdnConfig);
+  lastPurgeShareSnapshot = snapshotPurgeCheckFromDom(purgeResult);
+  const shareWrap = document.getElementById('cdn-check-share');
+  if (shareWrap) shareWrap.hidden = !lastCdnProdSharePayload;
 }
 
 // Origin discovery from CDN headers
@@ -1968,9 +2147,52 @@ function setupFormSubmit() {
 }
 
 // Event listeners and initialization
+function setupShareReportLink() {
+  const btn = document.getElementById('cdn-check-share-btn');
+  const status = document.getElementById('cdn-check-share-status');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    const aemInput = document.getElementById('url');
+    const prodInput = document.getElementById('prod-page-url');
+    const aem = aemInput?.value.trim() || '';
+    const prod = prodInput?.value.trim() || '';
+    const payload = lastCdnProdSharePayload;
+    if (!aem) {
+      if (status) status.textContent = 'AEM URL required.';
+      return;
+    }
+    if (!payload) {
+      if (status) status.textContent = 'Run checks first.';
+      return;
+    }
+    try {
+      parseAemUrl(aem);
+    } catch (e) {
+      if (status) status.textContent = e.message;
+      return;
+    }
+    const p = new URLSearchParams();
+    p.set('url', aem);
+    if (prod) p.set('prodPageUrl', prod);
+    const bundle = { v: 2, p: payload };
+    if (lastPurgeShareSnapshot) bundle.purge = lastPurgeShareSnapshot;
+    const enc = encodeCdnProdQueryValue(bundle);
+    if (enc) p.set('cdnProd', enc);
+    const qs = p.toString();
+    const shareUrl = new URL(`${window.location.pathname}?${qs}`, window.location.origin);
+    try {
+      await navigator.clipboard.writeText(shareUrl.href);
+      if (status) status.textContent = 'Copied.';
+    } catch {
+      if (status) status.textContent = 'Could not copy.';
+    }
+  });
+}
+
 function setupEventListeners() {
   setupManualAemEntry();
   setupFormSubmit();
+  setupShareReportLink();
 
   // Toggle check details on click
   document.querySelectorAll('.check-header').forEach((header) => {
