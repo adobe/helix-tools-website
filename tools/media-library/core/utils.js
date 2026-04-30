@@ -1,9 +1,4 @@
-export function escapeHtml(str) {
-  if (str == null || str === '') return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
+export { default as escapeHtml } from '../../../utils/html.js';
 
 export function escapeAttr(str) {
   if (str == null || str === '') return '';

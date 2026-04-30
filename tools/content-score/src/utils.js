@@ -1,14 +1,4 @@
-/**
- * Escapes HTML special characters for safe insertion into markup.
- * @param {string} str - Value to escape (nullable)
- * @returns {string} Escaped string, or empty if input is null/empty
- */
-export function escapeHtml(str) {
-  if (str == null || str === '') return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
+export { default as escapeHtml } from '../../../utils/html.js';
 
 /**
  * Converts category id (hyphenated) to details property name (camelCase + "Issues").

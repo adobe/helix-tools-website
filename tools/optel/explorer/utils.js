@@ -103,9 +103,7 @@ export function truncate(time, unit) {
   return toISOStringWithTimezone(t);
 }
 
-export function escapeHTML(unsafe) {
-  return unsafe.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-}
+export { default as escapeHTML } from '../../../utils/html.js';
 
 export function cssVariable(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name);

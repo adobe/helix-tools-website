@@ -5,6 +5,7 @@ import {
   getFavorites,
   getContentSourceType,
   showToast,
+  escapeHtml,
 } from './utils.js';
 import { renderPsiScores, runPsiForCard } from './psi.js';
 import {
@@ -38,7 +39,7 @@ export default function createSiteCard(site, orgValue) {
   card.innerHTML = `
     <div class="site-card-top">
       <div class="site-card-header">
-        <h3 class="site-card-name" title="${site.name}">${site.name}</h3>
+        <h3 class="site-card-name" title="${escapeHtml(site.name)}">${site.name}</h3>
         <span class="source-badge source-${sourceType.type}" title="Loading...">${sourceType.label}</span>
       </div>
       <div class="card-actions">
