@@ -24,10 +24,5 @@
       "allowedVersions": "^8.0.0",
       "description": "Pin ESLint to v8 until airbnb-base supports v9+"
     }
-  ],
-  "postUpgradeTasks": {
-    "commands": ["npm run vendor"],
-    "fileFilters": ["vendor/**"],
-    "executionMode": "branch"
-  }
+  ]
 }
