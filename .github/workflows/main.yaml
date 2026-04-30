@@ -1,25 +1,67 @@
+# Renovate cannot run postinstall/vendor in its bot job. Auto-sync runs here in the
+# same job as the porcelain check, before lint/test, so we never fail Build waiting
+# on a separate workflow.
 name: Build
 on:
+  # pull_request: CI for every PR (incl. forks); one run per sync. Avoid also using
+  # push on feature branches or each push would duplicate the pull_request run.
   push:
+    branches:
+      - main
   pull_request:
 
 concurrency:
   group: build-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # A Renovate push may need a vendor commit mid-job; that push must not cancel this run.
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
     - uses: actions/checkout@v6
+      with:
+        ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
     - name: Use Node.js 20
       uses: actions/setup-node@v6
       with:
         node-version: 24
     - run: npm ci
-    - name: Verify repo matches install output (e.g. vendor/ after lockfile changes)
+    - name: Renovate vendor auto-sync or verify clean tree
+      env:
+        SYNC_BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
       run: |
+        RENOVATE_PR=false
+        if [ "${{ github.event_name }}" = "pull_request" ] \
+          && [ "${{ github.event.pull_request.user.login }}" = "renovate[bot]" ]; then
+          RENOVATE_PR=true
+        fi
+        if [ "${{ github.actor }}" = "renovate[bot]" ]; then
+          RENOVATE_PR=true
+        fi
+        FORK_PR=false
+        if [ "${{ github.event_name }}" = "pull_request" ] \
+          && [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
+          FORK_PR=true
+        fi
         if [ -z "$(git status --porcelain)" ]; then
+          echo "Working tree clean after npm ci."
+          exit 0
+        fi
+        if [ "$RENOVATE_PR" = true ] && [ "$FORK_PR" = false ]; then
+          echo "Renovate PR: committing vendor/ updates on branch ${SYNC_BRANCH}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add vendor/
+          git commit -m "chore: sync vendor bundles after lockfile change"
+          git push origin "HEAD:refs/heads/${SYNC_BRANCH}"
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::Still dirty after vendor commit; not only vendor/ changed?"
+            git status
+            exit 1
+          fi
           exit 0
         fi
         echo "::error::Working tree is dirty after \`npm ci\` (postinstall runs vendoring). Commit the diff — usually \`vendor/\` and \`.vendor-hash\` when \`package-lock.json\` changed."
