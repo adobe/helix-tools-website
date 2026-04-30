@@ -1880,10 +1880,17 @@ function setupManualAemEntry() {
   });
 }
 
-function updateShareableQuery(prodPageUrl, aemPageUrl) {
+/**
+ * Sync the address bar for shareable links. `prodPageUrl` is stored whenever present.
+ * The `url` query param is only set when the user explicitly provides an AEM page URL
+ * (manual field), not when we fill it from origin detection.
+ * @param {string | null} prodPageUrl
+ * @param {string | null} [explicitAemPageUrl] user-supplied AEM URL only
+ */
+function updateShareableQuery(prodPageUrl, explicitAemPageUrl = null) {
   const p = new URLSearchParams();
   if (prodPageUrl) p.set('prodPageUrl', prodPageUrl);
-  if (aemPageUrl) p.set('url', aemPageUrl);
+  if (explicitAemPageUrl) p.set('url', explicitAemPageUrl);
   const qs = p.toString();
   const path = window.location.pathname;
   window.history.replaceState(null, '', qs ? `${path}?${qs}` : path);
@@ -1920,6 +1927,7 @@ function setupFormSubmit() {
         showError(err.message);
         return;
       }
+      showManualAemField();
       updateShareableQuery(prod || null, aemManual);
       await runChecksWithSubmitUi(aemManual, prod || null);
       return;
@@ -1948,7 +1956,7 @@ function setupFormSubmit() {
       }
       aemInput.value = aemPageUrl;
       setOriginDetectHint('');
-      updateShareableQuery(prod, aemPageUrl);
+      updateShareableQuery(prod, null);
       await runChecksWithSubmitUi(aemPageUrl, prod);
     } catch (err) {
       setOriginDetectHint('');
@@ -1995,6 +2003,7 @@ async function init() {
   const aemInput = document.getElementById('url');
 
   if (urlParam) {
+    showManualAemField();
     aemInput.value = urlParam;
     if (prodPageUrlParam) {
       prodPageUrlInput.value = prodPageUrlParam;
@@ -2015,7 +2024,7 @@ async function init() {
       }
       aemInput.value = aemPageUrl;
       setOriginDetectHint('');
-      updateShareableQuery(prodPageUrlParam, aemPageUrl);
+      updateShareableQuery(prodPageUrlParam, null);
       await runChecksWithSubmitUi(aemPageUrl, prodPageUrlParam);
     } catch (err) {
       setOriginDetectHint('');
