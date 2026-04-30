@@ -3,9 +3,9 @@
  * Bundles vendor dependencies into single-file browser ESM modules.
  *
  * Run via `npm run vendor` after updating dependencies.
- * Also runs automatically via postinstall. Renovate bot PRs are updated by
- * `.github/workflows/vendor-sync.yml` because Mend-hosted Renovate
- * cannot run custom post-upgrade commands or npm lifecycle scripts.
+ * Also runs automatically via postinstall. On Mend-hosted Renovate PRs, CI
+ * auto-commits vendor updates in `.github/workflows/main.yaml` (same job as
+ * the build) because Renovate cannot run post-upgrade vendor there.
  *
  * Idempotent locally: skips rebuild when package-lock.json is unchanged and
  * `.vendor-hash` matches. In CI (`CI` env, e.g. GitHub Actions) always rebuilds
