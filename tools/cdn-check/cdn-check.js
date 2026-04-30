@@ -1,7 +1,10 @@
 /* eslint-disable no-await-in-loop */
 import { ensureLogin } from '../../blocks/profile/profile.js';
 
-// CORS proxy for cross-origin requests
+// CORS proxy for cross-origin requests (fcors.org). The key is sent as a query param on
+// every proxied request and is visible in DevTools — it is not a server secret. It exists
+// for fcors rate/account attribution on their side; committing it matches shipping any
+// other public client-side token. Rotate with fcors if quotas are abused.
 const CORS_PROXY_URL = 'https://www.fcors.org';
 const CORS_PROXY_KEY = 'iyIjewSFgBzbPVG3';
 
@@ -855,7 +858,7 @@ function pickCdnProdForShare(cdnConfig) {
   if (cdnConfig.type) out.type = String(cdnConfig.type);
   if (cdnConfig.host) out.host = String(cdnConfig.host);
   if (cdnConfig.route != null && cdnConfig.route !== '') {
-    out.route = Array.isArray(cdnConfig.route) ? cdnConfig.route : cdnConfig.route;
+    out.route = Array.isArray(cdnConfig.route) ? cdnConfig.route : [cdnConfig.route];
   }
   return Object.keys(out).length ? out : null;
 }
