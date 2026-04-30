@@ -120,7 +120,7 @@ function decorateExperimentalRibbon(block) {
 
   tooltipText.textContent = EXPERIMENTAL_TOOLTIP;
   lifecycleLink.href = 'https://www.aem.live/docs/lifecycle';
-  lifecycleLink.textContent = 'Learn about the AEM lifecycle.';
+  lifecycleLink.textContent = 'Learn about the AEM feature lifecycle.';
   tooltip.append(tooltipText, ' ', lifecycleLink);
 
   attachTooltip(ribbon, tooltip);
