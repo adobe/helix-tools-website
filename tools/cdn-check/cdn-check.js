@@ -243,20 +243,103 @@ function normalizeIpapiCoResponse(data) {
   };
 }
 
+/** jCard / RDAP vcardArray: pick org, else fn. */
+function vcardOrgOrFn(vcardArray) {
+  if (!Array.isArray(vcardArray) || vcardArray.length < 2 || !Array.isArray(vcardArray[1])) {
+    return '';
+  }
+  const rows = vcardArray[1];
+  let fn = '';
+  for (let i = 0; i < rows.length; i += 1) {
+    const row = rows[i];
+    if (Array.isArray(row) && row.length >= 4) {
+      const tag = row[0];
+      const val = String(row[row.length - 1]);
+      if (tag === 'org' && val) return val;
+      if (tag === 'fn' && val) fn = fn || val;
+    }
+  }
+  return fn;
+}
+
+function anyNonAbuseOrgFromRdapEntities(entities) {
+  if (!Array.isArray(entities)) return '';
+  for (let i = 0; i < entities.length; i += 1) {
+    const e = entities[i];
+    if (e.vcardArray) {
+      const o = vcardOrgOrFn(e.vcardArray);
+      if (o && !/^abuse\b/i.test(o) && o.length > 2) return o.trim();
+    }
+    const sub = anyNonAbuseOrgFromRdapEntities(e.entities);
+    if (sub) return sub;
+  }
+  return '';
+}
+
+/**
+ * RDAP bootstrap JSON (rdap.org). Fetched via fcors (different CF surface than ipapi).
+ * ASN may be absent; registrant org is enough for classifyIpNetwork.
+ */
+function normalizeBootstrapRdapResponse(data) {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Empty RDAP response');
+  }
+  let org = '';
+
+  function walkEntities(entities) {
+    if (!Array.isArray(entities)) return;
+    for (let i = 0; i < entities.length; i += 1) {
+      const e = entities[i];
+      if (Array.isArray(e.roles) && e.roles.includes('registrant') && e.vcardArray) {
+        const o = vcardOrgOrFn(e.vcardArray);
+        if (o && !org) org = o.trim();
+      }
+      if (e.entities) walkEntities(e.entities);
+    }
+  }
+
+  walkEntities(data.entities);
+
+  if (!org) {
+    org = anyNonAbuseOrgFromRdapEntities(data.entities);
+  }
+
+  if (!org) {
+    throw new Error('RDAP: no registrant or organization in response');
+  }
+
+  let asn;
+  const ao = data.arin_originas0_originautnums;
+  if (Array.isArray(ao) && ao.length > 0) {
+    const n = Number(ao[0]);
+    if (Number.isFinite(n)) asn = n;
+  }
+
+  return {
+    success: true,
+    connection: {
+      asn: asn !== undefined ? asn : undefined,
+      org,
+      isp: org,
+    },
+  };
+}
+
 /**
  * Try each URL until normalize() succeeds.
  * @param {string} ip
  * @param {string} label
  * @param {string[]} urls
  * @param {(data: object) => object} normalize
+ * @param {RequestInit} [fetchInit] merged into fetch (e.g. RDAP Accept header).
  * @returns {Promise<object|null>}
  */
-async function tryIpMetadataProvider(ip, label, urls, normalize) {
+async function tryIpMetadataProvider(ip, label, urls, normalize, fetchInit = undefined) {
   const errors = [];
   for (let i = 0; i < urls.length; i += 1) {
     const url = urls[i];
     try {
-      const resp = await fetch(url, { cache: 'no-store' });
+      const resp = await fetch(url, { cache: 'no-store', ...fetchInit });
       if (!resp.ok) {
         logProdNetworkDiag({
           step: 'ip-meta-http-not-ok',
@@ -310,22 +393,18 @@ async function tryIpMetadataProvider(ip, label, urls, normalize) {
 
 /**
  * ipwho.is-style payload for classifyIpNetwork.
- * ipwho.is is browser-direct only: fcors egress is Cloudflare; ipwho.is often 403s CF egress IPs.
- * ipapi.co still tries direct then fcors.
+ * Order: ipwho (direct), ipapi.co (direct), RDAP bootstrap (direct).
+ * ipwho/ipapi: no fcors (CF bot HTML). rdap.org allows CORS * — fetch direct from the browser.
  */
 async function fetchIpWhoisJson(ip) {
   const ipwhoTarget = `https://ipwho.is/${encodeURIComponent(ip)}`;
-  const ipwhoUrls = [ipwhoTarget];
-
-  let out = await tryIpMetadataProvider(ip, 'ipwho.is', ipwhoUrls, normalizeIpwhoResponse);
+  let out = await tryIpMetadataProvider(ip, 'ipwho.is', [ipwhoTarget], normalizeIpwhoResponse);
   if (out) {
     return out;
   }
 
   const ipapiTarget = `https://ipapi.co/${encodeURIComponent(ip)}/json/`;
-  const ipapiUrls = [ipapiTarget, corsProxy(ipapiTarget)];
-
-  out = await tryIpMetadataProvider(ip, 'ipapi.co', ipapiUrls, normalizeIpapiCoResponse);
+  out = await tryIpMetadataProvider(ip, 'ipapi.co', [ipapiTarget], normalizeIpapiCoResponse);
   if (out) {
     /* eslint-disable no-console */
     console.debug('[cdn-check:prod-network] ip-metadata-fallback', { ip, source: 'ipapi.co' });
@@ -333,9 +412,24 @@ async function fetchIpWhoisJson(ip) {
     return out;
   }
 
+  const rdapUrl = `https://rdap.org/ip/${encodeURIComponent(ip)}`;
+  out = await tryIpMetadataProvider(
+    ip,
+    'rdap.org',
+    [rdapUrl],
+    normalizeBootstrapRdapResponse,
+    { headers: { Accept: 'application/rdap+json, application/json' } },
+  );
+  if (out) {
+    /* eslint-disable no-console */
+    console.debug('[cdn-check:prod-network] ip-metadata-fallback', { ip, source: 'rdap.org' });
+    /* eslint-enable no-console */
+    return out;
+  }
+
   throw new Error(
     `Could not load IP metadata for ${ip}. `
-    + 'Tried ipwho.is (browser direct only) then ipapi.co (direct + proxy).',
+    + 'Tried ipwho.is, ipapi.co, then rdap.org (all browser-direct where used).',
   );
 }
 
@@ -453,7 +547,7 @@ async function populateProdNetworkIntel(prodUrlString) {
   section.setAttribute('aria-hidden', 'false');
 
   const loadingLi = document.createElement('li');
-  loadingLi.className = 'prod-network-ip-item prod-network-loading';
+  loadingLi.className = 'prod-network-ip-item prod-network-loading prod-network-span-row';
   loadingLi.textContent = 'Resolving DNS…';
   listEl.appendChild(loadingLi);
 
@@ -477,7 +571,7 @@ async function populateProdNetworkIntel(prodUrlString) {
     });
     listEl.innerHTML = '';
     const errLi = document.createElement('li');
-    errLi.className = 'prod-network-ip-item prod-network-error';
+    errLi.className = 'prod-network-ip-item prod-network-error prod-network-span-row';
     const detail = document.createElement('pre');
     detail.className = 'prod-network-error-detail';
     detail.textContent = e && typeof e === 'object' && 'message' in e ? e.message : String(e);
@@ -490,20 +584,28 @@ async function populateProdNetworkIntel(prodUrlString) {
 
   if (ips.length === 0) {
     const errLi = document.createElement('li');
-    errLi.className = 'prod-network-ip-item prod-network-error';
+    errLi.className = 'prod-network-ip-item prod-network-error prod-network-span-row';
     errLi.textContent = 'No A or AAAA records found.';
     listEl.appendChild(errLi);
     return;
   }
 
-  const rows = await Promise.all(ips.map(async (ip) => {
+  const rows = [];
+  for (let idx = 0; idx < ips.length; idx += 1) {
+    const ip = ips[idx];
     const li = document.createElement('li');
     li.className = 'prod-network-ip-item';
+
+    const cardTop = document.createElement('div');
+    cardTop.className = 'prod-network-card-top';
 
     const ipStrong = document.createElement('strong');
     ipStrong.className = 'prod-network-ip';
     ipStrong.textContent = ip;
-    li.appendChild(ipStrong);
+    cardTop.appendChild(ipStrong);
+
+    const cardBody = document.createElement('div');
+    cardBody.className = 'prod-network-card-body';
 
     try {
       const raw = await fetchIpWhoisJson(ip);
@@ -528,14 +630,12 @@ async function populateProdNetworkIntel(prodUrlString) {
         badgeText = `Unsupported CDN: ${label}`;
       }
       badge.textContent = badgeText;
+      cardTop.appendChild(badge);
 
       const meta = document.createElement('p');
       meta.className = 'prod-network-meta';
       meta.textContent = detail;
-
-      li.appendChild(document.createTextNode(' '));
-      li.appendChild(badge);
-      li.appendChild(meta);
+      cardBody.appendChild(meta);
     } catch (err) {
       logProdNetworkDiag({
         step: 'ipwho-row-failed',
@@ -548,11 +648,18 @@ async function populateProdNetworkIntel(prodUrlString) {
       const errP = document.createElement('pre');
       errP.className = 'prod-network-error-detail';
       errP.textContent = err && typeof err === 'object' && 'message' in err ? err.message : String(err);
-      li.appendChild(errP);
+      cardBody.appendChild(errP);
     }
 
-    return li;
-  }));
+    li.appendChild(cardTop);
+    li.appendChild(cardBody);
+    rows.push(li);
+    if (idx < ips.length - 1) {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 400);
+      });
+    }
+  }
 
   rows.forEach((li) => listEl.appendChild(li));
 }
@@ -1222,6 +1329,18 @@ async function check404Caching(cdnConfig, aemUrl) {
   }
 }
 
+function mimeBase(contentType) {
+  if (!contentType) return '';
+  return contentType.split(';')[0].trim().toLowerCase();
+}
+
+/** SVG / format=svg often differs by bytes across origins while still correct delivery. */
+function isLikelySvgAsset(urlString, contentType) {
+  const u = (urlString || '').toLowerCase();
+  if (u.includes('format=svg') || /\.svg(\?|#|$)/i.test(u)) return true;
+  return mimeBase(contentType) === 'image/svg+xml';
+}
+
 async function checkImages(cdnConfig, aemUrl, org, site, branch, prodPageUrlOverride = null) {
   const checkId = 'check-images';
 
@@ -1293,34 +1412,55 @@ async function checkImages(cdnConfig, aemUrl, org, site, branch, prodPageUrlOver
       }
 
       try {
-        // Fetch both images with HEAD to compare size and type (via CORS proxy)
+        // GET via CORS proxy; compare decompressed body bytes (Content-Length header often
+        // reflects wire size for gzip/br and does not match the decoded arrayBuffer length).
         const [aemResp, prodResp] = await Promise.all([
           fetch(corsProxy(aemImgUrl), { method: 'GET' }),
           fetch(corsProxy(prodImgUrl), { method: 'GET' }),
         ]);
 
-        const aemSize = aemResp.headers.get('content-length');
-        const prodSize = prodResp.headers.get('content-length');
         const aemType = aemResp.headers.get('content-type');
         const prodType = prodResp.headers.get('content-type');
+
+        let aemBodyBytes = null;
+        let prodBodyBytes = null;
+        if (aemResp.ok && prodResp.ok) {
+          const [aemBuf, prodBuf] = await Promise.all([
+            aemResp.arrayBuffer(),
+            prodResp.arrayBuffer(),
+          ]);
+          aemBodyBytes = aemBuf.byteLength;
+          prodBodyBytes = prodBuf.byteLength;
+        }
 
         const shortSrc = imgSrc.length > 50 ? `...${imgSrc.slice(-47)}` : imgSrc;
 
         if (aemResp.ok && prodResp.ok) {
+          const aemSize = String(aemBodyBytes);
+          const prodSize = String(prodBodyBytes);
+          const bothSvg = isLikelySvgAsset(aemImgUrl, aemType)
+            && isLikelySvgAsset(prodImgUrl, prodType);
           const sizeMatch = aemSize === prodSize;
-          const typeMatch = aemType === prodType;
+          const typeMatch = mimeBase(aemType) === mimeBase(prodType);
 
-          if (sizeMatch && typeMatch) {
+          if ((bothSvg && typeMatch) || (sizeMatch && typeMatch)) {
             addResultLine(checkId, `✓ ${shortSrc}`, 'success');
             addResultLine(checkId, `  AEM: ${aemImgUrl}`, 'info');
             addResultLine(checkId, `  Prod: ${prodImgUrl}`, 'info');
+            if (bothSvg && typeMatch && !sizeMatch) {
+              addResultLine(
+                checkId,
+                `  SVG: body bytes differ (AEM=${aemSize}, prod=${prodSize}); MIME matches — counted as match`,
+                'info',
+              );
+            }
             passCount += 1;
           } else {
             addResultLine(checkId, `! ${shortSrc}`, 'warning');
             addResultLine(checkId, `  AEM: ${aemImgUrl}`, 'info');
             addResultLine(checkId, `  Prod: ${prodImgUrl}`, 'info');
             if (!sizeMatch) {
-              addResultLine(checkId, `  Size: AEM=${aemSize}, Prod=${prodSize}`, 'warning');
+              addResultLine(checkId, `  Body bytes: AEM=${aemSize}, Prod=${prodSize}`, 'warning');
             }
             if (!typeMatch) {
               addResultLine(checkId, `  Type: AEM=${aemType}, Prod=${prodType}`, 'warning');

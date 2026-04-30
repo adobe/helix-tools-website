@@ -182,12 +182,14 @@
   background-color: var(--green-700);
 }
 
-/* Production DNS / IP (WHOIS-style) panel */
+/* Production DNS / IP (WHOIS-style) panel — full main width, cards in a grid */
 .prod-network-section {
   display: block;
-  max-width: 52rem;
-  margin: 0 auto var(--spacing-xl);
-  padding: var(--spacing-m) var(--spacing-l);
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  margin: 0 0 var(--spacing-xl);
+  padding: var(--spacing-l);
   background-color: var(--gray-50);
   border: var(--border-m) solid var(--gray-200);
   border-radius: var(--rounding-l);
@@ -210,32 +212,69 @@
 }
 
 .prod-network-ip-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-m);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+@media (width >= 600px) {
+  .prod-network-ip-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (width >= 900px) {
+  .prod-network-ip-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.prod-network-span-row {
+  grid-column: 1 / -1;
+}
+
 .prod-network-ip-item {
-  margin-bottom: var(--spacing-m);
-  padding: var(--spacing-s) var(--spacing-m);
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  margin: 0;
+  padding: var(--spacing-m);
   background: var(--white, #fff);
   border-radius: var(--rounding-m);
   border: var(--border-m) solid var(--gray-200);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 6%);
 }
 
-.prod-network-ip-item:last-child {
-  margin-bottom: 0;
+.prod-network-card-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-s);
+  margin-bottom: var(--spacing-s);
+}
+
+.prod-network-card-body {
+  flex: 1;
+  margin: 0;
+  min-width: 0;
 }
 
 .prod-network-ip {
+  margin: 0;
   font-family: var(--code-font-family);
   font-size: var(--body-size-m);
+  word-break: break-all;
 }
 
 .prod-network-badge {
   display: inline-block;
-  margin: var(--spacing-xs) 0;
-  padding: 0.15rem 0.5rem;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0.2rem 0.55rem;
   font-size: var(--body-size-s);
   font-weight: var(--weight-bold);
   border-radius: var(--rounding-s);
@@ -254,7 +293,7 @@
 }
 
 .prod-network-meta {
-  margin: var(--spacing-xs) 0 0;
+  margin: 0;
   font-size: var(--body-size-s);
   color: var(--gray-700);
   overflow-wrap: anywhere;
@@ -272,7 +311,7 @@
 }
 
 .prod-network-error-detail {
-  margin: var(--spacing-xs) 0 0;
+  margin: 0;
   font-family: var(--code-font-family);
   font-size: var(--body-size-s);
   white-space: pre-wrap;
