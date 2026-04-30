@@ -1,5 +1,6 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
+import admin from '../../scripts/helix-admin.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 
@@ -169,38 +170,25 @@ async function init() {
       return;
     }
 
-    if (!await ensureLogin(org.value, site.value)) {
-      window.addEventListener('profile-update', ({ detail: loginInfo }) => {
-        if (Array.isArray(loginInfo) && loginInfo.includes(org.value)) {
-          e.target.querySelector('button[type="submit"]').click();
-        }
-      }, { once: true });
-      return;
-    }
-
     saveCurrentPathHeaders();
 
-    const headersUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/headers.json`;
     const patchedHeaders = JSON.parse(JSON.stringify(originalHeaders));
-
     Object.keys(patchedHeaders).forEach((path) => {
       if (patchedHeaders[path].length === 0) {
         delete patchedHeaders[path];
       }
     });
 
-    const isEmpty = Object.keys(patchedHeaders).length === 0;
-    const resp = await fetch(headersUrl, {
-      method: isEmpty ? 'DELETE' : 'POST',
-      body: isEmpty ? undefined : JSON.stringify(patchedHeaders),
-      headers: isEmpty ? undefined : {
-        'content-type': 'application/json',
-      },
-    });
-
-    resp.text().then(() => {
-      logResponse(consoleBlock, resp.status, [isEmpty ? 'DELETE' : 'POST', headersUrl, resp.headers.get('x-error') || '']);
-    });
+    const headers = admin.config({ org: org.value, site: site.value }).select('headers.json');
+    const result = await executeAdminRequest(
+      () => (Object.keys(patchedHeaders).length === 0
+        ? headers.remove()
+        : headers.update(JSON.stringify(patchedHeaders))),
+      { org: org.value, site: site.value },
+    );
+    if (!result) return;
+    const { method, url } = result.request;
+    logResponse(consoleBlock, result.status, [method, url, result.error]);
   });
 
   adminForm.addEventListener('submit', async (e) => {
@@ -211,29 +199,23 @@ async function init() {
       return;
     }
 
-    if (!await ensureLogin(org.value, site.value)) {
-      window.addEventListener('profile-update', ({ detail: loginInfo }) => {
-        if (Array.isArray(loginInfo) && loginInfo.includes(org.value)) {
-          e.target.querySelector('button[type="submit"]').click();
-        }
-      }, { once: true });
-      return;
-    }
-
-    const headersUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/headers.json`;
-    const resp = await fetch(headersUrl);
+    // Preflight on the fetch (entry point); the resulting session covers later saves.
+    const result = await executeAdminRequest(
+      () => admin.config({ org: org.value, site: site.value }).select('headers.json').read(),
+      { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
+    );
+    if (!result) return;
     headersList.innerHTML = '';
     const buttonBar = document.querySelector('.button-bar');
     const pathSelector = document.querySelector('.path-selector');
-    if (resp.status === 200) {
-      originalHeaders = (await resp.json());
+    if (result.status === 200) {
+      originalHeaders = await result.json();
       currentPath = null;
       populatePathSelect();
       loadHeadersForPath('/**');
-
       pathSelector.setAttribute('aria-hidden', 'false');
       buttonBar.setAttribute('aria-hidden', 'false');
-    } else if (resp.status === 404) {
+    } else if (result.status === 404) {
       originalHeaders = {};
       currentPath = null;
       populatePathSelect();
@@ -242,7 +224,8 @@ async function init() {
       buttonBar.setAttribute('aria-hidden', 'false');
     }
 
-    logResponse(consoleBlock, resp.status, ['GET', headersUrl, resp.headers.get('x-error') || '']);
+    const { method, url } = result.request;
+    logResponse(consoleBlock, result.status, [method, url, result.error]);
   });
 }
 

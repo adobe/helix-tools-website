@@ -112,6 +112,31 @@
 
           <figure>
             <div class="chart-container solitary">
+              <button
+                type="button"
+                id="chart-download-png"
+                class="chart-download"
+                aria-label="Download skyline chart as PNG"
+                title="Download PNG"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+              </button>
               <canvas id="time-series"></canvas>
             </div>
             <div class="filter-tags"></div>
@@ -366,7 +391,7 @@
             </dl>
           </list-facet>
 
-          <link-facet facet="error.source">
+          <link-facet facet="error.source" drilldown="table.html">
             <legend>Error Source</legend>
             <a href="/docs/optel-explorer#facet-error" class="help" target="_blank"
               title="Which files/functions in the code of the site have Javascript errors?"></a>
@@ -420,10 +445,15 @@
             <a href="/docs/optel-explorer#facet-redirect" class="help" target="_blank"
               title="What links of the site are redirecting?"></a>
           </link-facet>
-          <list-facet facet="redirect.target">
+          <list-facet facet="redirect.target" drilldown="redirectperf.html">
             <legend>Redirect Count</legend>
             <a href="/docs/optel-explorer#facet-redirect" class="help" target="_blank"
               title="Number of hops it took to reach the final destination page"></a>
+          </list-facet>
+          <list-facet facet="redirect.type" drilldown="redirectperf.html">
+            <legend>Redirect Type</legend>
+            <a href="/docs/optel-explorer#facet-redirect" class="help" target="_blank"
+              title="Internal redirects (same origin) vs external redirects (cross origin)"></a>
           </list-facet>
 
           <list-facet facet="experiment.source">

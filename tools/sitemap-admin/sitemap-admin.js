@@ -1,7 +1,9 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import { initConfigField, updateConfig } from '../../utils/config/config.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
+import { initConfigField } from '../../utils/config/config.js';
+import admin from '../../scripts/helix-admin.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { logResponse } from '../../blocks/console/console.js';
+import { escapeXml, parseHreflang, collectSitemapEntries } from './utils.js';
 
 const adminForm = document.getElementById('admin-form');
 const site = document.getElementById('site');
@@ -35,6 +37,19 @@ async function ensureYaml() {
 
 function isMultiLanguageSitemap(sitemapDef) {
   return sitemapDef?.languages !== undefined;
+}
+
+function logResult(result) {
+  const { method, url } = result.request;
+  logResponse(consoleBlock, result.status, [method, url, result.error]);
+}
+
+async function saveSitemapYaml() {
+  const yamlText = YAML.stringify(loadedSitemaps);
+  return executeAdminRequest(
+    () => admin.config({ org: org.value, site: site.value }).select('content/sitemap.yaml').update(yamlText),
+    { org: org.value, site: site.value },
+  );
 }
 
 function dismissIndexToast() {
@@ -152,18 +167,11 @@ function displaySitemapDetails(sitemapName, sitemapDef, newSitemap = false) {
       if (extension) loadedSitemaps.sitemaps[name].extension = extension;
     }
 
-    const yamlText = YAML.stringify(loadedSitemaps);
-    const resp = await fetch(`https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'text/yaml',
-      },
-      body: yamlText,
-    });
+    const result = await saveSitemapYaml();
+    if (!result) return;
+    logResult(result);
 
-    logResponse(consoleBlock, resp.status, ['POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, resp.headers.get('x-error') || '']);
-
-    if (resp.ok) {
+    if (result.ok) {
       cleanupDialog(sitemapDetails);
       if (newSitemap) showIndexToast('Sitemap added');
 
@@ -280,32 +288,20 @@ function displayLanguageEditDialog(sitemapName, langCode, langDef, isNew = false
       destination,
     };
 
-    if (hreflang) {
-      const hreflangs = hreflang.split(',').map((h) => h.trim()).filter((h) => h);
-      if (hreflangs.length > 1) {
-        loadedSitemaps.sitemaps[sitemapName].languages[newLangCode].hreflang = hreflangs;
-      } else if (hreflangs.length === 1) {
-        const [firstLang] = hreflangs;
-        loadedSitemaps.sitemaps[sitemapName].languages[newLangCode].hreflang = firstLang;
-      }
+    const parsedHreflang = parseHreflang(hreflang);
+    if (parsedHreflang !== null) {
+      loadedSitemaps.sitemaps[sitemapName].languages[newLangCode].hreflang = parsedHreflang;
     }
 
     if (alternate) {
       loadedSitemaps.sitemaps[sitemapName].languages[newLangCode].alternate = alternate;
     }
 
-    const yamlText = YAML.stringify(loadedSitemaps);
-    const resp = await fetch(`https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'text/yaml',
-      },
-      body: yamlText,
-    });
+    const result = await saveSitemapYaml();
+    if (!result) return;
+    logResult(result);
 
-    logResponse(consoleBlock, resp.status, ['POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, resp.headers.get('x-error') || '']);
-
-    if (resp.ok) {
+    if (result.ok) {
       cleanupDialog(langDialog);
       if (isNew) showIndexToast('Language added');
 
@@ -342,18 +338,11 @@ async function removeLanguage(sitemapName, langCode) {
 
   delete loadedSitemaps.sitemaps[sitemapName].languages[langCode];
 
-  const yamlText = YAML.stringify(loadedSitemaps);
-  const resp = await fetch(`https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'text/yaml',
-    },
-    body: yamlText,
-  });
+  const result = await saveSitemapYaml();
+  if (!result) return;
+  logResult(result);
 
-  logResponse(consoleBlock, resp.status, ['POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, resp.headers.get('x-error') || '']);
-
-  if (resp.ok) {
+  if (result.ok) {
     showIndexToast('Language removed');
     const sitemapsList = document.getElementById('sitemaps-list');
     sitemapsList.innerHTML = '';
@@ -365,16 +354,20 @@ async function removeLanguage(sitemapName, langCode) {
 }
 
 async function generateSitemap(destination) {
-  const sitemapUrl = `https://admin.hlx.page/sitemap/${org.value}/${site.value}/main${destination}`;
-  const resp = await fetch(sitemapUrl, { method: 'POST' });
+  const result = await executeAdminRequest(
+    () => admin.sitemap({ org: org.value, site: site.value }).generate(destination),
+    { org: org.value, site: site.value },
+  );
+  if (!result) return;
+  const { method, url } = result.request;
 
-  if (resp.status === 204) {
-    logResponse(consoleBlock, 204, ['POST', sitemapUrl, 'Path is not a destination for any configured sitemap']);
-  } else if (resp.ok) {
-    const result = await resp.json();
-    logResponse(consoleBlock, 200, ['POST', sitemapUrl, `Generated sitemap(s): ${result.paths?.join(', ') || destination}`]);
+  if (result.status === 204) {
+    logResponse(consoleBlock, 204, [method, url, 'Path is not a destination for any configured sitemap']);
+  } else if (result.ok) {
+    const data = await result.json();
+    logResponse(consoleBlock, result.status, [method, url, `Generated sitemap(s): ${data.paths?.join(', ') || destination}`]);
   } else {
-    logResponse(consoleBlock, resp.status, ['POST', sitemapUrl, resp.headers.get('x-error') || '']);
+    logResult(result);
   }
 }
 
@@ -386,18 +379,11 @@ async function removeSitemap(name) {
 
   delete loadedSitemaps.sitemaps[name];
 
-  const yamlText = YAML.stringify(loadedSitemaps);
-  const resp = await fetch(`https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'text/yaml',
-    },
-    body: yamlText,
-  });
+  const result = await saveSitemapYaml();
+  if (!result) return;
+  logResult(result);
 
-  logResponse(consoleBlock, resp.status, ['POST', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`, resp.headers.get('x-error') || '']);
-
-  if (resp.ok) {
+  if (result.ok) {
     showIndexToast('Sitemap removed');
     const sitemapsList = document.getElementById('sitemaps-list');
     sitemapsList.innerHTML = '';
@@ -504,29 +490,15 @@ function populateSitemaps(sitemaps) {
   });
 }
 
-function collectSitemapEntries() {
-  const entries = [];
-  if (!loadedSitemaps?.sitemaps) return entries;
-
-  Object.values(loadedSitemaps.sitemaps).forEach((sitemapDef) => {
-    const origin = sitemapDef.origin || '';
-    if (isMultiLanguageSitemap(sitemapDef)) {
-      Object.values(sitemapDef.languages).forEach((langDef) => {
-        if (langDef.destination) entries.push({ destination: langDef.destination, origin });
-      });
-    } else if (sitemapDef.destination) {
-      entries.push({ destination: sitemapDef.destination, origin });
-    }
-  });
-
-  return entries;
-}
-
 async function fetchCdnProdHost() {
-  const resp = await fetch(`https://admin.hlx.page/config/${org.value}/sites/${site.value}/cdn.json`);
-  logResponse(consoleBlock, resp.status, ['GET', `https://admin.hlx.page/config/${org.value}/sites/${site.value}/cdn.json`, resp.headers.get('x-error') || '']);
-  if (resp.ok) {
-    const config = await resp.json();
+  const result = await executeAdminRequest(
+    () => admin.config({ org: org.value, site: site.value }).select('cdn.json').read(),
+    { org: org.value, site: site.value },
+  );
+  if (!result) return;
+  logResult(result);
+  if (result.ok) {
+    const config = await result.json();
     cdnProdHost = config.prod?.host;
   }
 }
@@ -537,17 +509,8 @@ function getOrigin(sitemapOrigin) {
   return '';
 }
 
-function escapeXml(value) {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll('\'', '&apos;');
-}
-
 function buildSitemapIndex() {
-  const sitemapEntries = collectSitemapEntries();
+  const sitemapEntries = collectSitemapEntries(loadedSitemaps?.sitemaps);
   if (sitemapEntries.length === 0) return '';
 
   const defaultOrigin = getOrigin('');
@@ -623,28 +586,26 @@ async function init() {
       return;
     }
 
-    const sitemapUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/content/sitemap.yaml`;
-    const resp = await fetch(sitemapUrl);
-    logResponse(consoleBlock, resp.status, ['GET', sitemapUrl, resp.headers.get('x-error') || '']);
+    // Preflight on the fetch (entry point); the resulting session covers later saves.
+    const result = await executeAdminRequest(
+      () => admin.config({ org: org.value, site: site.value }).select('content/sitemap.yaml').read(),
+      { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
+    );
+    if (!result) return;
+    logResult(result);
 
-    if (resp.ok) {
-      updateConfig();
+    if (result.ok) {
       await ensureYaml();
-
-      const yamlText = await resp.text();
+      const yamlText = await result.text();
       loadedSitemaps = YAML.parse(yamlText);
 
       populateSitemaps(loadedSitemaps.sitemaps || {});
       addSitemapButton.disabled = false;
-    } else if (resp.status === 404) {
-      updateConfig();
+    } else if (result.status === 404) {
       await ensureYaml();
-
       loadedSitemaps = { version: 1, sitemaps: {} };
       populateSitemaps({});
       addSitemapButton.disabled = false;
-    } else if (resp.status === 401) {
-      ensureLogin(org.value, site.value);
     }
   });
 

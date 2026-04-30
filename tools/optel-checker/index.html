@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>Optel Checker | AEM Tools</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/optel-checker/optel-checker.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/optel-checker/optel-checker.css" />
+</head>
+<body class="optel-checker">
+  <header></header>
+  <main>
+    <div>
+      <h1>OpTel Checker</h1>
+    </div>
+
+    <div>
+      <p class="optel-checker-form-lead">
+        This tool can help diagnose common issues if OpTel is not collected as expected.
+        Reach out to your Adobe team if any questions.
+      </p>
+      <ul>
+        <li>Some CDNs block the automated diagnosis.</li>
+        <li>Some CDNs interfere with OpTel collection.</li>
+        <li>Some Edge Delivery sites built from an older boilerplate might not be accurately 
+          diagnosed by this tool.</li>
+      </ul>
+      <form id="check-form">
+        <div class="form-field text-field">
+          <label for="url-input">URL to check</label>
+          <input
+            type="text"
+            inputmode="url"
+            name="url"
+            id="url-input"
+            placeholder="https://www.example.com"
+            autocomplete="off"
+            spellcheck="false"
+            required
+          />
+        </div>
+        <p class="button-wrapper">
+          <button type="submit" class="button" id="submit-btn">Submit</button>
+        </p>
+      </form>
+    </div>
+
+    <div
+      id="tool-output"
+      class="optel-checker-output"
+      data-state="idle"
+      aria-live="polite"
+    >
+      <section class="optel-checker-section" aria-labelledby="opel-heading">
+        <h2 id="opel-heading" class="optel-checker-h2">
+          <span class="optel-checker-title-icon" aria-hidden="true"></span>
+          <span class="optel-checker-title-label">OpTel script</span>
+        </h2>
+        <div id="opel-status" class="optel-checker-status"></div>
+        <pre id="opel-matched" class="optel-checker-pre" hidden></pre>
+      </section>
+      <section id="csp-section" class="optel-checker-section" aria-labelledby="csp-heading" hidden>
+        <h2 id="csp-heading" class="optel-checker-h2">
+          <span class="optel-checker-title-icon" aria-hidden="true"></span>
+          <span class="optel-checker-title-label">Content-Security-Policy</span>
+        </h2>
+        <div id="csp-result" class="optel-checker-csp-body"></div>
+      </section>
+      <section id="rum-probe-section" class="optel-checker-section" aria-labelledby="rum-probe-heading" hidden>
+        <h2 id="rum-probe-heading" class="optel-checker-h2">
+          <span class="optel-checker-title-icon" aria-hidden="true"></span>
+          <span class="optel-checker-title-label">OpTel POST probe</span>
+        </h2>
+        <pre id="rum-probe-result" class="optel-checker-pre"></pre>
+        <p id="rum-probe-fail-hint" class="optel-checker-rum-probe-fail-hint" hidden>
+          A POST probe error has a few possible causes, such as the
+          CDN not routing the /.rum path to the proper AEM origin or the
+          CDN not allowing the HTTP POST method.
+        </p>
+      </section>
+    </div>
+  </main>
+  <footer></footer>
+</body>
+</html>

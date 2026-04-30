@@ -1,7 +1,11 @@
 .hlx/*
 coverage/*
 logs/*
-node_modules/*
+node_modules/
+**/lcov.info
+**/junit.xml
+
+.env
 
 helix-importer-ui
 .DS_Store
@@ -14,5 +18,6 @@ MIGRATION_PLAN.md
 !AGENTS.md
 
 .playwright-mcp/
+.playwright-cli/
 .claude/settings.local.json
 .claude/skills/tool-image-prompt/scripts/.cache/
