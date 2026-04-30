@@ -207,7 +207,7 @@ header.header-wrapper {
       text-transform: uppercase;
       cursor: help;
       box-shadow: var(--shadow-default);
-      z-index: 2;
+      z-index: 10;
 
       &:focus-visible {
         outline: 2px solid var(--color-link);
@@ -243,7 +243,7 @@ header.header-wrapper {
       pointer-events: none;
       visibility: hidden;
       transition: opacity 160ms ease;
-      z-index: 3;
+      z-index: 11;
 
       @media (width >= 1200px) {
         top: 84px;
@@ -272,7 +272,13 @@ header.header-wrapper {
 
     .experimental-tooltip.is-visible {
       opacity: 1;
+      pointer-events: auto;
       visibility: visible;
+    }
+
+    .experimental-tooltip a:any-link {
+      color: var(--color-link);
+      text-decoration: underline;
     }
 
     .experimental-icon {

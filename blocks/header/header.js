@@ -17,7 +17,7 @@ const THEME_NAMES = {
   dark: 'Dark',
 };
 
-const EXPERIMENTAL_TOOLTIP = 'Experimental means this tool was developed for a production use case and is marked experimental until we observe wider adoption. These tools should be used for your project when they make sense and are encouraged for production workflows.';
+const EXPERIMENTAL_TOOLTIP = 'Experimental tools are early-access: they may undergo significant changes without warning and are not yet widely adopted.';
 
 function getNextTheme(current) {
   const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
@@ -35,13 +35,27 @@ function getThemeLabel(current) {
 }
 
 function attachTooltip(ribbon, tooltip) {
-  const show = () => tooltip.classList.add('is-visible');
-  const hide = () => tooltip.classList.remove('is-visible');
+  let hideTimeout;
+  const show = () => {
+    clearTimeout(hideTimeout);
+    tooltip.classList.add('is-visible');
+    tooltip.setAttribute('aria-hidden', 'false');
+  };
+  const hide = () => {
+    hideTimeout = setTimeout(() => {
+      tooltip.classList.remove('is-visible');
+      tooltip.setAttribute('aria-hidden', 'true');
+    }, 100);
+  };
 
   ribbon.addEventListener('mouseenter', show);
   ribbon.addEventListener('mouseleave', hide);
   ribbon.addEventListener('focus', show);
   ribbon.addEventListener('blur', hide);
+  tooltip.addEventListener('mouseenter', show);
+  tooltip.addEventListener('mouseleave', hide);
+  tooltip.addEventListener('focusin', show);
+  tooltip.addEventListener('focusout', hide);
 }
 
 async function isLabTool(url) {
@@ -56,35 +70,62 @@ async function isLabTool(url) {
   }
 }
 
-function removeAuthoredLabMarker(li) {
-  [...li.childNodes].forEach((node) => {
-    if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() === '🧪') {
-      node.remove();
-    }
-  });
-  const link = li.querySelector('a');
-  if (link) {
-    [...link.childNodes].forEach((node) => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        node.textContent = node.textContent.replace(/\s*🧪\s*/g, '');
-      }
-    });
-  }
+async function decorateLabToolLink(link) {
+  const isLab = await isLabTool(link.href);
+  if (!isLab || link.querySelector('.experimental-icon')) return;
+  const icon = document.createElement('span');
+  icon.className = 'experimental-icon';
+  icon.textContent = '🧪';
+  icon.setAttribute('aria-hidden', 'true');
+  link.append(icon);
 }
 
-async function decorateLabToolLinks(container) {
+function observeLabToolLinks(container) {
   const links = [...container.querySelectorAll('a[href]')];
-  await Promise.all(links.map(async (link) => {
-    const li = link.closest('li');
-    if (li) removeAuthoredLabMarker(li);
-    const isLab = await isLabTool(link.href);
-    if (!isLab || link.querySelector('.experimental-icon')) return;
-    const icon = document.createElement('span');
-    icon.className = 'experimental-icon';
-    icon.textContent = '🧪';
-    icon.setAttribute('aria-hidden', 'true');
-    link.append(icon);
-  }));
+  if (!('IntersectionObserver' in window)) {
+    links.forEach((link) => {
+      setTimeout(() => decorateLabToolLink(link), 0);
+    });
+    return;
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      const link = entry.target;
+      observer.unobserve(link);
+      decorateLabToolLink(link);
+    });
+  }, { rootMargin: '200px' });
+
+  links.forEach((link) => observer.observe(link));
+}
+
+function decorateExperimentalRibbon(block) {
+  const ribbon = document.createElement('div');
+  const tooltip = document.createElement('span');
+  const tooltipText = document.createElement('span');
+  const lifecycleLink = document.createElement('a');
+
+  ribbon.className = 'experimental-ribbon';
+  ribbon.textContent = 'Experimental';
+  ribbon.tabIndex = 0;
+  ribbon.setAttribute('aria-label', `Experimental. ${EXPERIMENTAL_TOOLTIP}`);
+  ribbon.setAttribute('aria-describedby', 'experimental-tooltip');
+
+  tooltip.id = 'experimental-tooltip';
+  tooltip.className = 'experimental-tooltip';
+  tooltip.setAttribute('aria-hidden', 'true');
+  tooltip.setAttribute('role', 'tooltip');
+
+  tooltipText.textContent = EXPERIMENTAL_TOOLTIP;
+  lifecycleLink.href = 'https://www.aem.live/docs/lifecycle';
+  lifecycleLink.textContent = 'Learn about the AEM lifecycle.';
+  tooltip.append(tooltipText, ' ', lifecycleLink);
+
+  attachTooltip(ribbon, tooltip);
+  block.prepend(tooltip);
+  block.prepend(ribbon);
 }
 
 async function fetchThemeIcon(theme) {
@@ -250,7 +291,7 @@ export default async function decorate(block) {
         }
       }
     });
-    await decorateLabToolLinks(wrapper);
+    observeLabToolLinks(wrapper);
   }
 
   // add login button
@@ -305,19 +346,7 @@ export default async function decorate(block) {
   // add experimental ribbon for pages with lab metadata
   const isLab = getMetadata('lab') === 'true';
   if (isLab) {
-    const ribbon = document.createElement('div');
-    const tooltip = document.createElement('span');
-    ribbon.className = 'experimental-ribbon';
-    ribbon.textContent = 'Experimental';
-    tooltip.className = 'experimental-tooltip';
-    tooltip.textContent = EXPERIMENTAL_TOOLTIP;
-    tooltip.setAttribute('aria-hidden', 'true');
-    tooltip.setAttribute('role', 'tooltip');
-    ribbon.setAttribute('aria-label', `Experimental. ${EXPERIMENTAL_TOOLTIP}`);
-    ribbon.tabIndex = 0;
-    attachTooltip(ribbon, tooltip);
-    block.prepend(tooltip);
-    block.prepend(ribbon);
+    decorateExperimentalRibbon(block);
   }
 
   swapIcons(block);
