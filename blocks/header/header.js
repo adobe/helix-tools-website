@@ -17,7 +17,7 @@ const THEME_NAMES = {
   dark: 'Dark',
 };
 
-const EXPERIMENTAL_TOOLTIP = 'Experimental tools are early-access: they may undergo significant changes without warning and are not yet widely adopted.';
+const EXPERIMENTAL_TOOLTIP = 'Experimental tools should be considered early-access: they may undergo significant changes without warning and are not yet widely adopted.';
 
 function getNextTheme(current) {
   const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
