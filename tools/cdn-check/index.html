@@ -22,38 +22,46 @@
     <div>
       <h1>CDN Check</h1>
       <p>
-        Validate your CDN configuration and production setup. Enter an <code>.aem.live</code> page URL 
-        to run a comprehensive check on your CDN configuration, caching behavior, image delivery, and redirects.
+        Validate your CDN configuration and production setup. Enter your live production page URL first;
+        we detect your <code>.aem.live</code> origin from CDN response headers when possible. If that does not work,
+        enter the AEM page URL yourself (or use “Enter AEM page URL manually” to skip detection).
       </p>
     </div>
 
     <div>
-      <form id="cdn-check-form" method="GET" action="">
+      <form id="cdn-check-form" method="get" action="">
         <div class="form-field">
-          <label for="url">Page URL</label>
-          <input 
-            type="url" 
-            id="url" 
-            name="url" 
-            placeholder="https://main--mysite--myorg.aem.live/path/to/page"
-            required 
-          />
-          <div class="field-help-text">
-            <p>Enter an <code>.aem.live</code> URL from your site. <a href="#" id="discover-origin-link">Don't know your origin?</a></p>
-          </div>
-        </div>
-        <div class="form-field">
-          <label for="prod-page-url">Production page URL <span class="optional">(optional)</span></label>
+          <label for="prod-page-url">Production page URL</label>
           <input
             type="url"
             id="prod-page-url"
             name="prodPageUrl"
             placeholder="https://www.example.com/path/to/page"
+            autocomplete="url"
           />
           <div class="field-help-text">
-            <p>Use when your CDN rewrites URLs so the production page URL differs from the AEM path. Image delivery check will use this as the base for production image URLs.</p>
+            <p>Use the URL visitors see in production (same path you want to compare on <code>.aem.live</code> when possible).</p>
+            <p id="origin-detect-hint" class="origin-detect-hint" aria-live="polite"></p>
           </div>
         </div>
+        <div id="aem-url-field-wrapper" class="aem-url-field-wrapper" hidden>
+          <div class="form-field">
+            <label for="url">AEM page URL</label>
+            <input
+              type="url"
+              id="url"
+              name="url"
+              placeholder="https://main--mysite--myorg.aem.live/path/to/page"
+              autocomplete="off"
+            />
+            <div class="field-help-text">
+              <p>Your <code>.aem.live</code> or <code>.aem.page</code> URL for this page. Shown when automatic origin detection does not find a match, or if you chose to enter it manually.</p>
+            </div>
+          </div>
+        </div>
+        <p class="manual-aem-link-wrap">
+          <a href="#" id="enter-aem-manual-link">Enter AEM page URL manually</a>
+        </p>
         <p class="button-wrapper">
           <button type="submit" id="run-check" class="button">Run CDN Check</button>
           <button type="reset" class="button outline">Clear</button>
@@ -167,39 +175,6 @@
       </div>
     </div>
 
-    <!-- Origin Discovery Modal -->
-    <dialog id="discover-origin-modal">
-      <div>
-        <h2>Discover Your AEM Origin</h2>
-        <p>Enter your production URL and we'll try to detect the AEM origin from CDN headers.</p>
-        <form id="discover-origin-form">
-          <div class="form-field">
-            <label for="prod-url">Production URL</label>
-            <input 
-              type="url" 
-              id="prod-url" 
-              placeholder="https://www.example.com/"
-              required 
-            />
-          </div>
-          <p class="button-wrapper">
-            <button type="submit" class="button" id="discover-btn">Discover Origin</button>
-            <button type="button" class="button outline" id="cancel-discover">Cancel</button>
-          </p>
-        </form>
-        <div id="discover-result" aria-hidden="true">
-          <h3>Detected Origin</h3>
-          <p class="discover-origin-value"></p>
-          <p class="button-wrapper">
-            <button type="button" class="button" id="use-origin-btn">Use This Origin</button>
-          </p>
-        </div>
-        <div id="discover-error" aria-hidden="true">
-          <p class="error-message"></p>
-        </div>
-      </div>
-      <button class="cross close-modal" id="close-discover-modal" title="Close">Close</button>
-    </dialog>
   </main>
   <footer></footer>
 </body>

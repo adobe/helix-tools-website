@@ -33,6 +33,12 @@ const CHECKS = [
 ];
 
 // Utility functions
+/** @param {string} originTriple branch--site--org */
+function buildAemLivePageUrl(originTriple, prodUrlString) {
+  const prodUrlObj = new URL(prodUrlString);
+  return `https://${originTriple}.aem.live${prodUrlObj.pathname}`;
+}
+
 function parseAemUrl(urlString) {
   try {
     const url = new URL(urlString);
@@ -975,6 +981,28 @@ async function runChecks(pageUrl, prodPageUrl = null) {
     return;
   }
 
+  const prodForGate = prodPageUrl && String(prodPageUrl).trim();
+  if (prodForGate) {
+    try {
+      const resp = await fetch(corsProxy(prodForGate, { revealHeaders: true }), {
+        method: 'GET',
+        cache: 'no-store',
+      });
+      if (!resp.ok) {
+        throw new Error(`Proxy request failed: ${resp.status}`);
+      }
+      const data = await resp.json();
+      const status = parseInt(data.status, 10);
+      if (status !== 200) {
+        showError(`Production page URL must return HTTP 200 before running checks. Received ${Number.isNaN(status) ? 'unknown' : status} for ${prodForGate}`);
+        return;
+      }
+    } catch (e) {
+      showError(`Production URL check failed: ${e.message}`);
+      return;
+    }
+  }
+
   // Show results sections
   SCORE_SECTION.setAttribute('aria-hidden', 'false');
   RESULTS_SECTION.setAttribute('aria-hidden', 'false');
@@ -1148,88 +1176,112 @@ async function discoverOrigin(prodUrl) {
   return origins;
 }
 
-function setupOriginDiscovery() {
-  const discoverLink = document.getElementById('discover-origin-link');
-  const modal = document.getElementById('discover-origin-modal');
-  const discoverForm = document.getElementById('discover-origin-form');
-  const discoverResult = document.getElementById('discover-result');
-  const discoverError = document.getElementById('discover-error');
-  const closeBtn = document.getElementById('close-discover-modal');
-  const cancelBtn = document.getElementById('cancel-discover');
-  const useOriginBtn = document.getElementById('use-origin-btn');
-  const urlInput = document.getElementById('url');
+function setOriginDetectHint(text) {
+  const el = document.getElementById('origin-detect-hint');
+  if (el) el.textContent = text || '';
+}
 
-  let discoveredOrigin = null;
+function showManualAemField() {
+  const wrapper = document.getElementById('aem-url-field-wrapper');
+  if (wrapper) wrapper.hidden = false;
+}
 
-  function resetModal() {
-    discoverForm.reset();
-    discoverResult.setAttribute('aria-hidden', 'true');
-    discoverError.setAttribute('aria-hidden', 'true');
-    discoveredOrigin = null;
-  }
+function setupManualAemEntry() {
+  const link = document.getElementById('enter-aem-manual-link');
+  const wrapper = document.getElementById('aem-url-field-wrapper');
+  const aemInput = document.getElementById('url');
+  if (!link || !wrapper || !aemInput) return;
 
-  discoverLink.addEventListener('click', (e) => {
+  link.addEventListener('click', (e) => {
     e.preventDefault();
-    resetModal();
-    modal.showModal();
+    wrapper.hidden = false;
+    aemInput.focus();
   });
+}
 
-  closeBtn.addEventListener('click', () => modal.close());
-  cancelBtn.addEventListener('click', () => modal.close());
+function updateShareableQuery(prodPageUrl, aemPageUrl) {
+  const p = new URLSearchParams();
+  if (prodPageUrl) p.set('prodPageUrl', prodPageUrl);
+  if (aemPageUrl) p.set('url', aemPageUrl);
+  const qs = p.toString();
+  const path = window.location.pathname;
+  window.history.replaceState(null, '', qs ? `${path}?${qs}` : path);
+}
 
-  modal.addEventListener('close', resetModal);
+async function runChecksWithSubmitUi(pageUrl, prodPageUrl) {
+  const submitButton = FORM.querySelector('button[type="submit"]');
+  submitButton.disabled = true;
+  submitButton.textContent = 'Checking...';
+  try {
+    await runChecks(pageUrl, prodPageUrl);
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = 'Run CDN Check';
+  }
+}
 
-  discoverForm.addEventListener('submit', async (e) => {
+function setupFormSubmit() {
+  const prodInput = document.getElementById('prod-page-url');
+  const aemInput = document.getElementById('url');
+
+  FORM.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const prodUrlInput = document.getElementById('prod-url');
-    const prodUrl = prodUrlInput.value;
-    const discoverBtn = document.getElementById('discover-btn');
+    hideError();
+    setOriginDetectHint('');
 
-    discoverBtn.disabled = true;
-    discoverBtn.textContent = 'Discovering...';
-    discoverResult.setAttribute('aria-hidden', 'true');
-    discoverError.setAttribute('aria-hidden', 'true');
+    const prod = prodInput.value.trim();
+    const aemManual = aemInput.value.trim();
+
+    if (aemManual) {
+      try {
+        parseAemUrl(aemManual);
+      } catch (err) {
+        showError(err.message);
+        return;
+      }
+      updateShareableQuery(prod || null, aemManual);
+      await runChecksWithSubmitUi(aemManual, prod || null);
+      return;
+    }
+
+    if (!prod) {
+      showError('Enter your production page URL, or use “Enter AEM page URL manually” and provide your .aem.live or .aem.page page URL.');
+      return;
+    }
 
     try {
-      const origins = await discoverOrigin(prodUrl);
-      [discoveredOrigin] = origins; // Use first found origin
+      // eslint-disable-next-line no-new
+      new URL(prod);
+    } catch {
+      showError('Enter a valid production page URL.');
+      return;
+    }
 
-      // Build the .aem.live URL using the path from the production URL
-      const prodUrlObj = new URL(prodUrl);
-      const aemLiveUrl = `https://${discoveredOrigin}.aem.live${prodUrlObj.pathname}`;
-
-      discoverResult.querySelector('.discover-origin-value').textContent = aemLiveUrl;
-      discoverResult.setAttribute('aria-hidden', 'false');
-
+    setOriginDetectHint('Detecting AEM origin…');
+    try {
+      const origins = await discoverOrigin(prod);
+      const aemPageUrl = buildAemLivePageUrl(origins[0], prod);
       if (origins.length > 1) {
         // eslint-disable-next-line no-console
         console.log('Multiple origins found:', origins);
       }
+      aemInput.value = aemPageUrl;
+      setOriginDetectHint('');
+      updateShareableQuery(prod, aemPageUrl);
+      await runChecksWithSubmitUi(aemPageUrl, prod);
     } catch (err) {
-      discoverError.querySelector('.error-message').textContent = err.message;
-      discoverError.setAttribute('aria-hidden', 'false');
-    } finally {
-      discoverBtn.disabled = false;
-      discoverBtn.textContent = 'Discover Origin';
-    }
-  });
-
-  useOriginBtn.addEventListener('click', () => {
-    if (discoveredOrigin) {
-      const prodUrlInput = document.getElementById('prod-url');
-      const prodUrlObj = new URL(prodUrlInput.value);
-      const aemLiveUrl = `https://${discoveredOrigin}.aem.live${prodUrlObj.pathname}`;
-
-      urlInput.value = aemLiveUrl;
-      modal.close();
+      setOriginDetectHint('');
+      showManualAemField();
+      showError(`Could not detect your AEM origin automatically: ${err.message} Enter your AEM page URL above and run the check again.`);
+      aemInput.focus();
     }
   });
 }
 
 // Event listeners and initialization
 function setupEventListeners() {
-  // Setup origin discovery modal
-  setupOriginDiscovery();
+  setupManualAemEntry();
+  setupFormSubmit();
 
   // Toggle check details on click
   document.querySelectorAll('.check-header').forEach((header) => {
@@ -1250,30 +1302,44 @@ function setupEventListeners() {
   });
 }
 
-// Auto-run check if URL param is present
+// Auto-run check if URL query params are present
 async function init() {
   setupEventListeners();
 
   const params = new URLSearchParams(window.location.search);
   const urlParam = params.get('url');
-  const prodPageUrlParam = params.get('prodPageUrl') || null;
+  const prodPageUrlParam = params.get('prodPageUrl');
+
+  const prodPageUrlInput = document.getElementById('prod-page-url');
+  const aemInput = document.getElementById('url');
 
   if (urlParam) {
-    document.getElementById('url').value = urlParam;
-    const prodPageUrlInput = document.getElementById('prod-page-url');
+    aemInput.value = urlParam;
     if (prodPageUrlParam) {
       prodPageUrlInput.value = prodPageUrlParam;
     }
+    await runChecksWithSubmitUi(urlParam, prodPageUrlParam || null);
+    return;
+  }
 
-    const submitButton = FORM.querySelector('button[type="submit"]');
-    submitButton.disabled = true;
-    submitButton.textContent = 'Checking...';
-
+  if (prodPageUrlParam) {
+    prodPageUrlInput.value = prodPageUrlParam;
+    setOriginDetectHint('Detecting AEM origin…');
     try {
-      await runChecks(urlParam, prodPageUrlParam);
-    } finally {
-      submitButton.disabled = false;
-      submitButton.textContent = 'Run CDN Check';
+      const origins = await discoverOrigin(prodPageUrlParam);
+      const aemPageUrl = buildAemLivePageUrl(origins[0], prodPageUrlParam);
+      if (origins.length > 1) {
+        // eslint-disable-next-line no-console
+        console.log('Multiple origins found:', origins);
+      }
+      aemInput.value = aemPageUrl;
+      setOriginDetectHint('');
+      updateShareableQuery(prodPageUrlParam, aemPageUrl);
+      await runChecksWithSubmitUi(aemPageUrl, prodPageUrlParam);
+    } catch (err) {
+      setOriginDetectHint('');
+      showManualAemField();
+      showError(`Could not detect your AEM origin automatically: ${err.message} Enter your AEM page URL above and run the check again.`);
     }
   }
 }
