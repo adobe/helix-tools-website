@@ -1,7 +1,11 @@
 /* eslint-disable class-methods-use-this */
+import { registerToolReady } from '../../scripts/scripts.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { loadPrism, highlight } from '../../utils/prism/prism.js';
+import {
+  toDateTimeLocal, toUTCDate, toISODate, calculatePastDate,
+} from './utils.js';
 
 // field ids
 const FIELDS = ['date-from', 'date-to'];
@@ -39,73 +43,6 @@ function debounce(func, wait) {
     clearTimeout(timeout);
     timeout = setTimeout(() => func.apply(context, args), wait);
   };
-}
-
-// date management
-/**
- * Pads a number with a leading 0 if necessary, returning a two-character string.
- * @param {number} number - Number.
- * @returns {string} Padded number.
- */
-function pad(number) {
-  return number.toString().padStart(2, '0');
-}
-
-/**
- * Converts Date object to a formatted datetime-local string.
- * @param {Date} date - Date object.
- * @returns {string} Date and time in "YYYY-MM-DDTHH:MM" format.
- */
-function toDateTimeLocal(date) {
-  // convert date
-  const year = date.getFullYear();
-  const month = pad(date.getMonth() + 1);
-  const day = pad(date.getDate());
-  // convert time
-  const hours = pad(date.getHours());
-  const minutes = pad(date.getMinutes());
-
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-}
-
-/**
- * Converts Date object to a formatted UTC date and time string.
- * @param {Date} date - Date object.
- * @returns {string} UTC date and time in "MM/DD/YYYY HH:MM UTC" format.
- */
-function toUTCDate(date) {
-  const dd = pad(date.getUTCDate());
-  const mm = pad(date.getUTCMonth() + 1);
-  const yyyy = date.getUTCFullYear();
-  const hours = pad(date.getUTCHours());
-  const minutes = pad(date.getUTCMinutes());
-  return `${mm}/${dd}/${yyyy} ${hours}:${minutes} UTC`;
-}
-
-/**
- * Converts date string to a formatted ISO string.
- * @param {string} str - Date string.
- * @returns {string} Date in ISO format ("YYYY-MM-DDTHH:MM:SS.sssZ").
- */
-function toISODate(str) {
-  const date = new Date(str);
-  return date.toISOString();
-}
-
-/**
- * Calculates past date by subtracting specified days, hours, and minutes from reference date.
- * @param {number} days - Days to subtract.
- * @param {number} hours - Hours to subtract.
- * @param {number} mins - Minutes to subtract.
- * @param {Date} now - Reference date used to calculate past date (default is current date/time).
- * @returns {Date} Date object representing the calculated past date.
- */
-function calculatePastDate(days, hours, mins, now = new Date()) {
-  const newDate = now;
-  if (days > 0) newDate.setDate(newDate.getDate() - days);
-  if (hours > 0) newDate.setHours(newDate.getHours() - hours);
-  if (mins > 0) newDate.seMinutes(newDate.geMinutes() - mins);
-  return newDate;
 }
 
 // loading button management
@@ -393,6 +330,14 @@ class RewrittenData {
     }
     if (type === 'job' || type.includes('-job')) {
       return writeAdminDetails(`${ADMIN}/job/${this.data.org}/${this.data.site}/${this.data.ref}${value}/details`, value);
+    }
+    if (type === 'snapshot') {
+      // snapshot logs have job ID in the 'job' field, not 'path'
+      const jobId = this.data.job;
+      if (jobId) {
+        return writeAdminDetails(`${ADMIN}/job/${this.data.org}/${this.data.site}/${this.data.ref}/${jobId}/details`, jobId);
+      }
+      return value || '-';
     }
     if (type === 'preview') {
       return writeA(`${this.preview}${value}`, value);
@@ -949,9 +894,4 @@ async function populateForm(doc) {
   await initConfigField();
 }
 
-const isReady = populateForm(document);
-
-// eslint-disable-next-line import/prefer-default-export
-export async function ready() {
-  await isReady;
-}
+registerToolReady(populateForm(document));

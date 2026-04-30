@@ -1,279 +1,268 @@
-import { initConfigField, updateConfig } from '../../utils/config/config.js';
+import { registerToolReady } from '../../scripts/scripts.js';
+import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
+import { VIEW_STORAGE_KEY } from './helpers/constants.js';
+import { fetchSites, fetchSiteDetails } from './helpers/api-helper.js';
+import {
+  loadIcon,
+  icon,
+  getFavorites,
+  getContentSourceType,
+  getDAEditorURL,
+} from './helpers/utils.js';
+import { openAddSiteModal } from './helpers/modals.js';
+import createSiteCard from './helpers/site-card.js';
 
-/* eslint-disable no-alert */
-const adminForm = document.getElementById('site-admin-form');
 const org = document.getElementById('org');
-const siteField = document.getElementById('site');
 const consoleBlock = document.querySelector('.console');
 const sitesElem = document.querySelector('div#sites');
 
-async function saveSiteConfig(path, site, codeSrc, contentSrc) {
-  const codeURL = new URL(codeSrc);
-  const [, owner, repo] = codeURL.pathname.split('/');
-  const code = {
-    owner,
-    repo,
-    source: {
-      type: 'github',
-      url: codeSrc,
-    },
-  };
-  const content = {
-    source: {
-      type: 'markup',
-      url: contentSrc,
-    },
-  };
+// Logging wrapper for API calls
+const logFn = (status, details) => logResponse(consoleBlock, status, details);
 
-  const contentURL = new URL(contentSrc);
-  if (contentSrc.startsWith('https://drive.google.com/drive')) {
-    const id = contentURL.pathname.split('/').pop();
-    content.source.type = 'google';
-    content.source.id = id;
-  }
+const populateCardDetails = (card, orgValue) => {
+  const siteName = card.dataset.site;
+  fetchSiteDetails(orgValue, siteName).then((details) => {
+    if (!details) return;
 
-  if (contentSrc.includes('sharepoint.com/')) {
-    content.source.type = 'onedrive';
-  }
+    const contentUrl = details.content?.source?.url || '';
+    const contentSourceType = details.content?.source?.type || '';
+    const codeUrl = details.code?.source?.url || '';
+    const sourceType = getContentSourceType(contentUrl, contentSourceType);
 
-  site.content = content;
-  site.code = code;
-  const adminURL = `https://admin.hlx.page${path}`;
-  const resp = await fetch(adminURL, {
-    method: 'POST',
-    body: JSON.stringify(site),
-    headers: {
-      'content-type': 'application/json',
-    },
-  });
-  await resp.text();
-  logResponse(consoleBlock, resp.status, ['POST', adminURL, resp.headers.get('x-error') || '']);
-  // eslint-disable-next-line no-use-before-define
-  displaySitesForOrg(org.value);
-}
+    const badge = card.querySelector('.source-badge');
+    if (badge) {
+      badge.textContent = sourceType.label;
+      badge.className = `source-badge source-${sourceType.type}`;
+      badge.title = sourceType.type.toUpperCase();
+    }
 
-async function deleteSiteConfig(path) {
-  const adminURL = `https://admin.hlx.page${path}`;
-  const resp = await fetch(adminURL, {
-    method: 'DELETE',
-  });
-  await resp.text();
-  logResponse(consoleBlock, resp.status, ['DELETE', adminURL, resp.headers.get('x-error') || '']);
-  // eslint-disable-next-line no-use-before-define
-  displaySitesForOrg(org.value);
-}
+    const codeSource = card.querySelector('.site-card-source[data-type="code"]');
+    const contentSource = card.querySelector('.site-card-source[data-type="content"]');
+    const contentEditorUrl = getDAEditorURL(contentUrl);
 
-function displaySiteDetails(path, name, elem, site = {
-  code: {
-    source: {
-      url: '',
-    },
-  },
-  content: {
-    source: {
-      url: '',
-    },
-  },
-}) {
-  elem.innerHTML = `<form id=${name}>
-        <fieldset>
-        <div class="form-field url-field">
-          <label for="${name}-code">GitHub URL</label>
-          <input value="${site.code.source.url}" name="code" id="${name}-code" required type="url"/>
-          <div class="field-help-text">
-            <p>
-              Enter Code URL for the GitHub Repo to be used for this site
-            </p>
-          </div>
-        </div>
-        <div class="form-field url-field">
-          <label for="${name}-content">Content Source</label>
-          <input value="${site.content.source.url}" name="content" id="${name}-content" required type="url"/>
-          <div class="field-help-text">
-            <p>
-              Enter Source URL for your Sharepoint, Google Drive or MarkUp source
-            </p>
-          </div>
-        </div>
-        <p class="button-wrapper">
-          <button type="submit" id="${name}-save" class="button">Save</button>
-          <button id="${name}-clone" class="button outline">Copy Site Config ...</button>
-          <button id="${name}-delete" class="button outline">Delete ...</button>
-        </p>
-        </fieldset>
-    </form>`;
-  const fs = elem.querySelector('fieldset');
-  const save = elem.querySelector(`[id="${name}-save"]`);
-  save.addEventListener('click', (e) => {
-    fs.disabled = 'disabled';
-    save.innerHTML += ' <i class="symbol symbol-loading"></i>';
-    e.preventDefault();
-    const contentSrc = elem.querySelector('input[name="content"]').value;
-    const codeSrc = elem.querySelector('input[name="code"]').value;
-    saveSiteConfig(path, site, codeSrc, contentSrc);
-  });
-  const clone = elem.querySelector(`[id="${name}-clone"]`);
-  clone.addEventListener('click', (e) => {
-    e.preventDefault();
-    const sitename = prompt('Enter name of new site (eg. site1)');
-    if (sitename) {
-      fs.disabled = 'disabled';
-      clone.innerHTML += ' <i class="symbol symbol-loading"></i>';
-      const contentSrc = elem.querySelector('input[name="content"]').value;
-      const codeSrc = elem.querySelector('input[name="code"]').value;
-      const newpath = `${path.substring(0, path.lastIndexOf('/'))}/${sitename}.json`;
-      saveSiteConfig(newpath, site, codeSrc, contentSrc);
+    if (codeSource) {
+      codeSource.title = codeUrl || 'Not configured';
+      if (codeUrl) codeSource.href = codeUrl;
+      else codeSource.removeAttribute('href');
+    }
+    if (contentSource) {
+      contentSource.title = contentUrl || 'Not configured';
+      if (contentEditorUrl) contentSource.href = contentEditorUrl;
+      else contentSource.removeAttribute('href');
+    }
+
+    card.dataset.codeUrl = codeUrl;
+    card.dataset.contentUrl = contentUrl;
+
+    const isByogit = details.code?.source?.type === 'byogit'
+      || codeUrl.includes('cm-repo.adobe.io');
+    if (isByogit) {
+      card.dataset.byogitOwner = details.code?.source?.owner || details.code?.owner || '';
+      card.dataset.byogitRepo = details.code?.source?.repo || details.code?.repo || '';
+    }
+
+    const hasPreviewAuth = details.access?.site || details.access?.preview;
+    const hasLiveAuth = details.access?.site || details.access?.live;
+    const hasAnyAuth = hasPreviewAuth || hasLiveAuth;
+
+    const lighthouseBtn = card.querySelector('.menu-item[data-action="lighthouse"]');
+    if (hasAnyAuth) {
+      card.dataset.hasAuth = 'true';
+      if (lighthouseBtn) {
+        lighthouseBtn.disabled = true;
+        lighthouseBtn.title = 'Lighthouse unavailable for authenticated sites';
+      }
+      if (hasPreviewAuth) {
+        card.querySelector('.auth-icon.auth-preview').removeAttribute('aria-hidden');
+      }
+      if (hasLiveAuth) {
+        card.querySelector('.auth-icon.auth-live').removeAttribute('aria-hidden');
+      }
+    } else {
+      delete card.dataset.hasAuth;
+      if (lighthouseBtn) {
+        lighthouseBtn.disabled = false;
+        lighthouseBtn.title = '';
+      }
+      card.querySelector('.auth-icon.auth-preview')?.setAttribute('aria-hidden', 'true');
+      card.querySelector('.auth-icon.auth-live')?.setAttribute('aria-hidden', 'true');
+    }
+
+    const cdnHost = details.cdn?.prod?.host || details.cdn?.host;
+    const cdnEl = card.querySelector('.site-card-cdn');
+    if (cdnHost && cdnEl) {
+      cdnEl.querySelector('span').textContent = cdnHost;
+      cdnEl.href = `https://${cdnHost}`;
+      cdnEl.classList.add('visible');
+    } else if (cdnEl) {
+      cdnEl.classList.remove('visible');
     }
   });
-  const remove = elem.querySelector(`[id="${name}-delete"]`);
-  remove.addEventListener('click', (e) => {
-    e.preventDefault();
-    const [owner, sitecheck] = prompt('For safety enter org/sitename of the site you are about to delete').split('/');
+};
 
-    if (path === `/config/${owner}/sites/${sitecheck}.json`) {
-      fs.disabled = 'disabled';
-      remove.innerHTML += ' <i class="symbol symbol-loading"></i>';
-      deleteSiteConfig(path);
-    }
-  });
+const findCardBySite = (name) => sitesElem.querySelector(`.site-card[data-site="${CSS.escape(name)}"]`);
 
-  // config field update
-  siteField.value = name;
-  updateConfig();
-}
+const updateSiteCount = () => {
+  const countEl = sitesElem.querySelector('.sites-count');
+  const total = sitesElem.querySelectorAll('.site-card').length;
+  if (countEl) countEl.textContent = `${total} site${total !== 1 ? 's' : ''}`;
+};
 
-function displaySite(site, sitesList, editMode = false) {
-  const li = document.createElement('li');
-  li.innerHTML = `<div class="sites-site-name">${site.name} <a target="_blank" href="https://main--${site.name}--${org.value}.aem.page/"><span class="site-admin-oinw"></span></a></div>`;
-  const buttons = document.createElement('div');
-  buttons.className = 'sites-site-edit';
-  const edit = document.createElement('button');
-  edit.className = 'button';
-  edit.dataset.path = site.path;
-  edit.textContent = 'Edit';
-  edit.ariaHidden = editMode;
-  buttons.append(edit);
-  const cancel = document.createElement('button');
-  cancel.className = 'button outline';
-  cancel.dataset.path = site.path;
-  cancel.textContent = 'Cancel';
-  cancel.ariaHidden = !editMode;
-  buttons.append(cancel);
-  li.append(buttons);
-  const details = document.createElement('div');
-  details.className = 'sites-site-details';
-  details.ariaHidden = !editMode;
+let detailsObserver;
 
-  li.append(details);
-
-  edit.addEventListener('click', async () => {
-    const adminURL = `https://admin.hlx.page${site.path}`;
-    const resp = await fetch(adminURL);
-    if (resp.status === 200) {
-      const siteDetails = await resp.json();
-      displaySiteDetails(site.path, site.name, details, siteDetails);
-      cancel.ariaHidden = false;
-      edit.ariaHidden = true;
-      details.ariaHidden = false;
-    }
-    logResponse(consoleBlock, resp.status, ['GET', adminURL, resp.headers.get('x-error') || '']);
-  });
-
-  cancel.addEventListener('click', async () => {
-    cancel.ariaHidden = true;
-    edit.ariaHidden = false;
-    details.innerText = '';
-    details.ariaHidden = true;
-  });
-
-  sitesList.append(li);
-  return details;
-}
-
-async function addNewSite(sitesList, blueprint) {
-  const sitename = prompt('Enter name of new site (eg. site1)');
-  if (sitename) {
-    const path = `/config/${org.value}/sites/${sitename}.json`;
-    const details = displaySite({
-      name: sitename,
-      path,
-    }, sitesList, true);
-    displaySiteDetails(path, sitename, details, blueprint);
-  }
-}
-
-function displaySites(sites) {
+const displaySites = (sites) => {
   sitesElem.ariaHidden = false;
   sitesElem.textContent = '';
-  const div = document.createElement('div');
-  div.classList.add('sites-list-button-bar');
-  const addNew = document.createElement('button');
-  addNew.className = 'button';
-  addNew.textContent = 'Add new site...';
-  addNew.addEventListener('click', () => {
-    // eslint-disable-next-line no-use-before-define
-    addNewSite(sitesList);
-  });
-  div.append(addNew);
-  sitesElem.append(div);
-  const div2 = document.createElement('div');
-  const sitesList = document.createElement('ol');
-  sitesList.id = 'sites-list';
-  sites.forEach((site) => {
-    displaySite(site, sitesList);
-  });
-  div2.append(sitesList);
-  sitesElem.append(div2);
-}
 
-async function displaySitesForOrg(orgValue) {
+  const savedView = localStorage.getItem(VIEW_STORAGE_KEY) || 'grid';
+
+  const header = document.createElement('div');
+  header.className = 'sites-header';
+  header.innerHTML = `
+    <span class="sites-count">${sites.length} site${sites.length !== 1 ? 's' : ''}</span>
+    <div class="sites-actions">
+      <div class="sites-search">
+        <input type="text" placeholder="Search sites..." class="search-input" />
+      </div>
+      <div class="view-toggle">
+        <button type="button" class="view-btn ${savedView === 'grid' ? 'active' : ''}" data-view="grid" title="Grid view">
+          ${icon('grid')}
+        </button>
+        <button type="button" class="view-btn ${savedView === 'list' ? 'active' : ''}" data-view="list" title="List view">
+          ${icon('list')}
+        </button>
+      </div>
+      <button class="button add-site-btn">+ Add Site</button>
+    </div>
+  `;
+
+  header.querySelector('.add-site-btn').addEventListener('click', () => openAddSiteModal(org.value, '', '', logFn));
+
+  sitesElem.appendChild(header);
+
+  const grid = document.createElement('div');
+  grid.className = `sites-grid ${savedView === 'list' ? 'list-view' : ''}`;
+
+  const searchInput = header.querySelector('.search-input');
+  searchInput.addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase().trim();
+    grid.querySelectorAll('.site-card').forEach((card) => {
+      const siteName = card.dataset.site.toLowerCase();
+      card.setAttribute('aria-hidden', !siteName.includes(query));
+    });
+  });
+
+  header.querySelectorAll('.view-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const { view } = btn.dataset;
+      header.querySelectorAll('.view-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      grid.classList.toggle('list-view', view === 'list');
+      localStorage.setItem(VIEW_STORAGE_KEY, view);
+    });
+  });
+
+  const favorites = getFavorites(org.value);
+  const sortedSites = [...sites].sort((a, b) => {
+    const aFav = favorites.includes(a.name);
+    const bFav = favorites.includes(b.name);
+    if (aFav && !bFav) return -1;
+    if (!aFav && bFav) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  if (detailsObserver) detailsObserver.disconnect();
+  detailsObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        populateCardDetails(entry.target, org.value);
+        detailsObserver.unobserve(entry.target);
+      }
+    });
+  }, { rootMargin: '200px' });
+
+  sortedSites.forEach((site) => {
+    const card = createSiteCard(site, org.value);
+    grid.appendChild(card);
+    detailsObserver.observe(card);
+  });
+
+  sitesElem.appendChild(grid);
+};
+
+const displaySitesForOrg = async (orgValue) => {
   sitesElem.setAttribute('aria-hidden', 'true');
   sitesElem.replaceChildren();
 
-  const adminURL = `https://admin.hlx.page/config/${orgValue}/sites.json`;
-  const resp = await fetch(adminURL);
-  if (resp.status === 200) {
-    const { sites } = await resp.json();
-    displaySites(sites);
-  }
-  logResponse(consoleBlock, resp.status, ['GET', adminURL, resp.headers.get('x-error') || '']);
-}
+  const { sites, status } = await fetchSites(orgValue, logFn);
 
-/**
- * Handles site admin form submission.
- * @param {Event} e - Submit event.
- */
-adminForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  // siteField may be empty for org-level operations, pass undefined if so
-  if (!await ensureLogin(org.value, siteField.value || undefined)) {
-    // not logged in yet, listen for profile-update event
-    window.addEventListener('profile-update', ({ detail: loginInfo }) => {
-      // check if user is logged in now
-      if (loginInfo.includes(org.value)) {
-        // logged in, restart action (e.g. resubmit form)
-        e.target.querySelector('button[type="submit"]').click();
-      }
-    }, { once: true });
-    // abort action
+  if (status === 200 && sites) {
+    displaySites(sites);
+  } else if (status === 401) {
+    const loggedIn = await ensureLogin(orgValue);
+    if (loggedIn) {
+      return displaySitesForOrg(orgValue);
+    }
+  }
+  return null;
+};
+
+window.addEventListener('sites-refresh', (e) => {
+  const { orgValue, action, siteName } = e.detail;
+
+  if (action === 'delete' && siteName) {
+    const card = findCardBySite(siteName);
+    if (card) card.remove();
+    updateSiteCount();
     return;
   }
-  localStorage.setItem('org', org.value);
-  displaySitesForOrg(org.value);
+
+  if (action === 'update' && siteName) {
+    const card = findCardBySite(siteName);
+    if (card) populateCardDetails(card, orgValue);
+    return;
+  }
+
+  if (action === 'add' && siteName) {
+    const grid = sitesElem.querySelector('.sites-grid');
+    if (grid) {
+      const card = createSiteCard({ name: siteName }, orgValue);
+      const favorites = getFavorites(orgValue);
+      const isFav = favorites.includes(siteName);
+      const insertBefore = [...grid.querySelectorAll('.site-card')].find((c) => {
+        const cFav = favorites.includes(c.dataset.site);
+        if (isFav && !cFav) return true;
+        if (!isFav && cFav) return false;
+        return c.dataset.site.localeCompare(siteName) > 0;
+      });
+      if (insertBefore) grid.insertBefore(card, insertBefore);
+      else grid.appendChild(card);
+      populateCardDetails(card, orgValue);
+      updateSiteCount();
+    }
+    return;
+  }
+
+  displaySitesForOrg(orgValue);
 });
 
-async function init() {
+const initSiteAdmin = async () => {
+  const neededIcons = [
+    'code', 'document', 'edit', 'copy', 'external', 'trash', 'key',
+    'check', 'more-vertical', 'shield', 'lock', 'activity',
+    'user', 'search', 'grid', 'list', 'star',
+  ];
+  await Promise.all(neededIcons.map(loadIcon));
   await initConfigField();
-
   if (!org.value) org.value = localStorage.getItem('org') || 'adobe';
-  if (org.value) displaySitesForOrg(org.value);
-}
+  if (org.value) {
+    const loggedIn = await ensureLogin(org.value);
+    if (loggedIn) {
+      displaySitesForOrg(org.value);
+    }
+  }
+};
 
-const initPromise = init();
-
-// eslint-disable-next-line import/prefer-default-export
-export function ready() {
-  return initPromise;
-}
+registerToolReady(initSiteAdmin());

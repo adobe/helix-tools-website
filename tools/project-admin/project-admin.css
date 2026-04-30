@@ -15,22 +15,6 @@
   white-space: nowrap;
 }
 
-.project-admin .status-light::before {
-  color: var(--red-900);
-}
-
-.project-admin .status-light.http1::before {
-  color: var(--blue-900);
-}
-
-.project-admin .status-light.http2::before {
-  color: var(--green-900);
-}
-
-.project-admin .status-light.http3::before {
-  color: var(--yellow-900);
-}
-
 .project-admin .projects-org {
   margin: 0 0 16px;
 }
@@ -54,7 +38,7 @@
 
 .project-admin ol.projects-list li {
   padding: var(--spacing-l) 0;
-  border-top: var(--border-s) solid var(--gray-300);
+  border-top: var(--border-s) solid var(--color-border);
   display: grid;
   grid-template-areas: "id button" "details button";
   grid-template-columns: 1fr max-content;
@@ -63,7 +47,7 @@
 }
 
 .project-admin ol.projects-list li:first-of-type {
-  border-top: var(--border-m) solid var(--gray-700);
+  border-top: var(--border-m) solid light-dark(var(--gray-700), var(--gray-400));
 }
 
 .project-admin .projects-list-button-bar {
@@ -139,7 +123,7 @@
 }
 
 .project-admin .form-field.picker-field input[disabled] ~ i.symbol {
-  color: var(--gray-400);
+  color: var(--color-button-disabled-text);
 }
 
 .project-admin .form-field.picker-field ul li[data-value="default"] {

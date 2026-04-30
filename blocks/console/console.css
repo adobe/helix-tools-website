@@ -29,7 +29,7 @@
   left: calc(-0.5 * var(--border-s));
   right: calc(-0.5 * var(--border-s));
   height: 0.6em;
-  border: var(--border-s) solid var(--gray-300);
+  border: var(--border-s) solid var(--color-border);
   background-color: var(--color-background);
 }
 
@@ -67,58 +67,20 @@
 .console tbody tr {
   font-family: monospace;
   font-size: var(--body-size-xs);
-  border-left: var(--border-s) solid var(--gray-300);
-  border-right: var(--border-s) solid var(--gray-300);
+  border-left: var(--border-s) solid var(--color-border);
+  border-right: var(--border-s) solid var(--color-border);
 }
 
 .console tbody tr + tr {
-  border-top: var(--border-s) solid var(--gray-300);
+  border-top: var(--border-s) solid var(--color-border);
 }
 
+/* Console uses filled badges with dot indicators */
 .console .status-light {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 4px;
   font-weight: 600;
-}
-
-.console .status-light.http2 {
-  background-color: var(--status-ok-bg, #d4edda);
-  color: var(--status-ok-text, #155724);
-}
-
-.console .status-light.http3 {
-  background-color: var(--status-redirect-bg, #fff3cd);
-  color: var(--status-redirect-text, #856404);
-}
-
-.console .status-light.http4 {
-  background-color: var(--status-error-bg, #f8d7da);
-  color: var(--status-error-text, #721c24);
-}
-
-.console .status-light.http5 {
-  background-color: var(--status-error-bg, #f8d7da);
-  color: var(--status-error-text, #721c24);
-}
-
-/* Log level status lights */
-.console .status-light.level-info {
-  background-color: var(--status-info-bg, #d1ecf1);
-  color: var(--status-info-text, #0c5460);
-}
-
-.console .status-light.level-success {
-  background-color: var(--status-ok-bg, #d4edda);
-  color: var(--status-ok-text, #155724);
-}
-
-.console .status-light.level-warning {
-  background-color: var(--status-redirect-bg, #fff3cd);
-  color: var(--status-redirect-text, #856404);
-}
-
-.console .status-light.level-error {
-  background-color: var(--status-error-bg, #f8d7da);
-  color: var(--status-error-text, #721c24);
+  background-color: var(--status-bg);
+  color: var(--status-color);
 }

@@ -1,3 +1,6 @@
+import { registerToolReady } from '../../scripts/scripts.js';
+import admin from '../../scripts/helix-admin.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 
@@ -8,8 +11,12 @@ const addHeaderBtn = document.getElementById('add-header');
 const consoleBlock = document.querySelector('.console');
 const site = document.getElementById('site');
 const org = document.getElementById('org');
+const pathSelect = document.getElementById('path-select');
+const addPathBtn = document.getElementById('add-path');
+const removePathBtn = document.getElementById('remove-path');
 
 let originalHeaders;
+let currentPath = null;
 
 function createHeaderItem(header = '', value = '') {
   const div = document.createElement('div');
@@ -68,11 +75,91 @@ function getHeadersData() {
   return headers;
 }
 
+function populatePathSelect() {
+  pathSelect.innerHTML = '';
+  const paths = Object.keys(originalHeaders);
+  if (!paths.includes('/**')) {
+    paths.unshift('/**');
+  }
+  paths.forEach((path) => {
+    const option = document.createElement('option');
+    option.value = path;
+    option.textContent = path;
+    pathSelect.appendChild(option);
+  });
+}
+
+function updateRemoveButtonState() {
+  removePathBtn.disabled = currentPath === '/**';
+}
+
+function saveCurrentPathHeaders() {
+  if (currentPath && originalHeaders) {
+    originalHeaders[currentPath] = getHeadersData();
+  }
+}
+
+function loadHeadersForPath(path) {
+  saveCurrentPathHeaders();
+  headersList.innerHTML = '';
+  currentPath = path;
+  pathSelect.value = path;
+  const headers = originalHeaders[path];
+  if (headers) {
+    headers.forEach(({ key, value }) => {
+      headersList.append(createHeaderItem(key, value));
+    });
+  }
+  updateRemoveButtonState();
+}
+
+function addNewPath() {
+  // eslint-disable-next-line no-alert
+  const newPath = prompt('Enter new path pattern (e.g., /tools/**, /fragments/**):', '/**');
+  if (newPath && newPath.trim()) {
+    const trimmedPath = newPath.trim();
+    if (!trimmedPath.startsWith('/')) {
+      // eslint-disable-next-line no-alert
+      alert('Path must start with /');
+      return;
+    }
+
+    if (originalHeaders[trimmedPath]) {
+      // eslint-disable-next-line no-alert
+      alert(`Path "${trimmedPath}" already exists.`);
+    } else {
+      originalHeaders[trimmedPath] = [];
+      populatePathSelect();
+    }
+    pathSelect.value = trimmedPath;
+    loadHeadersForPath(trimmedPath);
+  }
+}
+
+function removePath() {
+  if (currentPath === '/**') return;
+
+  // eslint-disable-next-line no-alert, no-restricted-globals
+  if (!confirm(`Remove path "${currentPath}" and all its headers? You will need to hit save to apply the changes to the site configuration.`)) return;
+
+  delete originalHeaders[currentPath];
+  currentPath = '/**';
+  populatePathSelect();
+  loadHeadersForPath(currentPath);
+}
+
 async function init() {
   await initConfigField();
 
   addHeaderBtn.addEventListener('click', () => {
     headersList.append(createHeaderItem());
+  });
+
+  addPathBtn.addEventListener('click', addNewPath);
+  removePathBtn.addEventListener('click', removePath);
+
+  pathSelect.addEventListener('change', (e) => {
+    loadHeadersForPath(e.target.value);
   });
 
   headersForm.addEventListener('submit', async (e) => {
@@ -83,22 +170,25 @@ async function init() {
       return;
     }
 
-    const headersUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/headers.json`;
-    const headers = getHeadersData();
+    saveCurrentPathHeaders();
+
     const patchedHeaders = JSON.parse(JSON.stringify(originalHeaders));
-    patchedHeaders['/**'] = headers;
-
-    const resp = await fetch(headersUrl, {
-      method: 'POST',
-      body: JSON.stringify(patchedHeaders),
-      headers: {
-        'content-type': 'application/json',
-      },
+    Object.keys(patchedHeaders).forEach((path) => {
+      if (patchedHeaders[path].length === 0) {
+        delete patchedHeaders[path];
+      }
     });
 
-    resp.text().then(() => {
-      logResponse(consoleBlock, resp.status, ['POST', headersUrl, resp.headers.get('x-error') || '']);
-    });
+    const headers = admin.config({ org: org.value, site: site.value }).select('headers.json');
+    const result = await executeAdminRequest(
+      () => (Object.keys(patchedHeaders).length === 0
+        ? headers.remove()
+        : headers.update(JSON.stringify(patchedHeaders))),
+      { org: org.value, site: site.value },
+    );
+    if (!result) return;
+    const { method, url } = result.request;
+    logResponse(consoleBlock, result.status, [method, url, result.error]);
   });
 
   adminForm.addEventListener('submit', async (e) => {
@@ -109,44 +199,34 @@ async function init() {
       return;
     }
 
-    const headersUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/headers.json`;
-    const resp = await fetch(headersUrl);
-    // Clear existing headers
+    // Preflight on the fetch (entry point); the resulting session covers later saves.
+    const result = await executeAdminRequest(
+      () => admin.config({ org: org.value, site: site.value }).select('headers.json').read(),
+      { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
+    );
+    if (!result) return;
     headersList.innerHTML = '';
     const buttonBar = document.querySelector('.button-bar');
-    if (resp.status === 200) {
-      originalHeaders = (await resp.json());
-
-      const nonStandardWarning = document.querySelector('.headers-non-standard-warning');
-      nonStandardWarning.setAttribute('aria-hidden', 'true');
-
-      Object.keys(originalHeaders).forEach((key) => {
-        if (key !== '/**') {
-          nonStandardWarning.removeAttribute('aria-hidden');
-        }
-      });
-
-      const headers = originalHeaders['/**'];
-      if (headers) {
-        // Add each header
-        headers.forEach(({ key, value }) => {
-          headersList.append(createHeaderItem(key, value));
-        });
-      }
-
+    const pathSelector = document.querySelector('.path-selector');
+    if (result.status === 200) {
+      originalHeaders = await result.json();
+      currentPath = null;
+      populatePathSelect();
+      loadHeadersForPath('/**');
+      pathSelector.setAttribute('aria-hidden', 'false');
       buttonBar.setAttribute('aria-hidden', 'false');
-    } else if (resp.status === 404) {
+    } else if (result.status === 404) {
       originalHeaders = {};
+      currentPath = null;
+      populatePathSelect();
+      loadHeadersForPath('/**');
+      pathSelector.setAttribute('aria-hidden', 'false');
       buttonBar.setAttribute('aria-hidden', 'false');
     }
 
-    logResponse(consoleBlock, resp.status, ['GET', headersUrl, resp.headers.get('x-error') || '']);
+    const { method, url } = result.request;
+    logResponse(consoleBlock, result.status, [method, url, result.error]);
   });
 }
 
-const initPromise = init();
-
-// eslint-disable-next-line import/prefer-default-export
-export function ready() {
-  return initPromise;
-}
+registerToolReady(init());

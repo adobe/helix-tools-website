@@ -1,3 +1,4 @@
+import { registerToolReady } from '../../scripts/scripts.js';
 import ImportService from './importservice.js';
 
 const form = document.querySelector('.form');
@@ -318,9 +319,4 @@ function init() {
   });
 }
 
-const initPromise = init();
-
-// eslint-disable-next-line import/prefer-default-export
-export function ready() {
-  return initPromise;
-}
+registerToolReady(init());

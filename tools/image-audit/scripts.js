@@ -1,6 +1,6 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable class-methods-use-this */
-import { buildModal } from '../../scripts/scripts.js';
+import { buildModal, registerToolReady } from '../../scripts/scripts.js';
 import { decorateIcons } from '../../scripts/aem.js';
 import { initConfigField } from '../../utils/config/config.js';
 /* reporting utilities */
@@ -718,9 +718,4 @@ async function init() {
   registerListeners(document);
 }
 
-const initPromise = init();
-
-// eslint-disable-next-line import/prefer-default-export
-export function ready() {
-  return initPromise;
-}
+registerToolReady(init());

@@ -10,7 +10,7 @@ main .data-element {
         top: -1rem;
         margin: 0;
         background-color: var(--link-color);
-        color: white;
+        color: var(--color-white);
         border-radius: 4px;
         padding-inline: .5rem;
         text-wrap: nowrap;

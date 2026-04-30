@@ -46,7 +46,7 @@
   justify-content: space-between;
   padding: 0.5em 0;
   margin: 0;
-  border-bottom: var(--border-s) solid var(--gray-200);
+  border-bottom: var(--border-s) solid var(--color-border);
 }
 
 #versions li:last-child {
@@ -64,7 +64,7 @@
 
 #versions .version-meta {
   font-size: 0.9em;
-  color: var(--gray-600);
+  color: var(--color-font-grey);
   margin: 0;
 }
 
@@ -72,7 +72,7 @@
   grid-area: details;
   margin-top: var(--spacing-m);
   padding-top: var(--spacing-m);
-  border-top: var(--border-s) solid var(--gray-300);
+  border-top: var(--border-s) solid var(--color-border);
 }
 
 .version-admin .config-field {
@@ -86,8 +86,8 @@
 }
 
 #current-version-info {
-  background-color: var(--gray-100);
-  border: var(--border-s) solid var(--gray-300);
+  background-color: light-dark(var(--gray-100), var(--gray-800));
+  border: var(--border-s) solid var(--color-border);
   border-radius: var(--rounding-m);
   padding: var(--spacing-m);
   margin-bottom: var(--spacing-m);
@@ -105,14 +105,14 @@
 }
 
 #versions li.version-current {
-  background-color: var(--green-100);
+  background-color: light-dark(var(--green-100), var(--green-900));
   border-left: 4px solid var(--green-500);
   padding: var(--spacing-s);
 }
 
 .version-data {
-  background-color: var(--gray-50);
-  border: var(--border-s) solid var(--gray-300);
+  background-color: light-dark(var(--gray-50), var(--gray-800));
+  border: var(--border-s) solid var(--color-border);
   border-radius: var(--rounding-m);
   padding: var(--spacing-m);
   margin-top: var(--spacing-m);
@@ -145,11 +145,11 @@
 }
 
 .diff-added {
-  background-color: var(--green-200);
-  color: var(--green-900);
+  background-color: light-dark(var(--green-200), var(--green-900));
+  color: light-dark(var(--green-900), var(--green-300));
 }
 
 .diff-removed {
-  background-color: var(--red-200);
-  color: var(--red-900);
+  background-color: light-dark(var(--red-200), var(--red-900));
+  color: light-dark(var(--red-900), var(--red-300));
 }

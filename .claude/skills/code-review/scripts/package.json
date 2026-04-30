@@ -1,0 +1,12 @@
+{
+  "name": "code-review-scripts",
+  "version": "1.0.0",
+  "description": "Screenshot capture utilities for local code review (not for CI)",
+  "type": "module",
+  "scripts": {
+    "capture": "node capture-screenshots.js"
+  },
+  "dependencies": {
+    "playwright": "^1.40.0"
+  }
+}

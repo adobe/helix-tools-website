@@ -1,7 +1,11 @@
 .*
+*.cjs
 *.md
-karma.config.js
+vendor/vendor.js
+vendor/.vendor-hash
 LICENSE
 package.json
 package-lock.json
-test/*
+tests/**
+**/lcov.info
+**/junit.xml

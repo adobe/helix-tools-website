@@ -147,26 +147,35 @@ function createLoginButton(org, loginInfo, closeModal) {
     loginUrl.searchParams.append('extensionId', getSidekickId());
     const loginWindow = window.open(loginUrl.toString(), '_blank');
 
+    // 60s safety net: fire `profile-cancelled` if the login window is left open.
+    let giveUpTimer;
+
     // wait for login window to be closed, then dispatch event
     const checkLoginWindow = setInterval(async () => {
       if (loginWindow.closed) {
         clearInterval(checkLoginWindow);
+        clearTimeout(giveUpTimer);
         loginButton.disabled = false;
         setTimeout(async () => {
           const newLoginInfo = await getLoginInfo();
           const orgTitle = loginButton.parentElement.parentElement;
           loginButton.replaceWith(createLoginButton(org, newLoginInfo));
           fetchUserInfo(orgTitle.querySelector('.user-info'), org, selectedSite, newLoginInfo);
+          // fire profile-update before close so listeners see the outcome
+          // before the close handler fires profile-cancelled.
           dispatchProfileEvent('update', newLoginInfo);
+          if (closeModal) {
+            document.querySelector('#profile-modal').close();
+          }
         }, 200);
-        if (closeModal) {
-          // close modal after login
-          document.querySelector('#profile-modal').close();
-        }
       }
     }, 500);
-    // stop waiting after 60 seconds
-    setTimeout(() => clearInterval(checkLoginWindow), 60000);
+
+    giveUpTimer = setTimeout(() => {
+      clearInterval(checkLoginWindow);
+      loginButton.disabled = false;
+      dispatchProfileEvent('cancelled');
+    }, 60000);
   });
 
   // enter ops mode if alt key is pressed
@@ -395,6 +404,14 @@ async function showModal(block, focusedOrg) {
     dialog.classList.add('profile-modal');
     dialog.id = 'profile-modal';
     dialog.closedBy = 'any';
+    // Bind once — the dialog is reused; rebinding stacks duplicate emissions.
+    dialog.addEventListener('close', () => {
+      dialog.classList.remove('edit-mode');
+      // Fires on every close, including post-login. Listeners that care about
+      // the login outcome should observe `profile-update` (dispatched first)
+      // and remove themselves before this fires.
+      dispatchProfileEvent('cancelled');
+    });
     block.append(dialog);
   }
 
@@ -414,21 +431,19 @@ async function showModal(block, focusedOrg) {
   closeButton.addEventListener('click', () => dialog.close());
   dialog.append(closeButton);
 
-  dialog.addEventListener('close', () => {
-    dialog.classList.remove('edit-mode');
-  });
-
   dialog.showModal();
 }
 
 export default async function decorate(block) {
   const avatar = document.createElement('button');
   avatar.innerHTML = `
-    <span class="icon" title="Manage projects and sign in">
+    <span class="icon">
       <img src="/blocks/profile/profile.svg" alt="User">
     </span>
   `;
   avatar.id = 'profile';
+  avatar.setAttribute('type', 'button');
+  avatar.setAttribute('title', 'Manage projects and sign in');
   avatar.href = window.location.href;
   avatar.addEventListener('click', (e) => {
     e.preventDefault();
@@ -473,7 +488,7 @@ export async function ensureLogin(org, site) {
     if (orgItem && siteItem) {
       // select site and place focus on login button
       siteItem.querySelector('input[type="radio"]').checked = true;
-      orgItem.querySelector('.button.login').focus();
+      orgItem.querySelector('.button.login')?.focus();
     } else if (orgItem && !site) {
       // org exists but no site specified: select first site in org and prompt user to log in
       orgItem.querySelector('li > input[type="radio"]').checked = true;

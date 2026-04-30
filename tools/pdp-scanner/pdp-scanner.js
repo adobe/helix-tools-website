@@ -1,3 +1,4 @@
+import { registerToolReady } from '../../scripts/scripts.js';
 import { diffChars } from './diff.js';
 
 const scannerForm = document.getElementById('scanner-form');
@@ -377,8 +378,7 @@ async function runScan(url, focus, share) {
   }
 }
 
-// eslint-disable-next-line import/prefer-default-export
-export async function ready() {
+async function init() {
   const urlInput = document.getElementById('url');
 
   // Populate from URL parameter if present
@@ -406,3 +406,5 @@ export async function ready() {
     await runScan(url, focus, share);
   });
 }
+
+registerToolReady(init());

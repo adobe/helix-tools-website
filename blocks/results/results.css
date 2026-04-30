@@ -28,12 +28,15 @@ main .results {
     }
 
     .loading {
+      --loading-color-1: light-dark(#c9c9c9, #404040);
+      --loading-color-2: light-dark(#a4a4a4, #555);
+
       animation-duration: 1.8s;
       animation-fill-mode: forwards;
       animation-iteration-count: infinite;
       animation-name: loading;
       animation-timing-function: linear;
-      background: linear-gradient(to right, #c9c9c9 8%, #a4a4a4 38%, #c9c9c9 54%);
+      background: linear-gradient(to right, var(--loading-color-1) 8%, var(--loading-color-2) 38%, var(--loading-color-1) 54%);
       background-size: 1000px 640px;
     }
 

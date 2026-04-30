@@ -1,3 +1,4 @@
+import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 
@@ -297,13 +298,6 @@ async function fetchHosts(org, site) {
   }
 }
 
-let initPromise;
-
-// eslint-disable-next-line import/prefer-default-export
-export async function ready() {
-  return initPromise;
-}
-
 async function init(doc) {
   doc.querySelector('.site-query').dataset.status = 'loading';
   await initConfigField();
@@ -422,4 +416,4 @@ async function init(doc) {
   doc.querySelector('.site-query').dataset.status = 'loaded';
 }
 
-initPromise = init(document);
+registerToolReady(init(document));

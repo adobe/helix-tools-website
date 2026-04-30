@@ -94,7 +94,7 @@ main .analyze form {
       transition: grid-template-rows 0.5s 0s ease-in-out, border-bottom-width 0.2s 0s ease-in-out, border-right-width 0.1s 0.2s ease-in-out, border-left-width 0.1s 0.2s ease-in-out, border-top-width 0.2s 0.3s ease-in-out;
       padding: 1rem;
       margin: 0;
-      border: 0 groove #dfdfdf;
+      border: 0 groove light-dark(#dfdfdf, #404040);
       border-radius: 4px;
 
       legend {

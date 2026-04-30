@@ -1,12 +1,23 @@
+import { registerToolReady } from '../../scripts/scripts.js';
 import { logResponse, logMessage } from '../../blocks/console/console.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
-import { initConfigField, updateConfig } from '../../utils/config/config.js';
+import { initConfigField } from '../../utils/config/config.js';
+import { createModal } from '../../blocks/modal/modal.js';
+import admin from '../../scripts/helix-admin.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
+import {
+  setNestedValue,
+  removeNestedValue,
+  applyPendingChanges,
+  cleanSidekickHostProperties,
+} from './utils.js';
 
 let currentConfig = {};
 // eslint-disable-next-line no-unused-vars
 let originalConfig = {}; // Used to track original state for comparison
 let aggregateConfig = {}; // Used to show inherited values
-let configPath = '';
+// {org, site} captured at load time so save/migrate act on the
+// originally-loaded site even if the user changes the dropdown after loading.
+let loadedCoords = null;
 const pendingChanges = new Map(); // Track all pending changes
 let showInherited = false; // Track whether inherited properties are visible
 
@@ -249,54 +260,6 @@ function getCdnType() {
 function getRequiredCdnFields(cdnType) {
   if (!cdnType || !CDN_FIELDS[cdnType]) return [];
   return CDN_FIELDS[cdnType].filter((field) => field.required);
-}
-
-/**
- * Sets a nested value in an object using a path
- * @param {Object} obj - The object to set the value in
- * @param {string} path - The path to the property
- * @param {string} key - The final key
- * @param {*} value - The value to set
- */
-function setNestedValue(obj, path, key, value) {
-  if (!path) {
-    obj[key] = value;
-    return;
-  }
-
-  const pathParts = path.split('.');
-  let current = obj;
-
-  pathParts.forEach((part) => {
-    if (!current[part]) {
-      current[part] = {};
-    }
-    current = current[part];
-  });
-
-  current[key] = value;
-}
-
-/**
- * Removes a nested value from an object using a path
- * @param {Object} obj - The object to remove the value from
- * @param {string} path - The path to the property
- * @param {string} key - The final key
- */
-function removeNestedValue(obj, path, key) {
-  if (!path) {
-    delete obj[key];
-    return;
-  }
-
-  const pathParts = path.split('.');
-  let current = obj;
-
-  pathParts.forEach((part) => {
-    current = current[part];
-  });
-
-  delete current[key];
 }
 
 /**
@@ -873,54 +836,159 @@ function addProperty() {
 }
 
 /**
- * Loads the configuration for the selected org/site
+ * Run cleanSidekickHostProperties on a config and emit its change/error
+ * records to the console block. Returns the (mutated) config.
+ * @param {Object} config
+ * @returns {Object}
+ */
+function cleanAndLogHostProperties(config) {
+  const { changes, errors } = cleanSidekickHostProperties(config);
+  errors.forEach(({ message }) => {
+    logMessage(consoleBlock, 'warning', ['PARSE', message, '']);
+  });
+  changes.forEach(({ path, from, to }) => {
+    logMessage(consoleBlock, 'info', ['CLEAN', `Extracted hostname from ${path}: ${from} -> ${to}`, '']);
+  });
+  return config;
+}
+
+/**
+ * Shows migration confirmation UI in a modal
+ * @param {Object} migratedConfig - The migrated configuration to display (already cleaned)
+ */
+async function showMigrationConfirmation(migratedConfig) {
+  const modalContent = document.createElement('div');
+  modalContent.className = 'migration-content';
+  modalContent.innerHTML = `
+    <h3>Migrate Configuration</h3>
+    <p>No configuration file exists yet. A configuration can be migrated from your document-based settings (fstab.yaml, .helix/config.xlsx, etc.).</p>
+    <div class="migration-actions">
+      <button id="confirm-migration" class="button primary">Confirm Migration</button>
+      <button id="cancel-migration" class="button outline">Cancel</button>
+    </div>
+    <div class="migration-preview">
+      <h4>Preview of migrated configuration:</h4>
+      <pre>${escapeHtml(JSON.stringify(migratedConfig, null, 2))}</pre>
+    </div>
+  `;
+
+  const { showModal, block } = await createModal([modalContent]);
+  const dialog = block.querySelector('dialog');
+
+  // Store config for migration
+  modalContent.dataset.migratedConfig = JSON.stringify(migratedConfig);
+
+  // Set up event listeners for migration buttons
+  modalContent.querySelector('#confirm-migration').addEventListener('click', async () => {
+    dialog.close();
+    const configToMigrate = JSON.parse(modalContent.dataset.migratedConfig);
+    // eslint-disable-next-line no-use-before-define
+    await performMigration(configToMigrate);
+  });
+
+  modalContent.querySelector('#cancel-migration').addEventListener('click', () => {
+    dialog.close();
+    logMessage(consoleBlock, 'info', ['MIGRATE', 'Migration cancelled', '']);
+  });
+
+  showModal();
+}
+
+/**
+ * Performs the migration by updating the config with the migrated configuration
+ * @param {Object} configToMigrate - The cleaned migrated configuration to save
+ */
+async function performMigration(configToMigrate) {
+  if (!loadedCoords) {
+    logMessage(consoleBlock, 'error', ['MIGRATE', 'No site context to migrate.', '']);
+    return;
+  }
+  const { org: orgVal, site: siteVal } = loadedCoords;
+
+  logMessage(consoleBlock, 'info', ['MIGRATE', 'Performing migration...', '']);
+
+  const result = await executeAdminRequest(async () => {
+    const res = await admin.config({ org: orgVal, site: siteVal })
+      .create(JSON.stringify(configToMigrate));
+    const { method, url } = res.request;
+    logResponse(consoleBlock, res.status, [method, url, res.error]);
+    return res;
+  }, { org: orgVal, site: siteVal });
+
+  if (!result) return;
+  if (!result.ok) {
+    logMessage(consoleBlock, 'error', ['MIGRATE', `Migration failed: HTTP ${result.status}`, '']);
+    return;
+  }
+
+  logMessage(consoleBlock, 'success', ['MIGRATE', 'Migration completed successfully', '']);
+  // eslint-disable-next-line no-use-before-define
+  await loadConfig();
+}
+
+/**
+ * Loads the configuration for the selected org/site. Site config and aggregate
+ * config are fetched in parallel inside one executeAdminRequest — a single
+ * 401 retries both. PREFLIGHT_AND_RETRY because this is the entry point.
  */
 async function loadConfig() {
-  if (!org.value || !site.value) {
+  const orgVal = org.value;
+  const siteVal = site.value;
+  if (!orgVal || !siteVal) {
     logMessage(consoleBlock, 'error', ['LOAD', 'Please select both organization and site', '']);
     return;
   }
 
+  logMessage(consoleBlock, 'info', ['LOAD', `Loading config from: /config/${orgVal}/sites/${siteVal}.json`, '']);
+
   try {
-    configPath = `/config/${org.value}/sites/${site.value}.json`;
-    const adminURL = `https://admin.hlx.page${configPath}`;
-    const aggregateURL = `https://admin.hlx.page/config/${org.value}/aggregated/${site.value}.json`;
+    const result = await executeAdminRequest(async () => {
+      const cfgNode = admin.config({ org: orgVal, site: siteVal });
+      const aggregateNode = admin.config({ org: orgVal })
+        .select(`aggregated/${siteVal}.json`);
+      const [cfgRes, aggRes] = await Promise.all([cfgNode.read(), aggregateNode.read()]);
+      [cfgRes, aggRes].forEach((r) => {
+        const { method, url } = r.request;
+        logResponse(consoleBlock, r.status, [method, url, r.error]);
+      });
+      // Bubble 401 if either part 401s so the wrapper retries the whole pair.
+      const status = cfgRes.status === 401 || aggRes.status === 401 ? 401 : cfgRes.status;
+      return {
+        status,
+        ok: cfgRes.ok && aggRes.ok,
+        parts: { cfg: cfgRes, aggregate: aggRes },
+      };
+    }, { org: orgVal, site: siteVal, policy: AuthMode.PREFLIGHT_AND_RETRY });
 
-    logMessage(consoleBlock, 'info', ['LOAD', `Loading config from: ${configPath}`, '']);
+    if (!result) return;
+    const { cfg: configResponse, aggregate: aggregateResponse } = result.parts;
 
-    // Fetch both current config and aggregate config
-    const [configResponse, aggregateResponse] = await Promise.all([
-      fetch(adminURL),
-      fetch(aggregateURL),
-    ]);
+    if (configResponse.status === 404) {
+      logMessage(consoleBlock, 'warning', ['LOAD', 'No configuration file found. Checking for migration options...', '']);
+      const migrateResult = await executeAdminRequest(async () => {
+        const res = await admin.config({ org: orgVal, site: siteVal })
+          .read({ params: { migrate: 'true' } });
+        const { method, url } = res.request;
+        logResponse(consoleBlock, res.status, [method, url, res.error]);
+        return res;
+      }, { org: orgVal, site: siteVal });
 
-    // Log the HTTP responses
-    logResponse(consoleBlock, configResponse.status, [
-      'GET',
-      adminURL,
-      configResponse.headers.get('x-error') || '',
-    ]);
-
-    logResponse(consoleBlock, aggregateResponse.status, [
-      'GET',
-      aggregateURL,
-      aggregateResponse.headers.get('x-error') || '',
-    ]);
-
-    if (configResponse.status === 401) {
-      await ensureLogin(org.value, site.value);
-      return;
+      if (!migrateResult) return;
+      if (migrateResult.ok) {
+        const migratedConfig = await migrateResult.json();
+        const cleanedConfig = cleanAndLogHostProperties({ ...migratedConfig });
+        loadedCoords = { org: orgVal, site: siteVal };
+        configEditor.removeAttribute('aria-hidden');
+        showMigrationConfirmation(cleanedConfig);
+        logMessage(consoleBlock, 'info', ['MIGRATE', 'Migration preview loaded. Review and confirm to proceed.', '']);
+        return;
+      }
+      throw new Error(`No configuration found and migration not available: HTTP ${migrateResult.status}`);
     }
 
     if (!configResponse.ok) {
-      throw new Error(`HTTP ${configResponse.status}: ${configResponse.statusText}`);
+      throw new Error(`HTTP ${configResponse.status}`);
     }
-
-    if (aggregateResponse.status === 401) {
-      await ensureLogin(org.value, site.value);
-      return;
-    }
-
     if (!aggregateResponse.ok) {
       throw new Error(`Failed to load aggregate config: HTTP ${aggregateResponse.status}`);
     }
@@ -928,21 +996,18 @@ async function loadConfig() {
     const config = await configResponse.json();
     const aggregate = await aggregateResponse.json();
 
+    loadedCoords = { org: orgVal, site: siteVal };
     currentConfig = { ...config };
-    originalConfig = { ...config }; // Store original config for comparison
-    aggregateConfig = { ...aggregate }; // Store aggregate config for inherited values
-    pendingChanges.clear(); // Clear any pending changes when loading new config
+    originalConfig = { ...config };
+    aggregateConfig = { ...aggregate };
+    pendingChanges.clear();
 
     configEditor.removeAttribute('aria-hidden');
-
-    // Reset inherited visibility state when loading new config
     showInherited = false;
-    const toggleButton = document.getElementById('toggle-inherited');
-    toggleButton.textContent = 'Show Inherited';
+    document.getElementById('toggle-inherited').textContent = 'Show Inherited';
 
     populateConfigTable();
-    updateSaveButton(); // Hide save button initially
-    updateConfig(); // Update URL params and localStorage
+    updateSaveButton();
 
     logMessage(consoleBlock, 'success', ['LOAD', 'Configuration loaded successfully', '']);
   } catch (error) {
@@ -951,92 +1016,55 @@ async function loadConfig() {
 }
 
 /**
- * Saves all pending changes to the server
+ * Saves all pending changes to the server. Re-reads the current config first
+ * to merge against the latest server state, then POSTs the merged config.
  */
 async function saveAllChanges() {
   if (pendingChanges.size === 0) {
     logMessage(consoleBlock, 'warning', ['SAVE', 'No changes to save', '']);
     return;
   }
+  if (!loadedCoords) {
+    logMessage(consoleBlock, 'error', ['SAVE', 'No site loaded.', '']);
+    return;
+  }
+  const { org: orgVal, site: siteVal } = loadedCoords;
+  const cfgNode = admin.config({ org: orgVal, site: siteVal });
 
   try {
-    // Fetch current config from server to get latest state
-    const adminURL = `https://admin.hlx.page${configPath}`;
-    const response = await fetch(adminURL);
+    const getResult = await executeAdminRequest(async () => {
+      const res = await cfgNode.read();
+      const { method, url } = res.request;
+      logResponse(consoleBlock, res.status, [method, url, res.error]);
+      return res;
+    }, { org: orgVal, site: siteVal });
 
-    // Log the GET request
-    logResponse(consoleBlock, response.status, [
-      'GET',
-      adminURL,
-      response.headers.get('x-error') || '',
-    ]);
-
-    if (response.status === 401) {
-      await ensureLogin(org.value, site.value);
-      return;
+    if (!getResult) return;
+    if (!getResult.ok) {
+      throw new Error(`Failed to fetch current config: HTTP ${getResult.status}`);
     }
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch current config: HTTP ${response.status}`);
+    const serverConfig = await getResult.json();
+    applyPendingChanges(serverConfig, pendingChanges);
+
+    const saveResult = await executeAdminRequest(async () => {
+      const res = await cfgNode.update(JSON.stringify(serverConfig));
+      const { method, url } = res.request;
+      logResponse(consoleBlock, res.status, [method, url, res.error]);
+      return res;
+    }, { org: orgVal, site: siteVal });
+
+    if (!saveResult) return;
+    if (!saveResult.ok) {
+      throw new Error(`Failed to save config: HTTP ${saveResult.status}`);
     }
 
-    const serverConfig = await response.json();
-
-    // Apply all pending changes to the server config
-    pendingChanges.forEach((change) => {
-      const {
-        key, path, action, newValue,
-      } = change;
-
-      // Only apply changes for properties that are not inherited
-      // (inherited properties can't be edited, so they won't have pending changes)
-      if (action === 'remove') {
-        removeNestedValue(serverConfig, path, key);
-      } else {
-        // For 'add' and 'edit' actions
-        setNestedValue(serverConfig, path, key, newValue);
-      }
-    });
-
-    // POST the updated config back
-    const saveResponse = await fetch(adminURL, {
-      method: 'POST',
-      body: JSON.stringify(serverConfig),
-      headers: {
-        'content-type': 'application/json',
-      },
-    });
-
-    // Log the POST request
-    logResponse(consoleBlock, saveResponse.status, [
-      'POST',
-      adminURL,
-      saveResponse.headers.get('x-error') || '',
-    ]);
-
-    if (saveResponse.status === 401) {
-      await ensureLogin(org.value, site.value);
-      return;
-    }
-
-    if (!saveResponse.ok) {
-      throw new Error(`Failed to save config: HTTP ${saveResponse.status}`);
-    }
-
-    // Store the count before clearing
     const changesCount = pendingChanges.size;
-
-    // Update original config to reflect the saved state
     originalConfig = { ...serverConfig };
     currentConfig = { ...serverConfig };
-
-    // Clear all pending changes
     pendingChanges.clear();
-
-    // Refresh the table and hide save button
     populateConfigTable();
     updateSaveButton();
-
     logMessage(consoleBlock, 'success', ['SAVE', `Successfully saved ${changesCount} changes`, '']);
   } catch (error) {
     logMessage(consoleBlock, 'error', ['SAVE', `Failed to save changes: ${error.message}`, '']);
@@ -1067,23 +1095,10 @@ async function init() {
   // Initialize config field (handles URL params, localStorage, sidekick auto-population)
   await initConfigField();
 
-  // Load config when form is submitted
-  document.getElementById('config-selection-form').addEventListener('submit', async (e) => {
+  // Load config when form is submitted. Auth is handled inside loadConfig
+  // via executeAdminRequest with PREFLIGHT_AND_RETRY.
+  document.getElementById('config-selection-form').addEventListener('submit', (e) => {
     e.preventDefault();
-
-    if (!await ensureLogin(org.value, site.value)) {
-      // not logged in yet, listen for profile-update event
-      window.addEventListener('profile-update', ({ detail: loginInfo }) => {
-        // check if user is logged in now
-        if (loginInfo.includes(org.value)) {
-          // logged in, restart action (e.g. resubmit form)
-          e.target.querySelector('button[type="submit"]').click();
-        }
-      }, { once: true });
-      // abort action
-      return;
-    }
-
     loadConfig();
   });
 
@@ -1108,7 +1123,4 @@ initPromise.then(async () => {
   logMessage(consoleBlock, 'info', ['INIT', 'Config Editor initialized', '']);
 });
 
-// eslint-disable-next-line import/prefer-default-export
-export function ready() {
-  return initPromise;
-}
+registerToolReady(initPromise);

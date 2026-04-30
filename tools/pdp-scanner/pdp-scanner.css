@@ -31,7 +31,7 @@
 .pdp-scanner .url-field input {
   width: 100%;
   padding: 0.4em 0.85em;
-  border: var(--border-m) solid var(--gray-300);
+  border: var(--border-m) solid var(--color-border);
   border-radius: var(--rounding-m);
   font-family: var(--code-font-family);
   font-size: var(--body-size-s);
@@ -56,7 +56,7 @@
 
 .pdp-scanner th {
   font-weight: bold;
-  background-color: var(--gray-100);
+  background-color: light-dark(var(--gray-100), var(--gray-800));
 }
 
 .pdp-scanner .status-light {
@@ -64,24 +64,24 @@
 }
 
 .pdp-scanner .status-light::before {
-  color: var(--red-900);
+  color: light-dark(var(--red-900), var(--red-400));
 }
 
 .pdp-scanner .status-light.pass::before {
-  color: var(--green-900);
+  color: light-dark(var(--green-900), var(--green-400));
 }
 
 .pdp-scanner .status-light.warning::before {
-  color: var(--yellow-900);
+  color: light-dark(var(--yellow-900), var(--yellow-400));
 }
 
 .pdp-scanner .status-light.fail::before {
-  color: var(--red-900);
+  color: light-dark(var(--red-900), var(--red-400));
 } 
 
 .pdp-scanner .fail {
-  background-color: var(--red-100);
-  color: var(--red-900);
+  background-color: light-dark(var(--red-100), var(--red-900));
+  color: light-dark(var(--red-900), var(--red-300));
 }
 
 .pdp-scanner td.img-container {
@@ -94,7 +94,7 @@
   display: block;
   padding: 4px 8px;
   border-radius: 20px;
-  background-color: var(--gray-100);
+  background-color: light-dark(var(--gray-100), var(--gray-800));
   position: absolute;
   right: 3px;
   bottom: 3px;
@@ -128,15 +128,15 @@
 }
 
 .pdp-scanner .diff-added {
-  background-color: var(--green-300);
-  color: var(--green-900);
+  background-color: light-dark(var(--green-300), var(--green-900));
+  color: light-dark(var(--green-900), var(--green-300));
   padding: 0 4px;
   border-radius: 2px;
 }
 
 .pdp-scanner .diff-removed {
-  background-color: var(--red-300);
-  color: var(--red-900);
+  background-color: light-dark(var(--red-300), var(--red-900));
+  color: light-dark(var(--red-900), var(--red-300));
   text-decoration: line-through;
   padding: 0 4px;
   border-radius: 2px;

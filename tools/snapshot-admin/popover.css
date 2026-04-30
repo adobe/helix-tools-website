@@ -28,7 +28,7 @@ button {
   color: var(--color-text);
   background-color: var(--color-background);
   border-radius: var(--rounding-s);
-  border: var(--border-s) solid var(--gray-300);
+  border: var(--border-s) solid var(--color-border);
   padding: var(--spacing-100) var(--spacing-200);
   font-size: var(--body-size-s);
   font-family: var(--body-font-family);
@@ -42,8 +42,8 @@ button:disabled {
 }
 
 button:hover:not(:disabled) {
-  background-color: var(--gray-100);
-  border-color: var(--gray-400);
+  background-color: light-dark(var(--gray-100), var(--gray-800));
+  border-color: light-dark(var(--gray-400), var(--gray-500));
 }
 
 .button-wrapper {
@@ -73,7 +73,7 @@ p.buttons {
 #snapshot-selector-wrapper {
   margin-bottom: var(--spacing-300);
   padding-bottom: var(--spacing-200);
-  border-bottom: var(--border-s) solid var(--gray-300);
+  border-bottom: var(--border-s) solid var(--color-border);
 }
 
 #snapshot-selector-wrapper label {
@@ -87,7 +87,7 @@ p.buttons {
 #snapshot-select {
   width: 100%;
   padding: var(--spacing-100) var(--spacing-200);
-  border: var(--border-s) solid var(--gray-300);
+  border: var(--border-s) solid var(--color-border);
   border-radius: var(--rounding-s);
   background-color: var(--color-background);
   color: var(--color-text);
@@ -166,7 +166,7 @@ details summary:hover {
   padding: var(--spacing-100);
   margin: var(--spacing-100) calc(-1 * var(--spacing-100));
   border-radius: var(--rounding-s);
-  border: var(--border-s) solid var(--gray-300);
+  border: var(--border-s) solid var(--color-border);
   overflow-x: scroll;
 }
 
@@ -174,7 +174,7 @@ details summary:hover {
   display: flex;
   justify-content: space-between;
   padding: var(--spacing-50) 0;
-  border-bottom: var(--border-s) solid var(--gray-200);
+  border-bottom: var(--border-s) solid light-dark(var(--gray-200), var(--gray-700));
 }
 
 #page-list li:last-child {
