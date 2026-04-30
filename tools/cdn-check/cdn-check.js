@@ -13,6 +13,550 @@ function corsProxy(url, options = {}) {
   return proxyUrl;
 }
 
+/** Structured console output for production DNS / IP diagnostics. */
+function logProdNetworkDiag(payload) {
+  /* eslint-disable no-console */
+  console.error('[cdn-check:prod-network]', payload);
+  /* eslint-enable no-console */
+}
+
+// DNS over HTTPS — types from RFC 1035 / 3596
+const DNS_TYPE_A = 1;
+const DNS_TYPE_CNAME = 5;
+const DNS_TYPE_AAAA = 28;
+
+const DOH_DNS_JSON_HEADERS = { Accept: 'application/dns-json' };
+
+/** Multiple DoH endpoints (TLS SNI differs); mitigates ERR_CERT_COMMON_NAME_INVALID on one host. */
+function buildDohProviderAttempts(hostname, typeParam) {
+  const typeNum = typeParam === 'AAAA' ? DNS_TYPE_AAAA : DNS_TYPE_A;
+  return [
+    {
+      id: 'cloudflare-dns.com',
+      url: `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(hostname)}&type=${typeParam}`,
+      headers: DOH_DNS_JSON_HEADERS,
+    },
+    {
+      id: '1.1.1.1',
+      url: `https://1.1.1.1/dns-query?name=${encodeURIComponent(hostname)}&type=${typeParam}`,
+      headers: DOH_DNS_JSON_HEADERS,
+    },
+    {
+      id: 'dns.google',
+      url: `https://dns.google/resolve?name=${encodeURIComponent(hostname)}&type=${typeNum}`,
+      headers: { Accept: 'application/json' },
+    },
+  ];
+}
+
+/** ASN → common CDN / edge name (conservative; org string used for ambiguous ASNs). */
+const CDN_BY_ASN = new Map([
+  [13335, 'Cloudflare'],
+  [54113, 'Fastly'],
+  [20940, 'Akamai'],
+  [35993, 'Akamai'],
+  [16625, 'Akamai'],
+  [16647, 'Akamai'],
+  [32787, 'Akamai'],
+  [24319, 'Akamai'],
+  [63949, 'Akamai (Linode)'],
+]);
+
+async function dnsQueryJson(hostname, typeAaaa) {
+  const typeParam = typeAaaa === 'AAAA' ? 'AAAA' : 'A';
+  const providers = buildDohProviderAttempts(hostname, typeParam);
+  const attempts = [];
+
+  for (let i = 0; i < providers.length; i += 1) {
+    const provider = providers[i];
+    try {
+      const resp = await fetch(provider.url, {
+        headers: provider.headers,
+        cache: 'no-store',
+      });
+      if (!resp.ok) {
+        logProdNetworkDiag({
+          step: 'dns-doh-http-error',
+          provider: provider.id,
+          hostname,
+          recordType: typeParam,
+          dnsUrl: provider.url,
+          httpStatus: resp.status,
+          statusText: resp.statusText,
+        });
+        attempts.push(`${provider.id}: HTTP ${resp.status}`);
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+      const data = await resp.json();
+      if (typeof data.Status === 'number' && data.Status === 2) {
+        logProdNetworkDiag({
+          step: 'dns-doh-servfail',
+          provider: provider.id,
+          hostname,
+          recordType: typeParam,
+          dnsStatus: data.Status,
+        });
+        attempts.push(`${provider.id}: DNS SERVFAIL (status 2)`);
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+      /* eslint-disable no-console */
+      console.debug('[cdn-check:prod-network] dns-ok', {
+        provider: provider.id, hostname, recordType: typeParam,
+      });
+      /* eslint-enable no-console */
+      return data;
+    } catch (err) {
+      logProdNetworkDiag({
+        step: 'dns-doh-provider-failed',
+        provider: provider.id,
+        hostname,
+        recordType: typeParam,
+        dnsUrl: provider.url,
+        pageOrigin: typeof window !== 'undefined' ? window.location.origin : undefined,
+        errorName: err && typeof err === 'object' && 'name' in err ? err.name : undefined,
+        errorMessage: err && typeof err === 'object' && 'message' in err ? err.message : String(err),
+        cause: err && typeof err === 'object' && 'cause' in err ? err.cause : undefined,
+        stack: err && typeof err === 'object' && 'stack' in err ? err.stack : undefined,
+      });
+      const em = err && typeof err === 'object' && 'message' in err ? err.message : String(err);
+      attempts.push(`${provider.id}: ${em}`);
+    }
+  }
+
+  logProdNetworkDiag({
+    step: 'dns-doh-all-providers-failed',
+    hostname,
+    recordType: typeParam,
+    attempts,
+    pageOrigin: typeof window !== 'undefined' ? window.location.origin : undefined,
+  });
+
+  const summary = attempts.join(' · ');
+  throw new Error(
+    `DNS over HTTPS (${typeParam} for “${hostname}”) failed for all providers (${providers.length}). `
+    + `${summary}`,
+  );
+}
+
+/**
+ * Resolve hostname to A + AAAA addresses, following a single CNAME chain.
+ * @param {string} hostname
+ * @returns {Promise<string[]>}
+ */
+async function resolveHostnameToIps(hostname, depth = 0, visited = new Set()) {
+  const host = hostname.replace(/\.$/, '').toLowerCase();
+  if (depth > 12) {
+    throw new Error('DNS alias chain too deep');
+  }
+  if (visited.has(host)) {
+    throw new Error('DNS alias loop detected');
+  }
+  visited.add(host);
+
+  const [aData, aaaaData] = await Promise.all([
+    dnsQueryJson(host, 'A'),
+    dnsQueryJson(host, 'AAAA'),
+  ]);
+
+  const ips = new Set();
+  let cnameTarget = null;
+
+  [aData, aaaaData].forEach((data) => {
+    if (!data || !Array.isArray(data.Answer)) return;
+    data.Answer.forEach((row) => {
+      if (row.type === DNS_TYPE_A && row.data) ips.add(row.data.trim());
+      if (row.type === DNS_TYPE_AAAA && row.data) ips.add(row.data.trim());
+      if (row.type === DNS_TYPE_CNAME && row.data && !cnameTarget) {
+        cnameTarget = row.data.replace(/\.$/, '').trim();
+      }
+    });
+  });
+
+  if (ips.size > 0) {
+    return [...ips];
+  }
+  if (cnameTarget) {
+    return resolveHostnameToIps(cnameTarget, depth + 1, visited);
+  }
+
+  const bothNx = aData.Status === 3 && aaaaData.Status === 3;
+  if (bothNx) {
+    throw new Error(`No DNS records (NXDOMAIN) for ${host}`);
+  }
+  throw new Error(`Could not resolve A/AAAA for ${host}`);
+}
+
+async function fetchJsonFromResponse(resp, ip, label, requestUrl) {
+  const text = await resp.text();
+  try {
+    return JSON.parse(text);
+  } catch (parseErr) {
+    logProdNetworkDiag({
+      step: 'ip-meta-json-parse',
+      ip,
+      label,
+      requestUrl,
+      snippet: text.slice(0, 200),
+      parseErr: parseErr && typeof parseErr === 'object' && 'message' in parseErr
+        ? parseErr.message
+        : String(parseErr),
+    });
+    throw new Error(`${label}: response was not valid JSON (see console).`);
+  }
+}
+
+function normalizeIpwhoResponse(data) {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Empty response');
+  }
+  if (data.success === false) {
+    throw new Error(data.message ? String(data.message) : 'ipwho.is declined');
+  }
+  if (!data.connection) {
+    throw new Error('ipwho.is: missing connection');
+  }
+  return data;
+}
+
+function normalizeIpapiCoResponse(data) {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Empty response');
+  }
+  if (data.error) {
+    const reason = data.reason != null ? String(data.reason) : String(data.error);
+    throw new Error(reason);
+  }
+  const asnRaw = data.asn != null ? String(data.asn) : '';
+  const asnMatch = asnRaw.match(/(\d{2,})/);
+  const asn = asnMatch ? parseInt(asnMatch[1], 10) : NaN;
+  const org = String(data.org || data.organization || '').trim();
+  const isp = String(data.isp || org || '').trim();
+  return {
+    success: true,
+    connection: {
+      asn: Number.isFinite(asn) ? asn : undefined,
+      org,
+      isp,
+    },
+  };
+}
+
+/**
+ * Try each URL until normalize() succeeds.
+ * @param {string} ip
+ * @param {string} label
+ * @param {string[]} urls
+ * @param {(data: object) => object} normalize
+ * @returns {Promise<object|null>}
+ */
+async function tryIpMetadataProvider(ip, label, urls, normalize) {
+  const errors = [];
+  for (let i = 0; i < urls.length; i += 1) {
+    const url = urls[i];
+    try {
+      const resp = await fetch(url, { cache: 'no-store' });
+      if (!resp.ok) {
+        logProdNetworkDiag({
+          step: 'ip-meta-http-not-ok',
+          ip,
+          label,
+          requestUrl: url,
+          httpStatus: resp.status,
+          statusText: resp.statusText,
+        });
+        errors.push(`HTTP ${resp.status}`);
+      } else {
+        const raw = await fetchJsonFromResponse(resp, ip, label, url);
+        try {
+          return normalize(raw);
+        } catch (normErr) {
+          logProdNetworkDiag({
+            step: 'ip-meta-normalize-failed',
+            ip,
+            label,
+            message: normErr && typeof normErr === 'object' && 'message' in normErr
+              ? normErr.message
+              : String(normErr),
+          });
+          errors.push(
+            String(normErr && typeof normErr === 'object' && 'message' in normErr ? normErr.message : normErr),
+          );
+        }
+      }
+    } catch (err) {
+      logProdNetworkDiag({
+        step: 'ip-meta-fetch-failed',
+        ip,
+        label,
+        requestUrl: url,
+        errorName: err && typeof err === 'object' && 'name' in err ? err.name : undefined,
+        errorMessage: err && typeof err === 'object' && 'message' in err ? err.message : String(err),
+      });
+      errors.push(
+        String(err && typeof err === 'object' && 'message' in err ? err.message : err),
+      );
+    }
+  }
+  logProdNetworkDiag({
+    step: 'ip-meta-provider-exhausted',
+    ip,
+    label,
+    errors,
+  });
+  return null;
+}
+
+/**
+ * ipwho.is-style payload for classifyIpNetwork.
+ * ipwho.is is browser-direct only: fcors egress is Cloudflare; ipwho.is often 403s CF egress IPs.
+ * ipapi.co still tries direct then fcors.
+ */
+async function fetchIpWhoisJson(ip) {
+  const ipwhoTarget = `https://ipwho.is/${encodeURIComponent(ip)}`;
+  const ipwhoUrls = [ipwhoTarget];
+
+  let out = await tryIpMetadataProvider(ip, 'ipwho.is', ipwhoUrls, normalizeIpwhoResponse);
+  if (out) {
+    return out;
+  }
+
+  const ipapiTarget = `https://ipapi.co/${encodeURIComponent(ip)}/json/`;
+  const ipapiUrls = [ipapiTarget, corsProxy(ipapiTarget)];
+
+  out = await tryIpMetadataProvider(ip, 'ipapi.co', ipapiUrls, normalizeIpapiCoResponse);
+  if (out) {
+    /* eslint-disable no-console */
+    console.debug('[cdn-check:prod-network] ip-metadata-fallback', { ip, source: 'ipapi.co' });
+    /* eslint-enable no-console */
+    return out;
+  }
+
+  throw new Error(
+    `Could not load IP metadata for ${ip}. `
+    + 'Tried ipwho.is (browser direct only) then ipapi.co (direct + proxy).',
+  );
+}
+
+/**
+ * @param {{ asn?: number|string, org?: string, isp?: string }} conn
+ * @returns {{ isKnownCdn: boolean, label: string, detail: string }}
+ */
+function classifyIpNetwork(conn) {
+  const asn = Number(conn.asn);
+  const org = (conn.org || '').trim();
+  const isp = (conn.isp || '').trim();
+  const blob = `${org} ${isp}`.toLowerCase();
+
+  if (Number.isFinite(asn) && CDN_BY_ASN.has(asn)) {
+    return {
+      isKnownCdn: true,
+      label: CDN_BY_ASN.get(asn),
+      detail: [org, isp, `AS${asn}`].filter(Boolean).join(' · '),
+    };
+  }
+
+  const cdnByName = [
+    ['cloudflare', 'Cloudflare'],
+    ['fastly', 'Fastly'],
+    ['akamai', 'Akamai'],
+    ['cloudfront', 'Amazon CloudFront'],
+    ['amazon cloudfront', 'Amazon CloudFront'],
+    ['edgecast', 'Edgecast (Verizon)'],
+    ['verizon digital media', 'Verizon Media CDN'],
+    ['limelight', 'Limelight'],
+    ['llnw', 'Limelight'],
+    ['stackpath', 'StackPath'],
+    ['highwinds', 'StackPath / Highwinds'],
+    ['cdn77', 'CDN77'],
+    ['bunny.net', 'Bunny.net'],
+    ['bunnycdn', 'Bunny.net'],
+    ['keycdn', 'KeyCDN'],
+    ['azurefd', 'Azure Front Door'],
+    ['microsoft-azure', 'Microsoft Azure CDN'],
+    ['google edge', 'Google edge'],
+    ['gcore', 'Gcore'],
+  ];
+
+  const matchedByName = cdnByName.find(([needle]) => blob.includes(needle));
+  if (matchedByName) {
+    const [, name] = matchedByName;
+    return {
+      isKnownCdn: true,
+      label: name,
+      detail: [org, isp, Number.isFinite(asn) ? `AS${asn}` : ''].filter(Boolean).join(' · '),
+    };
+  }
+
+  if (asn === 16509 || asn === 14618) {
+    return {
+      isKnownCdn: false,
+      label: 'Amazon / AWS',
+      detail: [org, isp, `AS${asn}`].filter(Boolean).join(' · ')
+        || `AS${asn} (AWS; not auto-classified as CDN without CloudFront signals)`,
+    };
+  }
+  if (asn === 15169) {
+    return {
+      isKnownCdn: false,
+      label: 'Google',
+      detail: [org, isp, 'AS15169'].filter(Boolean).join(' · '),
+    };
+  }
+  if (asn === 8075) {
+    return {
+      isKnownCdn: false,
+      label: 'Microsoft',
+      detail: [org, isp, 'AS8075'].filter(Boolean).join(' · '),
+    };
+  }
+
+  const fallback = org || isp || (Number.isFinite(asn) ? `AS${asn}` : 'Unknown network');
+  return {
+    isKnownCdn: false,
+    label: 'Unsupported CDN',
+    detail: [org, isp, Number.isFinite(asn) ? `AS${asn}` : ''].filter(Boolean).join(' · ') || fallback,
+  };
+}
+
+function clearProdNetworkSection() {
+  const section = document.getElementById('prod-network-section');
+  if (!section) return;
+  section.hidden = true;
+  section.setAttribute('aria-hidden', 'true');
+  const hostEl = section.querySelector('.prod-network-host');
+  const listEl = section.querySelector('.prod-network-ip-list');
+  if (hostEl) hostEl.textContent = '';
+  if (listEl) listEl.innerHTML = '';
+}
+
+/** Resolve prod hostname to IPs, RDAP-style IP data, CDN vs other; before HTTP checks. */
+async function populateProdNetworkIntel(prodUrlString) {
+  clearProdNetworkSection();
+  const section = document.getElementById('prod-network-section');
+  if (!section) return;
+
+  let hostname;
+  try {
+    ({ hostname } = new URL(prodUrlString));
+  } catch {
+    return;
+  }
+
+  const hostEl = section.querySelector('.prod-network-host');
+  const listEl = section.querySelector('.prod-network-ip-list');
+  hostEl.textContent = `Hostname: ${hostname}`;
+  listEl.innerHTML = '';
+
+  section.hidden = false;
+  section.setAttribute('aria-hidden', 'false');
+
+  const loadingLi = document.createElement('li');
+  loadingLi.className = 'prod-network-ip-item prod-network-loading';
+  loadingLi.textContent = 'Resolving DNS…';
+  listEl.appendChild(loadingLi);
+
+  let ips;
+  try {
+    /* eslint-disable no-console */
+    console.debug('[cdn-check:prod-network] start', { prodUrlString, hostname });
+    /* eslint-enable no-console */
+    ips = await resolveHostnameToIps(hostname);
+    /* eslint-disable no-console */
+    console.debug('[cdn-check:prod-network] resolved', { hostname, ipCount: ips.length, ips });
+    /* eslint-enable no-console */
+  } catch (e) {
+    logProdNetworkDiag({
+      step: 'resolveHostnameToIps-failed',
+      prodUrlString,
+      hostname,
+      errorName: e && typeof e === 'object' && 'name' in e ? e.name : undefined,
+      errorMessage: e && typeof e === 'object' && 'message' in e ? e.message : String(e),
+      stack: e && typeof e === 'object' && 'stack' in e ? e.stack : undefined,
+    });
+    listEl.innerHTML = '';
+    const errLi = document.createElement('li');
+    errLi.className = 'prod-network-ip-item prod-network-error';
+    const detail = document.createElement('pre');
+    detail.className = 'prod-network-error-detail';
+    detail.textContent = e && typeof e === 'object' && 'message' in e ? e.message : String(e);
+    errLi.appendChild(detail);
+    listEl.appendChild(errLi);
+    return;
+  }
+
+  listEl.innerHTML = '';
+
+  if (ips.length === 0) {
+    const errLi = document.createElement('li');
+    errLi.className = 'prod-network-ip-item prod-network-error';
+    errLi.textContent = 'No A or AAAA records found.';
+    listEl.appendChild(errLi);
+    return;
+  }
+
+  const rows = await Promise.all(ips.map(async (ip) => {
+    const li = document.createElement('li');
+    li.className = 'prod-network-ip-item';
+
+    const ipStrong = document.createElement('strong');
+    ipStrong.className = 'prod-network-ip';
+    ipStrong.textContent = ip;
+    li.appendChild(ipStrong);
+
+    try {
+      const raw = await fetchIpWhoisJson(ip);
+      if (!raw.success) {
+        throw new Error(raw.message || 'Lookup failed');
+      }
+      const conn = raw.connection || {};
+      const { isKnownCdn, label, detail } = classifyIpNetwork({
+        asn: conn.asn,
+        org: conn.org,
+        isp: conn.isp,
+      });
+
+      const badge = document.createElement('span');
+      badge.className = `prod-network-badge ${isKnownCdn ? 'is-cdn' : 'is-other'}`;
+      let badgeText;
+      if (isKnownCdn) {
+        badgeText = `Known CDN: ${label}`;
+      } else if (label === 'Unsupported CDN') {
+        badgeText = 'Unsupported CDN';
+      } else {
+        badgeText = `Unsupported CDN: ${label}`;
+      }
+      badge.textContent = badgeText;
+
+      const meta = document.createElement('p');
+      meta.className = 'prod-network-meta';
+      meta.textContent = detail;
+
+      li.appendChild(document.createTextNode(' '));
+      li.appendChild(badge);
+      li.appendChild(meta);
+    } catch (err) {
+      logProdNetworkDiag({
+        step: 'ipwho-row-failed',
+        ip,
+        errorName: err && typeof err === 'object' && 'name' in err ? err.name : undefined,
+        errorMessage: err && typeof err === 'object' && 'message' in err ? err.message : String(err),
+        stack: err && typeof err === 'object' && 'stack' in err ? err.stack : undefined,
+      });
+      li.classList.add('prod-network-error');
+      const errP = document.createElement('pre');
+      errP.className = 'prod-network-error-detail';
+      errP.textContent = err && typeof err === 'object' && 'message' in err ? err.message : String(err);
+      li.appendChild(errP);
+    }
+
+    return li;
+  }));
+
+  rows.forEach((li) => listEl.appendChild(li));
+}
+
 // DOM Elements
 const FORM = document.getElementById('cdn-check-form');
 const SCORE_SECTION = document.getElementById('score-section');
@@ -88,6 +632,7 @@ function resetChecks() {
     DETECTED_CDN_VALUE.textContent = 'Detecting...';
     DETECTED_CDN_VALUE.className = 'cdn-value';
   }
+  clearProdNetworkSection();
 }
 
 function updateDetectedCdn(cdnType) {
@@ -983,6 +1528,7 @@ async function runChecks(pageUrl, prodPageUrl = null) {
 
   const prodForGate = prodPageUrl && String(prodPageUrl).trim();
   if (prodForGate) {
+    await populateProdNetworkIntel(prodForGate);
     try {
       const resp = await fetch(corsProxy(prodForGate, { revealHeaders: true }), {
         method: 'GET',

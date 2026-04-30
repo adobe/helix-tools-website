@@ -182,6 +182,103 @@
   background-color: var(--green-700);
 }
 
+/* Production DNS / IP (WHOIS-style) panel */
+.prod-network-section {
+  display: block;
+  max-width: 52rem;
+  margin: 0 auto var(--spacing-xl);
+  padding: var(--spacing-m) var(--spacing-l);
+  background-color: var(--gray-50);
+  border: var(--border-m) solid var(--gray-200);
+  border-radius: var(--rounding-l);
+}
+
+.prod-network-section[hidden] {
+  display: none;
+}
+
+.prod-network-section h2 {
+  margin: 0 0 var(--spacing-s);
+  font-size: var(--heading-size-s);
+}
+
+.prod-network-host {
+  margin: 0 0 var(--spacing-m);
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+  color: var(--gray-700);
+}
+
+.prod-network-ip-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.prod-network-ip-item {
+  margin-bottom: var(--spacing-m);
+  padding: var(--spacing-s) var(--spacing-m);
+  background: var(--white, #fff);
+  border-radius: var(--rounding-m);
+  border: var(--border-m) solid var(--gray-200);
+}
+
+.prod-network-ip-item:last-child {
+  margin-bottom: 0;
+}
+
+.prod-network-ip {
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-m);
+}
+
+.prod-network-badge {
+  display: inline-block;
+  margin: var(--spacing-xs) 0;
+  padding: 0.15rem 0.5rem;
+  font-size: var(--body-size-s);
+  font-weight: var(--weight-bold);
+  border-radius: var(--rounding-s);
+}
+
+.prod-network-badge.is-cdn {
+  background-color: var(--green-100);
+  color: var(--green-900);
+  border: 1px solid var(--green-700);
+}
+
+.prod-network-badge.is-other {
+  background-color: var(--orange-100);
+  color: var(--orange-900);
+  border: 1px solid var(--orange-700);
+}
+
+.prod-network-meta {
+  margin: var(--spacing-xs) 0 0;
+  font-size: var(--body-size-s);
+  color: var(--gray-700);
+  overflow-wrap: anywhere;
+}
+
+.prod-network-ip-item.prod-network-loading {
+  font-style: italic;
+  color: var(--gray-600);
+}
+
+.prod-network-ip-item.prod-network-error {
+  border-color: var(--red-300);
+  background-color: var(--red-50);
+  color: var(--red-900);
+}
+
+.prod-network-error-detail {
+  margin: var(--spacing-xs) 0 0;
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 /* Results Section */
 #results-section {
   margin-top: var(--spacing-xl);
