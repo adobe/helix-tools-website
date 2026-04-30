@@ -3,7 +3,11 @@
 # on a separate workflow.
 name: Build
 on:
+  # pull_request: CI for every PR (incl. forks); one run per sync. Avoid also using
+  # push on feature branches or each push would duplicate the pull_request run.
   push:
+    branches:
+      - main
   pull_request:
 
 concurrency:
