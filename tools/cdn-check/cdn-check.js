@@ -1502,11 +1502,53 @@ function mimeBase(contentType) {
   return contentType.split(';')[0].trim().toLowerCase();
 }
 
-/** SVG / format=svg often differs by bytes across origins while still correct delivery. */
-function isLikelySvgAsset(urlString, contentType) {
-  const u = (urlString || '').toLowerCase();
-  if (u.includes('format=svg') || /\.svg(\?|#|$)/i.test(u)) return true;
-  return mimeBase(contentType) === 'image/svg+xml';
+/** Human-readable size (B / kB / MB, 1024-based). */
+function formatBytes(bytes) {
+  if (bytes == null || typeof bytes !== 'number' || Number.isNaN(bytes)) return '—';
+  const u = Math.abs(bytes);
+  if (u < 1024) return `${bytes} B`;
+  if (u < 1024 * 1024) {
+    const k = bytes / 1024;
+    return `${u < 10 * 1024 ? k.toFixed(1) : Math.round(k)} kB`;
+  }
+  const mb = bytes / (1024 * 1024);
+  return `${u < 10 * 1024 * 1024 ? mb.toFixed(2) : mb.toFixed(1)} MB`;
+}
+
+/** First URL token from a srcset value (before width/density descriptor). */
+function parseFirstUrlFromSrcset(srcset) {
+  if (!srcset || typeof srcset !== 'string') return null;
+  const first = srcset.split(',')[0].trim();
+  const url = first.split(/\s+/)[0];
+  return url || null;
+}
+
+/**
+ * Collect absolute-ish hrefs from `<picture><source>` that target WebP (not SVG).
+ * Prefers `format=webp` in the URL or `type="image/webp"`.
+ * @param {Document} doc
+ * @param {number} limit
+ * @returns {string[]}
+ */
+function collectPictureWebpSourceHrefs(doc, limit) {
+  const hrefs = [];
+  const seen = new Set();
+  doc.querySelectorAll('picture source').forEach((source) => {
+    if (hrefs.length >= limit) return;
+    const type = (source.getAttribute('type') || '').toLowerCase();
+    const src = source.getAttribute('src');
+    const srcset = source.getAttribute('srcset');
+    const raw = src || parseFirstUrlFromSrcset(srcset);
+    if (!raw) return;
+    const lower = raw.toLowerCase();
+    if (lower.includes('format=svg') || /\.svg(\?|#|$)/i.test(lower)) return;
+    const looksWebp = type === 'image/webp' || lower.includes('format=webp');
+    if (!looksWebp) return;
+    if (seen.has(raw)) return;
+    seen.add(raw);
+    hrefs.push(raw);
+  });
+  return hrefs;
 }
 
 async function checkImages(cdnConfig, aemUrl, org, site, branch, prodPageUrlOverride = null) {
@@ -1544,27 +1586,26 @@ async function checkImages(cdnConfig, aemUrl, org, site, branch, prodPageUrlOver
 
     const html = await pageResp.text();
 
-    // Parse HTML to find images
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
-    const images = doc.querySelectorAll('img[src]');
+    const hrefs = collectPictureWebpSourceHrefs(doc, 3);
 
-    if (images.length === 0) {
-      updateCheckState(checkId, 'pass', 'No Images');
-      addResultLine(checkId, 'No images found on this page to compare', 'info');
+    if (hrefs.length === 0) {
+      updateCheckState(checkId, 'pass', 'No WebP');
+      addResultLine(
+        checkId,
+        'No `<picture>` `<source>` with WebP (`format=webp` or `type="image/webp"`) found to compare.',
+        'info',
+      );
       return { score: 100 };
     }
 
-    // Get first few images for comparison
-    const imagesToCheck = Array.from(images).slice(0, 3);
     let passCount = 0;
     let failCount = 0;
 
-    await Promise.all(imagesToCheck.map(async (img) => {
-      const imgSrc = img.getAttribute('src');
+    await Promise.all(hrefs.map(async (imgSrc) => {
       if (!imgSrc || imgSrc.startsWith('data:')) return;
 
-      // Resolve URLs with page as base so relative paths (e.g. ./media_xxx.png) normalize
       let aemImgUrl;
       let prodImgUrl;
 
@@ -1580,8 +1621,6 @@ async function checkImages(cdnConfig, aemUrl, org, site, branch, prodPageUrlOver
       }
 
       try {
-        // GET via CORS proxy; compare decompressed body bytes (Content-Length header often
-        // reflects wire size for gzip/br and does not match the decoded arrayBuffer length).
         const [aemResp, prodResp] = await Promise.all([
           fetch(corsProxy(aemImgUrl), { method: 'GET' }),
           fetch(corsProxy(prodImgUrl), { method: 'GET' }),
@@ -1604,31 +1643,29 @@ async function checkImages(cdnConfig, aemUrl, org, site, branch, prodPageUrlOver
         const shortSrc = imgSrc.length > 50 ? `...${imgSrc.slice(-47)}` : imgSrc;
 
         if (aemResp.ok && prodResp.ok) {
-          const aemSize = String(aemBodyBytes);
-          const prodSize = String(prodBodyBytes);
-          const bothSvg = isLikelySvgAsset(aemImgUrl, aemType)
-            && isLikelySvgAsset(prodImgUrl, prodType);
-          const sizeMatch = aemSize === prodSize;
+          const sizeMatch = aemBodyBytes === prodBodyBytes;
           const typeMatch = mimeBase(aemType) === mimeBase(prodType);
 
-          if ((bothSvg && typeMatch) || (sizeMatch && typeMatch)) {
+          if (sizeMatch && typeMatch) {
             addResultLine(checkId, `✓ ${shortSrc}`, 'success');
             addResultLine(checkId, `  AEM: ${aemImgUrl}`, 'info');
             addResultLine(checkId, `  Prod: ${prodImgUrl}`, 'info');
-            if (bothSvg && typeMatch && !sizeMatch) {
-              addResultLine(
-                checkId,
-                `  SVG: body bytes differ (AEM=${aemSize}, prod=${prodSize}); MIME matches — counted as match`,
-                'info',
-              );
-            }
+            addResultLine(
+              checkId,
+              `  Body: ${formatBytes(aemBodyBytes)} · ${mimeBase(aemType) || 'unknown type'}`,
+              'info',
+            );
             passCount += 1;
           } else {
             addResultLine(checkId, `! ${shortSrc}`, 'warning');
             addResultLine(checkId, `  AEM: ${aemImgUrl}`, 'info');
             addResultLine(checkId, `  Prod: ${prodImgUrl}`, 'info');
             if (!sizeMatch) {
-              addResultLine(checkId, `  Body bytes: AEM=${aemSize}, Prod=${prodSize}`, 'warning');
+              addResultLine(
+                checkId,
+                `  Body: aem.live origin ${formatBytes(aemBodyBytes)}, Prod ${formatBytes(prodBodyBytes)}`,
+                'warning',
+              );
             }
             if (!typeMatch) {
               addResultLine(checkId, `  Type: AEM=${aemType}, Prod=${prodType}`, 'warning');
