@@ -39,13 +39,7 @@ Use to review an existing pull request.
 
 **Invoke:** `/code-review <PR-number>` or automatically via GitHub Actions
 
-**Process:**
-```bash
-gh pr view <PR-number> --json title,body,headRefName,files
-gh pr diff <PR-number>
-```
-
-**Output:** Create GitHub suggestions for one-click fixes (see below).
+See **Output Format → PR Review Mode** below for the full process.
 
 ---
 
@@ -114,15 +108,16 @@ Report findings directly:
 
 ### PR Review Mode
 
-Complete your full analysis before making any API calls.
+Complete phases in order. **No write API calls until Phase 2.**
 
-**Gather information:**
+**Phase 1: Gather information**
 ```bash
-gh pr view <PR-number> --json title,body,headRefName,files
+gh pr view <PR-number> --json title,body,headRefName,files,headRefOid
 gh pr diff <PR-number>
 ```
+Read changed files for context. Complete your full analysis before proceeding.
 
-**Clean up previous bot comments:**
+**Phase 2: Clean up previous bot comments**
 ```bash
 for id in $(gh api repos/{owner}/{repo}/pulls/<PR-number>/comments --jq '[.[] | select(.user.login == "github-actions[bot]") | .id] | .[]'); do
   gh api -X DELETE repos/{owner}/{repo}/pulls/comments/$id
@@ -132,7 +127,14 @@ for id in $(gh api repos/{owner}/{repo}/issues/<PR-number>/comments --jq '[.[] |
 done
 ```
 
-**Post all inline suggestions in a single call** (skip if none). Only suggest when the issue is in the current diff and you are confident the fix is correct — otherwise put it in the summary.
+**Phase 3: Post inline suggestions (single API call — skip entirely if none)**
+
+Only suggest when ALL of these are true:
+- Issue exists in the current HEAD diff (don't flag already-fixed code)
+- Fix is within diff lines, not surrounding context
+- You are confident the replacement is correct
+
+When in doubt, put it in the Phase 4 summary instead.
 
 `position` = 1-based line number counting from the `@@` header line in the unified diff.
 
@@ -144,7 +146,7 @@ gh api --method POST repos/{owner}/{repo}/pulls/<PR-number>/reviews \
   --field 'comments=[{"path":"FILE","position":N,"body":"**Fix:** REASON\n\n```suggestion\nCODE\n```"}]'
 ```
 
-**Post summary comment:**
+**Phase 4: Post summary comment**
 ```bash
 gh pr comment <PR-number> --body "<!-- claude-code-review -->
 ## Code Review

@@ -27,67 +27,12 @@ jobs:
           prompt: |
             Review PR #${{ github.event.pull_request.number }} in ${{ github.repository }}.
 
-            ## Phase 1: Read and analyze (no write API calls in this phase)
-
-            Gather information:
-            ```bash
-            gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json title,body,headRefName,files,headRefOid
-            gh pr diff ${{ github.event.pull_request.number }} --repo ${{ github.repository }}
-            ```
-
-            Read `.claude/skills/code-review/SKILL.md` for EDS-specific review criteria.
+            Read `.claude/skills/code-review/SKILL.md` and follow the **PR Review Mode** process.
             Read `.claude/skills/code-review/resources/review-checklist.md` for detailed checks.
             Read any changed files you need for context.
 
-            Complete your full analysis before proceeding. Do not make any write API calls in this phase.
+            Substitute placeholders in all commands:
+            - `{owner}/{repo}` → `${{ github.repository }}`
+            - `<PR-number>` → `${{ github.event.pull_request.number }}`
 
-            ## Phase 2: Clean up previous bot comments
-
-            Delete inline review comments from previous runs:
-            ```bash
-            for id in $(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments --jq '[.[] | select(.user.login == "github-actions[bot]") | .id] | .[]'); do
-              gh api -X DELETE repos/${{ github.repository }}/pulls/comments/$id
-            done
-            ```
-
-            Delete previous summary comments:
-            ```bash
-            for id in $(gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments --jq '[.[] | select(.body | contains("<!-- claude-code-review -->")) | .id] | .[]'); do
-              gh api -X DELETE repos/${{ github.repository }}/issues/comments/$id
-            done
-            ```
-
-            ## Phase 3: Post inline suggestions (at most one API call — skip entirely if none)
-
-            Only include a suggestion when ALL of these are true:
-            - The issue exists in the current HEAD diff (do not flag already-fixed code)
-            - You are confident the suggested replacement is correct
-            - The fix is within lines that appear in the diff (not surrounding context)
-
-            When in doubt, report the issue in the Phase 4 summary instead.
-
-            `position` is the 1-based line number counting from the `@@` header line in the unified diff output.
-
-            Post all suggestions in a single call:
-            ```bash
-            COMMIT_SHA=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }} --jq '.head.sha')
-            gh api --method POST repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews \
-              --field commit_id="$COMMIT_SHA" \
-              --field event="COMMENT" \
-              --field 'comments=[{"path":"FILE","position":N,"body":"**Fix:** REASON\n\n```suggestion\nCODE\n```"}]'
-            ```
-
-            Skip this step entirely if there are no suggestions.
-
-            ## Phase 4: Post summary comment
-
-            ```bash
-            gh pr comment ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --body "<!-- claude-code-review -->
-            ## Code Review
-
-            ### Findings
-            [List issues grouped by BLOCKING / SHOULD FIX / CONSIDER. Write \"No issues found.\" if clean.]
-
-            ### Verdict
-            [APPROVE / REQUEST CHANGES / COMMENT]"
-            ```
+            When running `gh pr view` and `gh pr diff`, add `--repo ${{ github.repository }}`.
