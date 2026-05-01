@@ -121,11 +121,17 @@ Read changed files for context. Complete your full analysis before proceeding.
 
 Fetch IDs first, then delete each one individually (avoid `$(...)` substitution):
 ```bash
+# Inline review comments
 gh api repos/{owner}/{repo}/pulls/<PR-number>/comments --jq '[.[] | select(.user.login == "claude[bot]") | .id] | .[]'
 # For each id returned: gh api -X DELETE repos/{owner}/{repo}/pulls/comments/<id>
 
+# Issue-level comments
 gh api repos/{owner}/{repo}/issues/<PR-number>/comments --jq '[.[] | select(.user.login == "claude[bot]") | .id] | .[]'
 # For each id returned: gh api -X DELETE repos/{owner}/{repo}/issues/comments/<id>
+
+# Pending (unsubmitted draft) reviews — these are left behind when event field is missing
+gh api repos/{owner}/{repo}/pulls/<PR-number>/reviews --jq '[.[] | select(.user.login == "claude[bot]" and .state == "PENDING") | .id] | .[]'
+# For each id returned: gh api -X DELETE repos/{owner}/{repo}/pulls/<PR-number>/reviews/<id>
 ```
 
 **Phase 3: Post inline suggestions**
@@ -138,17 +144,16 @@ Only skip a suggestion if:
 
 `position` = 1-based line number counting from the `@@` header line in the unified diff.
 
-Use the `headRefOid` value from Phase 1. Use the Write tool to create `/tmp/review-comments.json`, then post:
+Use the `headRefOid` value from Phase 1. Use the Write tool to create `/tmp/review-comments.json` with ALL fields (including `commit_id` and `event`), then post with `--input` only — do NOT mix `--field` with `--input` as `--field` values are silently dropped when `--input` is used:
 ```bash
-gh api --method POST repos/{owner}/{repo}/pulls/<PR-number>/reviews \
-  --field commit_id="<headRefOid from Phase 1>" \
-  --field event="COMMENT" \
-  --input /tmp/review-comments.json
+gh api --method POST repos/{owner}/{repo}/pulls/<PR-number>/reviews --input /tmp/review-comments.json
 ```
 
 `/tmp/review-comments.json` format:
 ```json
 {
+  "commit_id": "<headRefOid from Phase 1>",
+  "event": "COMMENT",
   "comments": [
     {"path": "FILE", "position": N, "body": "**Fix:** REASON\n\n```suggestion\nCODE\n```"}
   ]
