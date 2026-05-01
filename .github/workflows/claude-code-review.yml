@@ -4,6 +4,10 @@ on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
 
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   claude-review:
     runs-on: ubuntu-latest
@@ -23,7 +27,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '--allowedTools "Bash(gh *)" "Bash(git *)" "Read" "Glob" "Grep" "LS" "Skill"'
+          claude_args: '--allowedTools "Bash(gh *)" "Bash(git *)" "Read" "Write" "Glob" "Grep" "LS" "Skill"'
           prompt: |
             Use the Skill tool to invoke the `code-review` skill for PR #${{ github.event.pull_request.number }}.
 
