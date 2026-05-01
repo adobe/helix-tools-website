@@ -75,9 +75,9 @@
       <ul class="prod-network-ip-list"></ul>
     </div>
 
-    <!-- Score Display -->
+    <!-- Score Display: inner root is <section> so Franklin does not treat it as div.section > div > div block -->
     <div id="score-section" aria-hidden="true">
-      <div class="score-container">
+      <section class="score-container" aria-label="CDN health score">
         <div class="detected-cdn">
           <span class="cdn-label">CDN:</span>
           <span class="cdn-value" id="detected-cdn-value">Detecting...</span>
@@ -97,18 +97,18 @@
           <span class="legend-item average">50–89 Needs Work</span>
           <span class="legend-item good">90–100 Good</span>
         </div>
-      </div>
+      </section>
     </div>
 
     <!-- CDN setup report -->
     <div id="results-section" aria-hidden="true">
-      <div class="cdn-check-results-heading">
+      <section class="cdn-check-results-heading" aria-label="CDN setup report heading">
         <h2>CDN Setup Report</h2>
         <div id="cdn-check-share" class="cdn-check-share" hidden>
           <button type="button" id="cdn-check-share-btn" class="button secondary">Copy share link</button>
           <p id="cdn-check-share-status" class="cdn-check-share-status" role="status" aria-live="polite"></p>
         </div>
-      </div>
+      </section>
       <ul class="check-list">
         <li id="check-cdn-config" class="check-item pending">
           <div class="check-header">
@@ -179,12 +179,12 @@
       </ul>
     </div>
 
-    <!-- Error Display -->
+    <!-- Error Display: inner root is <section> so Franklin does not load a non-existent error-message block -->
     <div id="error-section" aria-hidden="true">
-      <div class="error-message">
+      <section class="error-message" aria-label="Error message">
         <strong>Error</strong>
         <p></p>
-      </div>
+      </section>
     </div>
 
   </main>

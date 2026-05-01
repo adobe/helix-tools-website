@@ -3,6 +3,8 @@
  * Class selectors are intentionally not prefixed with `.cdn-check …` on every rule: this
  * sheet is loaded only for this tool page (see index.html), so collision risk with global
  * blocks is accepted per project convention for tools/ (differs from blocks/ scoping in AGENTS).
+ * Layout is mobile-first: use @media (width >= 600px) / (width >= 900px) only—no max-width
+ * or (width < Npx) desktop-first overrides.
  */
 
 /* Score Section */

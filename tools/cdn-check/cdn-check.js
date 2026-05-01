@@ -1,10 +1,13 @@
-/* eslint-disable no-await-in-loop */
+/* eslint-disable no-await-in-loop -- sequential awaits required: DNS DoH provider fallback chain,
+ * IP metadata provider chain (ipwho → ipapi → RDAP), and ordered CDN checks must not race. */
 import { ensureLogin } from '../../blocks/profile/profile.js';
+import classifyIpNetwork from './cdn-check-network.js';
 
 // CORS proxy for cross-origin requests (fcors.org). The key is sent as a query param on
 // every proxied request and is visible in DevTools — it is not a server secret. It exists
 // for fcors rate/account attribution on their side; committing it matches shipping any
-// other public client-side token. Rotate with fcors if quotas are abused.
+// other public client-side token (code review: not a server secret—public attribution key only).
+// Rotate with fcors if quotas are abused.
 const CORS_PROXY_URL = 'https://www.fcors.org';
 const CORS_PROXY_KEY = 'iyIjewSFgBzbPVG3';
 
@@ -52,25 +55,6 @@ function buildDohProviderAttempts(hostname, typeParam) {
   ];
 }
 
-/**
- * ASN → common CDN / edge name (conservative where possible; org string used for ambiguous cases).
- * CloudFront edge is announced under AS16509 (AMAZON-02) and AS14618 (AMAZON-AES); both ASNs are
- * shared with other AWS services, so this is a best-effort match for production CDN-fronted URLs.
- */
-const CDN_BY_ASN = new Map([
-  [13335, 'Cloudflare'],
-  [54113, 'Fastly'],
-  [20940, 'Akamai'],
-  [35993, 'Akamai'],
-  [16625, 'Akamai'],
-  [16647, 'Akamai'],
-  [32787, 'Akamai'],
-  [24319, 'Akamai'],
-  [63949, 'Akamai (Linode)'],
-  [16509, 'Amazon CloudFront'],
-  [14618, 'Amazon CloudFront'],
-]);
-
 async function dnsQueryJson(hostname, typeAaaa) {
   const typeParam = typeAaaa === 'AAAA' ? 'AAAA' : 'A';
   const providers = buildDohProviderAttempts(hostname, typeParam);
@@ -110,11 +94,6 @@ async function dnsQueryJson(hostname, typeAaaa) {
         // eslint-disable-next-line no-continue
         continue;
       }
-      /* eslint-disable no-console */
-      console.debug('[cdn-check:prod-network] dns-ok', {
-        provider: provider.id, hostname, recordType: typeParam,
-      });
-      /* eslint-enable no-console */
       return data;
     } catch (err) {
       logProdNetworkDiag({
@@ -396,28 +375,14 @@ async function tryIpMetadataProvider(ip, label, urls, normalize, fetchInit = und
 }
 
 /**
- * ipwho.is-style payload for classifyIpNetwork.
- * Order: ipwho (direct), ipapi.co (direct), RDAP bootstrap (direct).
- * ipwho/ipapi: no fcors (CF bot HTML). rdap.org allows CORS * — fetch direct from the browser.
+ * IP metadata for classifyIpNetwork (browser-direct fetches).
+ * Order: RDAP first (rdap.org, CORS-friendly), then ipwho.is, then ipapi.co.
+ * ipwho often returns 403 from the browser; ipapi may be blocked by CORS.
+ * RDAP first avoids those failures when it succeeds.
  */
 async function fetchIpWhoisJson(ip) {
-  const ipwhoTarget = `https://ipwho.is/${encodeURIComponent(ip)}`;
-  let out = await tryIpMetadataProvider(ip, 'ipwho.is', [ipwhoTarget], normalizeIpwhoResponse);
-  if (out) {
-    return out;
-  }
-
-  const ipapiTarget = `https://ipapi.co/${encodeURIComponent(ip)}/json/`;
-  out = await tryIpMetadataProvider(ip, 'ipapi.co', [ipapiTarget], normalizeIpapiCoResponse);
-  if (out) {
-    /* eslint-disable no-console */
-    console.debug('[cdn-check:prod-network] ip-metadata-fallback', { ip, source: 'ipapi.co' });
-    /* eslint-enable no-console */
-    return out;
-  }
-
   const rdapUrl = `https://rdap.org/ip/${encodeURIComponent(ip)}`;
-  out = await tryIpMetadataProvider(
+  let out = await tryIpMetadataProvider(
     ip,
     'rdap.org',
     [rdapUrl],
@@ -425,92 +390,25 @@ async function fetchIpWhoisJson(ip) {
     { headers: { Accept: 'application/rdap+json, application/json' } },
   );
   if (out) {
-    /* eslint-disable no-console */
-    console.debug('[cdn-check:prod-network] ip-metadata-fallback', { ip, source: 'rdap.org' });
-    /* eslint-enable no-console */
+    return out;
+  }
+
+  const ipwhoTarget = `https://ipwho.is/${encodeURIComponent(ip)}`;
+  out = await tryIpMetadataProvider(ip, 'ipwho.is', [ipwhoTarget], normalizeIpwhoResponse);
+  if (out) {
+    return out;
+  }
+
+  const ipapiTarget = `https://ipapi.co/${encodeURIComponent(ip)}/json/`;
+  out = await tryIpMetadataProvider(ip, 'ipapi.co', [ipapiTarget], normalizeIpapiCoResponse);
+  if (out) {
     return out;
   }
 
   throw new Error(
     `Could not load IP metadata for ${ip}. `
-    + 'Tried ipwho.is, ipapi.co, then rdap.org (all browser-direct where used).',
+    + 'Tried rdap.org, ipwho.is, then ipapi.co (all browser-direct where used).',
   );
-}
-
-/**
- * @param {{ asn?: number|string, org?: string, isp?: string }} conn
- * @returns {{ isKnownCdn: boolean, label: string, detail: string }}
- */
-function classifyIpNetwork(conn) {
-  const asn = Number(conn.asn);
-  const org = (conn.org || '').trim();
-  const isp = (conn.isp || '').trim();
-  const blob = `${org} ${isp}`.toLowerCase();
-
-  if (Number.isFinite(asn) && CDN_BY_ASN.has(asn)) {
-    return {
-      isKnownCdn: true,
-      label: CDN_BY_ASN.get(asn),
-      detail: [org, isp, `AS${asn}`].filter(Boolean).join(' · '),
-    };
-  }
-
-  const cdnByName = [
-    ['cloudflare', 'Cloudflare'],
-    ['fastly', 'Fastly'],
-    ['akamai', 'Akamai'],
-    ['cloudfront', 'Amazon CloudFront'],
-    ['amazon cloudfront', 'Amazon CloudFront'],
-    // RDAP often has no origin ASN for Amazon IP allocations; registrant is still Amazon.com, Inc.
-    ['amazon.com, inc', 'Amazon CloudFront'],
-    ['amazon.com inc', 'Amazon CloudFront'],
-    ['edgecast', 'Edgecast (Verizon)'],
-    ['verizon digital media', 'Verizon Media CDN'],
-    ['limelight', 'Limelight'],
-    ['llnw', 'Limelight'],
-    ['stackpath', 'StackPath'],
-    ['highwinds', 'StackPath / Highwinds'],
-    ['cdn77', 'CDN77'],
-    ['bunny.net', 'Bunny.net'],
-    ['bunnycdn', 'Bunny.net'],
-    ['keycdn', 'KeyCDN'],
-    ['azurefd', 'Azure Front Door'],
-    ['microsoft-azure', 'Microsoft Azure CDN'],
-    ['google edge', 'Google edge'],
-    ['gcore', 'Gcore'],
-  ];
-
-  const matchedByName = cdnByName.find(([needle]) => blob.includes(needle));
-  if (matchedByName) {
-    const [, name] = matchedByName;
-    return {
-      isKnownCdn: true,
-      label: name,
-      detail: [org, isp, Number.isFinite(asn) ? `AS${asn}` : ''].filter(Boolean).join(' · '),
-    };
-  }
-
-  if (asn === 15169) {
-    return {
-      isKnownCdn: false,
-      label: 'Google',
-      detail: [org, isp, 'AS15169'].filter(Boolean).join(' · '),
-    };
-  }
-  if (asn === 8075) {
-    return {
-      isKnownCdn: false,
-      label: 'Microsoft',
-      detail: [org, isp, 'AS8075'].filter(Boolean).join(' · '),
-    };
-  }
-
-  const fallback = org || isp || (Number.isFinite(asn) ? `AS${asn}` : 'Unknown network');
-  return {
-    isKnownCdn: false,
-    label: 'Unsupported CDN',
-    detail: [org, isp, Number.isFinite(asn) ? `AS${asn}` : ''].filter(Boolean).join(' · ') || fallback,
-  };
 }
 
 function clearProdNetworkSection() {
@@ -552,13 +450,7 @@ async function populateProdNetworkIntel(prodUrlString) {
 
   let ips;
   try {
-    /* eslint-disable no-console */
-    console.debug('[cdn-check:prod-network] start', { prodUrlString, hostname });
-    /* eslint-enable no-console */
     ips = await resolveHostnameToIps(hostname);
-    /* eslint-disable no-console */
-    console.debug('[cdn-check:prod-network] resolved', { hostname, ipCount: ips.length, ips });
-    /* eslint-enable no-console */
   } catch (e) {
     logProdNetworkDiag({
       step: 'resolveHostnameToIps-failed',
@@ -1979,19 +1871,6 @@ function extractOriginFromHeaders(headers) {
   const cacheTag = headers.get('x-cache-tag') || headers.get('cache-tag') || '';
   const allKeys = `${surrogateKey} ${cacheKey} ${cacheTag}`;
 
-  // Debug: log all headers received
-  /* eslint-disable no-console */
-  console.group('Origin Discovery Debug - Headers');
-  console.log('Headers received:');
-  headers.forEach((value, name) => {
-    console.log(`  ${name}: ${value}`);
-  });
-  console.log('surrogate-key:', surrogateKey || '(not found)');
-  console.log('x-cache-key:', cacheKey || '(not found)');
-  console.log('x-cache-tag:', cacheTag || '(not found)');
-  console.log('All keys to search:', allKeys || '(empty)');
-  /* eslint-enable no-console */
-
   // Pattern: branch--site--org (with optional suffix like _head, _metadata)
   // Examples: main--helix-website--adobe, main--helix-website--adobe_head
   const pattern = /([a-z0-9-]+)--([a-z0-9-]+)--([a-z0-9-]+)(?:_[a-z]+)?/gi;
@@ -2000,25 +1879,15 @@ function extractOriginFromHeaders(headers) {
   const origins = new Set();
   // eslint-disable-next-line no-restricted-syntax
   for (const match of matches) {
-    const [fullMatch, branch, site, org] = match;
-    // eslint-disable-next-line no-console
-    console.log('Found match:', fullMatch, '→', `${branch}--${site}--${org}`);
+    const [, branch, site, org] = match;
     origins.add(`${branch}--${site}--${org}`);
   }
-
-  // eslint-disable-next-line no-console
-  console.log('Origins found from headers:', Array.from(origins));
-  // eslint-disable-next-line no-console
-  console.groupEnd();
 
   return Array.from(origins);
 }
 
 // Fallback: Extract origin from HTML content
 function extractOriginFromHtml(html) {
-  /* eslint-disable no-console */
-  console.group('Origin Discovery Debug - HTML Fallback');
-
   // Look for URLs matching AEM Edge Delivery patterns
   // Patterns: branch--site--org.aem.live, branch--site--org.aem.page,
   //           branch--site--org.hlx.live, branch--site--org.hlx.page
@@ -2028,14 +1897,9 @@ function extractOriginFromHtml(html) {
   const origins = new Set();
   // eslint-disable-next-line no-restricted-syntax
   for (const match of matches) {
-    const [fullUrl, origin] = match;
-    console.log('Found AEM URL in HTML:', fullUrl, '→', origin);
+    const [, origin] = match;
     origins.add(origin);
   }
-
-  console.log('Origins found from HTML:', Array.from(origins));
-  console.groupEnd();
-  /* eslint-enable no-console */
 
   return Array.from(origins);
 }
@@ -2046,9 +1910,6 @@ async function discoverOrigin(prodUrl) {
     'Fastly-Debug': '1',
     Pragma: 'akamai-x-cache-on, akamai-x-cache-remote-on, akamai-x-check-cacheable, akamai-x-get-cache-key, akamai-x-get-true-cache-key, akamai-x-get-cache-tags',
   };
-
-  // eslint-disable-next-line no-console
-  console.log('Sending request with debug headers:', debugHeaders);
 
   const resp = await fetch(corsProxy(prodUrl), {
     method: 'GET',
@@ -2065,8 +1926,6 @@ async function discoverOrigin(prodUrl) {
 
   // Fallback: parse HTML content for AEM URLs
   if (origins.length === 0) {
-    // eslint-disable-next-line no-console
-    console.log('No origins found in headers, trying HTML fallback...');
     const html = await resp.text();
     origins = extractOriginFromHtml(html);
   }
@@ -2179,10 +2038,6 @@ function setupFormSubmit() {
     try {
       const origins = await discoverOrigin(prod);
       const aemPageUrl = buildAemLivePageUrl(origins[0], prod);
-      if (origins.length > 1) {
-        // eslint-disable-next-line no-console
-        console.log('Multiple origins found:', origins);
-      }
       aemInput.value = aemPageUrl;
       setOriginDetectHint('');
       updateShareableQuery(prod, null);
@@ -2290,10 +2145,6 @@ async function init() {
     try {
       const origins = await discoverOrigin(prodPageUrlParam);
       const aemPageUrl = buildAemLivePageUrl(origins[0], prodPageUrlParam);
-      if (origins.length > 1) {
-        // eslint-disable-next-line no-console
-        console.log('Multiple origins found:', origins);
-      }
       aemInput.value = aemPageUrl;
       setOriginDetectHint('');
       updateShareableQuery(prodPageUrlParam, null);
