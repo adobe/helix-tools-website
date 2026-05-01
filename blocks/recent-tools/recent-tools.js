@@ -1,4 +1,4 @@
-const EXCLUDE_TOOLS = ['/tools/optel/explorer/', '/tools/optel/oversight/'];
+const EXCLUDE_TOOLS = ['/tools/optel/'];
 
 function dedupKey(path) {
   return path.replace(/\/index\.html$/, '/').replace(/^(\/tools\/[^/]+)\.html$/, '$1/');
