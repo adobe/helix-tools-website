@@ -35,14 +35,19 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          show_full_output: true
 
           # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |
             actions: read
 
-          # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
-          # prompt: 'Update the pull request description to include a summary of changes.'
+          claude_args: '--allowedTools "Bash(gh *)" "Bash(git *)" "Read" "Write" "Glob" "Grep" "LS" "Skill"'
 
-          # Allow gh and git so @claude review can invoke the code-review skill
-          claude_args: '--allowedTools "Bash(gh *)" "Bash(git *)" "Skill"'
+          prompt: |
+            The user commented: "${{ github.event.comment.body || github.event.review.body || github.event.issue.body }}"
 
+            If they are asking for a code review, use the Skill tool to invoke the `code-review` skill for PR #${{ github.event.issue.number || github.event.pull_request.number }}.
+            When running `gh pr view` and `gh pr diff`, add `--repo ${{ github.repository }}`.
+            Substitute `{owner}/{repo}` with `${{ github.repository }}` in all commands.
+
+            Otherwise, perform the instructions in their comment.
