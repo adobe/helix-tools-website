@@ -118,28 +118,30 @@ gh pr diff <PR-number>
 Read changed files for context. Complete your full analysis before proceeding.
 
 **Phase 2: Clean up previous bot comments**
+
+Fetch IDs first, then delete each one individually (avoid `$(...)` substitution):
 ```bash
-for id in $(gh api repos/{owner}/{repo}/pulls/<PR-number>/comments --jq '[.[] | select(.user.login == "claude[bot]") | .id] | .[]'); do
-  gh api -X DELETE repos/{owner}/{repo}/pulls/comments/$id
-done
-for id in $(gh api repos/{owner}/{repo}/issues/<PR-number>/comments --jq '[.[] | select(.user.login == "claude[bot]") | .id] | .[]'); do
-  gh api -X DELETE repos/{owner}/{repo}/issues/comments/$id
-done
+gh api repos/{owner}/{repo}/pulls/<PR-number>/comments --jq '[.[] | select(.user.login == "claude[bot]") | .id] | .[]'
+# For each id returned: gh api -X DELETE repos/{owner}/{repo}/pulls/comments/<id>
+
+gh api repos/{owner}/{repo}/issues/<PR-number>/comments --jq '[.[] | select(.user.login == "claude[bot]") | .id] | .[]'
+# For each id returned: gh api -X DELETE repos/{owner}/{repo}/issues/comments/<id>
 ```
 
-**Phase 3: Post inline suggestions (single API call — skip entirely if none)**
+**Phase 3: Post inline suggestions**
 
-Only suggest when ALL of these are true:
-- Issue exists in the current HEAD diff (don't flag already-fixed code)
-- Fix is within diff lines, not surrounding context
-- You are confident the replacement is correct
+Post a suggestion for **every BLOCKING or SHOULD FIX issue where a concrete one-line-or-few-line fix exists**. Inline suggestions are the primary output — the summary in Phase 4 should reference them, not replace them.
 
-When in doubt, put it in the Phase 4 summary instead.
+Only skip a suggestion if:
+- The fix spans multiple files or requires architectural changes
+- The affected lines are not present in the diff (e.g. surrounding context lines only)
 
 `position` = 1-based line number counting from the `@@` header line in the unified diff.
 
+Write the suggestions JSON to a temp file to avoid shell escaping issues:
 ```bash
-COMMIT_SHA=$(gh api repos/{owner}/{repo}/pulls/<PR-number> --jq '.head.sha')
+COMMIT_SHA=$(gh pr view <PR-number> --json headRefOid --jq '.headRefOid')
+# Write JSON to /tmp/review-comments.json first, then:
 gh api --method POST repos/{owner}/{repo}/pulls/<PR-number>/reviews \
   --field commit_id="$COMMIT_SHA" \
   --field event="COMMENT" \
@@ -147,13 +149,21 @@ gh api --method POST repos/{owner}/{repo}/pulls/<PR-number>/reviews \
 ```
 
 **Phase 4: Post summary comment**
+
+Write the body to a temp file, then post (avoids shell escaping issues with multi-line content):
 ```bash
-gh pr comment <PR-number> --body "<!-- claude-code-review -->
+# Write to /tmp/review-summary.md, then:
+gh pr comment <PR-number> --body-file /tmp/review-summary.md
+```
+
+Summary format:
+```markdown
+<!-- claude-code-review -->
 ## Code Review
 
 ### Issues Found
 - [List by severity: BLOCKING / SHOULD FIX / CONSIDER]
 
 ### Verdict
-[APPROVE / REQUEST CHANGES / COMMENT]"
+[APPROVE / REQUEST CHANGES / COMMENT]
 ```
