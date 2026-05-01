@@ -2131,6 +2131,14 @@ function setupFormSubmit() {
   const prodInput = document.getElementById('prod-page-url');
   const aemInput = document.getElementById('url');
 
+  function resetAemPageUrlOnProdEdit() {
+    aemInput.value = '';
+    setOriginDetectHint('');
+    updateShareableQuery(prodInput.value.trim() || null, null);
+  }
+  prodInput.addEventListener('input', resetAemPageUrlOnProdEdit);
+  prodInput.addEventListener('change', resetAemPageUrlOnProdEdit);
+
   FORM.addEventListener('submit', async (e) => {
     e.preventDefault();
     hideError();
