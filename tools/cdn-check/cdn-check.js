@@ -52,7 +52,11 @@ function buildDohProviderAttempts(hostname, typeParam) {
   ];
 }
 
-/** ASN → common CDN / edge name (conservative; org string used for ambiguous ASNs). */
+/**
+ * ASN → common CDN / edge name (conservative where possible; org string used for ambiguous cases).
+ * CloudFront edge is announced under AS16509 (AMAZON-02) and AS14618 (AMAZON-AES); both ASNs are
+ * shared with other AWS services, so this is a best-effort match for production CDN-fronted URLs.
+ */
 const CDN_BY_ASN = new Map([
   [13335, 'Cloudflare'],
   [54113, 'Fastly'],
@@ -63,6 +67,8 @@ const CDN_BY_ASN = new Map([
   [32787, 'Akamai'],
   [24319, 'Akamai'],
   [63949, 'Akamai (Linode)'],
+  [16509, 'Amazon CloudFront'],
+  [14618, 'Amazon CloudFront'],
 ]);
 
 async function dnsQueryJson(hostname, typeAaaa) {
@@ -455,6 +461,9 @@ function classifyIpNetwork(conn) {
     ['akamai', 'Akamai'],
     ['cloudfront', 'Amazon CloudFront'],
     ['amazon cloudfront', 'Amazon CloudFront'],
+    // RDAP often has no origin ASN for Amazon IP allocations; registrant is still Amazon.com, Inc.
+    ['amazon.com, inc', 'Amazon CloudFront'],
+    ['amazon.com inc', 'Amazon CloudFront'],
     ['edgecast', 'Edgecast (Verizon)'],
     ['verizon digital media', 'Verizon Media CDN'],
     ['limelight', 'Limelight'],
@@ -481,14 +490,6 @@ function classifyIpNetwork(conn) {
     };
   }
 
-  if (asn === 16509 || asn === 14618) {
-    return {
-      isKnownCdn: false,
-      label: 'Amazon / AWS',
-      detail: [org, isp, `AS${asn}`].filter(Boolean).join(' · ')
-        || `AS${asn} (AWS; not auto-classified as CDN without CloudFront signals)`,
-    };
-  }
   if (asn === 15169) {
     return {
       isKnownCdn: false,
@@ -756,7 +757,7 @@ function updateDetectedCdn(cdnType) {
       cloudflare: 'Cloudflare',
       fastly: 'Fastly',
       akamai: 'Akamai',
-      cloudfront: 'CloudFront',
+      cloudfront: 'Amazon CloudFront',
       managed: 'Managed (Fastly)',
     };
     DETECTED_CDN_VALUE.textContent = displayName[cdnType] || cdnType;
@@ -1211,6 +1212,7 @@ function getCacheStatus(headers) {
   // For Cloudflare: cf-cache-status should be "HIT"
   // For Fastly/Varnish: x-cache should contain "HIT" (not MISS)
   // For Akamai: x-cache contains TCP_HIT variants
+  // For CloudFront: x-cache often "Hit from cloudfront" / "Miss from cloudfront"
   let isHit = false;
   let reason = '';
 
@@ -1298,7 +1300,7 @@ async function checkCaching(cdnConfig, aemUrl, prodPageUrlOverride = null) {
     // Display relevant cache headers
     const cacheHeaderNames = [
       'cache-control', 'x-cache', 'x-cache-hits', 'cf-cache-status',
-      'age', 'x-served-by', 'x-check-cacheable',
+      'age', 'x-served-by', 'x-check-cacheable', 'x-amz-cf-pop', 'x-amz-cf-id', 'via',
     ];
 
     addResultLine(checkId, 'Cache headers:', 'info');
