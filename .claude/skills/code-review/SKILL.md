@@ -119,10 +119,10 @@ Read changed files for context. Complete your full analysis before proceeding.
 
 **Phase 2: Clean up previous bot comments**
 ```bash
-for id in $(gh api repos/{owner}/{repo}/pulls/<PR-number>/comments --jq '[.[] | select(.user.login == "github-actions[bot]") | .id] | .[]'); do
+for id in $(gh api repos/{owner}/{repo}/pulls/<PR-number>/comments --jq '[.[] | select(.user.login == "claude[bot]") | .id] | .[]'); do
   gh api -X DELETE repos/{owner}/{repo}/pulls/comments/$id
 done
-for id in $(gh api repos/{owner}/{repo}/issues/<PR-number>/comments --jq '[.[] | select(.body | contains("<!-- claude-code-review -->")) | .id] | .[]'); do
+for id in $(gh api repos/{owner}/{repo}/issues/<PR-number>/comments --jq '[.[] | select(.user.login == "claude[bot]") | .id] | .[]'); do
   gh api -X DELETE repos/{owner}/{repo}/issues/comments/$id
 done
 ```
