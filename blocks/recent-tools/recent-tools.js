@@ -1,5 +1,11 @@
+const EXCLUDE_TOOLS = ['/tools/optel/explorer/', '/tools/optel/oversight/'];
+
 function dedupKey(path) {
   return path.replace(/\/index\.html$/, '/').replace(/^(\/tools\/[^/]+)\.html$/, '$1/');
+}
+
+function isExcluded(path) {
+  return EXCLUDE_TOOLS.some((prefix) => path.startsWith(prefix));
 }
 
 function labelFromPath(path) {
@@ -49,6 +55,7 @@ export default async function decorate(block) {
     return { path, ts: Date.now() };
   });
   const merged = [...visits, ...links]
+    .filter((item) => !isExcluded(item.path))
     .map((item) => ({ ...item, key: dedupKey(item.path) }))
     .filter((item, i, arr) => arr.findIndex((v) => v.key === item.key) === i)
     .slice(0, 5);
