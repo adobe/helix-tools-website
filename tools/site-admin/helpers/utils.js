@@ -2,7 +2,6 @@ import { PSI_STORAGE_KEY, FAVORITES_STORAGE_KEY } from './constants.js';
 
 // Re-export shared utilities from card-ui
 export { loadIcon, icon, showToast } from '../../../utils/card-ui/card-ui.js';
-export { default as escapeHtml } from '../../../utils/html.js';
 
 export const getFavorites = (orgValue) => {
   const stored = localStorage.getItem(`${FAVORITES_STORAGE_KEY}-${orgValue}`);

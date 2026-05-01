@@ -1,5 +1,3 @@
-export { default as escapeHtml } from '../../../utils/html.js';
-
 export function escapeAttr(str) {
   if (str == null || str === '') return '';
   return String(str)

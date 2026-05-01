@@ -5,17 +5,17 @@ import escapeHtml from '../../utils/html.js';
 describe('utils/html.js', () => {
   describe('escapeHtml', () => {
     it('escapes HTML via the DOM (named entities for special chars)', () => {
-      assert.equal(escapeHtml('&<>"\' '), '&amp;&lt;&gt;"\' ');
+      assert.equal(escapeHtml('&<>"\' '), '&amp;&lt;&gt;&quot;&#39; ');
     });
 
     it('escapes script-like markup', () => {
       assert.equal(
         escapeHtml('<script>alert("xss")</script>'),
-        '&lt;script&gt;alert("xss")&lt;/script&gt;',
+        '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;',
       );
       assert.equal(
         escapeHtml("<script>alert('xss')</script>"),
-        "&lt;script&gt;alert('xss')&lt;/script&gt;",
+        '&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;',
       );
       assert.equal(escapeHtml('<div>hello</div>'), '&lt;div&gt;hello&lt;/div&gt;');
     });

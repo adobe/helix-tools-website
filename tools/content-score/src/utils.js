@@ -1,5 +1,3 @@
-export { default as escapeHtml } from '../../../utils/html.js';
-
 /**
  * Converts category id (hyphenated) to details property name (camelCase + "Issues").
  * @param {string} id - Category id from config (e.g. "nested-blocks")

@@ -103,8 +103,6 @@ export function truncate(time, unit) {
   return toISOStringWithTimezone(t);
 }
 
-export { default as escapeHTML } from '../../../utils/html.js';
-
 export function cssVariable(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name);
 }

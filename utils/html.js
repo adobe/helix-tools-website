@@ -7,5 +7,5 @@ export default function escapeHtml(value) {
   if (value == null || value === '') return '';
   const div = document.createElement('div');
   div.textContent = typeof value === 'string' ? value : String(value);
-  return div.innerHTML;
+  return div.innerHTML.replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 }
