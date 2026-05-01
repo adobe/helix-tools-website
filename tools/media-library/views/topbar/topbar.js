@@ -15,6 +15,7 @@ import {
 } from '../../features/filters.js';
 import { getMediaLibraryContext } from '../../core/context.js';
 import { clearCache } from '../../core/storage.js';
+import escapeHtml from '../../../../utils/html.js';
 
 function escapeAttribute(str) {
   if (!str) return '';
@@ -24,15 +25,6 @@ function escapeAttribute(str) {
     .replace(/'/g, '&#39;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
-}
-
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 function applySearch(query) {

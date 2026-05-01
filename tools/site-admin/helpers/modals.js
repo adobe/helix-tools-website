@@ -15,8 +15,9 @@ import {
   createApiKey,
   deleteApiKey,
 } from './api-helper.js';
+import escapeHtml from '../../../utils/html.js';
 import {
-  icon, showToast, formatDate, isExpired, escapeHtml,
+  icon, showToast, formatDate, isExpired,
 } from './utils.js';
 
 /* eslint-disable no-alert, no-restricted-globals */
