@@ -3,21 +3,9 @@ name: Claude Code Review
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
-    # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
 
 jobs:
   claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
-
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -32,62 +20,74 @@ jobs:
           fetch-depth: 1
 
       - name: Run Claude Code Review
-        id: claude-review
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '--allowedTools "Bash(gh *)" "Bash(git *)" "Read" "Glob" "Grep" "LS" "Skill"'
-          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
-          plugins: 'code-review@claude-code-plugins'
+          claude_args: '--allowedTools "Bash(gh *)" "Bash(git *)" "Read" "Glob" "Grep" "LS"'
           prompt: |
             Review PR #${{ github.event.pull_request.number }} in ${{ github.repository }}.
 
-            ## Your Task
+            ## Phase 1: Read and analyze (no write API calls in this phase)
 
-            1. **Run the code-review plugin** for general review:
-               ```
-               /code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}
-               ```
+            Gather information:
+            ```bash
+            gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json title,body,headRefName,files,headRefOid
+            gh pr diff ${{ github.event.pull_request.number }} --repo ${{ github.repository }}
+            ```
 
-            2. **Read the local skill** at `.claude/skills/code-review/SKILL.md` for EDS-specific criteria and review against those as well.
+            Read `.claude/skills/code-review/SKILL.md` for EDS-specific review criteria.
+            Read `.claude/skills/code-review/resources/review-checklist.md` for detailed checks.
+            Read any changed files you need for context.
 
-            3. **For EVERY fixable issue, create a GitHub suggestion** using the Pull Request Reviews API:
-               ```bash
-               # Get the commit SHA first
-               COMMIT_SHA=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }} --jq '.head.sha')
+            Complete your full analysis before proceeding. Do not make any write API calls in this phase.
 
-               # Create review with suggestions (position = line in diff, NOT file)
-               gh api --method POST repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews \
-                 --field commit_id="$COMMIT_SHA" \
-                 --field event="COMMENT" \
-                 --field 'comments=[{"path":"file.js","position":10,"body":"**Fix:** Description\n\n```suggestion\nfixed code\n```"}]'
-               ```
+            ## Phase 2: Clean up previous bot comments
 
-               This creates one-click "Commit suggestion" buttons in the PR Files tab.
+            Delete inline review comments from previous runs:
+            ```bash
+            for id in $(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments --jq '[.[] | select(.user.login == "github-actions[bot]") | .id] | .[]'); do
+              gh api -X DELETE repos/${{ github.repository }}/pulls/comments/$id
+            done
+            ```
 
-            4. **Delete any existing Claude review comments** before posting a new summary:
-               ```bash
-               # Find and delete previous review comments
-               for id in $(gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments --jq '.[] | select(.body | contains("<!-- claude-code-review -->")) | .id'); do
-                 gh api -X DELETE repos/${{ github.repository }}/issues/comments/$id
-               done
-               ```
+            Delete previous summary comments:
+            ```bash
+            for id in $(gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments --jq '[.[] | select(.body | contains("<!-- claude-code-review -->")) | .id] | .[]'); do
+              gh api -X DELETE repos/${{ github.repository }}/issues/comments/$id
+            done
+            ```
 
-            5. **Post a summary comment** (with marker for future cleanup):
-               ```bash
-               gh pr comment ${{ github.event.pull_request.number }} --body "<!-- claude-code-review -->
-               ## Code Review Summary
+            ## Phase 3: Post inline suggestions (at most one API call — skip entirely if none)
 
-               ### Issues Found
-               - List issues by severity (BLOCKING / SHOULD FIX / CONSIDER)
+            Only include a suggestion when ALL of these are true:
+            - The issue exists in the current HEAD diff (do not flag already-fixed code)
+            - You are confident the suggested replacement is correct
+            - The fix is within lines that appear in the diff (not surrounding context)
 
-               ### One-Click Fixes
-               I've added GitHub Suggestions for fixable issues. Go to **Files changed** and click **Commit suggestion** to apply.
+            When in doubt, report the issue in the Phase 4 summary instead.
 
-               ### Verdict
-               APPROVE / REQUEST CHANGES / COMMENT"
-               ```
+            `position` is the 1-based line number counting from the `@@` header line in the unified diff output.
 
-            IMPORTANT: Always use GitHub suggestions (```suggestion blocks) so authors can fix issues with one click.
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
+            Post all suggestions in a single call:
+            ```bash
+            COMMIT_SHA=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }} --jq '.head.sha')
+            gh api --method POST repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews \
+              --field commit_id="$COMMIT_SHA" \
+              --field event="COMMENT" \
+              --field 'comments=[{"path":"FILE","position":N,"body":"**Fix:** REASON\n\n```suggestion\nCODE\n```"}]'
+            ```
+
+            Skip this step entirely if there are no suggestions.
+
+            ## Phase 4: Post summary comment
+
+            ```bash
+            gh pr comment ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --body "<!-- claude-code-review -->
+            ## Code Review
+
+            ### Findings
+            [List issues grouped by BLOCKING / SHOULD FIX / CONSIDER. Write \"No issues found.\" if clean.]
+
+            ### Verdict
+            [APPROVE / REQUEST CHANGES / COMMENT]"
+            ```

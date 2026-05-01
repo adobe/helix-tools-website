@@ -114,45 +114,43 @@ Report findings directly:
 
 ### PR Review Mode
 
-**For every fixable issue, create a GitHub suggestion** for one-click acceptance:
+Complete your full analysis before making any API calls.
+
+**Gather information:**
+```bash
+gh pr view <PR-number> --json title,body,headRefName,files
+gh pr diff <PR-number>
+```
+
+**Clean up previous bot comments:**
+```bash
+for id in $(gh api repos/{owner}/{repo}/pulls/<PR-number>/comments --jq '[.[] | select(.user.login == "github-actions[bot]") | .id] | .[]'); do
+  gh api -X DELETE repos/{owner}/{repo}/pulls/comments/$id
+done
+for id in $(gh api repos/{owner}/{repo}/issues/<PR-number>/comments --jq '[.[] | select(.body | contains("<!-- claude-code-review -->")) | .id] | .[]'); do
+  gh api -X DELETE repos/{owner}/{repo}/issues/comments/$id
+done
+```
+
+**Post all inline suggestions in a single call** (skip if none). Only suggest when the issue is in the current diff and you are confident the fix is correct — otherwise put it in the summary.
+
+`position` = 1-based line number counting from the `@@` header line in the unified diff.
 
 ```bash
-# Get commit SHA
 COMMIT_SHA=$(gh api repos/{owner}/{repo}/pulls/<PR-number> --jq '.head.sha')
-
-# Post review with suggestions
 gh api --method POST repos/{owner}/{repo}/pulls/<PR-number>/reviews \
-  --input /tmp/review.json
+  --field commit_id="$COMMIT_SHA" \
+  --field event="COMMENT" \
+  --field 'comments=[{"path":"FILE","position":N,"body":"**Fix:** REASON\n\n```suggestion\nCODE\n```"}]'
 ```
 
-**Review JSON format:**
-
-```json
-{
-  "commit_id": "<commit-sha>",
-  "event": "COMMENT",
-  "comments": [
-    {
-      "path": "path/to/file.js",
-      "position": 12,
-      "body": "**Fix:** Remove debug statement\n\n```suggestion\n// fixed code here\n```"
-    }
-  ]
-}
-```
-
-**IMPORTANT:** `position` is the line number in the diff output, NOT the file. Count from the start of the diff including headers.
-
-**Then post a summary comment:**
-
+**Post summary comment:**
 ```bash
-gh pr comment <PR-number> --body "## Code Review
+gh pr comment <PR-number> --body "<!-- claude-code-review -->
+## Code Review
 
 ### Issues Found
-- [List by severity]
-
-### One-Click Fixes
-GitHub Suggestions added. Go to **Files changed** → **Commit suggestion**.
+- [List by severity: BLOCKING / SHOULD FIX / CONSIDER]
 
 ### Verdict
 [APPROVE / REQUEST CHANGES / COMMENT]"
