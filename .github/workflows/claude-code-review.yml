@@ -23,16 +23,9 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '--allowedTools "Bash(gh *)" "Bash(git *)" "Read" "Glob" "Grep" "LS"'
+          claude_args: '--allowedTools "Bash(gh *)" "Bash(git *)" "Read" "Glob" "Grep" "LS" "Skill"'
           prompt: |
-            Review PR #${{ github.event.pull_request.number }} in ${{ github.repository }}.
-
-            Read `.claude/skills/code-review/SKILL.md` and follow the **PR Review Mode** process.
-            Read `.claude/skills/code-review/resources/review-checklist.md` for detailed checks.
-            Read any changed files you need for context.
-
-            Substitute placeholders in all commands:
-            - `{owner}/{repo}` → `${{ github.repository }}`
-            - `<PR-number>` → `${{ github.event.pull_request.number }}`
+            Use the Skill tool to invoke the `code-review` skill for PR #${{ github.event.pull_request.number }}.
 
             When running `gh pr view` and `gh pr diff`, add `--repo ${{ github.repository }}`.
+            Substitute `{owner}/{repo}` with `${{ github.repository }}` in all commands.
