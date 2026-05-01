@@ -27,7 +27,7 @@ export default async function decorate(widget) {
           }
         } catch (error) {
           // eslint-disable-next-line no-console
-          console.log(`failed to load module for ${widgetName}`, error);
+          console.error(`failed to load module for ${widgetName}`, error);
         }
         resolve();
       })();
@@ -35,7 +35,7 @@ export default async function decorate(widget) {
     await Promise.all([cssLoaded, decorationComplete]);
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.log(`failed to load block ${widgetName}`, error);
+    console.error(`failed to load block ${widgetName}`, error);
   }
   widget.className = `widget ${widgetName}`;
   widget.dataset.widgetUrl = widgetUrl;
