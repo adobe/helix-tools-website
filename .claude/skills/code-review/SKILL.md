@@ -138,21 +138,27 @@ Only skip a suggestion if:
 
 `position` = 1-based line number counting from the `@@` header line in the unified diff.
 
-Write the suggestions JSON to a temp file to avoid shell escaping issues:
+Use the `headRefOid` value from Phase 1. Use the Write tool to create `/tmp/review-comments.json`, then post:
 ```bash
-COMMIT_SHA=$(gh pr view <PR-number> --json headRefOid --jq '.headRefOid')
-# Write JSON to /tmp/review-comments.json first, then:
 gh api --method POST repos/{owner}/{repo}/pulls/<PR-number>/reviews \
-  --field commit_id="$COMMIT_SHA" \
+  --field commit_id="<headRefOid from Phase 1>" \
   --field event="COMMENT" \
-  --field 'comments=[{"path":"FILE","position":N,"body":"**Fix:** REASON\n\n```suggestion\nCODE\n```"}]'
+  --input /tmp/review-comments.json
+```
+
+`/tmp/review-comments.json` format:
+```json
+{
+  "comments": [
+    {"path": "FILE", "position": N, "body": "**Fix:** REASON\n\n```suggestion\nCODE\n```"}
+  ]
+}
 ```
 
 **Phase 4: Post summary comment**
 
-Write the body to a temp file, then post (avoids shell escaping issues with multi-line content):
+Use the Write tool to create `/tmp/review-summary.md`, then post:
 ```bash
-# Write to /tmp/review-summary.md, then:
 gh pr comment <PR-number> --body-file /tmp/review-summary.md
 ```
 
