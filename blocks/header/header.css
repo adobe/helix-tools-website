@@ -297,6 +297,7 @@ header.header-wrapper {
     }
 
     .experimental-icon {
+      margin-left: 0.25em;
       font-size: 0.95em;
       line-height: 1;
     }
