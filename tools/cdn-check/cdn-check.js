@@ -691,8 +691,6 @@ function handleAuthError(status, checkId) {
     updateCheckState(checkId, 'fail', 'Not Authorized');
     addResultLine(checkId, 'You are not authorized to access this project.', 'error');
     addResultLine(checkId, 'Contact the project admin to request access.', 'info');
-    // eslint-disable-next-line no-alert
-    alert('Not authorized: You do not have permission to access this project. Contact the project administrator to request access.');
     return true;
   }
   return false;
