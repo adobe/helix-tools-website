@@ -1,7 +1,9 @@
 import { registerToolReady } from '../../scripts/scripts.js';
+import admin from '../../scripts/helix-admin.js';
 import { initConfigField } from '../../utils/config/config.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
+import { executeAdminRequest } from '../../utils/admin-request.js';
 import escapeHtml from '../../utils/html.js';
+import filterPendingPages from './diff-utils.js';
 
 // Lazy-load Dark Alley converter module
 const CONVERTERS_URL = 'https://main--da-nx--adobe.aem.live/nx/utils/converters.js';
@@ -66,15 +68,20 @@ function showError(message) {
   updateDisplayState('error');
 }
 
+const jobAdmin = admin.withRequestInit({ mode: 'cors' });
+
 /**
  * Fetches the live and preview host URLs for org/site.
- * @param {string} org - Organization name.
- * @param {string} site - Site name within org.
- * @returns {Promise<Object>} Object with live and preview hostnames.
+ * @param {string} org
+ * @param {string} site
+ * @returns {Promise<{live: string, preview: string}|null>}
  */
 async function fetchHosts(org, site) {
-  const url = `https://admin.hlx.page/status/${org}/${site}/main`;
-  const res = await fetch(url);
+  const res = await executeAdminRequest(
+    () => admin.status({ org, site }).get(),
+    { org, site },
+  );
+  if (!res) return null;
   if (!res.ok) throw new Error(`Failed to fetch hosts: ${res.status}`);
   const json = await res.json();
   return {
@@ -85,16 +92,13 @@ async function fetchHosts(org, site) {
 
 /**
  * Fetches job details from an existing job ID.
- * @param {string} org - Organization name.
- * @param {string} site - Site name.
- * @param {string} jobId - Job ID from page-status.
+ * @param {string} org
+ * @param {string} site
+ * @param {string} jobId
  * @returns {Promise<Array>} Array of resources
  */
 async function fetchJobDetails(org, site, jobId) {
-  const jobUrl = `https://admin.hlx.page/job/${org}/${site}/main/status/${jobId}`;
-
-  // First check job status
-  const jobRes = await fetch(jobUrl, { mode: 'cors' });
+  const jobRes = await jobAdmin.job({ org, site }).get(`status/${jobId}`);
   if (!jobRes.ok) throw new Error(`Job fetch failed: ${jobRes.status}`);
 
   const { state } = await jobRes.json();
@@ -102,8 +106,7 @@ async function fetchJobDetails(org, site, jobId) {
     throw new Error('Job is still running. Please wait for it to complete.');
   }
 
-  // Fetch details
-  const detailsRes = await fetch(`${jobUrl}/details`, { mode: 'cors' });
+  const detailsRes = await jobAdmin.job({ org, site }).get(`status/${jobId}/details`);
   if (!detailsRes.ok) throw new Error('Failed to fetch job details');
 
   const { data } = await detailsRes.json();
@@ -111,37 +114,13 @@ async function fetchJobDetails(org, site, jobId) {
 }
 
 /**
- * Filters resources to find pages with pending changes (preview newer than publish).
- * @param {Array} resources - Array of resource objects
- * @returns {Array} Filtered array of pages with pending changes
+ * Fetches text content via an admin operation.
+ * @param {object} op - Bound admin operation (preview or live).
+ * @param {string} path - Resource path.
+ * @returns {Promise<{content: string|null, status: number}>}
  */
-function filterPendingPages(resources) {
-  const ignore = ['/helix-env.json', '/sitemap.json'];
-
-  return resources.filter((resource) => {
-    const { path, previewLastModified, publishLastModified } = resource;
-
-    // Skip ignored paths
-    if (!path || ignore.includes(path)) return false;
-
-    // Must have both preview and publish dates
-    if (!previewLastModified || !publishLastModified) return false;
-
-    const previewDate = new Date(previewLastModified);
-    const publishDate = new Date(publishLastModified);
-
-    // Preview must be newer than publish
-    return previewDate > publishDate;
-  });
-}
-
-/**
- * Fetches content from a URL.
- * @param {string} url - URL to fetch
- * @returns {Promise<{content: string|null, status: number}>} Content and status
- */
-async function fetchContent(url) {
-  const res = await fetch(url);
+async function fetchContent(op, path) {
+  const res = await op.get(path);
   if (!res.ok) {
     return { content: null, status: res.status };
   }
@@ -590,10 +569,9 @@ async function loadPageDiff(page) {
     return;
   }
 
-  // Build admin API URLs to fetch markdown content
   const fetchPath = path.endsWith('/') ? `${path}index.md` : `${path}.md`;
-  const previewUrl = `https://admin.hlx.page/preview/${currentOrg}/${currentSite}/main${fetchPath}`;
-  const liveUrl = `https://admin.hlx.page/live/${currentOrg}/${currentSite}/main${fetchPath}`;
+  const previewOp = admin.preview({ org: currentOrg, site: currentSite });
+  const liveOp = admin.live({ org: currentOrg, site: currentSite });
 
   // Show loading state
   DIFF_CONTENT.innerHTML = createDiffPanelHtml(
@@ -607,10 +585,9 @@ async function loadPageDiff(page) {
   );
 
   try {
-    // Fetch both versions from admin API
     const [previewResult, liveResult] = await Promise.all([
-      fetchContent(previewUrl),
-      fetchContent(liveUrl),
+      fetchContent(previewOp, fetchPath),
+      fetchContent(liveOp, fetchPath),
     ]);
 
     // Check if preview content is available
@@ -903,19 +880,11 @@ async function init() {
   updateDisplayState('loading');
 
   try {
-    // Ensure login
-    if (!await ensureLogin(currentOrg, currentSite)) {
-      window.addEventListener('profile-update', ({ detail: loginInfo }) => {
-        if (loginInfo.includes(currentOrg)) {
-          window.location.reload();
-        }
-      }, { once: true });
+    const hosts = await fetchHosts(currentOrg, currentSite);
+    if (!hosts) {
       showError('Please sign in to view page diffs.');
       return;
     }
-
-    // Fetch host configuration
-    const hosts = await fetchHosts(currentOrg, currentSite);
     previewHost = hosts.preview;
     liveHost = hosts.live;
 

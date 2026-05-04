@@ -1,4 +1,6 @@
 /* eslint-disable no-console */
+import admin from '../../scripts/helix-admin.js';
+
 const RUN_REPORT_BUTTON = document.getElementById('run-report');
 const ORPHANED_PAGES_LIST = document.getElementById('orphaned-pages-list');
 const SPINNER = document.getElementById('spinner');
@@ -11,50 +13,43 @@ const ORPHANED_PAGES_ACTIONS = document.getElementById('orphaned-pages-actions')
 let JOB_DETAILS = null;
 let LIVE_HOST = null;
 
+const statusAdmin = admin.withRequestInit({
+  mode: 'cors',
+  cache: 'no-cache',
+  credentials: 'same-origin',
+  redirect: 'follow',
+  referrerPolicy: 'no-referrer',
+});
+const jobAdmin = admin.withRequestInit({ mode: 'cors' });
+
 // data fetching
 /**
  * Fetches the live and preview host URLs for org/site.
- * @param {string} org - Organization name.
- * @param {string} site - Site name within org.
- * @returns {Promise<>} Object with `live` and `preview` hostnames.
+ * @param {string} org
+ * @param {string} site
+ * @returns {Promise<{live: string|null, preview: string|null}>}
  */
 async function fetchHosts(org, site) {
   try {
-    const url = `https://admin.hlx.page/status/${org}/${site}/main`;
-    const res = await fetch(url);
-    if (!res.ok) throw res;
+    const res = await admin.status({ org, site }).get();
+    if (!res.ok) throw new Error(`Status ${res.status}`);
     const json = await res.json();
     return {
       live: new URL(json.live.url).host,
       preview: new URL(json.preview.url).host,
     };
   } catch (error) {
-    return {
-      live: null,
-      preview: null,
-    };
+    return { live: null, preview: null };
   }
 }
 
-async function fetchJobUrl() {
+async function submitJob() {
   try {
-    const options = {
-      body: JSON.stringify({
-        paths: ['/*'],
-        select: ['edit', 'preview', 'live'],
-      }),
-      method: 'POST',
-      mode: 'cors',
-      cache: 'no-cache',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      redirect: 'follow',
-      referrerPolicy: 'no-referrer',
-    };
-    const res = await fetch(
-      `https://admin.hlx.page/status/${ORG}/${SITE}/main/*`,
-      options,
-    );
+    const body = JSON.stringify({
+      paths: ['/*'],
+      select: ['edit', 'preview', 'live'],
+    });
+    const res = await statusAdmin.status({ org: ORG, site: SITE }).update('/*', body);
     if (!res.ok) throw res;
     const json = await res.json();
     if (!json.job || json.job.state !== 'created') {
@@ -62,10 +57,9 @@ async function fetchJobUrl() {
       error.status = 'Job';
       throw error;
     }
-    // update url param with job
-    return json.links ? json.links.self : null;
+    return json.job.name || null;
   } catch (error) {
-    console.error('Error fetching job URL', error);
+    console.error('Error creating job', error);
     return null;
   }
 }
@@ -104,56 +98,36 @@ function displayJobDetails() {
 }
 
 async function unpublishOrphanedPages(paths) {
-  // eslint-disable-next-line no-console
   console.log('Unpublishing', paths);
-  const options = {
-    body: JSON.stringify({
-      paths,
-      delete: true,
-    }),
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  };
-  const liveResp = await fetch(
-    `https://admin.hlx.page/live/${ORG}/${SITE}/main/*`,
-    options,
-  );
-  if (!liveResp.ok) throw liveResp;
-  const liveJson = await liveResp.json();
-  const previewResp = await fetch(
-    `https://admin.hlx.page/preview/${ORG}/${SITE}/main/*`,
-    options,
-  );
-  if (!previewResp.ok) throw previewResp;
-  const previewJson = await previewResp.json();
+  const body = JSON.stringify({ paths, delete: true });
+  const liveRes = await admin.live({ org: ORG, site: SITE }).update('/*', body);
+  if (!liveRes.ok) throw liveRes;
+  const liveJson = await liveRes.json();
+  const previewRes = await admin.preview({ org: ORG, site: SITE }).update('/*', body);
+  if (!previewRes.ok) throw previewRes;
+  const previewJson = await previewRes.json();
   console.log('Unpublished', liveJson, previewJson);
-  STATUS.innerHTML = `Unpublished ${paths.length} Page${paths.length === 1 ? '' : 's'}, re-run report to check again.`;
+  STATUS.textContent = `Unpublished ${paths.length} Page${paths.length === 1 ? '' : 's'}, re-run report to check again.`;
 }
 
 function getCheckedOrphanedPages() {
   return [...document.querySelectorAll('.orphaned-page-checkbox:checked')].map((checkbox) => checkbox.value);
 }
 
-function pollJob(detailsURL) {
+function pollJob(jobName) {
   setTimeout(async () => {
-    const res = await fetch(detailsURL);
+    const res = await jobAdmin.job({ org: ORG, site: SITE }).get(`status/${jobName}/details`);
     const json = await res.json();
     JOB_DETAILS = json;
     displayJobDetails();
     if (JOB_DETAILS.state !== 'stopped') {
-      pollJob(detailsURL);
+      pollJob(jobName);
     } else {
       document.querySelectorAll('.orphaned-page-checkbox').forEach((checkbox) => {
         checkbox.addEventListener('change', () => {
           const checked = getCheckedOrphanedPages();
-          ORPHANED_PAGES_ACTIONS.innerHTML = `Unpublish ${checked.length} Page${checked.length === 1 ? '' : 's'}`;
-          if (checked.length > 0) {
-            ORPHANED_PAGES_ACTIONS.disabled = false;
-          } else {
-            ORPHANED_PAGES_ACTIONS.disabled = true;
-          }
+          ORPHANED_PAGES_ACTIONS.textContent = `Unpublish ${checked.length} Page${checked.length === 1 ? '' : 's'}`;
+          ORPHANED_PAGES_ACTIONS.disabled = checked.length === 0;
         });
       });
     }
@@ -185,15 +159,12 @@ async function init() {
 
   RUN_REPORT_BUTTON.addEventListener('click', async () => {
     ORPHANED_PAGES_LIST.innerHTML = '';
-    STATUS.innerHTML = 'Running report...';
-    ORPHANED_PAGES_ACTIONS.innerHTML = 'Unpublish 0 Pages';
+    STATUS.textContent = 'Running report...';
+    ORPHANED_PAGES_ACTIONS.textContent = 'Unpublish 0 Pages';
     ORPHANED_PAGES_ACTIONS.disabled = true;
-    const jobUrl = await fetchJobUrl();
-    if (jobUrl) {
-      const resp = await fetch(jobUrl);
-      const job = await resp.json();
-      const detailsURL = job.links.details;
-      pollJob(detailsURL);
+    const jobName = await submitJob();
+    if (jobName) {
+      pollJob(jobName);
       SPINNER.ariaHidden = 'false';
     }
   });

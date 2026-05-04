@@ -1,8 +1,10 @@
 import { registerToolReady } from '../../scripts/scripts.js';
+import admin from '../../scripts/helix-admin.js';
 import { decorateIcons } from '../../scripts/aem.js';
-import { initConfigField, updateConfig } from '../../utils/config/config.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
+import { initConfigField } from '../../utils/config/config.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import loadingMessages from './loading-messages.js';
+import { validatePath, classifySequenceStatus } from './utils.js';
 
 const FORM = document.getElementById('status-form');
 const TABLE = document.querySelector('table');
@@ -13,7 +15,10 @@ const FILTER = document.getElementById('status-filter');
 const DOWNLOADCSV = document.getElementById('download-csv');
 const DIFFMODE = document.getElementById('diff-mode');
 let intervalId;
-const oneSecondFunction = () => loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
+const randomLoadingMessage = () => {
+  const index = Math.floor(Math.random() * loadingMessages.length);
+  return loadingMessages[index];
+};
 
 // utility functions
 /**
@@ -30,34 +35,6 @@ function debounce(func, wait) {
     clearTimeout(timeout);
     timeout = setTimeout(() => func.apply(context, args), wait);
   };
-}
-
-/**
- * Validates and normalizes path string.
- * @param {string} path - Path to validate and normalize.
- * @returns {string} Validated and normalized path.
- */
-function validatePath(path) {
-  if (!path) return '/*';
-  let str = path;
-  // isolate path from non-path segments
-  if (str.includes('://')) {
-    [str] = path.split('://');
-  }
-  if (str.includes('/')) {
-    str = str.substring(str.indexOf('/'));
-  } else {
-    str = '/';
-  }
-  // ensure path starts with "/"
-  str = str.startsWith('/') ? str : `/${str}`;
-  // ensure path ends with "/" (for subpath queries)
-  if (!str.endsWith('/')) {
-    str += '/';
-  }
-  // add "*" for wildcard matching
-  str += '*';
-  return str;
 }
 
 // url params
@@ -246,7 +223,7 @@ function updateTableDisplay(show) {
     const div = TABLE.querySelector('.loading > tr > td > div');
     const p = document.createElement('p');
     div.appendChild(p);
-    intervalId = setInterval(() => { p.innerHTML = oneSecondFunction(); }, 5000);
+    intervalId = setInterval(() => { p.textContent = randomLoadingMessage(); }, 5000);
   } else if (intervalId) {
     clearInterval(intervalId);
   }
@@ -312,41 +289,16 @@ function buildLink(text, url, path) {
 }
 
 /**
- * Builds sequence element based on validity and sequence of edit, preview, and publish dates.
- * @param {string} edit - Edit date.
- * @param {string} preview - Preview date.
- * @param {string} publish - Publish date.
- * @returns {HTMLSpanElement} Status light element indicating status and sequence.
+ * @param {string} edit
+ * @param {string} preview
+ * @param {string} publish
+ * @returns {HTMLSpanElement}
  */
 function buildSequenceStatus(edit, preview, publish) {
-  // check if a date is valid
-  const date = (d) => !Number.isNaN(d.getTime());
-  const editDate = new Date(edit);
-  const previewDate = new Date(preview);
-  const publishDate = new Date(publish);
-  const inSequence = (editDate <= previewDate && previewDate <= publishDate);
+  const { label, modifier } = classifySequenceStatus(edit, preview, publish);
   const span = document.createElement('span');
-  span.className = 'status-light';
-  let status;
-  if (!date(editDate)) {
-    status = 'No source';
-    span.classList.add('negative');
-  } else if (date(editDate) && !date(previewDate) && !date(publishDate)) {
-    status = 'Not previewed';
-    span.classList.add('positive');
-  } else if (
-    date(editDate)
-    && date(previewDate)
-    && !date(publishDate)
-    && editDate <= previewDate
-  ) {
-    status = 'Not published';
-    span.classList.add('positive');
-  } else {
-    status = inSequence ? 'Current' : 'Pending changes';
-    span.classList.add('positive');
-  }
-  span.textContent = status;
+  span.className = `status-light ${modifier}`;
+  span.textContent = label;
   return span;
 }
 
@@ -439,104 +391,89 @@ function displayResources(resources, live, preview) {
 
 // data fetching
 /**
- * Fetches the live and preview host URLs for org/site.
- * @param {string} org - Organization name.
- * @param {string} site - Site name within org.
- * @returns {Promise<>} Object with `live` and `preview` hostnames.
- */
-async function fetchHosts(org, site) {
-  try {
-    const url = `https://admin.hlx.page/status/${org}/${site}/main`;
-    const res = await fetch(url);
-    if (!res.ok) throw res;
-    const json = await res.json();
-    return {
-      live: new URL(json.live.url).host,
-      preview: new URL(json.preview.url).host,
-    };
-  } catch (error) {
-    return {
-      live: null,
-      preview: null,
-    };
-  }
-}
-
-/**
- * Validates the live and preview host config for org/site.
- * @param {string} org - Organization name.
- * @param {string} site - Site name within org.
- * @returns {Promise<>} Object with `live` and `preview` hostnames.
+ * Fetches live/preview host config. Throws on invalid config.
+ * @param {string} org
+ * @param {string} site
+ * @returns {Promise<{live: string, preview: string}|null>}
  */
 async function validateHosts(org, site) {
-  const { live, preview } = await fetchHosts(org, site);
-  if (!live || !preview) {
+  const res = await executeAdminRequest(
+    () => admin.status({ org, site }).get(),
+    { org, site },
+  );
+  if (!res) return null;
+  if (!res.ok) throw new Error(`Invalid project configuration for ${org}/${site}`);
+  const json = await res.json();
+  if (!json.live?.url || !json.preview?.url) {
     throw new Error(`Invalid project configuration for ${org}/${site}`);
   }
-  return { live, preview };
+  return {
+    live: new URL(json.live.url).host,
+    preview: new URL(json.preview.url).host,
+  };
 }
 
+const jobAdmin = admin.withRequestInit({ mode: 'cors' });
+
 /**
- * Fetches job URL for page status admin operation.
- * @param {string} org - Organization name.
- * @param {string} site - Site name within org.
- * @param {string} path - Path to validate and include in request payload.
- * @returns {Promise<string|null>} Job URL if job is successfully created, or `null` if error.
+ * Submits a status job for the given org/site/path.
+ * @param {string} org
+ * @param {string} site
+ * @param {string} path - Raw user-entered path (will be validated/normalized).
+ * @returns {Promise<string|null>} Job name, or `null` if the user cancels login.
  */
-async function fetchJobUrl(org, site, path) {
-  try {
-    const options = {
-      body: JSON.stringify({
-        paths: [validatePath(path)],
-        select: ['edit', 'preview', 'live'],
-      }),
-      method: 'POST',
-      mode: 'cors',
-      cache: 'no-cache',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      redirect: 'follow',
-      referrerPolicy: 'no-referrer',
-    };
-    const res = await fetch(
-      `https://admin.hlx.page/status/${org}/${site}/main/*`,
-      options,
-    );
-    if (!res.ok) throw res;
-    const json = await res.json();
-    if (!json.job || json.job.state !== 'created') {
-      const error = new Error();
-      error.status = 'Job';
-      throw error;
-    }
-    // update url param with job
-    if (json.job.name) updateJobParam(json.job.name);
-    return json.links ? json.links.self : null;
-  } catch (error) {
-    updateTableError(error.status, null, `${org}/${site}${path}`);
-    return null;
+async function submitStatusJob(org, site, path) {
+  const body = JSON.stringify({
+    paths: [validatePath(path)],
+    select: ['edit', 'preview', 'live'],
+  });
+  const statusAdmin = admin.withRequestInit({
+    mode: 'cors',
+    cache: 'no-cache',
+    credentials: 'same-origin',
+    redirect: 'follow',
+    referrerPolicy: 'no-referrer',
+  });
+  const res = await executeAdminRequest(
+    () => statusAdmin.status({ org, site }).update('/*', body),
+    { org, site, policy: AuthMode.PREFLIGHT_AND_RETRY },
+  );
+  if (!res) return null;
+  if (!res.ok) {
+    const error = new Error();
+    error.status = res.status;
+    throw error;
   }
+  const json = await res.json();
+  if (!json.job || json.job.state !== 'created') {
+    const error = new Error();
+    error.status = 'Job';
+    throw error;
+  }
+  if (json.job.name) updateJobParam(json.job.name);
+  return json.job.name || null;
 }
 
 /**
- * Polls job URL then fetches additional details and returns job resources.
- * @param {string} url - Job URL.
+ * Polls a job until completion, then fetches details and returns resources.
+ * @param {string} org
+ * @param {string} site
+ * @param {string} jobName
  * @param {number} [retry=10000] - Delay (in ms) between polling attempts.
  * @returns {Promise<Object[]>} Array of resources.
  */
-async function runJob(url, retry = 10000) {
+async function runJob(org, site, jobName, retry = 10000) {
   try {
-    const jobRes = await fetch(url, { mode: 'cors' });
+    const jobRes = await jobAdmin.job({ org, site }).get(`status/${jobName}`);
     if (!jobRes.ok) throw jobRes;
     const { state } = await jobRes.json();
     if (state !== 'completed' && state !== 'stopped') {
-      await new Promise((resolve) => { setTimeout(resolve, retry); }); // wait before repolling
-      return runJob(url, retry); // poll again
+      await new Promise((resolve) => { setTimeout(resolve, retry); });
+      return runJob(org, site, jobName, retry);
     }
-    const detailsRes = await fetch(`${url}/details`, { mode: 'cors' });
+    const detailsRes = await jobAdmin.job({ org, site }).get(`status/${jobName}/details`);
     if (!detailsRes.ok) throw detailsRes;
     const { data, createTime } = await detailsRes.json();
-    // update table caption with create time
     if (createTime) updateTableCaption(createTime);
     return data ? data.resources : [];
   } catch (error) {
@@ -546,14 +483,15 @@ async function runJob(url, retry = 10000) {
 }
 
 /**
- * Executes status job.
- * @param {string} jobUrl - Job URL.
+ * Executes status job and displays results.
+ * @param {string} org
+ * @param {string} site
+ * @param {string} jobName
  * @param {string} live - Base URL for live resources.
  * @param {string} preview - Base URL for preview resources.
- * @returns {Promise<>} Promise that resolves once job has run and results are displayed.
  */
-async function runAndDisplayJob(jobUrl, live, preview) {
-  const paths = await runJob(jobUrl);
+async function runAndDisplayJob(org, site, jobName, live, preview) {
+  const paths = await runJob(org, site, jobName);
   if (!paths || paths.length === 0) {
     throw new Error('No page status data found.');
   }
@@ -601,14 +539,11 @@ async function runFromParams(search) {
     const job = params.get('job');
     if (org && site && job) {
       try {
-        // initial setup
         setupJob(FORM, FORM.querySelector('button'));
-        // fetch host config
-        const { live, preview } = await validateHosts(org, site);
-        updateConfig();
-        // fetch page status and display results
-        const jobUrl = `https://admin.hlx.page/job/${org}/${site}/main/status/${job}`;
-        await runAndDisplayJob(jobUrl, live, preview);
+        const hosts = await validateHosts(org, site);
+        if (!hosts) return;
+        const { live, preview } = hosts;
+        await runAndDisplayJob(org, site, job, live, preview);
         updateJobParam(job);
       } catch (error) {
         updateTableError('Job');
@@ -634,32 +569,16 @@ async function init() {
     e.preventDefault();
     const { target, submitter } = e;
     const data = getFormData(target);
-    const { org, site } = data;
-
-    if (!await ensureLogin(org, site)) {
-      // not logged in yet, listen for profile-update event
-      window.addEventListener('profile-update', ({ detail: loginInfo }) => {
-        // check if user is logged in now
-        if (loginInfo.includes(org)) {
-          // logged in, restart action (e.g. resubmit form)
-          submitter.click();
-        }
-      }, { once: true });
-      // abort action
-      return;
-    }
+    const { org, site, path } = data;
 
     try {
-      // initial setup
       setupJob(target, submitter);
-      const { path } = data;
-      // fetch host config
-      const { live, preview } = await validateHosts(org, site);
-      updateConfig();
-      // fetch page status and display results
-      const jobUrl = await fetchJobUrl(org, site, path);
-      if (!jobUrl) throw new Error('Failed to create page status job.');
-      await runAndDisplayJob(jobUrl, live, preview);
+      const hosts = await validateHosts(org, site);
+      if (!hosts) return;
+      const { live, preview } = hosts;
+      const jobName = await submitStatusJob(org, site, path);
+      if (!jobName) return;
+      await runAndDisplayJob(org, site, jobName, live, preview);
     } catch (error) {
       updateTableError('Job');
       removeJobParam();
