@@ -3,6 +3,7 @@ import DataLoader from './loader.js';
 import { updateChart } from './chart.js';
 import { formatRelativeDate, formatNumber } from './utils.js';
 import { decorateIcons } from '../../scripts/aem.js';
+import escapeHtml from '../../utils/html.js';
 
 const dataLoader = new DataLoader();
 dataLoader.apiEndpoint = 'https://bundles.aem.page';
@@ -21,20 +22,6 @@ const data = {
   cached: [],
   filtered: [],
 };
-
-/**
- * Escapes HTML to prevent XSS attacks
- * @param {string} text - Text to escape
- * @returns {string} - Escaped HTML
- */
-function escapeHtml(text) {
-  if (typeof text !== 'string') {
-    return String(text);
-  }
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
 
 // Toast notification
 function showToast(message, type = 'success') {

@@ -1,6 +1,7 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
+import escapeHtml from '../../utils/html.js';
 
 // Lazy-load Dark Alley converter module
 const CONVERTERS_URL = 'https://main--da-nx--adobe.aem.live/nx/utils/converters.js';
@@ -146,19 +147,6 @@ async function fetchContent(url) {
   }
   const content = await res.text();
   return { content, status: res.status };
-}
-
-/**
- * Escapes HTML entities for safe display.
- * @param {string} str - String to escape
- * @returns {string} Escaped string
- */
-function escapeHtml(str) {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 /**
