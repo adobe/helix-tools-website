@@ -24,6 +24,10 @@ function getSimulatorEndpoint() {
 
 const SIMULATOR_ENDPOINT = getSimulatorEndpoint();
 
+// Languages needed for syntax highlighting
+// Note: handlebars depends on markup-templating which depends on markup
+const PRISM_LANGUAGES = ['json', 'markup', 'markup-templating', 'handlebars'];
+
 // DOM Elements
 const jsonInput = document.getElementById('json-input');
 const templateInput = document.getElementById('template-input');
@@ -358,7 +362,7 @@ function syncScroll(textarea, highlightEl) {
  */
 function ensurePrismReady() {
   if (!prismLoadPromise) {
-    prismLoadPromise = loadPrismLibrary(['json', 'markup', 'markup-templating', 'handlebars']);
+    prismLoadPromise = loadPrismLibrary(PRISM_LANGUAGES);
   }
   return prismLoadPromise;
 }
