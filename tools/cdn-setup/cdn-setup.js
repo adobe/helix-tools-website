@@ -1,8 +1,10 @@
 /* eslint-disable no-alert */
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
 import { logResponse } from '../../blocks/console/console.js';
+import admin from '../../scripts/helix-admin.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
+import { getErrorMessage } from './utils.js';
 
 const adminForm = document.getElementById('admin-form');
 const cdnForm = document.getElementById('cdn-form');
@@ -88,84 +90,6 @@ const CDN_FIELDS = {
     },
   ],
 };
-
-const ERROR_MESSAGES = {
-  ENOTFOUND: 'Could not connect to CDN endpoint. Please verify the hostname is correct.',
-  ECONNREFUSED: 'Connection refused by CDN server. Please check your endpoint configuration.',
-  ETIMEDOUT: 'Request timed out. The CDN server may be unreachable.',
-  ECONNRESET: 'Connection was reset. Please try again.',
-  400: 'Bad request. Please check your configuration.',
-  401: 'Authentication failed. Please verify your credentials.',
-  403: 'Access denied. Your credentials may not have the required permissions.',
-  404: 'Resource not found. Please verify your configuration.',
-  500: 'CDN server error. Please try again later.',
-};
-
-function parseBody(body) {
-  if (!body) return null;
-  if (typeof body === 'object') return body;
-  if (typeof body !== 'string') return null;
-
-  try {
-    return JSON.parse(body);
-  } catch {
-    return { rawMessage: body };
-  }
-}
-
-function getErrorMessage(result) {
-  if (result.status === 'ok' || result.status === 'succeeded') {
-    return 'Validation successful';
-  }
-
-  if (result.status === 'unsupported') {
-    return typeof result.body === 'string' ? result.body : 'This operation is not supported';
-  }
-
-  if (result.statusCode) {
-    const statusKey = String(result.statusCode);
-    if (ERROR_MESSAGES[statusKey]) {
-      return ERROR_MESSAGES[statusKey];
-    }
-  }
-
-  const body = parseBody(result.body);
-  if (!body) {
-    return 'Validation failed';
-  }
-
-  if (body.code) {
-    const codeKey = String(body.code);
-    if (ERROR_MESSAGES[codeKey]) {
-      return ERROR_MESSAGES[codeKey];
-    }
-  }
-
-  if (body.msg) {
-    return `Validation failed: ${body.msg}`;
-  }
-
-  if (body.errors && Array.isArray(body.errors) && body.errors.length > 0) {
-    const firstError = body.errors[0];
-    if (firstError.message) {
-      return `Validation failed: ${firstError.message}`;
-    }
-  }
-
-  if (body.message) {
-    return `Validation failed: ${body.message}`;
-  }
-
-  if (body.error) {
-    return `Validation failed: ${body.error}`;
-  }
-
-  if (body.rawMessage && result.statusCode && ERROR_MESSAGES[String(result.statusCode)]) {
-    return ERROR_MESSAGES[String(result.statusCode)];
-  }
-
-  return 'Validation failed. Check details for more information.';
-}
 
 function getSelectedCdnType() {
   const selected = document.querySelector('input[name="cdn-type"]:checked');
@@ -390,31 +314,19 @@ async function saveConfig() {
     return;
   }
 
-  if (!await ensureLogin(org.value, site.value)) {
-    window.addEventListener('profile-update', ({ detail: loginInfo }) => {
-      if (loginInfo.includes(org.value)) {
-        saveConfig();
-      }
-    }, { once: true });
-    return;
-  }
-
-  const cdnUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/cdn/prod.json`;
   const cdnConfig = getFormData();
-
   saveBtn.disabled = true;
 
   try {
-    const resp = await fetch(cdnUrl, {
-      method: 'POST',
-      body: JSON.stringify(cdnConfig),
-      headers: {
-        'content-type': 'application/json',
-      },
-    });
-
-    await resp.text();
-    logResponse(consoleBlock, resp.status, ['POST', cdnUrl, resp.headers.get('x-error') || '']);
+    const result = await executeAdminRequest(
+      () => admin.config({ org: org.value, site: site.value })
+        .select('cdn/prod.json')
+        .update(JSON.stringify(cdnConfig)),
+      { org: org.value, site: site.value },
+    );
+    if (!result) return;
+    const { method, url } = result.request;
+    logResponse(consoleBlock, result.status, [method, url, result.error]);
   } finally {
     saveBtn.disabled = false;
   }
@@ -455,27 +367,30 @@ async function init() {
       return;
     }
 
-    if (!await ensureLogin(org.value, site.value)) {
-      window.addEventListener('profile-update', ({ detail: loginInfo }) => {
-        if (loginInfo.includes(org.value)) {
-          e.target.querySelector('button[type="submit"]').click();
-        }
-      }, { once: true });
-      return;
-    }
+    const result = await executeAdminRequest(async () => {
+      const [aggRes, siteRes] = await Promise.all([
+        admin.config({ org: org.value }).select(`aggregated/${site.value}.json`).read(),
+        admin.config({ org: org.value, site: site.value }).read(),
+      ]);
+      [aggRes, siteRes].forEach((r) => {
+        const { method, url } = r.request;
+        logResponse(consoleBlock, r.status, [method, url, r.error]);
+      });
+      const status = aggRes.status === 401 || siteRes.status === 401 ? 401 : siteRes.status;
+      return { status, ok: siteRes.ok, parts: { aggRes, siteRes } };
+    }, { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY });
 
-    const aggregateConfig = await fetch(`https://admin.hlx.page/config/${org.value}/aggregated/${site.value}.json`);
+    if (!result) return;
+    const { aggRes, siteRes } = result.parts;
+
     let aggConfig = {};
-    if (aggregateConfig.ok) {
-      const aggregate = await aggregateConfig.json();
+    if (aggRes.ok) {
+      const aggregate = await aggRes.json();
       aggConfig = aggregate.cdn?.prod || {};
     }
 
-    const cdnUrl = `https://admin.hlx.page/config/${org.value}/sites/${site.value}.json`;
-    const resp = await fetch(cdnUrl);
-
-    if (resp.status === 200) {
-      const siteConfig = await resp.json();
+    if (siteRes.status === 200) {
+      const siteConfig = await siteRes.json();
       if (siteConfig.cdn && siteConfig.cdn.prod) {
         originalConfig = siteConfig.cdn.prod;
         host.value = originalConfig.host || '';
@@ -521,7 +436,7 @@ async function init() {
       validationPassed = false;
       validationResults.setAttribute('aria-hidden', 'true');
       updateSaveButtonState();
-    } else if (resp.status === 404) {
+    } else if (siteRes.status === 404) {
       originalConfig = {};
       cdnForm.setAttribute('aria-hidden', 'false');
       cdnForm.removeAttribute('disabled');
@@ -534,8 +449,6 @@ async function init() {
       cdnFields.innerHTML = '';
       host.value = '';
     }
-
-    logResponse(consoleBlock, resp.status, ['GET', cdnUrl, resp.headers.get('x-error') || '']);
   });
 
   host.addEventListener('input', () => {
