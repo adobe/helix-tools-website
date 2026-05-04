@@ -1665,7 +1665,7 @@ async function checkRedirects(org, site, branch, cdnConfig) {
     const aemTestUrl = `https://${branch}--${site}--${org}.aem.live${source}${source.includes('?') ? '&' : '?'}${randomParam}`;
 
     try {
-      const testResp = await fetch(corsProxy(aemTestUrl, { revealHeaders: true }), {
+      const testResp = await fetch(corsProxy(testUrl, { revealHeaders: true }), {
         method: 'GET',
       });
 
