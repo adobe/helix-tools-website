@@ -54,7 +54,7 @@ const DEPS = [
   // { pkg: 'chartjs-plugin-datalabels', out: 'chartjs-plugin-datalabels/chartjs-plugin-datalabels.js', external: ['chart.js'] },
   // { pkg: 'chartjs-chart-sankey', out: 'chartjs-chart-sankey/chartjs-chart-sankey.js', external: ['chart.js'] },
   // { pkg: '@adobe/rum-distiller', out: 'rum-distiller/rum-distiller.js' },
-  // { pkg: 'echarts', out: 'echarts/echarts.js' },
+  { pkg: 'echarts', out: 'echarts/echarts.js' },
 ];
 // =============================================================================
 
