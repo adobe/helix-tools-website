@@ -1252,7 +1252,7 @@ async function checkCaching(cdnConfig, aemUrl, prodPageUrlOverride = null) {
   }
 }
 
-async function check404Caching(cdnConfig, aemUrl) {
+async function check404Caching(cdnConfig, aemUrl, prodPageUrlOverride = null) {
   const checkId = 'check-404-caching';
 
   // Use production host, or aem.live host for managed CDN
