@@ -1,5 +1,6 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import admin from '../../scripts/helix-admin.js';
+import { executeAdminRequest } from '../../utils/admin-request.js';
 import { initConfigField } from '../../utils/config/config.js';
 import escapeHtml from '../../utils/html.js';
 import filterPendingPages from './diff-utils.js';
@@ -78,7 +79,11 @@ const jobAdmin = admin.withRequestInit({ mode: 'cors' });
  * @returns {Promise<Array>} Array of resources
  */
 async function fetchJobDetails(org, site, jobId) {
-  const jobRes = await jobAdmin.job({ org, site }).get(`status/${jobId}`);
+  const jobRes = await executeAdminRequest(
+    () => jobAdmin.job({ org, site }).get(`status/${jobId}`),
+    { org, site },
+  );
+  if (!jobRes) return null;
   if (!jobRes.ok) throw new Error(`Job fetch failed: ${jobRes.status}`);
 
   const { state } = await jobRes.json();
@@ -86,7 +91,11 @@ async function fetchJobDetails(org, site, jobId) {
     throw new Error('Job is still running. Please wait for it to complete.');
   }
 
-  const detailsRes = await jobAdmin.job({ org, site }).get(`status/${jobId}/details`);
+  const detailsRes = await executeAdminRequest(
+    () => jobAdmin.job({ org, site }).get(`status/${jobId}/details`),
+    { org, site },
+  );
+  if (!detailsRes) return null;
   if (!detailsRes.ok) throw new Error('Failed to fetch job details');
 
   const { data } = await detailsRes.json();
@@ -99,8 +108,9 @@ async function fetchJobDetails(org, site, jobId) {
  * @param {string} path - Resource path.
  * @returns {Promise<{content: string|null, status: number}>}
  */
-async function fetchContent(op, path) {
-  const res = await op.get(path);
+async function fetchContent(op, path, org, site) {
+  const res = await executeAdminRequest(() => op.get(path), { org, site });
+  if (!res) return { content: null, status: 0 };
   if (!res.ok) {
     return { content: null, status: res.status };
   }
@@ -566,8 +576,8 @@ async function loadPageDiff(page) {
 
   try {
     const [previewResult, liveResult] = await Promise.all([
-      fetchContent(previewOp, fetchPath),
-      fetchContent(liveOp, fetchPath),
+      fetchContent(previewOp, fetchPath, currentOrg, currentSite),
+      fetchContent(liveOp, fetchPath, currentOrg, currentSite),
     ]);
 
     // Check if preview content is available
@@ -878,6 +888,10 @@ async function init() {
 
     // Multi-page mode: fetch job details and show page list
     const resources = await fetchJobDetails(currentOrg, currentSite, currentJob);
+    if (!resources) {
+      showError('Please sign in to view job details.');
+      return;
+    }
 
     // Filter to pending pages only
     pendingPages = filterPendingPages(resources);
