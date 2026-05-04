@@ -33,6 +33,7 @@ import { join } from 'path';
 // DEPS — update this when adding or changing vendored dependencies
 // =============================================================================
 const DEPS = [
+  { pkg: 'diff', out: 'diff/diff.js' },
   { pkg: 'yaml', out: 'yaml/yaml.js' },
 
   // Chart.js must be listed before its plugins so the output file exists when

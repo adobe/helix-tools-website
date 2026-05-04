@@ -1,5 +1,5 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import { diffChars } from './diff.js';
+import { diffChars } from '../../vendor/diff/diff.js';
 
 const scannerForm = document.getElementById('scanner-form');
 const resultsTable = document.querySelector('#results tbody');
