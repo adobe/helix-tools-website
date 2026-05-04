@@ -14,8 +14,6 @@ export async function loadPrism(e) {
 }
 
 export async function loadPrismLibrary(languages = []) {
-  const { default: Prism } = await import('../../vendor/prismjs/prismjs.js');
-  window.Prism = Prism;
-  loadCSS('/utils/prism/prism.css');
+  await loadPrism();
   await Promise.all(languages.map((lang) => import(`../../vendor/prismjs/prism-${lang}.js`)));
 }
