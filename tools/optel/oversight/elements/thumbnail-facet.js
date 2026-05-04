@@ -1,4 +1,4 @@
-import { escapeHTML } from '../utils.js';
+import escapeHTML from '../../../../utils/html.js';
 import ListFacet from './list-facet.js';
 
 /**

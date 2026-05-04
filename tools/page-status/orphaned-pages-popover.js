@@ -51,10 +51,10 @@ const orphansAdmin = admin.withRequestInit({
 
 async function submitOrphansJob() {
   try {
-    const res = await orphansAdmin.status({ org: ORG, site: SITE }).bulk({
-      paths: ['/*'],
-      select: ['edit', 'preview', 'live'],
-    });
+    const res = await orphansAdmin.status({ org: ORG, site: SITE }).update(
+      '/*',
+      JSON.stringify({ paths: ['/*'], select: ['edit', 'preview', 'live'] }),
+    );
     if (!res.ok) throw res;
     const json = await res.json();
     if (!json.job || json.job.state !== 'created') {
@@ -104,10 +104,10 @@ function displayJobDetails() {
 
 async function unpublishOrphanedPages(paths) {
   console.log('Unpublishing', paths);
-  const liveResp = await admin.live({ org: ORG, site: SITE }).bulk({ paths, delete: true });
+  const liveResp = await admin.live({ org: ORG, site: SITE }).update('/*', JSON.stringify({ paths, delete: true }));
   if (!liveResp.ok) throw liveResp;
   const liveJson = await liveResp.json();
-  const previewResp = await admin.preview({ org: ORG, site: SITE }).bulk({ paths, delete: true });
+  const previewResp = await admin.preview({ org: ORG, site: SITE }).update('/*', JSON.stringify({ paths, delete: true }));
   if (!previewResp.ok) throw previewResp;
   const previewJson = await previewResp.json();
   console.log('Unpublished', liveJson, previewJson);
@@ -120,7 +120,7 @@ function getCheckedOrphanedPages() {
 
 function pollJob(jobName) {
   setTimeout(async () => {
-    const res = await admin.job({ org: ORG, site: SITE }).details('status', jobName);
+    const res = await admin.job({ org: ORG, site: SITE }).get(`status/${jobName}/details`);
     const json = await res.json();
     JOB_DETAILS = json;
     displayJobDetails();
@@ -174,7 +174,7 @@ async function init() {
     if (jobName) {
       // Preserve the original verification fetch — the response body isn't
       // consumed downstream, but the request roundtrip happens before polling.
-      await admin.job({ org: ORG, site: SITE }).get('status', jobName);
+      await admin.job({ org: ORG, site: SITE }).get(`status/${jobName}`);
       pollJob(jobName);
       SPINNER.ariaHidden = 'false';
     }

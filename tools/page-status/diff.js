@@ -2,6 +2,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import admin from '../../scripts/helix-admin.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
+import escapeHtml from '../../utils/html.js';
 
 // Lazy-load Dark Alley converter module
 const CONVERTERS_URL = 'https://main--da-nx--adobe.aem.live/nx/utils/converters.js';
@@ -103,7 +104,7 @@ async function fetchJobDetails(org, site, jobId) {
   const j = jobPollAdmin.job({ org, site });
 
   // First check job status
-  const jobRes = await j.get('status', jobId);
+  const jobRes = await j.get(`status/${jobId}`);
   if (!jobRes.ok) throw new Error(`Job fetch failed: ${jobRes.status}`);
 
   const { state } = await jobRes.json();
@@ -112,7 +113,7 @@ async function fetchJobDetails(org, site, jobId) {
   }
 
   // Fetch details
-  const detailsRes = await j.details('status', jobId);
+  const detailsRes = await j.get(`status/${jobId}/details`);
   if (!detailsRes.ok) throw new Error('Failed to fetch job details');
 
   const { data } = await detailsRes.json();
@@ -157,19 +158,6 @@ async function fetchContent(bus, path) {
   }
   const content = await res.text();
   return { content, status: res.status };
-}
-
-/**
- * Escapes HTML entities for safe display.
- * @param {string} str - String to escape
- * @returns {string} Escaped string
- */
-function escapeHtml(str) {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 /**

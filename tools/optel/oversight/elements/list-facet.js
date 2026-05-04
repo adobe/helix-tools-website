@@ -1,6 +1,6 @@
 // eslint-disable-next-line import/no-unresolved
 import { stats, utils } from '@adobe/rum-distiller';
-import { escapeHTML } from '../utils.js';
+import escapeHTML from '../../../../utils/html.js';
 
 const { computeConversionRate, scoreCWV } = utils;
 const { tTest, zTestTwoProportions } = stats;

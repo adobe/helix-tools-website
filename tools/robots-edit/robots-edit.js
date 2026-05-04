@@ -28,7 +28,7 @@ async function init() {
     }
 
     const result = await executeAdminRequest(
-      () => admin.config({ org: org.value, site: site.value }).robots(body.value),
+      () => admin.config({ org: org.value, site: site.value }).select('robots.txt').update(body.value),
       { org: org.value, site: site.value },
     );
     if (!result) return; // 401 followed by cancelled login
@@ -46,7 +46,7 @@ async function init() {
     // Preflight on Fetch (the natural entry point: fetch → edit → save).
     // Once the fetch succeeds, the user has an active session for any later save.
     const result = await executeAdminRequest(
-      () => admin.config({ org: org.value, site: site.value }).robots(),
+      () => admin.config({ org: org.value, site: site.value }).select('robots.txt').read(),
       { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
     );
     if (!result) return; // user cancelled login or timed out

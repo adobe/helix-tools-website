@@ -489,10 +489,10 @@ const statusJobAdmin = admin.withRequestInit({
  */
 async function submitStatusJob(org, site, path) {
   try {
-    const res = await statusJobAdmin.status({ org, site }).bulk({
-      paths: [validatePath(path)],
-      select: ['edit', 'preview', 'live'],
-    });
+    const res = await statusJobAdmin.status({ org, site }).update(
+      '/*',
+      JSON.stringify({ paths: [validatePath(path)], select: ['edit', 'preview', 'live'] }),
+    );
     if (!res.ok) throw res;
     const json = await res.json();
     if (!json.job || json.job.state !== 'created') {
@@ -523,14 +523,14 @@ const jobPollAdmin = admin.withRequestInit({ mode: 'cors' });
 async function runJob(org, site, jobName, retry = 10000) {
   const j = jobPollAdmin.job({ org, site });
   try {
-    const jobRes = await j.get('status', jobName);
+    const jobRes = await j.get(`status/${jobName}`);
     if (!jobRes.ok) throw jobRes;
     const { state } = await jobRes.json();
     if (state !== 'completed' && state !== 'stopped') {
       await new Promise((resolve) => { setTimeout(resolve, retry); }); // wait before repolling
       return runJob(org, site, jobName, retry); // poll again
     }
-    const detailsRes = await j.details('status', jobName);
+    const detailsRes = await j.get(`status/${jobName}/details`);
     if (!detailsRes.ok) throw detailsRes;
     const { data, createTime } = await detailsRes.json();
     // update table caption with create time

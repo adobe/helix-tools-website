@@ -17,6 +17,8 @@ const THEME_NAMES = {
   dark: 'Dark',
 };
 
+const EXPERIMENTAL_TOOLTIP = 'Experimental tools should be considered early-access: they may undergo significant changes without warning and are not yet widely adopted.';
+
 function getNextTheme(current) {
   const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
   const systemResolved = prefersDark ? 'dark' : 'light';
@@ -30,6 +32,100 @@ function getNextTheme(current) {
 function getThemeLabel(current) {
   const next = getNextTheme(current);
   return `Theme: ${THEME_NAMES[current]} (click for ${THEME_NAMES[next]})`;
+}
+
+function attachTooltip(ribbon, tooltip) {
+  let hideTimeout;
+  const show = () => {
+    clearTimeout(hideTimeout);
+    tooltip.classList.add('is-visible');
+    tooltip.setAttribute('aria-hidden', 'false');
+  };
+  const hide = () => {
+    hideTimeout = setTimeout(() => {
+      tooltip.classList.remove('is-visible');
+      tooltip.setAttribute('aria-hidden', 'true');
+    }, 100);
+  };
+
+  ribbon.addEventListener('mouseenter', show);
+  ribbon.addEventListener('mouseleave', hide);
+  ribbon.addEventListener('focus', show);
+  ribbon.addEventListener('blur', hide);
+  tooltip.addEventListener('mouseenter', show);
+  tooltip.addEventListener('mouseleave', hide);
+  tooltip.addEventListener('focusin', show);
+  tooltip.addEventListener('focusout', hide);
+}
+
+async function isLabTool(url) {
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return false;
+    const html = await resp.text();
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    return doc.querySelector('meta[name="lab"][content="true"]') !== null;
+  } catch {
+    return false;
+  }
+}
+
+async function decorateLabToolLink(link) {
+  const isLab = await isLabTool(link.href);
+  if (!isLab || link.querySelector('.experimental-icon')) return;
+  const icon = document.createElement('span');
+  icon.className = 'experimental-icon';
+  icon.textContent = '🧪';
+  icon.setAttribute('aria-hidden', 'true');
+  link.append(icon);
+}
+
+function observeLabToolLinks(container) {
+  const links = [...container.querySelectorAll('a[href]')];
+  if (!('IntersectionObserver' in window)) {
+    links.forEach((link) => {
+      setTimeout(() => decorateLabToolLink(link), 0);
+    });
+    return;
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      const link = entry.target;
+      observer.unobserve(link);
+      decorateLabToolLink(link);
+    });
+  }, { rootMargin: '200px' });
+
+  links.forEach((link) => observer.observe(link));
+}
+
+function decorateExperimentalRibbon(block) {
+  const ribbon = document.createElement('div');
+  const tooltip = document.createElement('span');
+  const tooltipText = document.createElement('span');
+  const lifecycleLink = document.createElement('a');
+
+  ribbon.className = 'experimental-ribbon';
+  ribbon.textContent = 'Experimental';
+  ribbon.tabIndex = 0;
+  ribbon.setAttribute('aria-label', `Experimental. ${EXPERIMENTAL_TOOLTIP}`);
+  ribbon.setAttribute('aria-describedby', 'experimental-tooltip');
+
+  tooltip.id = 'experimental-tooltip';
+  tooltip.className = 'experimental-tooltip';
+  tooltip.setAttribute('aria-hidden', 'true');
+  tooltip.setAttribute('role', 'tooltip');
+
+  tooltipText.textContent = EXPERIMENTAL_TOOLTIP;
+  lifecycleLink.href = 'https://www.aem.live/docs/lifecycle';
+  lifecycleLink.textContent = 'Learn about the AEM feature lifecycle.';
+  tooltip.append(tooltipText, ' ', lifecycleLink);
+
+  attachTooltip(ribbon, tooltip);
+  block.prepend(tooltip);
+  block.prepend(ribbon);
 }
 
 async function fetchThemeIcon(theme) {
@@ -195,6 +291,7 @@ export default async function decorate(block) {
         }
       }
     });
+    observeLabToolLinks(wrapper);
   }
 
   // add login button
@@ -249,10 +346,7 @@ export default async function decorate(block) {
   // add experimental ribbon for pages with lab metadata
   const isLab = getMetadata('lab') === 'true';
   if (isLab) {
-    const ribbon = document.createElement('div');
-    ribbon.className = 'experimental-ribbon';
-    ribbon.textContent = 'Experimental';
-    block.prepend(ribbon);
+    decorateExperimentalRibbon(block);
   }
 
   swapIcons(block);

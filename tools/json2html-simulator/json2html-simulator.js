@@ -4,6 +4,7 @@
  */
 
 import { highlight, loadPrismLibrary } from '../../utils/prism/prism.js';
+import escapeHtml from '../../utils/html.js';
 import { examples } from './example-data.js';
 
 // Simulator endpoints
@@ -463,17 +464,6 @@ function formatJson() {
     updateLineNumbers(jsonInput, jsonLineNumbers);
     updateStatus(jsonStatus, 'ok', 'Formatted');
   }
-}
-
-/**
- * Escape HTML special characters so strings can be safely injected via innerHTML.
- * @param {string} str - Raw string
- * @returns {string} Escaped string
- */
-function escapeHtml(str) {
-  const el = document.createElement('span');
-  el.textContent = str;
-  return el.innerHTML;
 }
 
 /**
