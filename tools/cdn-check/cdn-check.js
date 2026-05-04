@@ -1830,7 +1830,7 @@ async function runChecks(pageUrl, prodPageUrl = null) {
   updateScore(calculateCurrentScore(scores), true);
 
   // Check 4: 404 Caching
-  const caching404Result = await check404Caching(cdnConfig, aemUrl);
+  const caching404Result = await check404Caching(cdnConfig, aemUrl, prodPageUrl || undefined);
   scores['check-404-caching'] = caching404Result.score;
   updateScore(calculateCurrentScore(scores), true);
 
