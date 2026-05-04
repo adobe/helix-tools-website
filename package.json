@@ -37,6 +37,7 @@
   },
   "dependencies": {
     "@adobe/rum-distiller": "1.23.0",
+    "diff": "8.0.2",
     "yaml": "2.8.3"
   }
 }
