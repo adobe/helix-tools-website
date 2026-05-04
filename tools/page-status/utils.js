@@ -1,3 +1,30 @@
+import admin from '../../scripts/helix-admin.js';
+import { executeAdminRequest } from '../../utils/admin-request.js';
+
+/**
+ * Fetches live/preview host config for the given org/site.
+ * Returns null if the user cancels login; throws on invalid config.
+ * @param {string} org
+ * @param {string} site
+ * @returns {Promise<{live: string, preview: string}|null>}
+ */
+export async function fetchHosts(org, site) {
+  const res = await executeAdminRequest(
+    () => admin.status({ org, site }).get(),
+    { org, site },
+  );
+  if (!res) return null;
+  if (!res.ok) throw new Error(`Invalid project configuration for ${org}/${site}`);
+  const json = await res.json();
+  if (!json.live?.url || !json.preview?.url) {
+    throw new Error(`Invalid project configuration for ${org}/${site}`);
+  }
+  return {
+    live: new URL(json.live.url).host,
+    preview: new URL(json.preview.url).host,
+  };
+}
+
 /**
  * Validates and normalizes a path string for status API queries.
  * Strips protocol if present, extracts the path segment, ensures a

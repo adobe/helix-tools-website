@@ -4,7 +4,7 @@ import { decorateIcons } from '../../scripts/aem.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import loadingMessages from './loading-messages.js';
-import { validatePath, classifySequenceStatus } from './utils.js';
+import { validatePath, classifySequenceStatus, fetchHosts } from './utils.js';
 
 const FORM = document.getElementById('status-form');
 const TABLE = document.querySelector('table');
@@ -390,29 +390,6 @@ function displayResources(resources, live, preview) {
 }
 
 // data fetching
-/**
- * Fetches live/preview host config. Throws on invalid config.
- * @param {string} org
- * @param {string} site
- * @returns {Promise<{live: string, preview: string}|null>}
- */
-async function validateHosts(org, site) {
-  const res = await executeAdminRequest(
-    () => admin.status({ org, site }).get(),
-    { org, site },
-  );
-  if (!res) return null;
-  if (!res.ok) throw new Error(`Invalid project configuration for ${org}/${site}`);
-  const json = await res.json();
-  if (!json.live?.url || !json.preview?.url) {
-    throw new Error(`Invalid project configuration for ${org}/${site}`);
-  }
-  return {
-    live: new URL(json.live.url).host,
-    preview: new URL(json.preview.url).host,
-  };
-}
-
 const jobAdmin = admin.withRequestInit({ mode: 'cors' });
 
 /**
@@ -540,7 +517,7 @@ async function runFromParams(search) {
     if (org && site && job) {
       try {
         setupJob(FORM, FORM.querySelector('button'));
-        const hosts = await validateHosts(org, site);
+        const hosts = await fetchHosts(org, site);
         if (!hosts) return;
         const { live, preview } = hosts;
         await runAndDisplayJob(org, site, job, live, preview);
@@ -573,7 +550,7 @@ async function init() {
 
     try {
       setupJob(target, submitter);
-      const hosts = await validateHosts(org, site);
+      const hosts = await fetchHosts(org, site);
       if (!hosts) return;
       const { live, preview } = hosts;
       const jobName = await submitStatusJob(org, site, path);
