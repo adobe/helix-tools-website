@@ -683,8 +683,6 @@ function handleAuthError(status, checkId) {
     updateCheckState(checkId, 'fail', 'Sign In Required');
     addResultLine(checkId, 'You need to sign in to access this project.', 'error');
     addResultLine(checkId, 'Use the profile button (top right) to sign in.', 'info');
-    // eslint-disable-next-line no-alert
-    alert('Sign in required: Please use the profile button in the top right corner to sign in to this project, then try again.');
     return true;
   }
   if (status === 403) {
