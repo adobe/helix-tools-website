@@ -1,16 +1,4 @@
 /**
- * Escapes HTML special characters for safe insertion into markup.
- * @param {string} str - Value to escape (nullable)
- * @returns {string} Escaped string, or empty if input is null/empty
- */
-export function escapeHtml(str) {
-  if (str == null || str === '') return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-/**
  * Converts category id (hyphenated) to details property name (camelCase + "Issues").
  * @param {string} id - Category id from config (e.g. "nested-blocks")
  * @returns {string} Property name (e.g. "nestedBlocksIssues")

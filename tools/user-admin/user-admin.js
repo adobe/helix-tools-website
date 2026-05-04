@@ -1,8 +1,10 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
-import { initConfigField, updateConfig } from '../../utils/config/config.js';
+import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { loadIcon, icon, showToast } from '../../utils/card-ui/card-ui.js';
+import admin from '../../scripts/helix-admin.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
+import { parseUsersFromAccessConfig, buildAccessConfig } from './utils.js';
 
 const VIEW_STORAGE_KEY = 'user-admin-view';
 
@@ -60,63 +62,61 @@ const ROLE_DESCRIPTIONS = {
 };
 
 async function getOrgConfig() {
-  const adminURL = `https://admin.hlx.page/config/${org.value}.json`;
-  const resp = await fetch(adminURL);
-  logResponse(consoleBlock, resp.status, ['GET', adminURL, resp.headers.get('x-error') || '']);
-  if (resp.status === 200) {
-    return resp.json();
-  }
-  return null;
+  const result = await executeAdminRequest(
+    async () => {
+      const res = await admin.config({ org: org.value }).read();
+      logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
+      return res;
+    },
+    { org: org.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
+  );
+  if (!result) return null;
+  return result.ok ? result.json() : null;
 }
 
 async function getSiteAccessConfig() {
-  const adminURL = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/access.json`;
-  const resp = await fetch(adminURL);
-  logResponse(consoleBlock, resp.status, ['GET', adminURL, resp.headers.get('x-error') || '']);
-  if (resp.status === 200) {
-    return resp.json();
-  }
-  if (resp.status === 404) {
-    return { admin: { role: {} } };
-  }
-  return null;
+  const result = await executeAdminRequest(
+    async () => {
+      const res = await admin.config({ org: org.value, site: site.value })
+        .select('access.json')
+        .read();
+      logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
+      return res;
+    },
+    { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
+  );
+  if (!result) return null;
+  if (result.status === 404) return { admin: { role: {} } };
+  return result.ok ? result.json() : null;
 }
 
 async function updateSiteAccess() {
-  const toAccess = () => {
-    const access = accessConfig.originalSiteAccess;
-    access.admin.role = {};
-    accessConfig.users.forEach((user) => {
-      user.roles.forEach((role) => {
-        if (!access.admin.role[role]) {
-          access.admin.role[role] = [user.email];
-        } else {
-          access.admin.role[role].push(user.email);
-        }
-      });
-    });
-    return access;
-  };
-  const access = toAccess();
-  const adminURL = `https://admin.hlx.page/config/${org.value}/sites/${site.value}/access.json`;
-  const resp = await fetch(adminURL, {
-    method: 'POST',
-    body: JSON.stringify(access),
-    headers: { 'Content-Type': 'application/json' },
-  });
-  logResponse(consoleBlock, resp.status, ['POST', adminURL, resp.headers.get('x-error') || '']);
-  return resp.ok;
+  const access = buildAccessConfig(accessConfig.originalSiteAccess, accessConfig.users);
+  const result = await executeAdminRequest(
+    async () => {
+      const res = await admin.config({ org: org.value, site: site.value })
+        .select('access.json')
+        .update(JSON.stringify(access));
+      logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
+      return res;
+    },
+    { org: org.value, site: site.value },
+  );
+  return result?.ok ?? false;
 }
 
 async function updateOrgUserRoles(user) {
-  const adminURL = `https://admin.hlx.page/config/${org.value}/users/${user.id}.json`;
-  const resp = await fetch(adminURL, {
-    method: 'POST',
-    body: JSON.stringify(user),
-    headers: { 'Content-Type': 'application/json' },
-  });
-  logResponse(consoleBlock, resp.status, ['POST', adminURL, resp.headers.get('x-error') || '']);
-  return resp.ok;
+  const result = await executeAdminRequest(
+    async () => {
+      const res = await admin.config({ org: org.value })
+        .select(`users/${user.id}.json`)
+        .update(JSON.stringify(user));
+      logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
+      return res;
+    },
+    { org: org.value },
+  );
+  return result?.ok ?? false;
 }
 
 async function deleteUserFromSite(user) {
@@ -125,10 +125,17 @@ async function deleteUserFromSite(user) {
 }
 
 async function deleteUserFromOrg(user) {
-  const adminURL = `https://admin.hlx.page/config/${org.value}/users/${user.id}.json`;
-  const resp = await fetch(adminURL, { method: 'DELETE' });
-  logResponse(consoleBlock, resp.status, ['DELETE', adminURL, resp.headers.get('x-error') || '']);
-  return resp.ok;
+  const result = await executeAdminRequest(
+    async () => {
+      const res = await admin.config({ org: org.value })
+        .select(`users/${user.id}.json`)
+        .remove();
+      logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
+      return res;
+    },
+    { org: org.value },
+  );
+  return result?.ok ?? false;
 }
 
 async function addUsersToSite(users) {
@@ -145,18 +152,21 @@ async function addUsersToSite(users) {
 }
 
 async function addUsersToOrg(users) {
-  const adminURL = `https://admin.hlx.page/config/${org.value}/users.json`;
   let added = 0;
   try {
     await users.reduce(async (prevPromise, user) => {
       await prevPromise;
-      const resp = await fetch(adminURL, {
-        method: 'POST',
-        body: JSON.stringify(user),
-        headers: { 'Content-Type': 'application/json' },
-      });
-      logResponse(consoleBlock, resp.status, ['POST', adminURL, resp.headers.get('x-error') || '']);
-      if (resp.ok) {
+      const result = await executeAdminRequest(
+        async () => {
+          const res = await admin.config({ org: org.value })
+            .select('users.json')
+            .update(JSON.stringify(user));
+          logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
+          return res;
+        },
+        { org: org.value },
+      );
+      if (result?.ok) {
         added += 1;
         accessConfig.users.push(user);
       } else {
@@ -821,17 +831,7 @@ function displayUsers(users) {
 
 adminForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  if (!await ensureLogin(org.value, site.value)) {
-    window.addEventListener('profile-update', ({ detail: loginInfo }) => {
-      if (loginInfo.includes(org.value)) {
-        e.target.querySelector('button[type="submit"]').click();
-      }
-    }, { once: true });
-    return;
-  }
-
   usersContainer.innerHTML = '<p class="loading">Loading users...</p>';
-  updateConfig();
 
   if (site.value) {
     accessConfig.type = 'site';
@@ -842,19 +842,8 @@ adminForm.addEventListener('submit', async (e) => {
     }
 
     accessConfig.originalSiteAccess = config;
-    const configUsers = [];
-    const adminRoles = config.admin?.role || {};
-    const roles = Object.keys(adminRoles);
-    roles.forEach((role) => {
-      const emails = adminRoles[role];
-      emails.forEach((email) => {
-        const user = configUsers.find((u) => u.email === email);
-        if (user) user.roles.push(role);
-        else configUsers.push({ email, roles: [role] });
-      });
-    });
-    accessConfig.users = configUsers;
-    displayUsers(configUsers);
+    accessConfig.users = parseUsersFromAccessConfig(config);
+    displayUsers(accessConfig.users);
   } else {
     accessConfig.type = 'org';
     const config = await getOrgConfig();
