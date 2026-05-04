@@ -36,7 +36,7 @@ export function validatePath(path) {
   if (!path) return '/*';
   let str = path;
   if (str.includes('://')) {
-    [str] = path.split('://');
+    [, str] = path.split('://');
   }
   if (str.includes('/')) {
     str = str.substring(str.indexOf('/'));

@@ -15,9 +15,8 @@ describe('validatePath', () => {
     assert.equal(validatePath('example.com/foo/bar'), '/foo/bar/*');
   });
 
-  it('returns /* for a URL with protocol (split on :// yields protocol, not path)', () => {
-    // split('://') gives ['https', 'example.com/path']; destructuring takes first element
-    assert.equal(validatePath('https://example.com/foo/bar'), '/*');
+  it('extracts path from a URL with protocol', () => {
+    assert.equal(validatePath('https://example.com/foo/bar'), '/foo/bar/*');
   });
 });
 
