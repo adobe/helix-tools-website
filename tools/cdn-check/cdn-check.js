@@ -657,16 +657,10 @@ function updateDetectedCdn(cdnType) {
   }
 }
 
-function updateCheckState(checkId, state, statusText, resultHtml = '') {
+function updateCheckState(checkId, state, statusText) {
   const item = document.getElementById(checkId);
   item.className = `check-item ${state}`;
   item.querySelector('.check-status').textContent = statusText;
-
-  if (resultHtml) {
-    const details = item.querySelector('.check-details');
-    details.setAttribute('aria-hidden', 'false');
-    details.querySelector('.check-result').innerHTML = resultHtml;
-  }
 }
 
 function addResultLine(checkId, text, type = 'info') {
