@@ -1256,7 +1256,9 @@ async function check404Caching(cdnConfig, aemUrl, prodPageUrlOverride = null) {
   const checkId = 'check-404-caching';
 
   // Use production host, or aem.live host for managed CDN
-  const prodHost = cdnConfig?.host || aemUrl.host;
+const prodHost = prodPageUrlOverride
+      ? new URL(prodPageUrlOverride).host
+      : (cdnConfig?.host || aemUrl.host);
 
   if (!prodHost) {
     updateCheckState(checkId, 'skip', 'Skipped');
