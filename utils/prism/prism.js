@@ -32,11 +32,6 @@ export async function loadPrism(e) {
   if (e && e.target) highlight(e.target);
 }
 
-/**
- * Loads Prism.js core library and CSS. Language components are bundled; the
- * languages param is accepted for API compatibility but has no effect.
- * @returns {Promise<void>}
- */
 export async function loadPrismLibrary() {
   await getPrism();
 }
