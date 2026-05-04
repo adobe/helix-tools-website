@@ -28,7 +28,7 @@ let prismLoaded = false;
 async function loadPrism() {
   if (prismLoaded) return;
   prismLoaded = true;
-  await loadPrismLibrary();
+  await loadPrismLibrary(['json']);
 }
 
 const ENV_HEADERS = {

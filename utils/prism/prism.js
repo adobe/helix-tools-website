@@ -1,6 +1,13 @@
 /* eslint-disable no-undef */
 import { loadCSS } from '../../scripts/aem.js';
 
+const LANG_LOADERS = {
+  json: () => import('../../vendor/prismjs/prism-json.js'),
+  markup: () => import('../../vendor/prismjs/prism-markup.js'),
+  'markup-templating': () => import('../../vendor/prismjs/prism-markup-templating.js'),
+  handlebars: () => import('../../vendor/prismjs/prism-handlebars.js'),
+};
+
 let prismPromise;
 
 function getPrism() {
@@ -32,6 +39,12 @@ export async function loadPrism(e) {
   if (e && e.target) highlight(e.target);
 }
 
-export async function loadPrismLibrary() {
+/**
+ * Loads Prism.js core and the requested language components.
+ * Pages that load language components must include the prismjs import map.
+ * @param {string[]} languages - Language component names to load (e.g. ['json', 'markup']).
+ */
+export async function loadPrismLibrary(languages = []) {
   await getPrism();
+  await Promise.all(languages.map((lang) => LANG_LOADERS[lang]?.()));
 }

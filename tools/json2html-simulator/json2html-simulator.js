@@ -358,7 +358,7 @@ function syncScroll(textarea, highlightEl) {
  */
 function ensurePrismReady() {
   if (!prismLoadPromise) {
-    prismLoadPromise = loadPrismLibrary();
+    prismLoadPromise = loadPrismLibrary(['json', 'markup', 'markup-templating', 'handlebars']);
   }
   return prismLoadPromise;
 }
