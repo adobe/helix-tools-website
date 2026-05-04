@@ -4,6 +4,7 @@ import { decorateIcons } from '../../scripts/aem.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import loadingMessages from './loading-messages.js';
+import { validatePath, classifySequenceStatus } from './utils.js';
 
 const FORM = document.getElementById('status-form');
 const TABLE = document.querySelector('table');
@@ -31,34 +32,6 @@ function debounce(func, wait) {
     clearTimeout(timeout);
     timeout = setTimeout(() => func.apply(context, args), wait);
   };
-}
-
-/**
- * Validates and normalizes path string.
- * @param {string} path - Path to validate and normalize.
- * @returns {string} Validated and normalized path.
- */
-function validatePath(path) {
-  if (!path) return '/*';
-  let str = path;
-  // isolate path from non-path segments
-  if (str.includes('://')) {
-    [str] = path.split('://');
-  }
-  if (str.includes('/')) {
-    str = str.substring(str.indexOf('/'));
-  } else {
-    str = '/';
-  }
-  // ensure path starts with "/"
-  str = str.startsWith('/') ? str : `/${str}`;
-  // ensure path ends with "/" (for subpath queries)
-  if (!str.endsWith('/')) {
-    str += '/';
-  }
-  // add "*" for wildcard matching
-  str += '*';
-  return str;
 }
 
 // url params
@@ -313,41 +286,16 @@ function buildLink(text, url, path) {
 }
 
 /**
- * Builds sequence element based on validity and sequence of edit, preview, and publish dates.
- * @param {string} edit - Edit date.
- * @param {string} preview - Preview date.
- * @param {string} publish - Publish date.
- * @returns {HTMLSpanElement} Status light element indicating status and sequence.
+ * @param {string} edit
+ * @param {string} preview
+ * @param {string} publish
+ * @returns {HTMLSpanElement}
  */
 function buildSequenceStatus(edit, preview, publish) {
-  // check if a date is valid
-  const date = (d) => !Number.isNaN(d.getTime());
-  const editDate = new Date(edit);
-  const previewDate = new Date(preview);
-  const publishDate = new Date(publish);
-  const inSequence = (editDate <= previewDate && previewDate <= publishDate);
+  const { label, modifier } = classifySequenceStatus(edit, preview, publish);
   const span = document.createElement('span');
-  span.className = 'status-light';
-  let status;
-  if (!date(editDate)) {
-    status = 'No source';
-    span.classList.add('negative');
-  } else if (date(editDate) && !date(previewDate) && !date(publishDate)) {
-    status = 'Not previewed';
-    span.classList.add('positive');
-  } else if (
-    date(editDate)
-    && date(previewDate)
-    && !date(publishDate)
-    && editDate <= previewDate
-  ) {
-    status = 'Not published';
-    span.classList.add('positive');
-  } else {
-    status = inSequence ? 'Current' : 'Pending changes';
-    span.classList.add('positive');
-  }
-  span.textContent = status;
+  span.className = `status-light ${modifier}`;
+  span.textContent = label;
   return span;
 }
 
