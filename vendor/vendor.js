@@ -22,6 +22,10 @@
  *              Use this when multiple bundles must share the same module
  *              instance at runtime (e.g. chart.js plugins externalising chart.js).
  *              The host page is responsible for resolving these via an import map.
+ *   stdin    - (optional) inline JS string to use as the entry point instead of pkg.
+ *              resolveDir is set to the repo root so npm package imports resolve normally.
+ *              Use this to bundle a package alongside specific side-effect imports
+ *              (e.g. prism language components) in a single output file.
  */
 
 import { createHash } from 'crypto';
@@ -35,6 +39,20 @@ import { join } from 'path';
 const DEPS = [
   { pkg: 'diff', out: 'diff/diff.js' },
   { pkg: 'yaml', out: 'yaml/yaml.js' },
+
+  // Prism core + all language components used across this site bundled together.
+  // Languages: json, markup, markup-templating, handlebars (used by admin-edit, cache, json2html-simulator, log-viewer).
+  {
+    out: 'prismjs/prismjs.js',
+    stdin: [
+      "import Prism from 'prismjs';",
+      "import 'prismjs/components/prism-json.js';",
+      "import 'prismjs/components/prism-markup.js';",
+      "import 'prismjs/components/prism-markup-templating.js';",
+      "import 'prismjs/components/prism-handlebars.js';",
+      'export default Prism;',
+    ].join('\n'),
+  },
 
   // Chart.js must be listed before its plugins so the output file exists when
   // the plugins are loaded. Plugins declare chart.js as external so all bundles
@@ -72,17 +90,22 @@ await Promise.all(
   existing.filter((e) => e.isDirectory()).map((e) => rm(join(vendorDir, e.name), { recursive: true })),
 );
 
-await Promise.all(DEPS.map(async ({ pkg, out, external = [] }) => {
-  await build({
-    entryPoints: [pkg],
+await Promise.all(DEPS.map(async ({ pkg, out, external = [], stdin }) => {
+  const buildOptions = {
     bundle: true,
     format: 'esm',
     outfile: join(vendorDir, out),
     platform: 'browser',
     minify: true,
     external,
-  });
-  console.log(`vendored: ${pkg} → vendor/${out}`);
+  };
+  if (stdin) {
+    buildOptions.stdin = { contents: stdin, resolveDir: root };
+  } else {
+    buildOptions.entryPoints = [pkg];
+  }
+  await build(buildOptions);
+  console.log(`vendored: ${pkg || `stdin:${out}`} → vendor/${out}`);
 }));
 
 await writeFile(hashFile, currentHash);
