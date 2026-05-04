@@ -515,15 +515,17 @@ async function runFromParams(search) {
     const site = params.get('site');
     const job = params.get('job');
     if (org && site && job) {
+      let preview;
       try {
         setupJob(FORM, FORM.querySelector('button'));
         const hosts = await fetchHosts(org, site);
         if (!hosts) return;
-        const { live, preview } = hosts;
+        ({ preview } = hosts);
+        const { live } = hosts;
         await runAndDisplayJob(org, site, job, live, preview);
         updateJobParam(job);
       } catch (error) {
-        updateTableError('Job');
+        updateTableError(error.status || 'Job', preview, site);
         removeJobParam();
       } finally {
         enableForm(FORM, FORM.querySelector('button'));
@@ -548,16 +550,18 @@ async function init() {
     const data = getFormData(target);
     const { org, site, path } = data;
 
+    let preview;
     try {
       setupJob(target, submitter);
       const hosts = await fetchHosts(org, site);
       if (!hosts) return;
-      const { live, preview } = hosts;
+      ({ preview } = hosts);
+      const { live } = hosts;
       const jobName = await submitStatusJob(org, site, path);
       if (!jobName) return;
       await runAndDisplayJob(org, site, jobName, live, preview);
     } catch (error) {
-      updateTableError('Job');
+      updateTableError(error.status || 'Job', preview, site);
       removeJobParam();
     } finally {
       enableForm(target, submitter);

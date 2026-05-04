@@ -85,7 +85,17 @@
 .page-status table tbody.results td .icon-wrapper {
   position: relative;
   display: grid;
-  place-items: center; 
+  place-items: center;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) .page-status table tbody.results td .icon-wrapper img {
+    filter: invert(1);
+  }
+}
+
+html[data-theme='dark'] .page-status table tbody.results td .icon-wrapper img {
+  filter: invert(1);
 }
 
 .page-status table tbody.results td .icon-wrapper .redirect-location {
