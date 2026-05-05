@@ -117,6 +117,11 @@ function getCheckedOrphanedPages() {
 function pollJob(jobName) {
   setTimeout(async () => {
     const res = await jobAdmin.job({ org: ORG, site: SITE }).get(`status/${jobName}/details`);
+    if (!res.ok) {
+      STATUS.textContent = 'Error checking job status. Please try again.';
+      SPINNER.ariaHidden = 'true';
+      return;
+    }
     const json = await res.json();
     JOB_DETAILS = json;
     displayJobDetails();

@@ -15,10 +15,9 @@ const FILTER = document.getElementById('status-filter');
 const DOWNLOADCSV = document.getElementById('download-csv');
 const DIFFMODE = document.getElementById('diff-mode');
 let intervalId;
-const randomLoadingMessage = () => {
-  const index = Math.floor(Math.random() * loadingMessages.length);
-  return loadingMessages[index];
-};
+const randomLoadingMessage = () => loadingMessages[
+  Math.floor(Math.random() * loadingMessages.length)
+];
 
 // utility functions
 /**
@@ -391,6 +390,13 @@ function displayResources(resources, live, preview) {
 
 // data fetching
 const jobAdmin = admin.withRequestInit({ mode: 'cors' });
+const statusAdmin = admin.withRequestInit({
+  mode: 'cors',
+  cache: 'no-cache',
+  credentials: 'same-origin',
+  redirect: 'follow',
+  referrerPolicy: 'no-referrer',
+});
 
 /**
  * Submits a status job for the given org/site/path.
@@ -403,13 +409,6 @@ async function submitStatusJob(org, site, path) {
   const body = JSON.stringify({
     paths: [validatePath(path)],
     select: ['edit', 'preview', 'live'],
-  });
-  const statusAdmin = admin.withRequestInit({
-    mode: 'cors',
-    cache: 'no-cache',
-    credentials: 'same-origin',
-    redirect: 'follow',
-    referrerPolicy: 'no-referrer',
   });
   const res = await executeAdminRequest(
     () => statusAdmin.status({ org, site }).update('/*', body),
