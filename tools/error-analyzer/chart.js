@@ -14,8 +14,7 @@ export async function initChart() {
   }
 
   if (!chartInstance) {
-    /* eslint-disable-next-line import/no-unresolved */
-    const echarts = await import('echarts');
+    const echarts = await import('../../vendor/echarts/echarts.js');
     chartInstance = echarts.init(chartDom);
 
     // Handle window resize for chart

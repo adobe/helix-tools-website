@@ -2,6 +2,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { loadScript } from '../../scripts/aem.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { logResponse } from '../../blocks/console/console.js';
+import { loadPrismLibrary } from '../../utils/prism/prism.js';
 
 const adminForm = document.getElementById('admin-form');
 const adminURL = document.getElementById('admin-url');
@@ -24,7 +25,7 @@ async function loadPrism() {
   body.removeEventListener('focus', loadPrism);
   if (!prismReady) {
     prismReady = (async () => {
-      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js');
+      await loadPrismLibrary();
       await loadScript('../admin-edit/line-highlight.js');
     })();
   }

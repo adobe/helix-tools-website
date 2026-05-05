@@ -15,8 +15,9 @@ import { getFileName, optimizeImageUrls, formatFileSize } from '../../core/files
 import {
   resolveMediaUrl, isExternalUrl, parseMediaUrl, normalizeUrl,
 } from '../../core/urls.js';
+import escapeHtml from '../../../../utils/html.js';
 import {
-  formatDateTime, escapeHtml, escapeAttr, safeUrlForAttr,
+  formatDateTime, escapeAttr, safeUrlForAttr,
 } from '../../core/utils.js';
 import { MediaType } from '../../core/constants.js';
 import fetchWithCorsProxy from '../../core/fetch.js';

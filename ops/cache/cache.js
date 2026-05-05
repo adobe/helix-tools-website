@@ -1,24 +1,9 @@
 import { sampleRUM } from '../../scripts/aem.js';
 import { loadPrismLibrary } from '../../utils/prism/prism.js';
 import { registerToolReady } from '../../scripts/scripts.js';
+import escapeHtml from '../../utils/html.js';
 
 const API = 'https://helix-cache-debug.adobeaem.workers.dev';
-
-/**
- * Escapes HTML special characters to prevent XSS.
- * @param {string} text - Text to escape
- * @returns {string} - Escaped HTML
- */
-function escapeHtml(text) {
-  if (typeof text !== 'string') {
-    return String(text);
-  }
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-/** @type {HTMLInputElement} */
 const input = document.querySelector('input#url-input');
 /** @type {HTMLButtonElement} */
 const button = document.querySelector('button#search-button');

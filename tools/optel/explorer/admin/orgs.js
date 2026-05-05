@@ -1,5 +1,5 @@
 import { store, log } from './store.js';
-import { escapeHTML } from '../utils.js';
+import escapeHTML from '../../../../utils/html.js';
 
 /** @type {HTMLDivElement} */
 const mainDiv = document.getElementById('rumadmin');
