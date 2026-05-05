@@ -1322,34 +1322,36 @@ body.json2html-simulator main .resizer-horizontal {
   }
 }
 
-/* Extra-large screens: cap content width at 1500px (issue #316).
-   Below 1500px viewport the ribbon is centered/inline and never overlaps content. */
+/* Extra-large screens: widen the simulator main, header-nav, and footer to 1600px
+   so the header/footer stay aligned with the workspace. Below 1500px viewport the
+   experimental-ribbon is centered/inline and never overlaps content. */
 @media (width >= 1264px) {
   body.json2html-simulator main {
-    max-width: 1500px;
+    max-width: 1600px;
   }
 
   /* Header nav alignment — needs extra specificity to override nested header CSS */
   body.json2html-simulator header.header-wrapper .header .header-nav {
-    max-width: 1500px;
+    max-width: 1600px;
   }
 
   /* Footer content alignment */
   body.json2html-simulator footer section {
-    max-width: 1500px;
+    max-width: 1600px;
   }
 }
 
 /* >= 1500px viewport: the .experimental-ribbon (see blocks/header/header.css) flips
    into corner mode (rotated -45deg, position fixed top-left, ~220px footprint).
-   To keep our centered 1500px workspace clear of it, narrow max-width until the
-   viewport is wide enough (>= 1940px) to give natural clearance.
-   min(1500px, 100vw - 440px) leaves >=220px on each side for visual symmetry. */
+   Narrow max-width until the viewport is wide enough (>= 2040px) for the natural
+   centered margins to clear the ribbon. min(1600px, 100vw - 440px) leaves >=220px
+   on each side, matching the ribbon's footprint on the left and visual symmetry
+   on the right. Applied to header and footer too so they stay aligned with main. */
 @media (width >= 1500px) {
   body.json2html-simulator main,
   body.json2html-simulator header.header-wrapper .header .header-nav,
   body.json2html-simulator footer section {
-    max-width: min(1500px, calc(100vw - 440px));
+    max-width: min(1600px, calc(100vw - 440px));
   }
 }
 
