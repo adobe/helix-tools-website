@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>BYO CDN Purge | AEM Tools</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/byo-cdn-purge/byo-cdn-purge.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/byo-cdn-purge/byo-cdn-purge.css" />
+</head>
+<body class="byo-cdn-purge">
+  <header></header>
+  <main>
+    <div class="byo-cdn-purge-intro">
+      <h1>BYO CDN Purge</h1>
+      <p>
+        POST your BYO CDN credentials and optional purge targets to the Adobe
+        <strong>byocdn-push-invalidation</strong> run-anywhere service
+        (<code>helix-pages.anywhere.run/helix-services/byocdn-push-invalidation/v1</code>), the same endpoint used by
+        <a href="/tools/cdn-check/index.html">CDN Check</a> and <a href="/tools/cdn-setup/index.html">CDN Setup</a>.
+        Akamai is supported first; other vendors can be added later.
+      </p>
+    </div>
+
+    <div class="byo-cdn-purge-warning" role="alert">
+      <strong>Security:</strong> this page can mirror your inputs into the browser URL (query string) for sharing or bookmarking.
+      Query strings are stored in history, visible to extensions, and may leak via the Referer header. Prefer pasting credentials
+      per session and use <q>Remove secrets from URL</q> when you are done sharing the link shape (host / targets only).
+    </div>
+
+    <form id="purge-form" class="byo-cdn-purge-form">
+      <fieldset>
+        <legend>Provider</legend>
+        <div class="form-field">
+          <label for="cdn-type">CDN</label>
+          <select id="cdn-type" name="type" aria-describedby="cdn-type-hint">
+            <option value="akamai" selected>Akamai</option>
+          </select>
+          <p id="cdn-type-hint" class="field-hint">Additional providers will appear here as support is added.</p>
+        </div>
+      </fieldset>
+
+      <fieldset class="byo-cdn-purge-akamai-fields">
+        <legend>Akamai credentials</legend>
+        <div class="form-field">
+          <label for="host">Production host</label>
+          <input id="host" name="host" type="text" required autocomplete="off"
+            placeholder="www.example.com" />
+          <p class="field-hint">Hostname served by your production property (no scheme).</p>
+        </div>
+        <div class="form-field">
+          <label for="endpoint">API hostname</label>
+          <input id="endpoint" name="endpoint" type="text" required autocomplete="off"
+            placeholder="akab-xxxxxxxxxxxxxxxx-xxxxxxxxxxxxxxxx.luna.akamaiapis.net" />
+        </div>
+        <div class="form-field">
+          <label for="clientSecret">Client secret</label>
+          <input id="clientSecret" name="clientSecret" type="password" required autocomplete="off" />
+        </div>
+        <div class="form-field">
+          <label for="clientToken">Client token</label>
+          <input id="clientToken" name="clientToken" type="password" required autocomplete="off" />
+        </div>
+        <div class="form-field">
+          <label for="accessToken">Access token</label>
+          <input id="accessToken" name="accessToken" type="password" required autocomplete="off" />
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Purge targets (optional)</legend>
+        <p class="field-hint">
+          One entry per line. Leave both empty to run the service default credential check (same idea as CDN Setup validate).
+          When you provide targets, they are sent as repeated <code>urls</code> and <code>keys</code> form fields alongside credentials.
+        </p>
+        <div class="form-field">
+          <label for="urls">URLs</label>
+          <textarea id="urls" name="urls" rows="4" autocomplete="off"
+            placeholder="https://www.example.com/path&#10;https://www.example.com/other"></textarea>
+        </div>
+        <div class="form-field">
+          <label for="keys">Cache tags / surrogate keys</label>
+          <textarea id="keys" name="keys" rows="3" autocomplete="off" placeholder="tag-one&#10;tag-two"></textarea>
+        </div>
+      </fieldset>
+
+      <div class="byo-cdn-purge-actions">
+        <button type="submit" class="button" id="submit-purge">Send purge request</button>
+        <button type="button" class="button outline" id="strip-query">Remove secrets from URL</button>
+      </div>
+      <p id="url-length-warning" class="byo-cdn-purge-url-warning" hidden>
+        The current values are long; some browsers limit bookmark URL length. Consider shorter lists or run without putting everything in the query string.
+      </p>
+    </form>
+
+    <section class="byo-cdn-purge-result" aria-live="polite">
+      <h2>Response</h2>
+      <pre id="result" class="byo-cdn-purge-pre">Submit the form to see JSON from the push invalidation service.</pre>
+    </section>
+
+    <p class="byo-cdn-purge-docs">
+      <a href="https://www.aem.live/docs/setup-byo-cdn-push-invalidation" target="_blank" rel="noopener">Push invalidation</a> ·
+      <a href="https://www.aem.live/docs/byo-cdn-akamai-setup" target="_blank" rel="noopener">Akamai BYO CDN setup</a> ·
+      <a href="/tools/cdn-setup/index.html">CDN Setup</a>
+    </p>
+  </main>
+  <footer></footer>
+</body>
+</html>

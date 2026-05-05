@@ -9,4 +9,7 @@
   <url>
     <loc>https://tools.aem.live/tools/push-invalidation/index.html</loc>
   </url>
+  <url>
+    <loc>https://tools.aem.live/tools/byo-cdn-purge/index.html</loc>
+  </url>
 </urlset>

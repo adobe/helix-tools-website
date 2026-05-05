@@ -1,0 +1,107 @@
+.byo-cdn-purge main {
+  max-width: 52rem;
+  margin-inline: auto;
+  padding-inline: var(--spacing-m);
+  padding-block: var(--spacing-l);
+}
+
+.byo-cdn-purge-intro h1 {
+  margin-block-end: var(--spacing-s);
+}
+
+.byo-cdn-purge-intro p {
+  margin-block: 0 var(--spacing-l);
+  color: var(--color-text-secondary);
+}
+
+.byo-cdn-purge-warning {
+  padding: var(--spacing-m);
+  margin-block-end: var(--spacing-l);
+  border-radius: var(--rounding-m);
+  border: var(--border-m) solid var(--color-border);
+  background-color: light-dark(var(--gray-75), var(--gray-800));
+  font-size: var(--body-size-s);
+}
+
+.byo-cdn-purge-form fieldset {
+  border: var(--border-m) solid var(--color-border);
+  border-radius: var(--rounding-m);
+  padding: var(--spacing-m);
+  margin-block-end: var(--spacing-l);
+}
+
+.byo-cdn-purge-form legend {
+  font-weight: var(--weight-medium);
+  padding-inline: var(--spacing-xs);
+}
+
+.byo-cdn-purge .form-field {
+  margin-block-end: var(--spacing-m);
+}
+
+.byo-cdn-purge .form-field:last-child {
+  margin-block-end: 0;
+}
+
+.byo-cdn-purge .form-field label {
+  display: block;
+  margin-block-end: var(--spacing-xs);
+  font-weight: var(--weight-medium);
+}
+
+.byo-cdn-purge .form-field input[type="text"],
+.byo-cdn-purge .form-field input[type="password"],
+.byo-cdn-purge .form-field select,
+.byo-cdn-purge .form-field textarea {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.byo-cdn-purge .field-hint {
+  margin-block: var(--spacing-xs) 0;
+  font-size: var(--body-size-s);
+  color: var(--color-text-secondary);
+}
+
+.byo-cdn-purge .field-hint code {
+  font-size: 0.95em;
+}
+
+.byo-cdn-purge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-s);
+  margin-block-end: var(--spacing-m);
+}
+
+.byo-cdn-purge-url-warning {
+  font-size: var(--body-size-s);
+  color: var(--color-text-secondary);
+  margin-block: 0 var(--spacing-l);
+}
+
+.byo-cdn-purge-result h2 {
+  font-size: var(--heading-size-s);
+  margin-block-end: var(--spacing-s);
+}
+
+.byo-cdn-purge-pre {
+  margin: 0;
+  padding: var(--spacing-m);
+  border-radius: var(--rounding-m);
+  border: var(--border-m) solid var(--color-border);
+  background-color: light-dark(var(--gray-75), var(--gray-900));
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+  line-height: var(--line-height-l);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  min-height: 6rem;
+}
+
+.byo-cdn-purge-docs {
+  margin-block-start: var(--spacing-xl);
+  font-size: var(--body-size-s);
+  color: var(--color-text-secondary);
+}
