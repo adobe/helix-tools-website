@@ -283,7 +283,7 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
       const paths = urlsToUse.map((url) => new URL(url).pathname);
       const bulkResp = await executeAdminRequest(
         () => admin[operation]({ org: owner, site: repo, ref: branch })
-          .update('*', JSON.stringify({ paths, forceUpdate }), { params: adminVersionParams }),
+          .update('/*', JSON.stringify({ paths, forceUpdate }), { params: adminVersionParams }),
         { org: owner, site: repo, policy: AuthMode.PREFLIGHT_AND_RETRY },
       );
       if (!bulkResp) {
@@ -297,8 +297,11 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
         const { name } = job;
         const jobStatusPoll = window.setInterval(async () => {
           try {
-            const jobResp = await admin.job({ org: owner, site: repo, ref: branch })
-              .get(`${VERB[operation]}/${name}/details`);
+            const jobResp = await executeAdminRequest(
+              () => admin.job({ org: owner, site: repo, ref: branch })
+                .get(`${VERB[operation]}/${name}/details`),
+              { org: owner, site: repo, policy: AuthMode.NONE },
+            );
             const jobStatus = await jobResp.json();
             const {
               state,
