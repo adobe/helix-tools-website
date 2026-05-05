@@ -318,7 +318,7 @@ async function init() {
     const { org, site } = extractOrgAndSite(adminURL.value);
     const result = await executeAdminRequest(
       () => admin.raw('GET', adminURL.value),
-      { org, site, policy: AuthMode.PREFLIGHT_AND_RETRY },
+      { org, site, policy: AuthMode.RETRY_ON_401 },
     );
     if (!result) return; // login cancelled
 
