@@ -493,6 +493,7 @@ describe('helix-admin.js', () => {
     });
   });
 
+
   describe('admin.preview(coords)', () => {
     it('.get(path) GETs the preview status', async () => {
       await admin.preview({ org: 'adobe', site: 'x' }).get('/en/index');

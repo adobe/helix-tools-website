@@ -523,13 +523,16 @@ async function fetchAllLogs(org, site, timeframe) {
   const logs = [];
   const timeParams = Object.fromEntries(new URLSearchParams(writeTimeParams(timeframe)));
   let nextToken;
+  let firstPage = true;
 
   do {
     const params = nextToken ? { ...timeParams, nextToken } : timeParams;
+    const policy = firstPage ? AuthMode.PREFLIGHT_AND_RETRY : AuthMode.RETRY_ON_401;
+    firstPage = false;
     // eslint-disable-next-line no-await-in-loop
     const res = await executeAdminRequest(
       () => admin.log({ org, site }).get('', { params }),
-      { org, site },
+      { org, site, policy },
     );
     if (!res) return { logs, error: { status: 401 } };
     if (!res.ok) return { logs, error: { status: res.status } };
@@ -791,7 +794,12 @@ async function registerListeners() {
       try {
         const url = new URL(target.dataset.url);
         const { createModal } = await import('../../blocks/modal/modal.js');
-        const res = await admin.raw('GET', url.href);
+        const { org, site } = getFormData(FORM);
+        const res = await executeAdminRequest(
+          () => admin.raw('GET', url.href),
+          { org, site },
+        );
+        if (!res || !res.ok) throw new Error(`Failed to fetch details: ${res?.status}`);
         const json = await res.json();
         const modal = document.createElement('div');
         modal.innerHTML = `<pre><code class="language-js">${JSON.stringify(json, null, 2)}

@@ -325,7 +325,7 @@ async function init(doc) {
       if (!hostsResult) return; // login cancelled
       const hostsJson = hostsResult.ok ? await hostsResult.json() : null;
       const live = hostsJson?.live?.url ? new URL(hostsJson.live.url).host : null;
-      if (!live || !hostsResult.ok) {
+      if (!live) {
         updateTableError(table, hostsResult.status, org, site);
         stopButton.setAttribute('aria-hidden', 'true');
         caption.setAttribute('aria-hidden', 'true');
