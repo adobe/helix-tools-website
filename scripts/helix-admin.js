@@ -187,6 +187,7 @@ function createAdmin(defaults = {}) {
   }
 
   function status(coords) { return bindOperation(opBase('status', coords), ['get', 'update']); }
+  function sidekick(coords) { return bindOperation(opBase('sidekick', coords), ['get']); }
   function preview(coords) { return bindOperation(opBase('preview', coords), ['get', 'update', 'remove']); }
   function live(coords) { return bindOperation(opBase('live', coords), ['get', 'update', 'remove']); }
   function code(coords) { return bindOperation(opBase('code', coords), ['get', 'update', 'remove']); }
@@ -206,7 +207,7 @@ function createAdmin(defaults = {}) {
   }
 
   return {
-    config, status, preview, live, code, log, index, sitemap, job, withRequestInit,
+    config, status, sidekick, preview, live, code, log, index, sitemap, job, withRequestInit,
   };
 }
 

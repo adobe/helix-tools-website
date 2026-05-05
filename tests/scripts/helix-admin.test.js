@@ -402,6 +402,19 @@ describe('helix-admin.js', () => {
     });
   });
 
+  describe('admin.sidekick(coords)', () => {
+    it('.get(path) GETs the sidekick config', async () => {
+      await admin.sidekick({ org: 'adobe', site: 'x' }).get('config.json');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/sidekick/adobe/x/main/config.json');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('does not expose .update or .remove', () => {
+      assert.equal(admin.sidekick({ org: 'adobe', site: 'x' }).update, undefined);
+      assert.equal(admin.sidekick({ org: 'adobe', site: 'x' }).remove, undefined);
+    });
+  });
+
   describe('admin.preview(coords)', () => {
     it('.get(path) GETs the preview status', async () => {
       await admin.preview({ org: 'adobe', site: 'x' }).get('/en/index');

@@ -1,9 +1,10 @@
-import { ensureLogin } from '../../blocks/profile/profile.js';
-import { analyzeUrls, extractOrgSite } from './utils.js';
+import { analyzeUrls } from './utils.js';
+import admin from '../../scripts/helix-admin.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 
 const log = document.getElementById('logger');
 const adminVersion = new URLSearchParams(window.location.search).get('hlx-admin-version');
-const adminVersionSuffix = adminVersion ? `?hlx-admin-version=${adminVersion}` : '';
+const adminVersionParams = adminVersion ? { 'hlx-admin-version': adminVersion } : undefined;
 
 const append = (string, status = 'unknown') => {
   const p = document.createElement('p');
@@ -227,50 +228,46 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
     return false;
   }
 
-  const { org, site } = extractOrgSite(urlsToUse[0]);
-  if (!await ensureLogin(org, site)) {
-    window.addEventListener('profile-update', ({ detail: loginInfo }) => {
-      if (loginInfo.includes(org)) {
-        e.target.querySelector('button[type="submit"]').click();
-      }
-    }, { once: true });
-    append(`Awaiting sign in to ${org}...`);
-    return false;
-  }
-
   const operation = document.getElementById('operation').dataset.value;
   const slow = document.getElementById('slow').checked;
   const forceUpdate = document.getElementById('force').checked;
 
-  const executeOperation = async (url) => {
+  const ENDPOINTS = { unpublish: 'live', unpreview: 'preview' };
+  const METHODS = { unpublish: 'DELETE', unpreview: 'DELETE' };
+
+  // Returns AdminResponse or null (login cancelled).
+  const doAdminOp = (url, policy = AuthMode.NONE) => {
     const { hostname, pathname } = new URL(url);
     const [branch, repo, owner] = hostname.split('.')[0].split('--');
-    const endpoints = {
-      unpublish: 'live',
-      unpreview: 'preview',
-    };
-    const methods = {
-      unpublish: 'DELETE',
-      unpreview: 'DELETE',
-    };
-    const endpoint = endpoints[operation] || operation;
-    const method = methods[operation] || 'POST';
-    const adminURL = `https://admin.hlx.page/${endpoint}/${owner}/${repo}/${branch}${pathname}${adminVersionSuffix}`;
-    const resp = await fetch(adminURL, {
-      method,
-    });
+    const endpoint = ENDPOINTS[operation] || operation;
+    const method = METHODS[operation] || 'POST';
+    const resource = admin[endpoint]({ org: owner, site: repo, ref: branch });
+    return executeAdminRequest(
+      () => (method === 'DELETE'
+        ? resource.remove(pathname, { params: adminVersionParams })
+        : resource.update(pathname, null, { params: adminVersionParams })),
+      { org: owner, site: repo, policy },
+    );
+  };
+
+  const logOp = (resp) => {
+    const { url: reqUrl } = resp.request;
     resp.text().then(() => {
       counter += 1;
-      append(`${counter}/${total}: ${adminURL}`, resp.status);
+      append(`${counter}/${total}: ${reqUrl}`, resp.status);
       document.getElementById('total').textContent = `${counter}/${total}`;
     });
   };
 
+  const executeOperation = async (url) => {
+    const resp = await doAdminOp(url);
+    if (resp) logOp(resp);
+  };
+
   const dequeue = async () => {
     while (urlsToUse.length) {
-      const url = urlsToUse.shift();
       // eslint-disable-next-line no-await-in-loop
-      await executeOperation(url, total);
+      await executeOperation(urlsToUse.shift());
       // eslint-disable-next-line no-await-in-loop
       if (slow) await sleep(1500);
     }
@@ -278,56 +275,46 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
 
   const doBulkOperation = async () => {
     if (total > 0) {
-      const VERB = {
-        preview: 'preview',
-        live: 'publish',
-      };
-      const { hostname } = new URL(urlsToUse[0]); // use first URL to determine project details
+      const VERB = { preview: 'preview', live: 'publish' };
+      const { hostname } = new URL(urlsToUse[0]);
       const [branch, repo, owner] = hostname.split('.')[0].split('--');
       const bulkText = `$1/${total} URL(s) bulk ${VERB[operation]}ed on ${owner}/${repo} ${forceUpdate ? '(force update)' : ''}`;
       const bulkLog = append(bulkText.replace('$1', 0));
       const paths = urlsToUse.map((url) => new URL(url).pathname);
-      const bulkResp = await fetch(`https://admin.hlx.page/${operation}/${owner}/${repo}/${branch}/*${adminVersionSuffix}`, {
-        method: 'POST',
-        body: JSON.stringify({
-          paths,
-          forceUpdate,
-        }),
-        headers: {
-          'content-type': 'application/json',
-        },
-      });
+      const bulkResp = await executeAdminRequest(
+        () => admin[operation]({ org: owner, site: repo, ref: branch })
+          .update('*', JSON.stringify({ paths, forceUpdate }), { params: adminVersionParams }),
+        { org: owner, site: repo, policy: AuthMode.PREFLIGHT_AND_RETRY },
+      );
+      if (!bulkResp) {
+        append('Sign-in cancelled');
+        return;
+      }
       if (!bulkResp.ok) {
-        append(`Failed to bulk ${VERB[operation]} ${paths.length} URLs on ${origin}: ${await bulkResp.text()}`);
+        append(`Failed to bulk ${VERB[operation]} ${paths.length} URLs on ${owner}/${repo}: ${await bulkResp.text()}`);
       } else {
         const { job } = await bulkResp.json();
         const { name } = job;
         const jobStatusPoll = window.setInterval(async () => {
           try {
-            const jobResp = await fetch(`https://admin.hlx.page/job/${owner}/${repo}/${branch}/${VERB[operation]}/${name}/details`);
+            const jobResp = await admin.job({ org: owner, site: repo, ref: branch })
+              .get(`${VERB[operation]}/${name}/details`);
             const jobStatus = await jobResp.json();
             const {
               state,
-              progress: {
-                processed = 0,
-              } = {},
+              progress: { processed = 0 } = {},
               startTime,
               stopTime,
-              data: {
-                resources = [],
-              } = {},
+              data: { resources = [] } = {},
             } = jobStatus;
             if (state === 'stopped') {
-              // job done, stop polling
               window.clearInterval(jobStatusPoll);
-              // show job summary
               resources.forEach((res) => append(`${res.path} (${res.status})`, res.status));
               bulkLog.textContent = bulkText.replace('$1', processed);
               const duration = (new Date(stopTime).valueOf()
                 - new Date(startTime).valueOf()) / 1000;
               append(`Bulk ${operation} completed in ${duration}s`);
             } else {
-              // show job progress
               bulkLog.textContent = bulkText.replace('$1', processed);
             }
           } catch (error) {
@@ -341,14 +328,20 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
   };
 
   if (['preview', 'live'].includes(operation)) {
-    // use bulk preview/publish API
     doBulkOperation();
   } else {
     append(`URLs: ${urlsToUse.length}`);
     let concurrency = ['live', 'unpublish', 'unpreview'].includes(operation) ? 40 : 3;
-    if (slow) {
-      concurrency = 1;
+    if (slow) concurrency = 1;
+
+    // Auth preflight on first URL before launching concurrent dequeues.
+    const firstResp = await doAdminOp(urlsToUse.shift(), AuthMode.PREFLIGHT_AND_RETRY);
+    if (!firstResp) {
+      append('Sign-in cancelled');
+      return false;
     }
+    logOp(firstResp);
+
     for (let i = 0; i < concurrency; i += 1) {
       dequeue();
     }
