@@ -7,10 +7,6 @@
  * auto-commits vendor updates in `.github/workflows/main.yaml` (same job as
  * the build) because Renovate cannot run post-upgrade vendor there.
  *
- * Idempotent locally: skips rebuild when package-lock.json is unchanged and
- * `.vendor-hash` matches. In CI (`CI` env, e.g. GitHub Actions) always rebuilds
- * so vendored files cannot quietly drift from hand edits without a lockfile change.
- *
  * To add a dependency:
  *   1. Add it to `dependencies` in package.json and run `npm install`
  *   2. Add an entry to DEPS below
@@ -24,9 +20,8 @@
  *              The host page is responsible for resolving these via an import map.
  */
 
-import { createHash } from 'crypto';
 import { build } from 'esbuild';
-import { mkdir, readdir, readFile, rm, writeFile } from 'fs/promises';
+import { mkdir, readdir, rm } from 'fs/promises';
 import { join } from 'path';
 
 // =============================================================================
@@ -60,19 +55,6 @@ const DEPS = [
 
 const root = new URL('..', import.meta.url).pathname;
 const vendorDir = join(root, 'vendor');
-const hashFile = join(vendorDir, '.vendor-hash');
-
-const [lockfile, storedHash] = await Promise.all([
-  readFile(join(root, 'package-lock.json')),
-  readFile(hashFile, 'utf8').then((h) => h.trim()).catch(() => ''),
-]);
-
-const currentHash = createHash('sha256').update(lockfile).digest('hex');
-
-if (currentHash === storedHash && !process.env.CI) {
-  console.log('vendor: up to date');
-  process.exit(0);
-}
 
 await mkdir(vendorDir, { recursive: true });
 
@@ -93,5 +75,3 @@ await Promise.all(DEPS.map(async ({ pkg, out, external = [] }) => {
   });
   console.log(`vendored: ${pkg} → vendor/${out}`);
 }));
-
-await writeFile(hashFile, currentHash);
