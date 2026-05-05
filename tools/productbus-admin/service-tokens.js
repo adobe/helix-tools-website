@@ -55,6 +55,12 @@ function renderForm(container, ctx) {
         <p class="field-hint">Comma-separated. Each becomes an <code>emails:send:&lt;pattern&gt;</code> permission entry.</p>
       </div>
 
+      <div class="form-field">
+        <label for="contact-emails">Contact emails <span class="field-hint-inline">(optional)</span></label>
+        <input type="text" id="contact-emails" placeholder="owner@example.com, ops@example.com">
+        <p class="field-hint">Comma-separated. Recorded with the token for ownership / contact purposes.</p>
+      </div>
+
       <h2>Time to live</h2>
       <div class="form-row">
         <div class="form-field">
@@ -86,12 +92,16 @@ function renderForm(container, ctx) {
 
     const checked = Array.from(form.querySelectorAll('input[name="permission"]:checked')).map((c) => c.value);
     const scopesRaw = form.querySelector('#email-scopes').value.trim();
+    const contactEmailsRaw = form.querySelector('#contact-emails').value.trim();
     const ttlValue = Number(form.querySelector('#ttl-value').value);
     const ttlUnit = Number(form.querySelector('#ttl-unit').value);
     const ttl = ttlValue * ttlUnit;
 
     const scopePatterns = scopesRaw
       ? scopesRaw.split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
+    const contactEmails = contactEmailsRaw
+      ? contactEmailsRaw.split(',').map((s) => s.trim()).filter(Boolean)
       : [];
 
     const permissions = [...checked];
@@ -118,9 +128,11 @@ function renderForm(container, ctx) {
     createBtn.disabled = true;
     createBtn.textContent = 'Creating…';
     try {
+      const body = { permissions, ttl };
+      if (contactEmails.length > 0) body.contactEmails = contactEmails;
       const resp = await apiFetch(ctx.org, ctx.site, 'auth/service_token', {
         method: 'POST',
-        body: JSON.stringify({ permissions, ttl }),
+        body: JSON.stringify(body),
       });
       if (!resp.ok) {
         const errMsg = resp.headers.get('x-error') || `HTTP ${resp.status}`;
