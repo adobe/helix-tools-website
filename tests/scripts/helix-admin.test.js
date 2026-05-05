@@ -466,6 +466,33 @@ describe('helix-admin.js', () => {
     });
   });
 
+  describe('admin.suggestions(coords)', () => {
+    it('returns org-level URLs when only org provided', () => {
+      const items = admin.suggestions({ org: 'adobe' });
+      assert.ok(Array.isArray(items));
+      assert.ok(items.length > 0);
+      assert.ok(items.every(({ url, label }) => typeof url === 'string' && typeof label === 'string'));
+      assert.ok(items.every(({ url }) => url.startsWith('https://admin.hlx.page/')));
+    });
+
+    it('includes org config URL', () => {
+      const items = admin.suggestions({ org: 'adobe' });
+      assert.ok(items.some(({ url }) => url === 'https://admin.hlx.page/config/adobe.json'));
+    });
+
+    it('includes site-level URLs when site provided', () => {
+      const items = admin.suggestions({ org: 'adobe', site: 'x' });
+      assert.ok(items.some(({ url }) => url === 'https://admin.hlx.page/config/adobe/sites/x.json'));
+      assert.ok(items.some(({ url }) => url.includes('/status/adobe/x/main')));
+      assert.ok(items.some(({ url }) => url.includes('/preview/adobe/x/main')));
+    });
+
+    it('does not include site-level URLs when site omitted', () => {
+      const items = admin.suggestions({ org: 'adobe' });
+      assert.ok(items.every(({ url }) => !url.includes('/sites/x')));
+    });
+  });
+
   describe('admin.preview(coords)', () => {
     it('.get(path) GETs the preview status', async () => {
       await admin.preview({ org: 'adobe', site: 'x' }).get('/en/index');

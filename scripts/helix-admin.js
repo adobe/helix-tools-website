@@ -186,6 +186,31 @@ function createAdmin(defaults = {}) {
     return Object.fromEntries(caps.map((c) => [c, all[c]]));
   }
 
+  /**
+   * Return well-known admin URL suggestions for the given coords, suitable
+   * for populating a datalist. Callers receive H5 or H6 URLs depending on
+   * which client is active — no URL knowledge needed in the tool itself.
+   *
+   * @param {{org: string, site?: string}} coords
+   * @returns {Array<{url: string, label: string}>}
+   */
+  function suggestions({ org, site }) {
+    const result = [
+      { url: `${ADMIN_BASE}/config/${org}.json`, label: 'Org Config' },
+      { url: `${ADMIN_BASE}/config/${org}/profiles.json`, label: 'Profiles' },
+      { url: `${ADMIN_BASE}/config/${org}/sites.json`, label: 'Sites' },
+    ];
+    if (site) {
+      result.push(
+        { url: `${ADMIN_BASE}/config/${org}/sites/${site}.json`, label: 'Site Config' },
+        { url: opBase('status', { org, site }), label: 'Status' },
+        { url: opBase('preview', { org, site }), label: 'Preview' },
+        { url: opBase('live', { org, site }), label: 'Live' },
+      );
+    }
+    return result;
+  }
+
   function raw(method, urlOrPath, body, opts) {
     const url = urlOrPath.startsWith('/') ? `${ADMIN_BASE}${urlOrPath}` : urlOrPath;
     const init = { method, url, params: opts?.params };
@@ -216,7 +241,18 @@ function createAdmin(defaults = {}) {
   }
 
   return {
-    config, status, preview, live, code, log, index, sitemap, job, raw, withRequestInit,
+    config,
+    status,
+    preview,
+    live,
+    code,
+    log,
+    index,
+    sitemap,
+    job,
+    raw,
+    suggestions,
+    withRequestInit,
   };
 }
 
