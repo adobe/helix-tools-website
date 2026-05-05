@@ -402,16 +402,67 @@ describe('helix-admin.js', () => {
     });
   });
 
-  describe('admin.sidekick(coords)', () => {
-    it('.get(path) GETs the sidekick config', async () => {
-      await admin.sidekick({ org: 'adobe', site: 'x' }).get('config.json');
+  describe('admin.raw(method, urlOrPath, body?, opts?)', () => {
+    it('path starting with / is resolved against ADMIN_BASE', async () => {
+      await admin.raw('GET', '/sidekick/adobe/x/main/config.json');
       assert.equal(calls[0].url, 'https://admin.hlx.page/sidekick/adobe/x/main/config.json');
       assert.equal(calls[0].init.method, 'GET');
     });
 
-    it('does not expose .update or .remove', () => {
-      assert.equal(admin.sidekick({ org: 'adobe', site: 'x' }).update, undefined);
-      assert.equal(admin.sidekick({ org: 'adobe', site: 'x' }).remove, undefined);
+    it('absolute URL is passed through unchanged', async () => {
+      await admin.raw('GET', 'https://admin.hlx.page/sidekick/adobe/x/main/config.json');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/sidekick/adobe/x/main/config.json');
+    });
+
+    it('forwards the method as-is', async () => {
+      await admin.raw('DELETE', '/preview/adobe/x/main/page');
+      assert.equal(calls[0].init.method, 'DELETE');
+    });
+
+    it('no body → no content-type header', async () => {
+      await admin.raw('GET', '/status/adobe/x/main');
+      assert.equal(calls[0].init.body, undefined);
+      assert.equal(calls[0].init.headers, undefined);
+    });
+
+    it('body present → defaults to application/json', async () => {
+      await admin.raw('POST', '/preview/adobe/x/main/*', '{"paths":["/"]}');
+      assert.equal(calls[0].init.body, '{"paths":["/"]}');
+      assert.equal(calls[0].init.headers.get('content-type'), 'application/json');
+    });
+
+    it('opts.contentType overrides the default', async () => {
+      await admin.raw('POST', '/preview/adobe/x/main/page', 'body', { contentType: 'text/plain' });
+      assert.equal(calls[0].init.headers.get('content-type'), 'text/plain');
+    });
+
+    it('opts.params appended as query string', async () => {
+      await admin.raw('GET', '/status/adobe/x/main', undefined, { params: { editUrl: 'auto' } });
+      const u = new URL(calls[0].url);
+      assert.equal(u.searchParams.get('editUrl'), 'auto');
+    });
+
+    it('null body treated same as undefined — no content-type', async () => {
+      await admin.raw('POST', '/preview/adobe/x/main/page', null);
+      assert.equal(calls[0].init.body, undefined);
+      assert.equal(calls[0].init.headers, undefined);
+    });
+
+    it('returns a normalized AdminResponse envelope', async () => {
+      const result = await admin.raw('GET', '/status/adobe/x/main');
+      assert.equal(typeof result.ok, 'boolean');
+      assert.equal(typeof result.status, 'number');
+      assert.equal(typeof result.text, 'function');
+      assert.equal(typeof result.json, 'function');
+      assert.equal(result.error, '');
+      assert.equal(result.request.method, 'GET');
+      assert.equal(result.request.url, 'https://admin.hlx.page/status/adobe/x/main');
+    });
+
+    it('propagates withRequestInit defaults', async () => {
+      const a = admin.withRequestInit({ credentials: 'include' });
+      await a.raw('GET', '/status/adobe/x/main');
+      assert.equal(calls[0].init.credentials, 'include');
     });
   });
 

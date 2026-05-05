@@ -186,8 +186,17 @@ function createAdmin(defaults = {}) {
     return Object.fromEntries(caps.map((c) => [c, all[c]]));
   }
 
+  function raw(method, urlOrPath, body, opts) {
+    const url = urlOrPath.startsWith('/') ? `${ADMIN_BASE}${urlOrPath}` : urlOrPath;
+    const init = { method, url, params: opts?.params };
+    if (body !== undefined && body !== null) {
+      init.body = body;
+      init.contentType = opts?.contentType ?? 'application/json';
+    }
+    return request(init);
+  }
+
   function status(coords) { return bindOperation(opBase('status', coords), ['get', 'update']); }
-  function sidekick(coords) { return bindOperation(opBase('sidekick', coords), ['get']); }
   function preview(coords) { return bindOperation(opBase('preview', coords), ['get', 'update', 'remove']); }
   function live(coords) { return bindOperation(opBase('live', coords), ['get', 'update', 'remove']); }
   function code(coords) { return bindOperation(opBase('code', coords), ['get', 'update', 'remove']); }
@@ -207,7 +216,7 @@ function createAdmin(defaults = {}) {
   }
 
   return {
-    config, status, sidekick, preview, live, code, log, index, sitemap, job, withRequestInit,
+    config, status, preview, live, code, log, index, sitemap, job, raw, withRequestInit,
   };
 }
 
