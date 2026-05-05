@@ -126,13 +126,21 @@ function displayResult(url, matches, org, site) {
     }
 
     try {
-      const statusRes = await admin.status({ org, site }).get(url.pathname, { params: { editUrl: 'auto' } });
+      const statusRes = await executeAdminRequest(
+        () => admin.status({ org, site }).get(url.pathname, { params: { editUrl: 'auto' } }),
+        { org, site },
+      );
+      if (!statusRes) return; // login cancelled
       const status = await statusRes.json();
       let editUrl = status.edit && status.edit.url;
 
       // fallback to sidekick config if status doesn't provide edit URL
       if (!editUrl) {
-        const configRes = await admin.sidekick({ org, site }).get('config.json');
+        const configRes = await executeAdminRequest(
+          () => admin.sidekick({ org, site }).get('config.json'),
+          { org, site },
+        );
+        if (!configRes) return; // login cancelled
         const config = await configRes.json();
         const editUrlPattern = config.editUrl;
         if (editUrlPattern) {
