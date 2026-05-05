@@ -168,42 +168,47 @@ function syncScroll(target, el) {
 }
 
 /**
- * Extracts the organization from an admin URL.
- * @param {string} url - URL to extract org from
- * @returns {string|null} The organization name or null if not found
+ * Extracts org and site coords from an admin URL.
+ * @param {string} url
+ * @returns {{org: string|null, site: string|null}}
  */
-function extractOrgFromURL(url) {
+function extractCoordsFromURL(url) {
   try {
     const urlObj = new URL(url);
     const pathParts = urlObj.pathname.split('/').filter((part) => part);
     if (pathParts[0] === 'config' && pathParts.length > 1) {
-      // config URL: /config/org.json or /config/org/...
+      // /config/{org}.json  or  /config/{org}/sites/{site}.json
       let org = pathParts[1];
-      if (org.endsWith('.json')) {
-        org = org.slice(0, -5);
+      if (org.endsWith('.json')) org = org.slice(0, -5);
+      let site = null;
+      if (pathParts[2] === 'sites' && pathParts[3]) {
+        site = pathParts[3].replace(/\.json$/, '');
       }
-      return org;
+      return { org, site };
+    }
+    if (pathParts.length > 2) {
+      // /status/{org}/{site}/{ref}/...
+      return { org: pathParts[1], site: pathParts[2] };
     }
     if (pathParts.length > 1) {
-      // admin API URL: /status/org/site/ref or similar
-      return pathParts[1];
+      return { org: pathParts[1], site: null };
     }
   } catch (e) {
     // invalid URL
   }
-  return null;
+  return { org: null, site: null };
 }
 
 /**
  * Updates the admin URL datalist with well-known config locations.
- * @param {string} org - Organization name to use in the suggestions
+ * @param {{org: string|null, site: string|null}} coords
  */
-function updateAdminURLSuggestions(org) {
+function updateAdminURLSuggestions({ org, site }) {
   if (!org) {
     adminURLList.innerHTML = '';
     return;
   }
-  adminURLList.innerHTML = admin.suggestions({ org })
+  adminURLList.innerHTML = admin.suggestions({ org, site })
     .map(({ url, label }) => `<option value="${url}" label="${label}"></option>`)
     .join('');
 }
@@ -212,13 +217,11 @@ async function init() {
   adminURL.value = localStorage.getItem('admin-url') || 'https://admin.hlx.page/status/adobe/aem-boilerplate/main/';
 
   // populate datalist with well-known config locations on load
-  const initialOrg = extractOrgFromURL(adminURL.value);
-  updateAdminURLSuggestions(initialOrg);
+  updateAdminURLSuggestions(extractCoordsFromURL(adminURL.value));
 
   // update datalist when admin URL changes
   adminURL.addEventListener('input', () => {
-    const org = extractOrgFromURL(adminURL.value);
-    updateAdminURLSuggestions(org);
+    updateAdminURLSuggestions(extractCoordsFromURL(adminURL.value));
   });
 
   /**
