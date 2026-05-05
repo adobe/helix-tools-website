@@ -64,7 +64,7 @@ jobs:
           fi
           exit 0
         fi
-        echo "::error::Working tree is dirty after \`npm ci\` (postinstall runs vendoring). Commit the diff — usually \`vendor/\` and \`.vendor-hash\` when \`package-lock.json\` changed."
+        echo "::error::Working tree is dirty after \`npm ci\` (postinstall runs vendoring). Commit the diff — usually \`vendor/\` when \`package-lock.json\` changed."
         git status
         git diff --stat HEAD
         exit 1
