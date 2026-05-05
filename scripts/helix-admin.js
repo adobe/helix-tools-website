@@ -48,6 +48,33 @@ function deriveContentType(url) {
  *
  * @param {RequestInit} [defaults] merged into every request's init
  */
+/**
+ * Parse org and site coords from an admin API URL. Handles both config URLs
+ * (`/config/{org}/sites/{site}.json`) and operation URLs
+ * (`/{op}/{org}/{site}/{ref}/...`).
+ *
+ * @param {string} url - Full admin URL
+ * @returns {{org: string|null, site: string|null}}
+ */
+function coordsFromURL(url) {
+  try {
+    const parts = new URL(url).pathname.split('/').filter(Boolean);
+    if (parts[0] === 'config') {
+      const org = parts[1] ? parts[1].replace(/\.json$/, '') : null;
+      if (!org) return { org: null, site: null };
+      // parts[2] must be the literal 'sites' directory, not 'sites.json' (the list)
+      const site = (parts[2] === 'sites' && parts[3])
+        ? parts[3].replace(/\.json$/, '')
+        : null;
+      return { org, site };
+    }
+    // operation URL: /{op}/{org}/{site}/{ref}/...
+    return { org: parts[1] ?? null, site: parts[2] ?? null };
+  } catch {
+    return { org: null, site: null };
+  }
+}
+
 function createAdmin(defaults = {}) {
   async function request({
     method, url, body, contentType, params,
@@ -186,6 +213,31 @@ function createAdmin(defaults = {}) {
     return Object.fromEntries(caps.map((c) => [c, all[c]]));
   }
 
+  /**
+   * Return well-known admin URL suggestions for the given coords, suitable
+   * for populating a datalist. Callers receive H5 or H6 URLs depending on
+   * which client is active — no URL knowledge needed in the tool itself.
+   *
+   * @param {{org: string, site?: string}} coords
+   * @returns {Array<{url: string, label: string}>}
+   */
+  function suggestions({ org, site }) {
+    const result = [
+      { url: `${ADMIN_BASE}/config/${org}.json`, label: 'Org Config' },
+      { url: `${ADMIN_BASE}/config/${org}/profiles.json`, label: 'Profiles' },
+      { url: `${ADMIN_BASE}/config/${org}/sites.json`, label: 'Sites' },
+    ];
+    if (site) {
+      result.push(
+        { url: `${ADMIN_BASE}/config/${org}/sites/${site}.json`, label: 'Site Config' },
+        { url: opBase('status', { org, site }), label: 'Status' },
+        { url: opBase('preview', { org, site }), label: 'Preview' },
+        { url: opBase('live', { org, site }), label: 'Live' },
+      );
+    }
+    return result;
+  }
+
   function raw(method, urlOrPath, body, opts) {
     const url = urlOrPath.startsWith('/') ? `${ADMIN_BASE}${urlOrPath}` : urlOrPath;
     const init = { method, url, params: opts?.params };
@@ -216,7 +268,19 @@ function createAdmin(defaults = {}) {
   }
 
   return {
-    config, status, preview, live, code, log, index, sitemap, job, raw, withRequestInit,
+    config,
+    status,
+    preview,
+    live,
+    code,
+    log,
+    index,
+    sitemap,
+    job,
+    raw,
+    suggestions,
+    coordsFromURL,
+    withRequestInit,
   };
 }
 
