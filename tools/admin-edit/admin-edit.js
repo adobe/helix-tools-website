@@ -168,38 +168,6 @@ function syncScroll(target, el) {
 }
 
 /**
- * Extracts org and site coords from an admin URL.
- * @param {string} url
- * @returns {{org: string|null, site: string|null}}
- */
-function extractCoordsFromURL(url) {
-  try {
-    const urlObj = new URL(url);
-    const pathParts = urlObj.pathname.split('/').filter((part) => part);
-    if (pathParts[0] === 'config' && pathParts.length > 1) {
-      // /config/{org}.json  or  /config/{org}/sites/{site}.json
-      let org = pathParts[1];
-      if (org.endsWith('.json')) org = org.slice(0, -5);
-      let site = null;
-      if (pathParts[2] === 'sites' && pathParts[3]) {
-        site = pathParts[3].replace(/\.json$/, '');
-      }
-      return { org, site };
-    }
-    if (pathParts.length > 2) {
-      // /status/{org}/{site}/{ref}/...
-      return { org: pathParts[1], site: pathParts[2] };
-    }
-    if (pathParts.length > 1) {
-      return { org: pathParts[1], site: null };
-    }
-  } catch (e) {
-    // invalid URL
-  }
-  return { org: null, site: null };
-}
-
-/**
  * Updates the admin URL datalist with well-known config locations.
  * @param {{org: string|null, site: string|null}} coords
  */
@@ -217,11 +185,11 @@ async function init() {
   adminURL.value = localStorage.getItem('admin-url') || 'https://admin.hlx.page/status/adobe/aem-boilerplate/main/';
 
   // populate datalist with well-known config locations on load
-  updateAdminURLSuggestions(extractCoordsFromURL(adminURL.value));
+  updateAdminURLSuggestions(admin.coordsFromURL(adminURL.value));
 
   // update datalist when admin URL changes
   adminURL.addEventListener('input', () => {
-    updateAdminURLSuggestions(extractCoordsFromURL(adminURL.value));
+    updateAdminURLSuggestions(admin.coordsFromURL(adminURL.value));
   });
 
   /**
@@ -299,26 +267,7 @@ async function init() {
    */
   adminForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const extractOrgAndSite = (url) => {
-      const urlObj = new URL(url);
-      const pathParts = urlObj.pathname.split('/');
-      if (pathParts[1] === 'config') {
-        let org = pathParts[2];
-        if (org.endsWith('.json')) {
-          org = org.slice(0, -5);
-        }
-        let site = pathParts[4] ? pathParts[4] : null;
-        if (site && site.endsWith('.json')) {
-          site = site.slice(0, -5);
-        }
-        return { org, site };
-      }
-      const org = pathParts[2];
-      const site = pathParts[3];
-      return { org, site };
-    };
-
-    const { org, site } = extractOrgAndSite(adminURL.value);
+    const { org, site } = admin.coordsFromURL(adminURL.value);
     const result = await executeAdminRequest(
       () => admin.raw('GET', adminURL.value),
       { org, site, policy: AuthMode.RETRY_ON_401 },

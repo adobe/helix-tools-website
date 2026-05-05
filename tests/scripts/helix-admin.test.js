@@ -493,6 +493,89 @@ describe('helix-admin.js', () => {
     });
   });
 
+  describe('admin.coordsFromURL(url)', () => {
+    describe('config URLs', () => {
+      it('parses org from /config/{org}.json', () => {
+        assert.deepEqual(
+          admin.coordsFromURL('https://admin.hlx.page/config/adobe.json'),
+          { org: 'adobe', site: null },
+        );
+      });
+
+      it('treats /config/{org}/sites.json as org-only (sites list, not a specific site)', () => {
+        assert.deepEqual(
+          admin.coordsFromURL('https://admin.hlx.page/config/adobe/sites.json'),
+          { org: 'adobe', site: null },
+        );
+      });
+
+      it('treats /config/{org}/profiles.json as org-only', () => {
+        assert.deepEqual(
+          admin.coordsFromURL('https://admin.hlx.page/config/adobe/profiles.json'),
+          { org: 'adobe', site: null },
+        );
+      });
+
+      it('parses org + site from /config/{org}/sites/{site}.json', () => {
+        assert.deepEqual(
+          admin.coordsFromURL('https://admin.hlx.page/config/adobe/sites/x.json'),
+          { org: 'adobe', site: 'x' },
+        );
+      });
+
+      it('parses org + site from a site sub-resource URL', () => {
+        assert.deepEqual(
+          admin.coordsFromURL('https://admin.hlx.page/config/adobe/sites/x/cdn.json'),
+          { org: 'adobe', site: 'x' },
+        );
+      });
+
+      it('handles org names with no .json suffix', () => {
+        assert.deepEqual(
+          admin.coordsFromURL('https://admin.hlx.page/config/aemsites/sites/aem.json'),
+          { org: 'aemsites', site: 'aem' },
+        );
+      });
+    });
+
+    describe('operation URLs', () => {
+      it('parses org + site from a status URL', () => {
+        assert.deepEqual(
+          admin.coordsFromURL('https://admin.hlx.page/status/adobe/x/main'),
+          { org: 'adobe', site: 'x' },
+        );
+      });
+
+      it('parses org + site from a preview URL with a content path', () => {
+        assert.deepEqual(
+          admin.coordsFromURL('https://admin.hlx.page/preview/adobe/x/main/en/index'),
+          { org: 'adobe', site: 'x' },
+        );
+      });
+
+      it('parses org + site from a log URL', () => {
+        assert.deepEqual(
+          admin.coordsFromURL('https://admin.hlx.page/log/adobe/x/main'),
+          { org: 'adobe', site: 'x' },
+        );
+      });
+    });
+
+    describe('edge cases', () => {
+      it('returns nulls for an invalid URL', () => {
+        assert.deepEqual(admin.coordsFromURL('not-a-url'), { org: null, site: null });
+      });
+
+      it('is available on a withRequestInit-derived client', () => {
+        const a = admin.withRequestInit({ credentials: 'include' });
+        assert.equal(typeof a.coordsFromURL, 'function');
+        assert.deepEqual(
+          a.coordsFromURL('https://admin.hlx.page/config/adobe/sites/x.json'),
+          { org: 'adobe', site: 'x' },
+        );
+      });
+    });
+  });
 
   describe('admin.preview(coords)', () => {
     it('.get(path) GETs the preview status', async () => {
