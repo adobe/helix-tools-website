@@ -1,7 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  escapeHtml,
   getContentSourceType,
   getScoreClass,
   isExpired,
@@ -9,24 +8,6 @@ import {
 } from '../../../tools/site-admin/helpers/utils.js';
 
 describe('site-admin:utils.js', () => {
-  describe('escapeHtml', () => {
-    it('escapes all five special characters', () => {
-      assert.equal(escapeHtml('&<>"\' '), '&amp;&lt;&gt;&quot;&#39; ');
-    });
-
-    it('returns plain strings unchanged', () => {
-      assert.equal(escapeHtml('hello world'), 'hello world');
-    });
-
-    it('handles empty string', () => {
-      assert.equal(escapeHtml(''), '');
-    });
-
-    it('escapes multiple occurrences', () => {
-      assert.equal(escapeHtml('a & b & c'), 'a &amp; b &amp; c');
-    });
-  });
-
   describe('getContentSourceType', () => {
     it('returns loading state when isLoading is true', () => {
       assert.deepEqual(getContentSourceType('', '', true), { type: 'loading', label: '...' });

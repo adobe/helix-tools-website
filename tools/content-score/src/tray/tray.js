@@ -1,6 +1,6 @@
+import escapeHtml from '../../../../utils/html.js';
 import {
   categoryIdToDetailsKey,
-  escapeHtml,
   getBase,
   getCountText,
   getNoIssuesText,

@@ -3,6 +3,7 @@
  */
 
 import { DA_CONFIG } from '../config.js';
+import escapeHtml from '../../../utils/html.js';
 
 // Load report viewer CSS
 if (!document.querySelector('link[href*="report-viewer.css"]')) {
@@ -186,7 +187,6 @@ const extractSections = (doc) => {
   return sections;
 };
 
-const escapeHtml = (t) => Object.assign(document.createElement('div'), { textContent: t }).innerHTML;
 const toTitleCase = (t) => t.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 
 /** Create HTML for a report section */

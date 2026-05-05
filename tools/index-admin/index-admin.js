@@ -232,7 +232,7 @@ function showJobStatus(jobDetails) {
 
 async function reIndex(indexNames, paths) {
   const result = await executeAdminRequest(
-    () => admin.index({ org: org.value, site: site.value }).bulk({ paths, indexNames }),
+    () => admin.index({ org: org.value, site: site.value }).update('/*', JSON.stringify({ paths, indexNames })),
     { org: org.value, site: site.value },
   );
   if (!result) return { success: false };
@@ -248,7 +248,7 @@ async function reIndex(indexNames, paths) {
 
 async function fetchJobDetails(topic, name) {
   const result = await executeAdminRequest(
-    () => admin.job({ org: org.value, site: site.value }).details(topic, name),
+    () => admin.job({ org: org.value, site: site.value }).get(`${topic}/${name}/details`),
     { org: org.value, site: site.value },
   );
   if (!result) return null;

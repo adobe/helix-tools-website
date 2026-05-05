@@ -15,8 +15,9 @@ import {
   createApiKey,
   deleteApiKey,
 } from './api-helper.js';
+import escapeHtml from '../../../utils/html.js';
 import {
-  icon, showToast, formatDate, isExpired, escapeHtml,
+  icon, showToast, formatDate, isExpired,
 } from './utils.js';
 
 /* eslint-disable no-alert, no-restricted-globals */
@@ -259,10 +260,7 @@ export const openAuthModal = async (siteName, orgValue) => {
     </div>
   `);
 
-  const [secrets, access] = await Promise.all([
-    fetchSecrets(orgValue, siteName),
-    fetchSiteAccess(orgValue, siteName),
-  ]);
+  const access = await fetchSiteAccess(orgValue, siteName);
 
   let currentScope = 'none';
   if (access.site) currentScope = 'site';
@@ -315,6 +313,44 @@ export const openAuthModal = async (siteName, orgValue) => {
     </div>
   `;
 
+  const authTokenResult = document.createElement('div');
+  authTokenResult.className = 'auth-token-result';
+  authTokenResult.setAttribute('aria-hidden', 'true');
+  authTokenResult.innerHTML = `
+    <h4>Site Token Created</h4>
+    <p class="field-hint">Pass this token as an <code>Authorization</code> header from your CDN to access your protected site:<br/>
+      <code>authorization: token &lt;value&gt;</code></p>
+    <p class="field-hint"><a href="https://www.aem.live/docs/authentication-setup-site#make-your-cdn-pass-the-right-authorization-header" target="_blank" rel="noopener noreferrer">Learn more about CDN authorization setup</a></p>
+    <div class="token-copy-row">
+      <input type="password" class="auth-token-value" aria-label="Site Token" readonly />
+      <button type="button" class="button outline copy-token-btn">${icon('copy')} Copy</button>
+    </div>
+    <p class="field-hint"><strong>Save this value!</strong> It will not be shown again.</p>
+    <div class="form-actions">
+      <button type="button" class="button close-auth-btn">Done</button>
+    </div>
+  `;
+  container.querySelector('.auth-content').appendChild(authTokenResult);
+
+  let siteUpdated = false;
+  dialog.addEventListener('close', () => {
+    if (siteUpdated) refreshSites(orgValue, 'update', siteName);
+  });
+
+  const tokenInput = authTokenResult.querySelector('.auth-token-value');
+
+  authTokenResult.querySelector('.copy-token-btn').addEventListener('click', async (e) => {
+    const button = e.currentTarget;
+    try {
+      await navigator.clipboard.writeText(tokenInput.value);
+      button.innerHTML = `${icon('check')} Copied!`;
+    } catch {
+      showToast('Failed to copy token. Please copy it manually before closing this dialog.', 'error');
+    }
+  });
+
+  authTokenResult.querySelector('.close-auth-btn').addEventListener('click', () => dialog.close());
+
   container.querySelector('.auth-loading').setAttribute('aria-hidden', 'true');
   container.querySelector('.auth-content').classList.add('visible');
 
@@ -355,10 +391,14 @@ export const openAuthModal = async (siteName, orgValue) => {
 
     const newAccess = {};
     let tokenId = currentAccess.secretId?.[0] || '';
+    let newTokenValue = null;
 
-    if (scope !== 'none' && !tokenId && (!secrets || secrets.length === 0)) {
+    if (scope !== 'none' && !tokenId) {
       const result = await createSecret(orgValue, siteName);
-      if (result) tokenId = result.id;
+      if (result) {
+        tokenId = result.id;
+        newTokenValue = result.value;
+      }
     }
 
     if (scope !== 'none') {
@@ -374,10 +414,15 @@ export const openAuthModal = async (siteName, orgValue) => {
     btn.disabled = false;
     btn.textContent = success ? 'Saved!' : 'Save';
     if (success) {
-      setTimeout(() => {
-        dialog.close();
-        refreshSites(orgValue, 'update', siteName);
-      }, 1000);
+      siteUpdated = true;
+      if (newTokenValue) {
+        tokenInput.value = newTokenValue;
+        authStatusCard.setAttribute('aria-hidden', 'true');
+        authForm.setAttribute('aria-hidden', 'true');
+        authTokenResult.removeAttribute('aria-hidden');
+      } else {
+        setTimeout(() => dialog.close(), 1000);
+      }
     }
   });
 
@@ -479,18 +524,35 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
 
   if (onFormInit) onFormInit(container);
 
+  const createForm = container.querySelector('.create-form');
+  const resetCreateForm = () => {
+    if (!createForm) return;
+    createForm.querySelectorAll('input').forEach((input) => { input.value = ''; });
+  };
+
   container.querySelector('.create-btn').addEventListener('click', async (e) => {
     const btn = e.target;
     btn.disabled = true;
     btn.textContent = 'Creating...';
 
     const body = getCreateBody ? getCreateBody(container) : undefined;
+    if (body === null) {
+      btn.disabled = false;
+      btn.textContent = `Create ${itemName}`;
+      return;
+    }
     const result = await createFn(orgValue, siteName, body);
     if (result?.value) {
       container.querySelector('.item-value').value = result.value;
       container.querySelector('.new-item-result').classList.add('visible');
       btn.setAttribute('aria-hidden', 'true');
       loadItems();
+    } else if (result) {
+      loadItems();
+      resetCreateForm();
+      btn.disabled = false;
+      btn.textContent = `Create ${itemName}`;
+      showToast(`${itemName} created successfully`, 'success');
     } else {
       btn.disabled = false;
       btn.textContent = 'Failed - Try Again';
@@ -511,9 +573,61 @@ export const openSecretModal = (siteName, orgValue) => openManageItemsModal(site
   itemNamePlural: 'Secrets',
   iconName: 'lock',
   fetchFn: fetchSecrets,
-  createFn: createSecret,
+  createFn: async (org, site, body) => {
+    if (body?.name) {
+      const result = await createNamedSecret(org, site, body.name, body.value || null);
+      if (result && body.value) {
+        delete result.value;
+      }
+      return result;
+    }
+    return createSecret(org, site);
+  },
   deleteFn: deleteSecret,
   showExpiration: false,
+  formHtml: `
+    <div class="form-field">
+      <label for="secret-name">Name (optional)</label>
+      <input type="text" id="secret-name" placeholder="e.g. my-secret-name" pattern="[a-z0-9_\\-]+" />
+      <p class="field-hint">Lowercase letters, numbers, hyphens, and underscores only. Required when a value is provided.</p>
+      <p class="field-error secret-name-error"></p>
+    </div>
+    <div class="form-field">
+      <label for="secret-value">Secret Value (optional)</label>
+      <input type="password" id="secret-value" placeholder="e.g. secret from external service" />
+      <p class="field-hint">See <a href="https://www.aem.live/docs/admin.html#tag/siteConfig/operation/createSiteSecret">create site secret docs</a> for more details. Remember this value, it won't be shown again.</p>
+    </div>
+  `,
+  onFormInit: (el) => {
+    const nameInput = el.querySelector('#secret-name');
+    const nameError = el.querySelector('.secret-name-error');
+    nameInput.addEventListener('input', () => nameError.classList.remove('visible'));
+  },
+  getCreateBody: (el) => {
+    const nameInput = el.querySelector('#secret-name');
+    const valueInput = el.querySelector('#secret-value');
+    const nameError = el.querySelector('.secret-name-error');
+    const name = nameInput.value.trim();
+    const value = valueInput.value.trim();
+    const showNameError = (msg) => {
+      nameError.textContent = msg;
+      nameError.classList.add('visible');
+      nameInput.focus();
+    };
+    if (value && !name) {
+      showNameError('Name is required when a value is provided');
+      return null;
+    }
+    if (name && !/^[a-z0-9_-]+$/.test(name)) {
+      showNameError('Name must contain only lowercase letters, numbers, hyphens, and underscores');
+      return null;
+    }
+    nameError.classList.remove('visible');
+    const body = {};
+    if (name) body.name = name;
+    if (value) body.value = value;
+    return Object.keys(body).length ? body : undefined;
+  },
 });
 
 const API_KEY_ROLES = [

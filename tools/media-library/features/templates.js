@@ -1,10 +1,5 @@
 import { getFileName } from '../core/files.js';
-
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
+import escapeHtml from '../../../utils/html.js';
 
 export function getMediaName(media) {
   const fromName = media?.name;
