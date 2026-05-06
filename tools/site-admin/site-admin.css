@@ -161,6 +161,10 @@
       box-shadow: var(--shadow-hover);
     }
 
+    &.selected {
+      box-shadow: var(--shadow-dragged);
+    }
+
     &.deleting {
       pointer-events: none;
       opacity: 0.6;
@@ -686,11 +690,6 @@
     border-radius: 8px;
     color: var(--color-font-grey);
     text-align: center;
-  }
-
-  .site-card.pinned {
-    border-color: var(--blue-800);
-    border-width: 2px;
   }
 
   [aria-hidden='true'] {

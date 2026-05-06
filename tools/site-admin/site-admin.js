@@ -10,8 +10,8 @@ import {
   getFavorites,
   getContentSourceType,
   getDAEditorURL,
-  escapeHtml,
 } from './helpers/utils.js';
+import escapeHtml from '../../utils/html.js';
 import { openAddSiteModal } from './helpers/modals.js';
 import createSiteCard from './helpers/site-card.js';
 
@@ -114,10 +114,11 @@ const updateSiteCount = () => {
 
 let detailsObserver;
 
-const displaySites = (sites, { limitedAccess = false, pinnedSite = '' } = {}) => {
+const displaySites = (sites, { limitedAccess = false } = {}) => {
   sitesElem.ariaHidden = false;
   sitesElem.textContent = '';
 
+  const selectedSite = new URLSearchParams(window.location.search).get('site');
   const savedView = localStorage.getItem(VIEW_STORAGE_KEY) || 'grid';
 
   const header = document.createElement('div');
@@ -174,9 +175,9 @@ const displaySites = (sites, { limitedAccess = false, pinnedSite = '' } = {}) =>
 
   const favorites = getFavorites(org.value);
   const sortedSites = [...sites].sort((a, b) => {
-    if (pinnedSite) {
-      if (a.name === pinnedSite) return -1;
-      if (b.name === pinnedSite) return 1;
+    if (selectedSite) {
+      if (a.name === selectedSite) return -1;
+      if (b.name === selectedSite) return 1;
     }
     const aFav = favorites.includes(a.name);
     const bFav = favorites.includes(b.name);
@@ -196,32 +197,35 @@ const displaySites = (sites, { limitedAccess = false, pinnedSite = '' } = {}) =>
   }, { rootMargin: '200px' });
 
   sortedSites.forEach((s) => {
-    const card = createSiteCard(s, org.value, {
-      limitedAccess,
-      pinned: pinnedSite && s.name === pinnedSite,
-    });
+    const card = createSiteCard(s, org.value, { limitedAccess });
     grid.appendChild(card);
     detailsObserver.observe(card);
   });
 
   sitesElem.appendChild(grid);
+
+  if (selectedSite) {
+    const selectedCard = findCardBySite(selectedSite);
+    if (selectedCard) selectedCard.classList.add('selected');
+  }
 };
 
-const displaySitesForOrg = async (orgValue, pinnedSite = '') => {
+const displaySitesForOrg = async (orgValue) => {
   sitesElem.setAttribute('aria-hidden', 'true');
   sitesElem.replaceChildren();
 
+  const selectedSite = new URLSearchParams(window.location.search).get('site');
   const { sites, status } = await fetchSites(orgValue, logFn);
 
   if (status === 200 && sites) {
-    displaySites(sites, { pinnedSite });
+    displaySites(sites);
   } else if (status === 401) {
     const loggedIn = await ensureLogin(orgValue);
     if (loggedIn) {
-      return displaySitesForOrg(orgValue, pinnedSite);
+      return displaySitesForOrg(orgValue);
     }
-  } else if (status === 403 && pinnedSite) {
-    displaySites([{ name: pinnedSite }], { limitedAccess: true, pinnedSite });
+  } else if (status === 403 && selectedSite) {
+    displaySites([{ name: selectedSite }], { limitedAccess: true });
   } else if (status === 403) {
     sitesElem.ariaHidden = false;
     const msg = document.createElement('p');
@@ -268,7 +272,7 @@ window.addEventListener('sites-refresh', (e) => {
     return;
   }
 
-  displaySitesForOrg(orgValue, escapeHtml(site.value || ''));
+  displaySitesForOrg(orgValue);
 });
 
 const initSiteAdmin = async () => {
@@ -280,12 +284,38 @@ const initSiteAdmin = async () => {
   await Promise.all(neededIcons.map(loadIcon));
   await initConfigField();
   if (!org.value) org.value = localStorage.getItem('org') || 'adobe';
-  if (org.value) {
-    const pinnedSite = escapeHtml(site.value || '');
-    const loggedIn = await ensureLogin(org.value, pinnedSite || undefined);
-    if (loggedIn) {
-      displaySitesForOrg(org.value, pinnedSite);
+
+  const form = document.getElementById('site-admin-form');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const { submitter } = e;
+
+    const orgValue = org.value;
+    if (!orgValue) return;
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('org', orgValue);
+    const siteValue = escapeHtml(site.value || '');
+    if (siteValue) url.searchParams.set('site', siteValue);
+    else url.searchParams.delete('site');
+    window.history.replaceState({}, document.title, url.href);
+
+    const loggedIn = await ensureLogin(orgValue, siteValue || undefined);
+    if (!loggedIn) {
+      window.addEventListener('profile-update', ({ detail: loginInfo }) => {
+        if (loginInfo.includes(orgValue)) submitter?.click();
+      }, { once: true });
+      return;
     }
+
+    displaySitesForOrg(orgValue);
+  });
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('org')) {
+    org.value = params.get('org');
+    if (params.get('site')) site.value = params.get('site');
+    document.getElementById('list').click();
   }
 };
 
