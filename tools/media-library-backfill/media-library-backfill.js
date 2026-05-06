@@ -1,6 +1,8 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
+import admin from '../../scripts/helix-admin.js';
+import { executeAdminRequest } from '../../utils/admin-request.js';
 import {
   discardBrokenMediaEntries,
   dedupeMediaUrls,
@@ -823,17 +825,15 @@ async function runStatusJob(org, site, paths, {
 } = {}) {
   const normalizedPaths = Array.isArray(paths) ? paths : [paths];
   const label = jobLabel || `status job (${normalizedPaths.join(', ')})`;
-  const statusUrl = `${ADMIN_BASE}/status/${org}/${site}/${REF}/*`;
 
-  const createRes = await fetchWithRetry(statusUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+  const createRes = await executeAdminRequest(
+    () => admin.status({ org, site, ref: REF }).update('*', JSON.stringify({
       paths: normalizedPaths,
       pathsOnly,
       select: ['preview'],
-    }),
-  });
+    })),
+    { org, site },
+  );
 
   if (!createRes.ok) {
     throw new Error(`Failed to create ${label}: ${createRes.status}`);
@@ -1321,10 +1321,11 @@ async function fetchLastModified(url) {
 }
 
 async function fetchContentSourceType(org, site) {
-  const configUrl = `${ADMIN_BASE}/config/${encodeURIComponent(org)}/sites/${encodeURIComponent(site)}.json`;
-
   try {
-    const response = await fetchWithRetry(configUrl, {}, 1);
+    const response = await executeAdminRequest(
+      () => admin.config({ org, site }).read(),
+      { org, site },
+    );
     if (!response.ok) {
       log(`Site config lookup returned ${response.status}; defaulting contentSourceType to markup.`, 'warn');
       return 'markup';
