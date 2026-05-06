@@ -146,31 +146,54 @@ function createAdmin(defaults = {}) {
     return bindConfig(`${base}.json`);
   }
 
-  function index({ org, site }) {
-    const url = `${ADMIN_BASE}/index/${org}/${site}/main/*`;
-    return {
-      bulk: (payload) => request({
-        method: 'POST', url, body: JSON.stringify(payload), contentType: 'application/json',
-      }),
-    };
+  // ref defaults to 'main'; pass null to omit the segment (Helix 6 compat).
+  function opBase(op, { org, site, ref = 'main' }) {
+    const refSegment = ref ? `/${ref}` : '';
+    return `${ADMIN_BASE}/${op}/${org}/${site}${refSegment}`;
   }
 
-  function sitemap({ org, site }) {
-    const base = `${ADMIN_BASE}/sitemap/${org}/${site}/main`;
-    return {
-      generate: (p) => request({ method: 'POST', url: `${base}${p}` }),
+  /**
+   * Bind an operational API resource to a base URL. Returns only the methods
+   * listed in `caps` — callers get `undefined` (not a 405) for unsupported ops.
+   *
+   * Path arguments strip a leading `/` then join with one, so `/path` and
+   * `path` are equivalent. Empty string addresses the base URL itself.
+   *
+   * `update` body is optional (bodyless POSTs are action-style triggers).
+   * When a body is provided, content-type defaults to `application/json`;
+   * override via `opts.contentType`.
+   *
+   * @param {string} baseUrl
+   * @param {Array<'get'|'update'|'remove'>} caps
+   */
+  function bindOperation(baseUrl, caps) {
+    function join(path = '') {
+      const p = String(path).replace(/^\//, '');
+      return p ? `${baseUrl}/${p}` : baseUrl;
+    }
+    const all = {
+      get: (path, opts) => request({ method: 'GET', url: join(path), params: opts?.params }),
+      update: (path, body, opts) => {
+        const init = { method: 'POST', url: join(path), params: opts?.params };
+        if (body !== undefined && body !== null) {
+          init.body = body;
+          init.contentType = opts?.contentType ?? 'application/json';
+        }
+        return request(init);
+      },
+      remove: (path, opts) => request({ method: 'DELETE', url: join(path), params: opts?.params }),
     };
+    return Object.fromEntries(caps.map((c) => [c, all[c]]));
   }
 
-  function job({ org, site }) {
-    const base = `${ADMIN_BASE}/job/${org}/${site}/main`;
-    return {
-      list: (topic) => request({ method: 'GET', url: `${base}/${topic}` }),
-      status: (topic, name) => request({ method: 'GET', url: `${base}/${topic}/${name}` }),
-      details: (topic, name) => request({ method: 'GET', url: `${base}/${topic}/${name}/details` }),
-      stop: (topic, name) => request({ method: 'DELETE', url: `${base}/${topic}/${name}` }),
-    };
-  }
+  function status(coords) { return bindOperation(opBase('status', coords), ['get', 'update']); }
+  function preview(coords) { return bindOperation(opBase('preview', coords), ['get', 'update', 'remove']); }
+  function live(coords) { return bindOperation(opBase('live', coords), ['get', 'update', 'remove']); }
+  function code(coords) { return bindOperation(opBase('code', coords), ['get', 'update', 'remove']); }
+  function log(coords) { return bindOperation(opBase('log', coords), ['get', 'update']); }
+  function index(coords) { return bindOperation(opBase('index', coords), ['get', 'update', 'remove']); }
+  function sitemap(coords) { return bindOperation(opBase('sitemap', coords), ['update']); }
+  function job(coords) { return bindOperation(opBase('job', coords), ['get', 'remove']); }
 
   /**
    * Derive a client whose init defaults are merged with `extra` (later wins).
@@ -183,7 +206,7 @@ function createAdmin(defaults = {}) {
   }
 
   return {
-    config, index, sitemap, job, withRequestInit,
+    config, status, preview, live, code, log, index, sitemap, job, withRequestInit,
   };
 }
 

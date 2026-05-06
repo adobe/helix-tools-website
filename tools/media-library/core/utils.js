@@ -1,10 +1,3 @@
-export function escapeHtml(str) {
-  if (str == null || str === '') return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
 export function escapeAttr(str) {
   if (str == null || str === '') return '';
   return String(str)

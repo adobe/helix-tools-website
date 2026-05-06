@@ -39,13 +39,7 @@ Use to review an existing pull request.
 
 **Invoke:** `/code-review <PR-number>` or automatically via GitHub Actions
 
-**Process:**
-```bash
-gh pr view <PR-number> --json title,body,headRefName,files
-gh pr diff <PR-number>
-```
-
-**Output:** Create GitHub suggestions for one-click fixes (see below).
+See **Output Format → PR Review Mode** below for the full process.
 
 ---
 
@@ -114,46 +108,73 @@ Report findings directly:
 
 ### PR Review Mode
 
-**For every fixable issue, create a GitHub suggestion** for one-click acceptance:
+Complete phases in order. **No write API calls until Phase 2.**
 
+**Phase 1: Gather information**
 ```bash
-# Get commit SHA
-COMMIT_SHA=$(gh api repos/{owner}/{repo}/pulls/<PR-number> --jq '.head.sha')
+gh pr view <PR-number> --json title,body,headRefName,files,headRefOid
+gh pr diff <PR-number>
+```
+Read changed files for context. Complete your full analysis before proceeding.
 
-# Post review with suggestions
-gh api --method POST repos/{owner}/{repo}/pulls/<PR-number>/reviews \
-  --input /tmp/review.json
+**Phase 2: Clean up previous bot comments**
+
+Fetch IDs first, then delete each one individually (avoid `$(...)` substitution):
+```bash
+# Inline review comments
+gh api repos/{owner}/{repo}/pulls/<PR-number>/comments --jq '[.[] | select(.user.login == "claude[bot]") | .id] | .[]'
+# For each id returned: gh api -X DELETE repos/{owner}/{repo}/pulls/comments/<id>
+
+# Issue-level comments
+gh api repos/{owner}/{repo}/issues/<PR-number>/comments --jq '[.[] | select(.user.login == "claude[bot]") | .id] | .[]'
+# For each id returned: gh api -X DELETE repos/{owner}/{repo}/issues/comments/<id>
+
+# Pending (unsubmitted draft) reviews — these are left behind when event field is missing
+gh api repos/{owner}/{repo}/pulls/<PR-number>/reviews --jq '[.[] | select(.user.login == "claude[bot]" and .state == "PENDING") | .id] | .[]'
+# For each id returned: gh api -X DELETE repos/{owner}/{repo}/pulls/<PR-number>/reviews/<id>
 ```
 
-**Review JSON format:**
+**Phase 3: Post inline suggestions**
 
+Post a suggestion for **every BLOCKING or SHOULD FIX issue where a concrete one-line-or-few-line fix exists**. Inline suggestions are the primary output — the summary in Phase 4 should reference them, not replace them.
+
+Only skip a suggestion if:
+- The fix spans multiple files or requires architectural changes
+- The affected lines are not present in the diff (e.g. surrounding context lines only)
+
+`position` = 1-based line number counting from the `@@` header line in the unified diff.
+
+Use the `headRefOid` value from Phase 1. Use the Write tool to create `/tmp/review-comments.json` with ALL fields (including `commit_id` and `event`), then post with `--input` only — do NOT mix `--field` with `--input` as `--field` values are silently dropped when `--input` is used:
+```bash
+gh api --method POST repos/{owner}/{repo}/pulls/<PR-number>/reviews --input /tmp/review-comments.json
+```
+
+`/tmp/review-comments.json` format:
 ```json
 {
-  "commit_id": "<commit-sha>",
+  "commit_id": "<headRefOid from Phase 1>",
   "event": "COMMENT",
   "comments": [
-    {
-      "path": "path/to/file.js",
-      "position": 12,
-      "body": "**Fix:** Remove debug statement\n\n```suggestion\n// fixed code here\n```"
-    }
+    {"path": "FILE", "position": N, "body": "**Fix:** REASON\n\n```suggestion\nCODE\n```"}
   ]
 }
 ```
 
-**IMPORTANT:** `position` is the line number in the diff output, NOT the file. Count from the start of the diff including headers.
+**Phase 4: Post summary comment**
 
-**Then post a summary comment:**
-
+Use the Write tool to create `/tmp/review-summary.md`, then post:
 ```bash
-gh pr comment <PR-number> --body "## Code Review
+gh pr comment <PR-number> --body-file /tmp/review-summary.md
+```
+
+Summary format:
+```markdown
+<!-- claude-code-review -->
+## Code Review
 
 ### Issues Found
-- [List by severity]
-
-### One-Click Fixes
-GitHub Suggestions added. Go to **Files changed** → **Commit suggestion**.
+- [List by severity: BLOCKING / SHOULD FIX / CONSIDER]
 
 ### Verdict
-[APPROVE / REQUEST CHANGES / COMMENT]"
+[APPROVE / REQUEST CHANGES / COMMENT]
 ```

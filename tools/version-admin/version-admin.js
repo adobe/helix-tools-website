@@ -1,5 +1,5 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import { diffJson } from './diff.js';
+import { diffJson } from '../../vendor/diff/diff.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { initConfigField } from '../../utils/config/config.js';
 import admin from '../../scripts/helix-admin.js';
