@@ -278,7 +278,8 @@ const initSiteAdmin = async () => {
   const form = document.getElementById('site-admin-form');
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-        if (loginInfo.includes(orgValue)) submitter?.click();
+    const { submitter } = e;
+
     const orgValue = org.value;
     if (!orgValue) return;
 
@@ -290,7 +291,7 @@ const initSiteAdmin = async () => {
     const loggedIn = await ensureLogin(orgValue, siteParam);
     if (!loggedIn) {
       window.addEventListener('profile-update', ({ detail: loginInfo }) => {
-        if (loginInfo.includes(orgValue)) submitter.click();
+        if (loginInfo.includes(orgValue)) submitter?.click();
       }, { once: true });
       return;
     }
