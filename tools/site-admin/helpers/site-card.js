@@ -4,7 +4,6 @@ import {
   toggleFavorite,
   getFavorites,
   getContentSourceType,
-  showToast,
 } from './utils.js';
 import { renderPsiScores, runPsiForCard } from './psi.js';
 import {
@@ -13,7 +12,7 @@ import {
   openSecretModal,
   openApiKeyModal,
   openAddSiteModal,
-  deleteSiteAndRefresh,
+  openDeleteSiteModal,
 } from './modals.js';
 
 /* eslint-disable no-alert, no-restricted-globals */
@@ -23,13 +22,16 @@ import {
  * @param {Object} site - Site object with name property
  * @param {string} orgValue - Organization value
  * @param {Object} [options] - Card options
- * @param {boolean} [options.singleSite=false] - Hide org-level actions (e.g. clone)
+ * @param {boolean} [options.limitedAccess=false] - Hide org-level actions (clone, delete)
+ * @param {boolean} [options.pinned=false] - Highlight as the user-selected site
  * @returns {HTMLElement} The site card element
  */
-export default function createSiteCard(site, orgValue, { singleSite = false } = {}) {
+export default function createSiteCard(site, orgValue, options = {}) {
+  const { limitedAccess = false, pinned = false } = options;
   const card = document.createElement('div');
   card.className = 'site-card';
   card.dataset.site = site.name;
+  if (pinned) card.classList.add('pinned');
 
   const previewUrl = `https://main--${site.name}--${orgValue}.aem.page/`;
   const liveUrl = `https://main--${site.name}--${orgValue}.aem.live/`;
@@ -47,7 +49,7 @@ export default function createSiteCard(site, orgValue, { singleSite = false } = 
         <button type="button" class="favorite-btn ${favorited ? 'active' : ''}" aria-label="Favorite" title="${favorited ? 'Remove from favorites' : 'Add to favorites'}">${icon('star')}</button>
         <button type="button" class="menu-trigger" aria-label="Site actions">${icon('more-vertical')}</button>
         <div class="menu-dropdown">
-          ${singleSite ? '' : `
+          ${limitedAccess ? '' : `
             <button type="button" class="menu-item" data-action="clone">${icon('copy')}<span>Clone Site Config</span></button>
             <div class="menu-divider"></div>
           `}
@@ -61,8 +63,10 @@ export default function createSiteCard(site, orgValue, { singleSite = false } = 
           <button type="button" class="menu-item" data-action="auth">${icon('shield')}<span>Authentication</span></button>
           <button type="button" class="menu-item" data-action="secret">${icon('lock')}<span>Manage Secrets</span></button>
           <button type="button" class="menu-item" data-action="apikey">${icon('key')}<span>Manage API Keys</span></button>
-          <div class="menu-divider"></div>
-          <button type="button" class="menu-item danger" data-action="delete">${icon('trash')}<span>Delete Site</span></button>
+          ${limitedAccess ? '' : `
+            <div class="menu-divider"></div>
+            <button type="button" class="menu-item danger" data-action="delete">${icon('trash')}<span>Delete Site</span></button>
+          `}
         </div>
       </div>
     </div>
@@ -188,18 +192,7 @@ export default function createSiteCard(site, orgValue, { singleSite = false } = 
     auth: () => openAuthModal(site.name, orgValue),
     secret: () => openSecretModal(site.name, orgValue),
     apikey: () => openApiKeyModal(site.name, orgValue),
-    delete: async () => {
-      if (confirm(`Delete site "${site.name}"? This cannot be undone.`)) {
-        card.classList.add('deleting');
-        const success = await deleteSiteAndRefresh(orgValue, site.name, () => {});
-        if (success) {
-          showToast(`Site "${site.name}" deleted`, 'error');
-        } else {
-          card.classList.remove('deleting');
-          showToast('Failed to delete site', 'error');
-        }
-      }
-    },
+    delete: () => openDeleteSiteModal(orgValue, site.name, card),
   };
 
   card.querySelectorAll('.quick-action-btn').forEach((btn) => {

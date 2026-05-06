@@ -10,6 +10,7 @@ import {
   getFavorites,
   getContentSourceType,
   getDAEditorURL,
+  escapeHtml,
 } from './helpers/utils.js';
 import { openAddSiteModal } from './helpers/modals.js';
 import createSiteCard from './helpers/site-card.js';
@@ -113,7 +114,7 @@ const updateSiteCount = () => {
 
 let detailsObserver;
 
-const displaySites = (sites, { singleSite = false } = {}) => {
+const displaySites = (sites, { limitedAccess = false, pinnedSite = '' } = {}) => {
   sitesElem.ariaHidden = false;
   sitesElem.textContent = '';
 
@@ -122,9 +123,9 @@ const displaySites = (sites, { singleSite = false } = {}) => {
   const header = document.createElement('div');
   header.className = 'sites-header';
   header.innerHTML = `
-    ${singleSite ? '' : `<span class="sites-count">${sites.length} site${sites.length !== 1 ? 's' : ''}</span>`}
+    <span class="sites-count">${sites.length} site${sites.length !== 1 ? 's' : ''}</span>
     <div class="sites-actions">
-      ${singleSite ? '' : `
+      ${sites.length > 1 ? `
         <div class="sites-search">
           <input type="text" placeholder="Search sites..." class="search-input" />
         </div>
@@ -136,21 +137,21 @@ const displaySites = (sites, { singleSite = false } = {}) => {
             ${icon('list')}
           </button>
         </div>
-        <button class="button add-site-btn">+ Add Site</button>
-      `}
+      ` : ''}
+      ${limitedAccess ? '' : '<button class="button add-site-btn">+ Add Site</button>'}
     </div>
   `;
 
-  if (!singleSite) {
+  if (!limitedAccess) {
     header.querySelector('.add-site-btn').addEventListener('click', () => openAddSiteModal(org.value, '', '', logFn));
   }
 
   sitesElem.appendChild(header);
 
   const grid = document.createElement('div');
-  grid.className = `sites-grid ${!singleSite && savedView === 'list' ? 'list-view' : ''}`;
+  grid.className = `sites-grid ${sites.length > 1 && savedView === 'list' ? 'list-view' : ''}`;
 
-  if (!singleSite) {
+  if (sites.length > 1) {
     const searchInput = header.querySelector('.search-input');
     searchInput.addEventListener('input', (e) => {
       const query = e.target.value.toLowerCase().trim();
@@ -173,6 +174,10 @@ const displaySites = (sites, { singleSite = false } = {}) => {
 
   const favorites = getFavorites(org.value);
   const sortedSites = [...sites].sort((a, b) => {
+    if (pinnedSite) {
+      if (a.name === pinnedSite) return -1;
+      if (b.name === pinnedSite) return 1;
+    }
     const aFav = favorites.includes(a.name);
     const bFav = favorites.includes(b.name);
     if (aFav && !bFav) return -1;
@@ -191,7 +196,10 @@ const displaySites = (sites, { singleSite = false } = {}) => {
   }, { rootMargin: '200px' });
 
   sortedSites.forEach((s) => {
-    const card = createSiteCard(s, org.value, { singleSite });
+    const card = createSiteCard(s, org.value, {
+      limitedAccess,
+      pinned: pinnedSite && s.name === pinnedSite,
+    });
     grid.appendChild(card);
     detailsObserver.observe(card);
   });
@@ -199,19 +207,21 @@ const displaySites = (sites, { singleSite = false } = {}) => {
   sitesElem.appendChild(grid);
 };
 
-const displaySitesForOrg = async (orgValue) => {
+const displaySitesForOrg = async (orgValue, pinnedSite = '') => {
   sitesElem.setAttribute('aria-hidden', 'true');
   sitesElem.replaceChildren();
 
   const { sites, status } = await fetchSites(orgValue, logFn);
 
   if (status === 200 && sites) {
-    displaySites(sites);
+    displaySites(sites, { pinnedSite });
   } else if (status === 401) {
     const loggedIn = await ensureLogin(orgValue);
     if (loggedIn) {
-      return displaySitesForOrg(orgValue);
+      return displaySitesForOrg(orgValue, pinnedSite);
     }
+  } else if (status === 403 && pinnedSite) {
+    displaySites([{ name: pinnedSite }], { limitedAccess: true, pinnedSite });
   } else if (status === 403) {
     sitesElem.ariaHidden = false;
     const msg = document.createElement('p');
@@ -220,12 +230,6 @@ const displaySitesForOrg = async (orgValue) => {
     sitesElem.appendChild(msg);
   }
   return null;
-};
-
-const displaySingleSite = (orgValue, siteName) => {
-  sitesElem.setAttribute('aria-hidden', 'true');
-  sitesElem.replaceChildren();
-  displaySites([{ name: siteName }], { singleSite: true });
 };
 
 window.addEventListener('sites-refresh', (e) => {
@@ -264,7 +268,7 @@ window.addEventListener('sites-refresh', (e) => {
     return;
   }
 
-  displaySitesForOrg(orgValue);
+  displaySitesForOrg(orgValue, escapeHtml(site.value || ''));
 });
 
 const initSiteAdmin = async () => {
@@ -277,15 +281,10 @@ const initSiteAdmin = async () => {
   await initConfigField();
   if (!org.value) org.value = localStorage.getItem('org') || 'adobe';
   if (org.value) {
-    const explicitSite = site.dataset.autofill === 'params' ? site.value : '';
-    if (!explicitSite) site.value = '';
-    const loggedIn = await ensureLogin(org.value, explicitSite || undefined);
+    const pinnedSite = escapeHtml(site.value || '');
+    const loggedIn = await ensureLogin(org.value, pinnedSite || undefined);
     if (loggedIn) {
-      if (explicitSite) {
-        displaySingleSite(org.value, explicitSite);
-      } else {
-        displaySitesForOrg(org.value);
-      }
+      displaySitesForOrg(org.value, pinnedSite);
     }
   }
 };

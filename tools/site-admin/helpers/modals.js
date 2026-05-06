@@ -127,6 +127,61 @@ export const getAuthStatusInfo = (scope) => AUTH_STATUS_MAP[scope] || {
   status: 'unknown', label: 'Unknown', description: '', color: 'gray',
 };
 
+export const openDeleteSiteModal = async (orgValue, siteName, card = null, logFn = null) => {
+  const safeName = escapeHtml(siteName);
+  const { dialog, container, showModal } = await setupModal('delete-modal', `
+    <div class="site-modal-header">
+      <h2>Delete Site</h2>
+    </div>
+    <form class="delete-site-form">
+      <div class="form-field">
+        <label for="delete-confirm-input">Type <code>${safeName}</code> to confirm</label>
+        <input type="text" id="delete-confirm-input" autocomplete="off" autocapitalize="off"
+               spellcheck="false" required />
+        <p class="field-hint">This permanently removes the site config, secrets, API keys, and access
+          settings. The content and code repository are not affected. This cannot be undone.</p>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="button outline cancel-btn">Cancel</button>
+        <button type="submit" class="button danger delete-btn" disabled>Delete Site</button>
+      </div>
+    </form>
+  `);
+
+  const input = container.querySelector('#delete-confirm-input');
+  const deleteBtn = container.querySelector('.delete-btn');
+  const cancelBtn = container.querySelector('.cancel-btn');
+
+  input.addEventListener('input', () => {
+    deleteBtn.disabled = input.value !== siteName;
+  });
+
+  cancelBtn.addEventListener('click', () => dialog.close());
+
+  container.querySelector('.delete-site-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (input.value !== siteName) return;
+    deleteBtn.disabled = true;
+    cancelBtn.disabled = true;
+    deleteBtn.textContent = 'Deleting...';
+    if (card) card.classList.add('deleting');
+
+    const success = await deleteSiteAndRefresh(orgValue, siteName, () => dialog.close(), logFn);
+    if (success) {
+      showToast(`Site "${siteName}" deleted`, 'error');
+    } else {
+      if (card) card.classList.remove('deleting');
+      deleteBtn.disabled = false;
+      cancelBtn.disabled = false;
+      deleteBtn.textContent = 'Delete Site';
+      showToast('Failed to delete site', 'error');
+    }
+  });
+
+  showModal();
+  setTimeout(() => input.focus(), 50);
+};
+
 export const openEditSourceModal = async (
   orgValue,
   siteName,

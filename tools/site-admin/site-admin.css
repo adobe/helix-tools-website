@@ -690,6 +690,11 @@
     text-align: center;
   }
 
+  .site-card.pinned {
+    border-color: var(--blue-800);
+    border-width: 2px;
+  }
+
   [aria-hidden='true'] {
     display: none;
   }
@@ -857,8 +862,32 @@
   box-shadow: 0 0 0 2px var(--blue-100);
 }
 
-.add-site-modal {
+.add-site-modal,
+.delete-modal {
   min-width: 400px;
+}
+
+.delete-modal label code {
+  background: var(--color-button-accent-bg);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.delete-modal .button.danger {
+  color: var(--red-700);
+  background: #fff;
+  border-color: var(--red-700);
+  
+  &:hover:not(:disabled) {
+    background: var(--red-700);
+    color: #fff;
+  }
+}
+
+.delete-modal .button.danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .site-modal .form-field .checkbox-label {
