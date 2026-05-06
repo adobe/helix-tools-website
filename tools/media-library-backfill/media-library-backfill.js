@@ -835,6 +835,7 @@ async function runStatusJob(org, site, paths, {
     { org, site },
   );
 
+  if (!createRes) throw new Error(`Failed to create ${label}: authentication cancelled`);
   if (!createRes.ok) {
     throw new Error(`Failed to create ${label}: ${createRes.status}`);
   }
@@ -1326,6 +1327,7 @@ async function fetchContentSourceType(org, site) {
       () => admin.config({ org, site }).read(),
       { org, site },
     );
+    if (!response) return 'markup';
     if (!response.ok) {
       log(`Site config lookup returned ${response.status}; defaulting contentSourceType to markup.`, 'warn');
       return 'markup';
