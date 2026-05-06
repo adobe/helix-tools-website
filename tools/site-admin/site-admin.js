@@ -278,7 +278,7 @@ const initSiteAdmin = async () => {
   const form = document.getElementById('site-admin-form');
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const { submitter } = e;
+        if (loginInfo.includes(orgValue)) submitter?.click();
     const orgValue = org.value;
     if (!orgValue) return;
 
