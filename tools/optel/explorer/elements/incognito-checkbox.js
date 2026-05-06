@@ -61,6 +61,7 @@ export default class IncognitoCheckbox extends HTMLElement {
   }
 
   connectedCallback() {
+    console.log('[DEBUG incognito] connectedCallback started');
     this.attachShadow({ mode: 'open' });
     this.shadowRoot.innerHTML = this.template;
 
@@ -247,10 +248,14 @@ export default class IncognitoCheckbox extends HTMLElement {
     const u = new URL(window.location.href);
 
     const urlkey = u.searchParams.get('domainkey');
+    console.log('[DEBUG incognito] urlkey from URL:', urlkey);
     if (urlkey === 'incognito' || !urlkey) {
+      console.log('[DEBUG incognito] Async path: fetching domainkey');
       this.setAttribute('mode', 'loading');
       fetchDomainKey(u.searchParams.get('domain')).then((domainkey) => {
+        console.log('[DEBUG incognito] fetchDomainKey resolved:', domainkey);
         if (domainkey === 'error') {
+          console.log('[DEBUG incognito] domainkey is error, NOT dispatching change');
           this.setAttribute('mode', 'error');
           return;
         }
@@ -264,14 +269,18 @@ export default class IncognitoCheckbox extends HTMLElement {
           this.input.checked = true;
           u.searchParams.set('domainkey', domainkey);
         }
+        console.log('[DEBUG incognito] Dispatching change event NOW');
         const e = new Event('change');
         this.dispatchEvent(e);
+        console.log('[DEBUG incognito] change event dispatched');
 
         window.history.replaceState({}, '', u);
       });
     } else {
+      console.log('[DEBUG incognito] Sync path: urlkey already present');
       this.domainkey = urlkey;
       this.setAttribute('domainkey', urlkey);
+      console.log('[DEBUG incognito] Sync path: attribute set, NO change event dispatched');
       if (getPersistentToken()) {
         this.setAttribute('mode', 'open');
       } else {

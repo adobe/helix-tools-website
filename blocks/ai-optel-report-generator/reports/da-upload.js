@@ -164,16 +164,20 @@ export async function uploadToDA(content, options = {}) {
   const folder = cleanUrlForFolder(url);
   const daPath = `/${DA_CONFIG.ORG}/${DA_CONFIG.REPO}/${DA_CONFIG.UPLOAD_PATH}/${folder}/${filename}`;
 
-  const rumToken = localStorage.getItem('rum-bundler-token') || localStorage.getItem('rum-admin-token');
-  if (!rumToken) throw new Error('No RUM token found. Please authenticate first.');
+  const { getEffectiveDomainKey, getPageDomain } = await import('../domainkey-context.js');
+  const domainkey = getEffectiveDomainKey();
+  const domain = getPageDomain();
+  if (!domainkey) throw new Error('No domain key found. Ensure the dashboard has loaded.');
 
   const response = await fetch(DA_CONFIG.WORKER_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-RUM-Token': rumToken,
-    },
-    body: JSON.stringify({ html: htmlContent, path: daPath }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      html: htmlContent,
+      path: daPath,
+      domain,
+      domainkey,
+    }),
   });
 
   const responseData = await response.json();

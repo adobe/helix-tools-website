@@ -238,6 +238,18 @@
   opacity: 0.8;
 }
 
+.report-info .report-gate-message {
+  margin-top: var(--spacing-md);
+}
+
+.report-info .report-gate-message p {
+  margin: 0 0 var(--spacing-xs);
+}
+
+.report-info .report-gate-message p:last-child {
+  margin-bottom: 0;
+}
+
 .report-status {
   border-radius: var(--radius-sm);
   font-size: 14px;
