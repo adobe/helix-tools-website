@@ -17,6 +17,8 @@ const ALLOWED_PERMISSIONS = [
   'index:write',
   'customers:read',
   'customers:write',
+  'price-rules:read',
+  'price-rules:write',
   'journal:general:read',
   'journal:orders:read',
   'journal:*:read',
