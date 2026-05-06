@@ -1,6 +1,8 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
+import admin from '../../scripts/helix-admin.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 
 function getFormData(form) {
   const data = {};
@@ -124,13 +126,21 @@ function displayResult(url, matches, org, site) {
     }
 
     try {
-      const statusRes = await fetch(`https://admin.hlx.page/status/${org}/${site}/main${url.pathname}?editUrl=auto`);
+      const statusRes = await executeAdminRequest(
+        () => admin.status({ org, site }).get(url.pathname, { params: { editUrl: 'auto' } }),
+        { org, site },
+      );
+      if (!statusRes) return; // login cancelled
       const status = await statusRes.json();
       let editUrl = status.edit && status.edit.url;
 
       // fallback to sidekick config if status doesn't provide edit URL
       if (!editUrl) {
-        const configRes = await fetch(`https://admin.hlx.page/sidekick/${org}/${site}/main/config.json`);
+        const configRes = await executeAdminRequest(
+          () => admin.raw('GET', `/sidekick/${org}/${site}/main/config.json`),
+          { org, site },
+        );
+        if (!configRes) return; // login cancelled
         const config = await configRes.json();
         const editUrlPattern = config.editUrl;
         if (editUrlPattern) {
@@ -271,32 +281,6 @@ async function processUrl(sitemapUrl, query, queryType, org, site) {
 
   return null;
 }
-/**
- * Fetches the live and preview host URLs for org/site.
- * @param {string} org - Organization name.
- * @param {string} site - Site name within org.
- * @returns {Promise<>} Object with `live` and `preview` hostnames.
- */
-async function fetchHosts(org, site) {
-  let status;
-  try {
-    const url = `https://admin.hlx.page/status/${org}/${site}/main`;
-    const res = await fetch(url);
-    status = res.status;
-    const json = await res.json();
-    return {
-      status,
-      live: new URL(json.live.url).host,
-      preview: new URL(json.preview.url).host,
-    };
-  } catch (error) {
-    return {
-      status,
-      live: null,
-      preview: null,
-    };
-  }
-}
 
 async function init(doc) {
   doc.querySelector('.site-query').dataset.status = 'loading';
@@ -334,9 +318,15 @@ async function init(doc) {
       disableForm(form);
 
       // fetch host config
-      const { status, live } = await fetchHosts(org, site);
-      if (!live || status !== 200) {
-        updateTableError(table, status, org, site);
+      const hostsResult = await executeAdminRequest(
+        () => admin.status({ org, site }).get(''),
+        { org, site, policy: AuthMode.PREFLIGHT_AND_RETRY },
+      );
+      if (!hostsResult) return; // login cancelled
+      const hostsJson = hostsResult.ok ? await hostsResult.json() : null;
+      const live = hostsJson?.live?.url ? new URL(hostsJson.live.url).host : null;
+      if (!live) {
+        updateTableError(table, hostsResult.status, org, site);
         stopButton.setAttribute('aria-hidden', 'true');
         caption.setAttribute('aria-hidden', 'true');
         return;

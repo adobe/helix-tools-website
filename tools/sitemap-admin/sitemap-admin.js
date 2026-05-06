@@ -355,7 +355,7 @@ async function removeLanguage(sitemapName, langCode) {
 
 async function generateSitemap(destination) {
   const result = await executeAdminRequest(
-    () => admin.sitemap({ org: org.value, site: site.value }).generate(destination),
+    () => admin.sitemap({ org: org.value, site: site.value }).update(destination),
     { org: org.value, site: site.value },
   );
   if (!result) return;
