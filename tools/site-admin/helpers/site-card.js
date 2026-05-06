@@ -25,7 +25,7 @@ import {
  * @param {string} orgValue - Organization value
  * @returns {HTMLElement} The site card element
  */
-export default function createSiteCard(site, orgValue) {
+export default function createSiteCard(site, orgValue, options = {}) {
   const card = document.createElement('div');
   card.className = 'site-card';
   card.dataset.site = site.name;
@@ -95,6 +95,15 @@ export default function createSiteCard(site, orgValue) {
   const menuTrigger = card.querySelector('.menu-trigger');
   const menuDropdown = card.querySelector('.menu-dropdown');
   const favoriteBtn = card.querySelector('.favorite-btn');
+
+  card.addEventListener('click', (e) => {
+    if (e.target.closest('button, a, input')) return;
+    document.querySelectorAll('.site-card.selected').forEach((c) => c.classList.remove('selected'));
+    card.classList.add('selected');
+    const url = new URL(window.location.href);
+    url.searchParams.set('site', site.name);
+    window.history.replaceState({}, document.title, url.href);
+  });
 
   favoriteBtn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -215,6 +224,16 @@ export default function createSiteCard(site, orgValue) {
       if (handler) await handler(item);
     });
   });
+
+  if (options.siteOnly) {
+    ['clone', 'delete'].forEach((action) => {
+      const btn = card.querySelector(`.menu-item[data-action="${action}"]`);
+      if (btn) {
+        btn.disabled = true;
+        btn.title = 'Requires org-level access';
+      }
+    });
+  }
 
   renderPsiScores(card, site.name, orgValue);
 

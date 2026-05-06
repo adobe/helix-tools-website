@@ -161,6 +161,10 @@
       box-shadow: var(--shadow-hover);
     }
 
+    &.selected {
+      box-shadow: var(--shadow-dragged);
+    }
+
     &.deleting {
       pointer-events: none;
       opacity: 0.6;

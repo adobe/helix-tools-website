@@ -112,7 +112,7 @@ const updateSiteCount = () => {
 
 let detailsObserver;
 
-const displaySites = (sites) => {
+const displaySites = (sites, options = {}) => {
   sitesElem.ariaHidden = false;
   sitesElem.textContent = '';
 
@@ -134,11 +134,13 @@ const displaySites = (sites) => {
           ${icon('list')}
         </button>
       </div>
-      <button class="button add-site-btn">+ Add Site</button>
+      ${!options.siteOnly ? '<button class="button add-site-btn">+ Add Site</button>' : ''}
     </div>
   `;
 
-  header.querySelector('.add-site-btn').addEventListener('click', () => openAddSiteModal(org.value, '', '', logFn));
+  if (!options.siteOnly) {
+    header.querySelector('.add-site-btn').addEventListener('click', () => openAddSiteModal(org.value, '', '', logFn));
+  }
 
   sitesElem.appendChild(header);
 
@@ -184,12 +186,18 @@ const displaySites = (sites) => {
   }, { rootMargin: '200px' });
 
   sortedSites.forEach((site) => {
-    const card = createSiteCard(site, org.value);
+    const card = createSiteCard(site, org.value, options);
     grid.appendChild(card);
     detailsObserver.observe(card);
   });
 
   sitesElem.appendChild(grid);
+
+  const selectedSite = new URLSearchParams(window.location.search).get('site');
+  if (selectedSite) {
+    const selectedCard = findCardBySite(selectedSite);
+    if (selectedCard) selectedCard.classList.add('selected');
+  }
 };
 
 const displaySitesForOrg = async (orgValue) => {
@@ -204,6 +212,14 @@ const displaySitesForOrg = async (orgValue) => {
     const loggedIn = await ensureLogin(orgValue);
     if (loggedIn) {
       return displaySitesForOrg(orgValue);
+    }
+  } else if (status === 403) {
+    const siteValue = document.getElementById('site')?.value;
+    if (siteValue) {
+      const siteDetails = await fetchSiteDetails(orgValue, siteValue);
+      if (siteDetails) {
+        displaySites([{ name: siteValue }], { siteOnly: true });
+      }
     }
   }
   return null;
@@ -257,12 +273,30 @@ const initSiteAdmin = async () => {
   await Promise.all(neededIcons.map(loadIcon));
   await initConfigField();
   if (!org.value) org.value = localStorage.getItem('org') || 'adobe';
-  if (org.value) {
-    const loggedIn = await ensureLogin(org.value);
-    if (loggedIn) {
-      displaySitesForOrg(org.value);
+
+  const form = document.getElementById('site-admin-form');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const { submitter } = e;
+    const orgValue = org.value;
+    if (!orgValue) return;
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('org', orgValue);
+    window.history.replaceState({}, document.title, url.href);
+
+    const loggedIn = await ensureLogin(orgValue);
+    if (!loggedIn) {
+      window.addEventListener('profile-update', ({ detail: loginInfo }) => {
+        if (loginInfo.includes(orgValue)) submitter.click();
+      }, { once: true });
+      return;
     }
-  }
+
+    displaySitesForOrg(orgValue);
+  });
+
+  if (org.value) document.getElementById('list').click();
 };
 
 registerToolReady(initSiteAdmin());
