@@ -209,7 +209,8 @@ const displaySitesForOrg = async (orgValue) => {
   if (status === 200 && sites) {
     displaySites(sites);
   } else if (status === 401) {
-    const loggedIn = await ensureLogin(orgValue);
+    const siteParam = new URLSearchParams(window.location.search).get('site');
+    const loggedIn = await ensureLogin(orgValue, siteParam);
     if (loggedIn) {
       return displaySitesForOrg(orgValue);
     }
@@ -285,7 +286,8 @@ const initSiteAdmin = async () => {
     url.searchParams.set('org', orgValue);
     window.history.replaceState({}, document.title, url.href);
 
-    const loggedIn = await ensureLogin(orgValue);
+    const siteParam = new URLSearchParams(window.location.search).get('site');
+    const loggedIn = await ensureLogin(orgValue, siteParam);
     if (!loggedIn) {
       window.addEventListener('profile-update', ({ detail: loginInfo }) => {
         if (loginInfo.includes(orgValue)) submitter.click();
@@ -296,7 +298,8 @@ const initSiteAdmin = async () => {
     displaySitesForOrg(orgValue);
   });
 
-  if (org.value) document.getElementById('list').click();
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('org') && params.get('site')) document.getElementById('list').click();
 };
 
 registerToolReady(initSiteAdmin());
