@@ -1256,9 +1256,9 @@ async function check404Caching(cdnConfig, aemUrl, prodPageUrlOverride = null) {
   const checkId = 'check-404-caching';
 
   // Use production host, or aem.live host for managed CDN
-const prodHost = prodPageUrlOverride
-      ? new URL(prodPageUrlOverride).host
-      : (cdnConfig?.host || aemUrl.host);
+  const prodHost = prodPageUrlOverride
+    ? new URL(prodPageUrlOverride).host
+    : (cdnConfig?.host || aemUrl.host);
 
   if (!prodHost) {
     updateCheckState(checkId, 'skip', 'Skipped');
@@ -1652,9 +1652,6 @@ async function checkRedirects(org, site, branch, cdnConfig) {
     const testUrl = `${baseHost}${source}${source.includes('?') ? '&' : '?'}${randomParam}`;
 
     addResultLine(checkId, `Request: ${testUrl}`, 'info');
-
-    // Use reveal=headers to get the raw redirect response without following it
-    const aemTestUrl = `https://${branch}--${site}--${org}.aem.live${source}${source.includes('?') ? '&' : '?'}${randomParam}`;
 
     try {
       const testResp = await fetch(corsProxy(testUrl, { revealHeaders: true }), {
