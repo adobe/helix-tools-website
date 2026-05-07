@@ -1,6 +1,8 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
+import admin from '../../scripts/helix-admin.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import {
   discardBrokenMediaEntries,
   dedupeMediaUrls,
@@ -16,7 +18,6 @@ import {
   resolveHtmlMediaBaseUrl,
 } from './media-origin.js';
 
-const ADMIN_BASE = 'https://admin.hlx.page';
 const DA_ETC_ORIGIN = 'https://da-etc.adobeaem.workers.dev';
 const REF = 'main';
 const MEDIALOG_IMPORT_BUNDLE_VERSION = 1;
@@ -452,15 +453,6 @@ function etcFetch(href, api, options) {
 }
 
 function getRateLimitedTarget(url) {
-  if (url.startsWith(ADMIN_BASE)) {
-    return {
-      limiter: adminLimiter,
-      label: 'admin API',
-      queue503Backoff: false,
-      fetch: (targetUrl, fetchOptions) => fetch(targetUrl, fetchOptions),
-    };
-  }
-
   if (!URL.canParse(url)) {
     log(`Invalid URL: ${url}`, 'warn');
     return null;
@@ -823,27 +815,26 @@ async function runStatusJob(org, site, paths, {
 } = {}) {
   const normalizedPaths = Array.isArray(paths) ? paths : [paths];
   const label = jobLabel || `status job (${normalizedPaths.join(', ')})`;
-  const statusUrl = `${ADMIN_BASE}/status/${org}/${site}/${REF}/*`;
 
-  const createRes = await fetchWithRetry(statusUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+  const createRes = await executeAdminRequest(
+    () => admin.status({ org, site, ref: REF }).update('*', JSON.stringify({
       paths: normalizedPaths,
       pathsOnly,
       select: ['preview'],
-    }),
-  });
+    })),
+    { org, site },
+  );
 
-  if (!createRes.ok) {
-    throw new Error(`Failed to create ${label}: ${createRes.status}`);
+  if (!createRes || !createRes.ok) {
+    throw new Error(`Failed to create ${label}: ${createRes?.status || 'authentication cancelled'}`);
   }
 
-  const job = await createRes.json();
-  const selfUrl = job.links?.self;
-  if (!selfUrl) throw new Error(`No job URL returned for ${label}`);
+  const responseData = await createRes.json();
+  const job = responseData.job || responseData;
+  const jobName = job.name || job.links?.self?.split('/').pop();
+  if (!jobName) throw new Error(`No job name returned for ${label}`);
 
-  log(`${label} created: ${selfUrl}`);
+  log(`${label} created: job ${jobName}`);
 
   let state = extractJobState(job);
   let counters = extractJobCounters(job);
@@ -884,9 +875,12 @@ async function runStatusJob(org, site, paths, {
     // eslint-disable-next-line no-await-in-loop
     await waitForDelay(POLL_INTERVAL, abortController?.signal);
     // eslint-disable-next-line no-await-in-loop
-    const pollRes = await fetchWithRetry(selfUrl);
-    if (!pollRes.ok) {
-      throw new Error(`Failed to poll ${label}: ${pollRes.status}`);
+    const pollRes = await executeAdminRequest(
+      () => admin.job({ org, site, ref: REF }).get(`status/${jobName}`),
+      { org, site, policy: AuthMode.NONE },
+    );
+    if (!pollRes || !pollRes.ok) {
+      throw new Error(`Failed to poll ${label}: ${pollRes?.status || 'no response'}`);
     }
     // eslint-disable-next-line no-await-in-loop
     const pollData = await pollRes.json();
@@ -916,9 +910,13 @@ async function runStatusJob(org, site, paths, {
     };
   }
 
-  const detailsUrl = `${selfUrl}/details`;
-  const detailsRes = await fetchWithRetry(detailsUrl);
-  if (!detailsRes.ok) throw new Error(`Failed to fetch job details for ${label}: ${detailsRes.status}`);
+  const detailsRes = await executeAdminRequest(
+    () => admin.job({ org, site, ref: REF }).get(`status/${jobName}/details`),
+    { org, site, policy: AuthMode.NONE },
+  );
+  if (!detailsRes || !detailsRes.ok) {
+    throw new Error(`Failed to fetch job details for ${label}: ${detailsRes?.status || 'no response'}`);
+  }
 
   const details = await detailsRes.json();
   counters = mergeJobCounters(counters, extractJobCounters(details));
@@ -1321,12 +1319,13 @@ async function fetchLastModified(url) {
 }
 
 async function fetchContentSourceType(org, site) {
-  const configUrl = `${ADMIN_BASE}/config/${encodeURIComponent(org)}/sites/${encodeURIComponent(site)}.json`;
-
   try {
-    const response = await fetchWithRetry(configUrl, {}, 1);
-    if (!response.ok) {
-      log(`Site config lookup returned ${response.status}; defaulting contentSourceType to markup.`, 'warn');
+    const response = await executeAdminRequest(
+      () => admin.config({ org, site }).read(),
+      { org, site },
+    );
+    if (!response || !response.ok) {
+      log(`Site config lookup returned ${response?.status || 'no response'}; defaulting contentSourceType to markup.`, 'warn');
       return 'markup';
     }
 
