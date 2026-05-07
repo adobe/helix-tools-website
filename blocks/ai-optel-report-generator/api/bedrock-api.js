@@ -56,9 +56,11 @@ export async function submitUsage(reportId) {
     });
 
     if (!response.ok) {
+      // eslint-disable-next-line no-console
       console.warn('[Bedrock-Usage] Failed to submit:', response.status);
     }
   } catch (err) {
+    // eslint-disable-next-line no-console
     console.warn('[Bedrock-Usage] Error submitting usage:', err.message);
   }
 }
@@ -349,6 +351,7 @@ export async function callBedrockAPIAsync(params, onProgress = null) {
     }
 
     if (job.status === 'failed') {
+      // eslint-disable-next-line no-console
       console.error('[Bedrock-Async] Job failed:', job.error);
       throw new Error(`Bedrock job failed: ${job.error?.message || 'Unknown error'}`);
     }
