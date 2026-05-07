@@ -10,6 +10,7 @@ import {
   applyPendingChanges,
   cleanSidekickHostProperties,
 } from './utils.js';
+import escapeHtml from '../../utils/html.js';
 
 let currentConfig = {};
 // eslint-disable-next-line no-unused-vars
@@ -93,20 +94,6 @@ const configTbody = document.getElementById('config-tbody');
 const consoleBlock = document.querySelector('.console');
 
 // Utility functions
-
-/**
- * Escapes HTML to prevent XSS attacks
- * @param {string} text - Text to escape
- * @returns {string} - Escaped HTML
- */
-function escapeHtml(text) {
-  if (typeof text !== 'string') {
-    return String(text);
-  }
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
 
 /**
  * Sanitizes user input by removing potentially dangerous characters

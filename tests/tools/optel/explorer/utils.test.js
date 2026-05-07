@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { truncate, escapeHTML } from '../../../../tools/optel/explorer/utils.js';
+import { truncate } from '../../../../tools/optel/explorer/utils.js';
 
 describe('optel/explorer:utils.js', () => {
   describe('truncate', () => {
@@ -37,14 +37,6 @@ describe('optel/explorer:utils.js', () => {
     it('truncates to the beginning of the week (May 14th)', () => {
       const time = new Date('2024-05-14T00:00:00+02:00');
       assert.strictEqual(truncate(time, 'week'), '2024-05-12T00:00:00+02:00');
-    });
-  });
-
-  describe('escapeHTML', () => {
-    it('escapes HTML entities', () => {
-      assert.strictEqual(escapeHTML('<script>alert("xss")</script>'), '&#60;script&#62;alert(&#34;xss&#34;)&#60;/script&#62;');
-      assert.strictEqual(escapeHTML("<script>alert('xss')</script>"), '&#60;script&#62;alert(&#39;xss&#39;)&#60;/script&#62;');
-      assert.strictEqual(escapeHTML('<div>hello</div>'), '&#60;div&#62;hello&#60;/div&#62;');
     });
   });
 });

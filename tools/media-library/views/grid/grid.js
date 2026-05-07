@@ -29,13 +29,7 @@ import {
 import { isExternalUrl, getDedupeKey, resolveMediaUrl } from '../../core/urls.js';
 import { optimizeImageUrls, CARD_IMAGE_SIZES } from '../../core/files.js';
 import { MediaType } from '../../core/constants.js';
-
-function escapeHtml(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
+import escapeHtml from '../../../../utils/html.js';
 
 const virtualCleanupMap = new WeakMap();
 const virtualRangeMap = new WeakMap();

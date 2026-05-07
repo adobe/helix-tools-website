@@ -1,7 +1,8 @@
 /* eslint-disable class-methods-use-this */
 import { registerToolReady } from '../../scripts/scripts.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
+import admin from '../../scripts/helix-admin.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { loadPrism, highlight } from '../../utils/prism/prism.js';
 import {
   toDateTimeLocal, toUTCDate, toISODate, calculatePastDate,
@@ -12,8 +13,6 @@ const FIELDS = ['date-from', 'date-to'];
 
 // tool elements
 const FORM = document.getElementById('timeframe-form');
-const ORG_FIELD = FORM.querySelector('#org');
-const SITE_FIELD = FORM.querySelector('#site');
 const PICKER = FORM.querySelector('#timeframe');
 const PICKER_DROPDOWN = FORM.querySelector('#timeframe-menu');
 const PICKER_OPTIONS = PICKER_DROPDOWN.querySelectorAll('[role="option"]');
@@ -222,10 +221,7 @@ async function updateTableError(status, org, site) {
   const title = tbody.querySelector('strong');
   const message = tbody.querySelector('p:last-of-type');
 
-  if (status === 401) {
-    message.textContent = '';
-    ensureLogin(org, site);
-  } else {
+  if (status !== 401) {
     title.textContent = `${status} Error`;
     message.textContent = text;
   }
@@ -525,22 +521,26 @@ function writeTimeParams(timeframe) {
  */
 async function fetchAllLogs(org, site, timeframe) {
   const logs = [];
-  const timeParams = writeTimeParams(timeframe);
-  let nextUrl = `https://admin.hlx.page/log/${org}/${site}/main?${timeParams}`;
+  const timeParams = Object.fromEntries(new URLSearchParams(writeTimeParams(timeframe)));
+  let nextToken;
+  let firstPage = true;
 
   do {
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      const res = await fetch(nextUrl);
-      if (!res.ok) throw res;
-      // eslint-disable-next-line no-await-in-loop
-      const json = await res.json();
-      logs.push(...json.entries);
-      nextUrl = json.links ? json.links.next : null;
-    } catch (error) {
-      return { logs, error };
-    }
-  } while (nextUrl);
+    const params = nextToken ? { ...timeParams, nextToken } : timeParams;
+    const policy = firstPage ? AuthMode.PREFLIGHT_AND_RETRY : AuthMode.RETRY_ON_401;
+    firstPage = false;
+    // eslint-disable-next-line no-await-in-loop
+    const res = await executeAdminRequest(
+      () => admin.log({ org, site }).get('', { params }),
+      { org, site, policy },
+    );
+    if (!res) return { logs, error: { status: 401 } };
+    if (!res.ok) return { logs, error: { status: res.status } };
+    // eslint-disable-next-line no-await-in-loop
+    const json = await res.json();
+    logs.push(...json.entries);
+    nextToken = json.nextToken || null;
+  } while (nextToken);
 
   return { logs, error: null };
 }
@@ -570,18 +570,17 @@ async function fetchLogs(org, site, timeframe) {
  * @returns {Promise<>} Object with `live` and `preview` hostnames.
  */
 async function fetchHosts(org, site) {
-  try {
-    const url = `https://admin.hlx.page/status/${org}/${site}/main`;
-    const res = await fetch(url);
-    if (!res.ok) throw res;
-    const json = await res.json();
-    return {
-      live: new URL(json.live.url).host,
-      preview: new URL(json.preview.url).host,
-    };
-  } catch (error) {
-    return { error, preview: `main--${site}--${org}.aem.page` };
-  }
+  const res = await executeAdminRequest(
+    () => admin.status({ org, site }).get(''),
+    { org, site, policy: AuthMode.PREFLIGHT_AND_RETRY },
+  );
+  if (!res) return { error: { status: 401 } };
+  if (!res.ok) return { error: { status: res.status } };
+  const json = await res.json();
+  return {
+    live: new URL(json.live.url).host,
+    preview: new URL(json.preview.url).host,
+  };
 }
 
 /**
@@ -644,19 +643,6 @@ function getCellText(cell) {
 }
 
 /**
- * Checks if the user is logged in to the specified org/site.
- * @returns {Promise<boolean>} True if logged in, false otherwise.
- */
-async function isLoggedIn() {
-  const org = ORG_FIELD.value;
-  const site = SITE_FIELD.value;
-  if (org && site) {
-    return ensureLogin(org, site);
-  }
-  return false;
-}
-
-/**
  * Registers event listeners to handle form interactions, table updates, and UI behavior.
  */
 async function registerListeners() {
@@ -705,15 +691,6 @@ async function registerListeners() {
   // enable form submission
   FORM.addEventListener('submit', async (e) => {
     e.preventDefault();
-
-    if (!await isLoggedIn()) {
-      window.addEventListener('profile-update', ({ detail: loginInfo }) => {
-        if (loginInfo.includes(ORG_FIELD.value)) {
-          FORM.querySelector('button[type="submit"]').click();
-        }
-      }, { once: true });
-      return;
-    }
 
     const { target, submitter } = e;
     disableForm(target, submitter);
@@ -817,7 +794,12 @@ async function registerListeners() {
       try {
         const url = new URL(target.dataset.url);
         const { createModal } = await import('../../blocks/modal/modal.js');
-        const res = await fetch(url);
+        const { org, site } = getFormData(FORM);
+        const res = await executeAdminRequest(
+          () => admin.raw('GET', url.href),
+          { org, site },
+        );
+        if (!res || !res.ok) throw new Error(`Failed to fetch details: ${res?.status}`);
         const json = await res.json();
         const modal = document.createElement('div');
         modal.innerHTML = `<pre><code class="language-js">${JSON.stringify(json, null, 2)}

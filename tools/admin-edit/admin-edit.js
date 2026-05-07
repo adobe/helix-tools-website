@@ -1,7 +1,9 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { loadScript } from '../../scripts/aem.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
 import { logResponse } from '../../blocks/console/console.js';
+import { loadPrismLibrary } from '../../utils/prism/prism.js';
+import admin from '../../scripts/helix-admin.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 
 const adminForm = document.getElementById('admin-form');
 const adminURL = document.getElementById('admin-url');
@@ -24,7 +26,7 @@ async function loadPrism() {
   body.removeEventListener('focus', loadPrism);
   if (!prismReady) {
     prismReady = (async () => {
-      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js');
+      await loadPrismLibrary();
       await loadScript('../admin-edit/line-highlight.js');
     })();
   }
@@ -166,49 +168,15 @@ function syncScroll(target, el) {
 }
 
 /**
- * Extracts the organization from an admin URL.
- * @param {string} url - URL to extract org from
- * @returns {string|null} The organization name or null if not found
- */
-function extractOrgFromURL(url) {
-  try {
-    const urlObj = new URL(url);
-    const pathParts = urlObj.pathname.split('/').filter((part) => part);
-    if (pathParts[0] === 'config' && pathParts.length > 1) {
-      // config URL: /config/org.json or /config/org/...
-      let org = pathParts[1];
-      if (org.endsWith('.json')) {
-        org = org.slice(0, -5);
-      }
-      return org;
-    }
-    if (pathParts.length > 1) {
-      // admin API URL: /status/org/site/ref or similar
-      return pathParts[1];
-    }
-  } catch (e) {
-    // invalid URL
-  }
-  return null;
-}
-
-/**
  * Updates the admin URL datalist with well-known config locations.
- * @param {string} org - Organization name to use in the suggestions
+ * @param {{org: string|null, site: string|null}} coords
  */
-function updateAdminURLSuggestions(org) {
+function updateAdminURLSuggestions({ org, site }) {
   if (!org) {
     adminURLList.innerHTML = '';
     return;
   }
-
-  const suggestions = [
-    { url: `https://admin.hlx.page/config/${org}.json`, label: 'Org Config' },
-    { url: `https://admin.hlx.page/config/${org}/profiles.json`, label: 'Profiles' },
-    { url: `https://admin.hlx.page/config/${org}/sites.json`, label: 'Sites' },
-  ];
-
-  adminURLList.innerHTML = suggestions
+  adminURLList.innerHTML = admin.suggestions({ org, site })
     .map(({ url, label }) => `<option value="${url}" label="${label}"></option>`)
     .join('');
 }
@@ -217,13 +185,11 @@ async function init() {
   adminURL.value = localStorage.getItem('admin-url') || 'https://admin.hlx.page/status/adobe/aem-boilerplate/main/';
 
   // populate datalist with well-known config locations on load
-  const initialOrg = extractOrgFromURL(adminURL.value);
-  updateAdminURLSuggestions(initialOrg);
+  updateAdminURLSuggestions(admin.coordsFromURL(adminURL.value));
 
   // update datalist when admin URL changes
   adminURL.addEventListener('input', () => {
-    const org = extractOrgFromURL(adminURL.value);
-    updateAdminURLSuggestions(org);
+    updateAdminURLSuggestions(admin.coordsFromURL(adminURL.value));
   });
 
   /**
@@ -234,20 +200,15 @@ async function init() {
     e.preventDefault();
     localStorage.setItem('admin-url', adminURL.value);
 
-    const headers = {};
-    if (body.value) {
-      headers['content-type'] = adminURL.value.endsWith('.yaml') ? 'text/yaml' : 'application/json';
-    }
-
-    const resp = await fetch(adminURL.value, {
-      method: reqMethod.value,
-      body: body.value,
-      headers,
-    });
-
-    resp.text().then(() => {
-      logResponse(consoleBlock, resp.status, [reqMethod.value, adminURL.value, resp.headers.get('x-error') || '']);
-    });
+    const bodyValue = body.value || undefined;
+    const contentType = bodyValue && adminURL.value.endsWith('.yaml') ? 'text/yaml' : undefined;
+    const resp = await admin.raw(
+      reqMethod.value,
+      adminURL.value,
+      bodyValue,
+      bodyValue ? { contentType } : undefined,
+    );
+    logResponse(consoleBlock, resp.status, [reqMethod.value, adminURL.value, resp.error]);
   });
 
   // loads Prism.js libraries when #body focus event is fired for the first time
@@ -306,46 +267,19 @@ async function init() {
    */
   adminForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const extractOrgAndSite = (url) => {
-      const urlObj = new URL(url);
-      const pathParts = urlObj.pathname.split('/');
-      if (pathParts[1] === 'config') {
-        let org = pathParts[2];
-        if (org.endsWith('.json')) {
-          org = org.slice(0, -5);
-        }
-        let site = pathParts[4] ? pathParts[4] : null;
-        if (site && site.endsWith('.json')) {
-          site = site.slice(0, -5);
-        }
-        return { org, site };
-      }
-      const org = pathParts[2];
-      const site = pathParts[3];
-      return { org, site };
-    };
-
-    const { org, site } = extractOrgAndSite(adminURL.value);
-    if (!await ensureLogin(org, site)) {
-      // not logged in yet, listen for profile-update event
-      window.addEventListener('profile-update', ({ detail: loginInfo }) => {
-        // check if user is logged in now
-        if (loginInfo.includes(org)) {
-          // logged in, restart action (e.g. resubmit form)
-          e.target.querySelector('button[type="submit"]').click();
-        }
-      }, { once: true });
-      // abort action
-      return;
-    }
+    const { org, site } = admin.coordsFromURL(adminURL.value);
+    const result = await executeAdminRequest(
+      () => admin.raw('GET', adminURL.value),
+      { org, site, policy: AuthMode.RETRY_ON_401 },
+    );
+    if (!result) return; // login cancelled
 
     localStorage.setItem('admin-url', adminURL.value);
 
-    const resp = await fetch(adminURL.value);
-    const text = await resp.text();
+    const text = await result.text();
     body.value = text;
     formatCode(preview, text);
-    logResponse(consoleBlock, resp.status, ['GET', adminURL.value, resp.headers.get('x-error') || '']);
+    logResponse(consoleBlock, result.status, ['GET', adminURL.value, result.error]);
   });
 
   // handles admin form reset, clearing the body field

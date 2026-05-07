@@ -11,7 +11,7 @@
     "lint:js:fix": "eslint . --fix",
     "lint:css": "stylelint \"blocks/**/*.css\" \"styles/*.css\" \"tools/**/*.css\"",
     "lint:css:fix": "stylelint \"blocks/**/*.css\" \"styles/*.css\" \"tools/**/*.css\" --fix",
-    "test": "TZ=Europe/Berlin node --test --experimental-test-coverage --experimental-test-module-mocks --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=junit.xml --test-reporter=lcov --test-reporter-destination=lcov.info 'tests/**/*.test.js'",
+    "test": "TZ=Europe/Berlin node --import ./tests/install-dom.js --test --experimental-test-coverage --experimental-test-module-mocks --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=junit.xml --test-reporter=lcov --test-reporter-destination=lcov.info 'tests/**/*.test.js'",
     "lint": "npm run lint:js && npm run lint:css",
     "lint:fix": "npm run lint:js:fix && npm run lint:css:fix"
   },
@@ -31,11 +31,15 @@
     "eslint": "8.57.1",
     "eslint-config-airbnb-base": "15.0.0",
     "eslint-plugin-import": "2.32.0",
+    "jsdom": "^29.1.1",
     "stylelint": "17.9.1",
     "stylelint-config-standard": "40.0.0"
   },
   "dependencies": {
     "@adobe/rum-distiller": "1.23.0",
-    "yaml": "2.8.3"
+    "diff": "8.0.4",
+    "echarts": "6.0.0",
+    "prismjs": "1.30.0",
+    "yaml": "2.8.4"
   }
 }
