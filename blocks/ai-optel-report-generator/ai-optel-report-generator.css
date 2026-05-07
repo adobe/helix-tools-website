@@ -195,20 +195,21 @@
   cursor: not-allowed;
 }
 
+.report-generate-btn:focus {
+  color: white;
+}
+
 .report-generate-btn:hover:not(:disabled),
 .report-action-btn.primary:hover:not(:disabled) {
   background: var(--color-btn-primary-hover);
   transform: translateY(-1px);
   cursor: pointer;
+  color: white;
 }
 
 .report-generate-btn:active:not(:disabled) {
   transform: scale(0.98);
   background: var(--color-btn-primary-hover);
-  color: white;
-}
-
-.report-generate-btn:focus {
   color: white;
 }
 
