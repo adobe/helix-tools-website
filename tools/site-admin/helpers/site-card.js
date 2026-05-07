@@ -5,7 +5,6 @@ import {
   toggleFavorite,
   getFavorites,
   getContentSourceType,
-  showToast,
 } from './utils.js';
 import { renderPsiScores, runPsiForCard } from './psi.js';
 import {
@@ -14,7 +13,7 @@ import {
   openSecretModal,
   openApiKeyModal,
   openAddSiteModal,
-  deleteSiteAndRefresh,
+  openDeleteSiteModal,
 } from './modals.js';
 
 /* eslint-disable no-alert, no-restricted-globals */
@@ -23,9 +22,12 @@ import {
  * Create a site card element
  * @param {Object} site - Site object with name property
  * @param {string} orgValue - Organization value
+ * @param {Object} [options] - Card options
+ * @param {boolean} [options.limitedAccess=false] - Disable org-level actions (clone, delete)
  * @returns {HTMLElement} The site card element
  */
-export default function createSiteCard(site, orgValue) {
+export default function createSiteCard(site, orgValue, options = {}) {
+  const { limitedAccess = false } = options;
   const card = document.createElement('div');
   card.className = 'site-card';
   card.dataset.site = site.name;
@@ -75,10 +77,10 @@ export default function createSiteCard(site, orgValue) {
           </a>
         </div>
         <div class="site-card-links">
-          <a href="${previewUrl}" target="_blank" class="site-card-link">Preview</a>
+          <a href="${escapeHtml(previewUrl)}" target="_blank" class="site-card-link">Preview</a>
           <span class="auth-icon auth-preview" aria-hidden="true" title="Preview requires authentication">${icon('lock')}</span>
           <span class="site-card-links-divider">|</span>
-          <a href="${liveUrl}" target="_blank" class="site-card-link">Live</a>
+          <a href="${escapeHtml(liveUrl)}" target="_blank" class="site-card-link">Live</a>
           <span class="auth-icon auth-live" aria-hidden="true" title="Live requires authentication">${icon('lock')}</span>
         </div>
         <div class="site-card-quick-actions">
@@ -95,6 +97,14 @@ export default function createSiteCard(site, orgValue) {
   const menuTrigger = card.querySelector('.menu-trigger');
   const menuDropdown = card.querySelector('.menu-dropdown');
   const favoriteBtn = card.querySelector('.favorite-btn');
+
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.site-card.selected').forEach((c) => c.classList.remove('selected'));
+    card.classList.add('selected');
+    const url = new URL(window.location.href);
+    url.searchParams.set('site', site.name);
+    window.history.replaceState({}, document.title, url.href);
+  }, true);
 
   favoriteBtn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -185,18 +195,7 @@ export default function createSiteCard(site, orgValue) {
     auth: () => openAuthModal(site.name, orgValue),
     secret: () => openSecretModal(site.name, orgValue),
     apikey: () => openApiKeyModal(site.name, orgValue),
-    delete: async () => {
-      if (confirm(`Delete site "${site.name}"? This cannot be undone.`)) {
-        card.classList.add('deleting');
-        const success = await deleteSiteAndRefresh(orgValue, site.name, () => {});
-        if (success) {
-          showToast(`Site "${site.name}" deleted`, 'error');
-        } else {
-          card.classList.remove('deleting');
-          showToast('Failed to delete site', 'error');
-        }
-      }
-    },
+    delete: () => openDeleteSiteModal(orgValue, site.name, card),
   };
 
   card.querySelectorAll('.quick-action-btn').forEach((btn) => {
@@ -215,6 +214,16 @@ export default function createSiteCard(site, orgValue) {
       if (handler) await handler(item);
     });
   });
+
+  if (limitedAccess) {
+    ['clone', 'delete'].forEach((action) => {
+      const btn = card.querySelector(`.menu-item[data-action="${action}"]`);
+      if (btn) {
+        btn.disabled = true;
+        btn.title = 'Requires org-level access';
+      }
+    });
+  }
 
   renderPsiScores(card, site.name, orgValue);
 

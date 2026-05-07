@@ -15,6 +15,7 @@ import { openAddSiteModal } from './helpers/modals.js';
 import createSiteCard from './helpers/site-card.js';
 
 const org = document.getElementById('org');
+const site = document.getElementById('site');
 const consoleBlock = document.querySelector('.console');
 const sitesElem = document.querySelector('div#sites');
 
@@ -112,10 +113,11 @@ const updateSiteCount = () => {
 
 let detailsObserver;
 
-const displaySites = (sites) => {
+const displaySites = (sites, { limitedAccess = false } = {}) => {
   sitesElem.ariaHidden = false;
   sitesElem.textContent = '';
 
+  const selectedSite = new URLSearchParams(window.location.search).get('site');
   const savedView = localStorage.getItem(VIEW_STORAGE_KEY) || 'grid';
 
   const header = document.createElement('div');
@@ -123,49 +125,59 @@ const displaySites = (sites) => {
   header.innerHTML = `
     <span class="sites-count">${sites.length} site${sites.length !== 1 ? 's' : ''}</span>
     <div class="sites-actions">
-      <div class="sites-search">
-        <input type="text" placeholder="Search sites..." class="search-input" />
-      </div>
-      <div class="view-toggle">
-        <button type="button" class="view-btn ${savedView === 'grid' ? 'active' : ''}" data-view="grid" title="Grid view">
-          ${icon('grid')}
-        </button>
-        <button type="button" class="view-btn ${savedView === 'list' ? 'active' : ''}" data-view="list" title="List view">
-          ${icon('list')}
-        </button>
-      </div>
-      <button class="button add-site-btn">+ Add Site</button>
+      ${sites.length > 1 ? `
+        <div class="sites-search">
+          <input type="text" placeholder="Search sites..." class="search-input" />
+        </div>
+        <div class="view-toggle">
+          <button type="button" class="view-btn ${savedView === 'grid' ? 'active' : ''}" data-view="grid" title="Grid view">
+            ${icon('grid')}
+          </button>
+          <button type="button" class="view-btn ${savedView === 'list' ? 'active' : ''}" data-view="list" title="List view">
+            ${icon('list')}
+          </button>
+        </div>
+      ` : ''}
+      ${limitedAccess ? '' : '<button class="button add-site-btn">+ Add Site</button>'}
     </div>
   `;
 
-  header.querySelector('.add-site-btn').addEventListener('click', () => openAddSiteModal(org.value, '', '', logFn));
+  if (!limitedAccess) {
+    header.querySelector('.add-site-btn').addEventListener('click', () => openAddSiteModal(org.value, '', '', logFn));
+  }
 
   sitesElem.appendChild(header);
 
   const grid = document.createElement('div');
-  grid.className = `sites-grid ${savedView === 'list' ? 'list-view' : ''}`;
+  grid.className = `sites-grid ${sites.length > 1 && savedView === 'list' ? 'list-view' : ''}`;
 
-  const searchInput = header.querySelector('.search-input');
-  searchInput.addEventListener('input', (e) => {
-    const query = e.target.value.toLowerCase().trim();
-    grid.querySelectorAll('.site-card').forEach((card) => {
-      const siteName = card.dataset.site.toLowerCase();
-      card.setAttribute('aria-hidden', !siteName.includes(query));
+  if (sites.length > 1) {
+    const searchInput = header.querySelector('.search-input');
+    searchInput.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase().trim();
+      grid.querySelectorAll('.site-card').forEach((card) => {
+        const siteName = card.dataset.site.toLowerCase();
+        card.setAttribute('aria-hidden', !siteName.includes(query));
+      });
     });
-  });
 
-  header.querySelectorAll('.view-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const { view } = btn.dataset;
-      header.querySelectorAll('.view-btn').forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
-      grid.classList.toggle('list-view', view === 'list');
-      localStorage.setItem(VIEW_STORAGE_KEY, view);
+    header.querySelectorAll('.view-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const { view } = btn.dataset;
+        header.querySelectorAll('.view-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        grid.classList.toggle('list-view', view === 'list');
+        localStorage.setItem(VIEW_STORAGE_KEY, view);
+      });
     });
-  });
+  }
 
   const favorites = getFavorites(org.value);
   const sortedSites = [...sites].sort((a, b) => {
+    if (selectedSite) {
+      if (a.name === selectedSite) return -1;
+      if (b.name === selectedSite) return 1;
+    }
     const aFav = favorites.includes(a.name);
     const bFav = favorites.includes(b.name);
     if (aFav && !bFav) return -1;
@@ -183,19 +195,25 @@ const displaySites = (sites) => {
     });
   }, { rootMargin: '200px' });
 
-  sortedSites.forEach((site) => {
-    const card = createSiteCard(site, org.value);
+  sortedSites.forEach((s) => {
+    const card = createSiteCard(s, org.value, { limitedAccess });
     grid.appendChild(card);
     detailsObserver.observe(card);
   });
 
   sitesElem.appendChild(grid);
+
+  if (selectedSite) {
+    const selectedCard = findCardBySite(selectedSite);
+    if (selectedCard) selectedCard.classList.add('selected');
+  }
 };
 
 const displaySitesForOrg = async (orgValue) => {
   sitesElem.setAttribute('aria-hidden', 'true');
   sitesElem.replaceChildren();
 
+  const selectedSite = new URLSearchParams(window.location.search).get('site');
   const { sites, status } = await fetchSites(orgValue, logFn);
 
   if (status === 200 && sites) {
@@ -205,6 +223,14 @@ const displaySitesForOrg = async (orgValue) => {
     if (loggedIn) {
       return displaySitesForOrg(orgValue);
     }
+  } else if (status === 403 && selectedSite) {
+    displaySites([{ name: selectedSite }], { limitedAccess: true });
+  } else if (status === 403) {
+    sitesElem.ariaHidden = false;
+    const msg = document.createElement('p');
+    msg.className = 'access-message';
+    msg.textContent = 'You do not have org admin access. Enter a site name above to manage just that site.';
+    sitesElem.appendChild(msg);
   }
   return null;
 };
@@ -257,11 +283,38 @@ const initSiteAdmin = async () => {
   await Promise.all(neededIcons.map(loadIcon));
   await initConfigField();
   if (!org.value) org.value = localStorage.getItem('org') || 'adobe';
-  if (org.value) {
-    const loggedIn = await ensureLogin(org.value);
-    if (loggedIn) {
-      displaySitesForOrg(org.value);
+
+  const form = document.getElementById('site-admin-form');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const { submitter } = e;
+
+    const orgValue = org.value;
+    if (!orgValue) return;
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('org', orgValue);
+    const siteValue = site.value.trim() || '';
+    if (siteValue) url.searchParams.set('site', siteValue);
+    else url.searchParams.delete('site');
+    window.history.replaceState({}, document.title, url.href);
+
+    const loggedIn = await ensureLogin(orgValue, siteValue || undefined);
+    if (!loggedIn) {
+      window.addEventListener('profile-update', ({ detail: loginInfo }) => {
+        if (loginInfo.includes(orgValue)) submitter?.click();
+      }, { once: true });
+      return;
     }
+
+    displaySitesForOrg(orgValue);
+  });
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('org')) {
+    org.value = params.get('org');
+    if (params.get('site')) site.value = params.get('site');
+    document.getElementById('list').click();
   }
 };
 
