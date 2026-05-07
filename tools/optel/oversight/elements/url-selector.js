@@ -127,14 +127,11 @@ export default class URLSelector extends HTMLElement {
       let domain = event.detail;
       try {
         // First, try to parse as a full URL
-        if (domain.startsWith('http://') || domain.startsWith('https://')) {
-          const url = new URL(domain);
-          domain = url.hostname;
-        } else {
-          // If not a full URL, treat as hostname/domain
-          const entered = new URL(`https://${domain}`);
-          domain = entered.hostname;
-        }
+        const url = (domain.startsWith('http://') || domain.startsWith('https://'))
+          ? new URL(domain)
+          : new URL(`https://${domain}`);
+        // Port is significant on localhost, but normalized away elsewhere.
+        domain = url.hostname === 'localhost' ? url.host : url.hostname;
       } catch (e) {
         // ignore, some domains are not valid URLs
       }
