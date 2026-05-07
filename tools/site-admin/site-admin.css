@@ -872,13 +872,13 @@
 }
 
 .delete-modal .button.danger {
-  color: var(--red-700);
-  background: #fff;
-  border-color: var(--red-700);
+  color: var(--gray-25);
+  background: var(--red-900);
+  border-color: var(--red-900);
   
   &:hover:not(:disabled) {
-    background: var(--red-700);
-    color: #fff;
+    background: var(--red-1000);
+    border-color: var(--red-1000);
   }
 }
 
