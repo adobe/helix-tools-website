@@ -319,8 +319,6 @@ export function updateState() {
 }
 
 function init() {
-  console.log('[DEBUG] init() started, readyState:', document.readyState);
-
   const sidebar = document.querySelector('facet-sidebar');
   sidebar.data = dataChunks;
   elems.sidebar = sidebar;
@@ -343,10 +341,6 @@ function init() {
   elems.incognito = document.querySelector('incognito-checkbox');
   elems.filterInput = sidebar.elems.filterInput;
 
-  console.log('[DEBUG] incognito element found:', !!elems.incognito);
-  console.log('[DEBUG] incognito domainkey attr (before listener):', elems.incognito.getAttribute('domainkey'));
-  console.log('[DEBUG] incognito mode attr:', elems.incognito.getAttribute('mode'));
-
   const params = new URL(window.location).searchParams;
   let view = params.get('view');
   if (!view) {
@@ -360,15 +354,11 @@ function init() {
   const startDate = params.get('startDate') ? `${params.get('startDate')}` : null;
   const endDate = params.get('endDate') ? `${params.get('endDate')}` : null;
 
-  console.log('[DEBUG] Adding change event listener to incognito-checkbox');
   elems.incognito.addEventListener('change', async () => {
     const dk = elems.incognito.getAttribute('domainkey');
-    console.log('[DEBUG] change event fired! domainkey:', dk);
     loader.domainKey = dk;
 
-    console.log('[DEBUG] Calling loadData from change handler');
     await loadData(elems.viewSelect.value);
-    console.log('[DEBUG] loadData complete, calling draw');
     draw();
   });
 
@@ -391,15 +381,10 @@ function init() {
   elems.timezoneElement.textContent = timezone;
 
   const domainKeyAttr = elems.incognito.getAttribute('domainkey');
-  console.log('[DEBUG] Checking domainkey for initial load:', domainKeyAttr, 'truthy?', !!domainKeyAttr);
   if (domainKeyAttr) {
-    console.log('[DEBUG] domainkey present, calling loadData immediately');
     loadData(elems.viewSelect.value).then(() => {
-      console.log('[DEBUG] Initial loadData complete, calling draw');
       draw();
     });
-  } else {
-    console.log('[DEBUG] No domainkey yet, waiting for change event');
   }
 
   elems.filterInput.addEventListener('input', () => {
