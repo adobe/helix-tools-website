@@ -205,6 +205,11 @@
 .report-generate-btn:active:not(:disabled) {
   transform: scale(0.98);
   background: var(--color-btn-primary-hover);
+  color: white;
+}
+
+.report-generate-btn:focus {
+  color: white;
 }
 
 /* Info & Status Messages */
