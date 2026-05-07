@@ -3,7 +3,6 @@
  */
 
 const BUNDLES_API = 'https://bundles.aem.page';
-const DEFAULT_DOMAIN = 'www.thinktanked.org';
 
 export function getEffectiveDomainKey() {
   const fromUrl = new URLSearchParams(window.location.search).get('domainkey');
@@ -27,7 +26,7 @@ export function hasValidDomainKey() {
 }
 
 export function getPageDomain() {
-  return new URLSearchParams(window.location.search).get('domain') || DEFAULT_DOMAIN;
+  return new URLSearchParams(window.location.search).get('domain') || '';
 }
 
 /** Same day-bundle URL shape as OpTel loader / incognito-checkbox probe. */
