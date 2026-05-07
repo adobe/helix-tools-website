@@ -402,6 +402,181 @@ describe('helix-admin.js', () => {
     });
   });
 
+  describe('admin.raw(method, urlOrPath, body?, opts?)', () => {
+    it('path starting with / is resolved against ADMIN_BASE', async () => {
+      await admin.raw('GET', '/sidekick/adobe/x/main/config.json');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/sidekick/adobe/x/main/config.json');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('absolute URL is passed through unchanged', async () => {
+      await admin.raw('GET', 'https://admin.hlx.page/sidekick/adobe/x/main/config.json');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/sidekick/adobe/x/main/config.json');
+    });
+
+    it('forwards the method as-is', async () => {
+      await admin.raw('DELETE', '/preview/adobe/x/main/page');
+      assert.equal(calls[0].init.method, 'DELETE');
+    });
+
+    it('no body → no content-type header', async () => {
+      await admin.raw('GET', '/status/adobe/x/main');
+      assert.equal(calls[0].init.body, undefined);
+      assert.equal(calls[0].init.headers, undefined);
+    });
+
+    it('body present → defaults to application/json', async () => {
+      await admin.raw('POST', '/preview/adobe/x/main/*', '{"paths":["/"]}');
+      assert.equal(calls[0].init.body, '{"paths":["/"]}');
+      assert.equal(calls[0].init.headers.get('content-type'), 'application/json');
+    });
+
+    it('opts.contentType overrides the default', async () => {
+      await admin.raw('POST', '/preview/adobe/x/main/page', 'body', { contentType: 'text/plain' });
+      assert.equal(calls[0].init.headers.get('content-type'), 'text/plain');
+    });
+
+    it('opts.params appended as query string', async () => {
+      await admin.raw('GET', '/status/adobe/x/main', undefined, { params: { editUrl: 'auto' } });
+      const u = new URL(calls[0].url);
+      assert.equal(u.searchParams.get('editUrl'), 'auto');
+    });
+
+    it('null body treated same as undefined — no content-type', async () => {
+      await admin.raw('POST', '/preview/adobe/x/main/page', null);
+      assert.equal(calls[0].init.body, undefined);
+      assert.equal(calls[0].init.headers, undefined);
+    });
+
+    it('returns a normalized AdminResponse envelope', async () => {
+      const result = await admin.raw('GET', '/status/adobe/x/main');
+      assert.equal(typeof result.ok, 'boolean');
+      assert.equal(typeof result.status, 'number');
+      assert.equal(typeof result.text, 'function');
+      assert.equal(typeof result.json, 'function');
+      assert.equal(result.error, '');
+      assert.equal(result.request.method, 'GET');
+      assert.equal(result.request.url, 'https://admin.hlx.page/status/adobe/x/main');
+    });
+
+    it('propagates withRequestInit defaults', async () => {
+      const a = admin.withRequestInit({ credentials: 'include' });
+      await a.raw('GET', '/status/adobe/x/main');
+      assert.equal(calls[0].init.credentials, 'include');
+    });
+  });
+
+  describe('admin.suggestions(coords)', () => {
+    it('returns org-level URLs when only org provided', () => {
+      const items = admin.suggestions({ org: 'adobe' });
+      assert.ok(Array.isArray(items));
+      assert.ok(items.length > 0);
+      assert.ok(items.every(({ url, label }) => typeof url === 'string' && typeof label === 'string'));
+      assert.ok(items.every(({ url }) => url.startsWith('https://admin.hlx.page/')));
+    });
+
+    it('includes org config URL', () => {
+      const items = admin.suggestions({ org: 'adobe' });
+      assert.ok(items.some(({ url }) => url === 'https://admin.hlx.page/config/adobe.json'));
+    });
+
+    it('includes site-level URLs when site provided', () => {
+      const items = admin.suggestions({ org: 'adobe', site: 'x' });
+      assert.ok(items.some(({ url }) => url === 'https://admin.hlx.page/config/adobe/sites/x.json'));
+      assert.ok(items.some(({ url }) => url.includes('/status/adobe/x/main')));
+      assert.ok(items.some(({ url }) => url.includes('/preview/adobe/x/main')));
+    });
+
+    it('does not include site-level URLs when site omitted', () => {
+      const items = admin.suggestions({ org: 'adobe' });
+      assert.ok(items.every(({ url }) => !url.includes('/sites/x')));
+    });
+  });
+
+  describe('admin.coordsFromURL(url)', () => {
+    describe('config URLs', () => {
+      it('parses org from /config/{org}.json', () => {
+        assert.deepEqual(
+          admin.coordsFromURL('https://admin.hlx.page/config/adobe.json'),
+          { org: 'adobe', site: null },
+        );
+      });
+
+      it('treats /config/{org}/sites.json as org-only (sites list, not a specific site)', () => {
+        assert.deepEqual(
+          admin.coordsFromURL('https://admin.hlx.page/config/adobe/sites.json'),
+          { org: 'adobe', site: null },
+        );
+      });
+
+      it('treats /config/{org}/profiles.json as org-only', () => {
+        assert.deepEqual(
+          admin.coordsFromURL('https://admin.hlx.page/config/adobe/profiles.json'),
+          { org: 'adobe', site: null },
+        );
+      });
+
+      it('parses org + site from /config/{org}/sites/{site}.json', () => {
+        assert.deepEqual(
+          admin.coordsFromURL('https://admin.hlx.page/config/adobe/sites/x.json'),
+          { org: 'adobe', site: 'x' },
+        );
+      });
+
+      it('parses org + site from a site sub-resource URL', () => {
+        assert.deepEqual(
+          admin.coordsFromURL('https://admin.hlx.page/config/adobe/sites/x/cdn.json'),
+          { org: 'adobe', site: 'x' },
+        );
+      });
+
+      it('handles org names with no .json suffix', () => {
+        assert.deepEqual(
+          admin.coordsFromURL('https://admin.hlx.page/config/aemsites/sites/aem.json'),
+          { org: 'aemsites', site: 'aem' },
+        );
+      });
+    });
+
+    describe('operation URLs', () => {
+      it('parses org + site from a status URL', () => {
+        assert.deepEqual(
+          admin.coordsFromURL('https://admin.hlx.page/status/adobe/x/main'),
+          { org: 'adobe', site: 'x' },
+        );
+      });
+
+      it('parses org + site from a preview URL with a content path', () => {
+        assert.deepEqual(
+          admin.coordsFromURL('https://admin.hlx.page/preview/adobe/x/main/en/index'),
+          { org: 'adobe', site: 'x' },
+        );
+      });
+
+      it('parses org + site from a log URL', () => {
+        assert.deepEqual(
+          admin.coordsFromURL('https://admin.hlx.page/log/adobe/x/main'),
+          { org: 'adobe', site: 'x' },
+        );
+      });
+    });
+
+    describe('edge cases', () => {
+      it('returns nulls for an invalid URL', () => {
+        assert.deepEqual(admin.coordsFromURL('not-a-url'), { org: null, site: null });
+      });
+
+      it('is available on a withRequestInit-derived client', () => {
+        const a = admin.withRequestInit({ credentials: 'include' });
+        assert.equal(typeof a.coordsFromURL, 'function');
+        assert.deepEqual(
+          a.coordsFromURL('https://admin.hlx.page/config/adobe/sites/x.json'),
+          { org: 'adobe', site: 'x' },
+        );
+      });
+    });
+  });
+
   describe('admin.preview(coords)', () => {
     it('.get(path) GETs the preview status', async () => {
       await admin.preview({ org: 'adobe', site: 'x' }).get('/en/index');
