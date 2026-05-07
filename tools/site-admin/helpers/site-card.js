@@ -77,10 +77,10 @@ export default function createSiteCard(site, orgValue, options = {}) {
           </a>
         </div>
         <div class="site-card-links">
-          <a href="${previewUrl}" target="_blank" class="site-card-link">Preview</a>
+          <a href="${escapeHtml(previewUrl)}" target="_blank" class="site-card-link">Preview</a>
           <span class="auth-icon auth-preview" aria-hidden="true" title="Preview requires authentication">${icon('lock')}</span>
           <span class="site-card-links-divider">|</span>
-          <a href="${liveUrl}" target="_blank" class="site-card-link">Live</a>
+          <a href="${escapeHtml(liveUrl)}" target="_blank" class="site-card-link">Live</a>
           <span class="auth-icon auth-live" aria-hidden="true" title="Live requires authentication">${icon('lock')}</span>
         </div>
         <div class="site-card-quick-actions">

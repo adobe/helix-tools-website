@@ -875,7 +875,7 @@
   color: var(--gray-25);
   background: var(--red-900);
   border-color: var(--red-900);
-  
+
   &:hover:not(:disabled) {
     background: var(--red-1000);
     border-color: var(--red-1000);
