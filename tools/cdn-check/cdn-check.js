@@ -940,7 +940,7 @@ async function checkCdnConfig(org, site, sharedCdnProd = null) {
 
   try {
     const result = await executeAdminRequest(
-      () => admin.raw('GET', `/config/${org}/aggregated/${site}.json`),
+      () => admin.config({ org }).select('aggregated').select(`${site}.json`).read(),
       { org, site, policy: AuthMode.PREFLIGHT_AND_RETRY },
     );
 
