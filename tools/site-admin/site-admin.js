@@ -11,7 +11,6 @@ import {
   getContentSourceType,
   getDAEditorURL,
 } from './helpers/utils.js';
-import escapeHtml from '../../utils/html.js';
 import { openAddSiteModal } from './helpers/modals.js';
 import createSiteCard from './helpers/site-card.js';
 
@@ -295,7 +294,7 @@ const initSiteAdmin = async () => {
 
     const url = new URL(window.location.href);
     url.searchParams.set('org', orgValue);
-    const siteValue = escapeHtml(site.value || '');
+    const siteValue = site.value.trim() || '';
     if (siteValue) url.searchParams.set('site', siteValue);
     else url.searchParams.delete('site');
     window.history.replaceState({}, document.title, url.href);
