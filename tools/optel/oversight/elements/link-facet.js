@@ -10,7 +10,7 @@ function urlDecode(part, rich = false) {
     : part.replace(/%3[Cc](number|hex|base64|uuid)%3[Ee]/g, '<$1>');
 }
 
-function labelURLParts(url, prefix, solo = false) {
+export function labelURLParts(url, prefix, solo = false) {
   if (prefix && url.startsWith(prefix) && !solo) {
     return `<span class="collapse" title="${escapeHTML(url)}">${escapeHTML(prefix)}</span><span class="suffix" title="${escapeHTML(urlDecode(url))}">${urlDecode(escapeHTML(url.replace(prefix, '')), true)}</span>`;
   }

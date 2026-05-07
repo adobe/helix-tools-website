@@ -2,7 +2,7 @@ function getPersistentToken() {
   return localStorage.getItem('rum-bundler-token');
 }
 
-async function fetchDomainKey(domain) {
+export async function fetchDomainKey(domain) {
   try {
     const auth = getPersistentToken();
     let org;
