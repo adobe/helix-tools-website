@@ -2,7 +2,8 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { VIEW_STORAGE_KEY } from './helpers/constants.js';
-import { fetchSites, fetchSiteDetails } from './helpers/api-helper.js';
+import admin from '../../scripts/helix-admin.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import {
   loadIcon,
   icon,
@@ -21,85 +22,88 @@ const sitesElem = document.querySelector('div#sites');
 // Logging wrapper for API calls
 const logFn = (status, details) => logResponse(consoleBlock, status, details);
 
-const populateCardDetails = (card, orgValue) => {
+const populateCardDetails = async (card, orgValue) => {
   const siteName = card.dataset.site;
-  fetchSiteDetails(orgValue, siteName).then((details) => {
-    if (!details) return;
+  const detailsResult = await executeAdminRequest(
+    () => admin.config({ org: orgValue, site: siteName }).read(),
+    { org: orgValue, site: siteName },
+  );
+  const details = detailsResult?.ok ? await detailsResult.json() : null;
+  if (!details) return;
 
-    const contentUrl = details.content?.source?.url || '';
-    const contentSourceType = details.content?.source?.type || '';
-    const codeUrl = details.code?.source?.url || '';
-    const sourceType = getContentSourceType(contentUrl, contentSourceType);
+  const contentUrl = details.content?.source?.url || '';
+  const contentSourceType = details.content?.source?.type || '';
+  const codeUrl = details.code?.source?.url || '';
+  const sourceType = getContentSourceType(contentUrl, contentSourceType);
 
-    const badge = card.querySelector('.source-badge');
-    if (badge) {
-      badge.textContent = sourceType.label;
-      badge.className = `source-badge source-${sourceType.type}`;
-      badge.title = sourceType.type.toUpperCase();
+  const badge = card.querySelector('.source-badge');
+  if (badge) {
+    badge.textContent = sourceType.label;
+    badge.className = `source-badge source-${sourceType.type}`;
+    badge.title = sourceType.type.toUpperCase();
+  }
+
+  const codeSource = card.querySelector('.site-card-source[data-type="code"]');
+  const contentSource = card.querySelector('.site-card-source[data-type="content"]');
+  const contentEditorUrl = getDAEditorURL(contentUrl);
+
+  if (codeSource) {
+    codeSource.title = codeUrl || 'Not configured';
+    if (codeUrl) codeSource.href = codeUrl;
+    else codeSource.removeAttribute('href');
+  }
+  if (contentSource) {
+    contentSource.title = contentUrl || 'Not configured';
+    if (contentEditorUrl) contentSource.href = contentEditorUrl;
+    else contentSource.removeAttribute('href');
+  }
+
+  card.dataset.codeUrl = codeUrl;
+  card.dataset.contentUrl = contentUrl;
+
+  const isByogit = details.code?.source?.type === 'byogit'
+    || codeUrl.includes('cm-repo.adobe.io');
+  if (isByogit) {
+    card.dataset.byogitOwner = details.code?.source?.owner || details.code?.owner || '';
+    card.dataset.byogitRepo = details.code?.source?.repo || details.code?.repo || '';
+  }
+
+  const hasPreviewAuth = details.access?.site || details.access?.preview;
+  const hasLiveAuth = details.access?.site || details.access?.live;
+  const hasAnyAuth = hasPreviewAuth || hasLiveAuth;
+
+  const lighthouseBtn = card.querySelector('.menu-item[data-action="lighthouse"]');
+  if (hasAnyAuth) {
+    card.dataset.hasAuth = 'true';
+    if (lighthouseBtn) {
+      lighthouseBtn.disabled = true;
+      lighthouseBtn.title = 'Lighthouse unavailable for authenticated sites';
     }
-
-    const codeSource = card.querySelector('.site-card-source[data-type="code"]');
-    const contentSource = card.querySelector('.site-card-source[data-type="content"]');
-    const contentEditorUrl = getDAEditorURL(contentUrl);
-
-    if (codeSource) {
-      codeSource.title = codeUrl || 'Not configured';
-      if (codeUrl) codeSource.href = codeUrl;
-      else codeSource.removeAttribute('href');
+    if (hasPreviewAuth) {
+      card.querySelector('.auth-icon.auth-preview').removeAttribute('aria-hidden');
     }
-    if (contentSource) {
-      contentSource.title = contentUrl || 'Not configured';
-      if (contentEditorUrl) contentSource.href = contentEditorUrl;
-      else contentSource.removeAttribute('href');
+    if (hasLiveAuth) {
+      card.querySelector('.auth-icon.auth-live').removeAttribute('aria-hidden');
     }
-
-    card.dataset.codeUrl = codeUrl;
-    card.dataset.contentUrl = contentUrl;
-
-    const isByogit = details.code?.source?.type === 'byogit'
-      || codeUrl.includes('cm-repo.adobe.io');
-    if (isByogit) {
-      card.dataset.byogitOwner = details.code?.source?.owner || details.code?.owner || '';
-      card.dataset.byogitRepo = details.code?.source?.repo || details.code?.repo || '';
+  } else {
+    delete card.dataset.hasAuth;
+    if (lighthouseBtn) {
+      lighthouseBtn.disabled = false;
+      lighthouseBtn.title = '';
     }
+    card.querySelector('.auth-icon.auth-preview')?.setAttribute('aria-hidden', 'true');
+    card.querySelector('.auth-icon.auth-live')?.setAttribute('aria-hidden', 'true');
+  }
 
-    const hasPreviewAuth = details.access?.site || details.access?.preview;
-    const hasLiveAuth = details.access?.site || details.access?.live;
-    const hasAnyAuth = hasPreviewAuth || hasLiveAuth;
-
-    const lighthouseBtn = card.querySelector('.menu-item[data-action="lighthouse"]');
-    if (hasAnyAuth) {
-      card.dataset.hasAuth = 'true';
-      if (lighthouseBtn) {
-        lighthouseBtn.disabled = true;
-        lighthouseBtn.title = 'Lighthouse unavailable for authenticated sites';
-      }
-      if (hasPreviewAuth) {
-        card.querySelector('.auth-icon.auth-preview').removeAttribute('aria-hidden');
-      }
-      if (hasLiveAuth) {
-        card.querySelector('.auth-icon.auth-live').removeAttribute('aria-hidden');
-      }
-    } else {
-      delete card.dataset.hasAuth;
-      if (lighthouseBtn) {
-        lighthouseBtn.disabled = false;
-        lighthouseBtn.title = '';
-      }
-      card.querySelector('.auth-icon.auth-preview')?.setAttribute('aria-hidden', 'true');
-      card.querySelector('.auth-icon.auth-live')?.setAttribute('aria-hidden', 'true');
-    }
-
-    const cdnHost = details.cdn?.prod?.host || details.cdn?.host;
-    const cdnEl = card.querySelector('.site-card-cdn');
-    if (cdnHost && cdnEl) {
-      cdnEl.querySelector('span').textContent = cdnHost;
-      cdnEl.href = `https://${cdnHost}`;
-      cdnEl.classList.add('visible');
-    } else if (cdnEl) {
-      cdnEl.classList.remove('visible');
-    }
-  });
+  const cdnHost = details.cdn?.prod?.host || details.cdn?.host;
+  const cdnEl = card.querySelector('.site-card-cdn');
+  if (cdnHost && cdnEl) {
+    cdnEl.querySelector('span').textContent = cdnHost;
+    cdnEl.href = `https://${cdnHost}`;
+    cdnEl.classList.add('visible');
+  } else if (cdnEl) {
+    cdnEl.classList.remove('visible');
+  }
 };
 
 const findCardBySite = (name) => sitesElem.querySelector(`.site-card[data-site="${CSS.escape(name)}"]`);
@@ -213,7 +217,16 @@ const displaySitesForOrg = async (orgValue) => {
   sitesElem.replaceChildren();
 
   const selectedSite = new URLSearchParams(window.location.search).get('site');
-  const { sites, status } = await fetchSites(orgValue, logFn);
+  const sitesResult = await executeAdminRequest(
+    () => admin.config({ org: orgValue }).select('sites.json').read(),
+    { org: orgValue, policy: AuthMode.PREFLIGHT_AND_RETRY },
+  );
+  if (sitesResult) {
+    const { method, url } = sitesResult.request;
+    logFn(sitesResult.status, [method, url, sitesResult.error]);
+  }
+  const status = sitesResult?.status ?? 0;
+  const sites = sitesResult?.ok ? (await sitesResult.json()).sites : null;
 
   if (status === 200 && sites) {
     displaySites(sites);
