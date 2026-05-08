@@ -298,10 +298,11 @@ class RewrittenData {
           pre.append(code);
           const { showModal } = await createModal([pre]);
           showModal();
-          loadPrism().then(() => highlight(document.querySelector('.modal')));
+          await loadPrism();
+          highlight(document.querySelector('.modal'));
         } catch (error) {
           // eslint-disable-next-line no-console
-          console.log('Could not create modal:', error);
+          console.error('Could not create modal:', error);
         }
         resetLoadingButton(button);
       });
