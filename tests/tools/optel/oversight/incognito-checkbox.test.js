@@ -1,4 +1,6 @@
-import { describe, it, beforeEach, afterEach } from 'node:test';
+import {
+  describe, it, beforeEach, afterEach,
+} from 'node:test';
 import assert from 'node:assert/strict';
 import { fetchDomainKey } from '../../../../tools/optel/oversight/elements/incognito-checkbox.js';
 
