@@ -231,6 +231,9 @@ const displaySitesForOrg = async (orgValue) => {
   if (status === 200 && sites) {
     displaySites(sites);
   } else if (status === 403 && selectedSite) {
+    // No org-admin access, but a ?site= param means someone shared a direct link.
+    // Show just that site with limited capabilities — the user may have site-level
+    // access even without being able to list the org's sites.
     displaySites([{ name: selectedSite }], { limitedAccess: true });
   } else if (status === 403) {
     sitesElem.ariaHidden = false;
