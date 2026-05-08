@@ -193,6 +193,7 @@ function createAdmin(defaults = {}) {
    *
    * @param {string} baseUrl
    * @param {Array<'get'|'update'|'remove'>} caps
+   * @returns object with the requested caps as methods, plus `.url` always set to `baseUrl`
    */
   function bindOperation(baseUrl, caps) {
     function join(path = '') {
@@ -210,10 +211,8 @@ function createAdmin(defaults = {}) {
         return request(init);
       },
       remove: (path, opts) => request({ method: 'DELETE', url: join(path), params: opts?.params }),
-      url: baseUrl,
     };
-    if (!caps.includes('url')) caps.push('url');
-    return Object.fromEntries(caps.map((c) => [c, all[c]]));
+    return { ...Object.fromEntries(caps.map((c) => [c, all[c]])), url: baseUrl };
   }
 
   /**
