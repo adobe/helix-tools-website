@@ -4,7 +4,7 @@ import admin from '../../../scripts/helix-admin.js';
 import { executeAdminRequest } from '../../../utils/admin-request.js';
 import escapeHtml from '../../../utils/html.js';
 import {
-  icon, showToast, formatDate, isExpired,
+  icon, showToast, formatDate, isExpired, buildSiteConfig,
 } from './utils.js';
 
 /* eslint-disable no-alert, no-restricted-globals */
@@ -31,42 +31,6 @@ const setupModal = async (className, headerHtml) => {
   modalContent.appendChild(container);
 
   return { dialog, container, showModal };
-};
-
-const buildSiteConfig = (site, codeSrc, contentSrc, byogit = null) => {
-  let code;
-  if (byogit) {
-    code = {
-      owner: byogit.owner,
-      repo: byogit.repo,
-      source: {
-        type: 'byogit',
-        url: 'https://cm-repo.adobe.io/api',
-        raw_url: 'https://cm-repo.adobe.io/api/raw',
-        owner: byogit.owner,
-        repo: byogit.repo,
-        secretId: 'cm-byog',
-      },
-    };
-  } else {
-    const codeURL = new URL(codeSrc);
-    const [, owner, repo] = codeURL.pathname.split('/');
-    code = { owner, repo, source: { type: 'github', url: codeSrc } };
-  }
-  const content = { source: { type: 'markup', url: contentSrc } };
-
-  const contentURL = new URL(contentSrc);
-
-  if (contentSrc.startsWith('https://drive.google.com/drive')) {
-    content.source.type = 'google';
-    content.source.id = contentURL.pathname.split('/').pop();
-  }
-
-  if (contentSrc.includes('sharepoint.com/')) {
-    content.source.type = 'onedrive';
-  }
-
-  return { ...site, content, code };
 };
 
 export const saveSiteAndRefresh = async (

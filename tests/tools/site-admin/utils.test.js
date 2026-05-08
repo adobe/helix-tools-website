@@ -5,6 +5,8 @@ import {
   getScoreClass,
   isExpired,
   getDAEditorURL,
+  compareSites,
+  buildSiteConfig,
 } from '../../../tools/site-admin/helpers/utils.js';
 
 describe('site-admin:utils.js', () => {
@@ -84,6 +86,110 @@ describe('site-admin:utils.js', () => {
 
     it('returns false for a date in the future', () => {
       assert.equal(isExpired('2099-01-01T00:00:00Z'), false);
+    });
+  });
+
+  describe('compareSites', () => {
+    const s = (name) => ({ name });
+
+    it('places the selected site before all others', () => {
+      assert.equal(compareSites(s('alpha'), s('selected'), 'selected', []), 1);
+      assert.equal(compareSites(s('selected'), s('alpha'), 'selected', []), -1);
+    });
+
+    it('when both are non-selected, favorites come before non-favorites', () => {
+      assert.equal(compareSites(s('fav'), s('plain'), null, ['fav']), -1);
+      assert.equal(compareSites(s('plain'), s('fav'), null, ['fav']), 1);
+    });
+
+    it('when both are favorites, falls back to alphabetical order', () => {
+      assert.equal(compareSites(s('alpha'), s('beta'), null, ['alpha', 'beta']), compareSites(s('alpha'), s('beta'), null, []));
+    });
+
+    it('when neither is a favorite, sorts alphabetically', () => {
+      assert.ok(compareSites(s('apple'), s('banana'), null, []) < 0);
+      assert.ok(compareSites(s('banana'), s('apple'), null, []) > 0);
+    });
+
+    it('ignores selected-site logic when selectedSite is null', () => {
+      // 'selected' is just a normal non-favorite when selectedSite is null
+      assert.ok(compareSites(s('selected'), s('apple'), null, []) > 0);
+    });
+
+    it('selected site sorts before favorites', () => {
+      assert.equal(compareSites(s('selected'), s('fav'), 'selected', ['fav']), -1);
+      assert.equal(compareSites(s('fav'), s('selected'), 'selected', ['fav']), 1);
+    });
+  });
+
+  describe('buildSiteConfig', () => {
+    describe('GitHub code source', () => {
+      it('extracts owner and repo from a GitHub URL', () => {
+        const result = buildSiteConfig({}, 'https://github.com/my-org/my-repo', 'https://content.da.live/org/repo');
+        assert.equal(result.code.owner, 'my-org');
+        assert.equal(result.code.repo, 'my-repo');
+        assert.equal(result.code.source.type, 'github');
+        assert.equal(result.code.source.url, 'https://github.com/my-org/my-repo');
+      });
+
+      it('only uses the first two path segments, ignoring trailing paths', () => {
+        const result = buildSiteConfig({}, 'https://github.com/my-org/my-repo/tree/main', 'https://content.da.live/org/repo');
+        assert.equal(result.code.owner, 'my-org');
+        assert.equal(result.code.repo, 'my-repo');
+      });
+    });
+
+    describe('BYOGIT code source', () => {
+      it('uses the BYOGIT fixed source config when byogit is provided', () => {
+        const result = buildSiteConfig({}, '', 'https://content.da.live/org/repo', { owner: 'prog-123', repo: 'repo-456' });
+        assert.equal(result.code.owner, 'prog-123');
+        assert.equal(result.code.repo, 'repo-456');
+        assert.equal(result.code.source.type, 'byogit');
+        assert.equal(result.code.source.secretId, 'cm-byog');
+      });
+
+      it('does not parse the code URL when byogit is provided', () => {
+        assert.doesNotThrow(() => buildSiteConfig({}, '', 'https://content.da.live/org/repo', { owner: 'o', repo: 'r' }));
+      });
+    });
+
+    describe('content source type detection', () => {
+      it('sets type to google and extracts folder id for Google Drive URLs', () => {
+        const result = buildSiteConfig({}, 'https://github.com/o/r', 'https://drive.google.com/drive/folders/FOLDER_ID_123');
+        assert.equal(result.content.source.type, 'google');
+        assert.equal(result.content.source.id, 'FOLDER_ID_123');
+      });
+
+      it('sets type to onedrive for SharePoint URLs', () => {
+        const result = buildSiteConfig({}, 'https://github.com/o/r', 'https://mycompany.sharepoint.com/sites/mysite');
+        assert.equal(result.content.source.type, 'onedrive');
+      });
+
+      it('leaves type as markup for generic content URLs', () => {
+        const result = buildSiteConfig({}, 'https://github.com/o/r', 'https://content.da.live/org/repo');
+        assert.equal(result.content.source.type, 'markup');
+        assert.equal(result.content.source.url, 'https://content.da.live/org/repo');
+      });
+
+      it('does not set source.id for non-Google-Drive URLs', () => {
+        const result = buildSiteConfig({}, 'https://github.com/o/r', 'https://content.da.live/org/repo');
+        assert.equal(result.content.source.id, undefined);
+      });
+    });
+
+    describe('existing site config merging', () => {
+      it('preserves existing site fields', () => {
+        const result = buildSiteConfig({ name: 'my-site', extra: 'preserved' }, 'https://github.com/o/r', 'https://content.da.live/org/repo');
+        assert.equal(result.name, 'my-site');
+        assert.equal(result.extra, 'preserved');
+      });
+
+      it('overwrites code and content with newly built values', () => {
+        const existing = { code: { owner: 'old' }, content: { source: { type: 'old' } } };
+        const result = buildSiteConfig(existing, 'https://github.com/new-org/new-repo', 'https://content.da.live/org/repo');
+        assert.equal(result.code.owner, 'new-org');
+        assert.equal(result.content.source.type, 'markup');
+      });
     });
   });
 

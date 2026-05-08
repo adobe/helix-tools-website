@@ -10,6 +10,7 @@ import {
   getFavorites,
   getContentSourceType,
   getDAEditorURL,
+  compareSites,
 } from './helpers/utils.js';
 import { openAddSiteModal } from './helpers/modals.js';
 import createSiteCard from './helpers/site-card.js';
@@ -176,17 +177,7 @@ const displaySites = (sites, { limitedAccess = false } = {}) => {
   }
 
   const favorites = getFavorites(org.value);
-  const sortedSites = [...sites].sort((a, b) => {
-    if (selectedSite) {
-      if (a.name === selectedSite) return -1;
-      if (b.name === selectedSite) return 1;
-    }
-    const aFav = favorites.includes(a.name);
-    const bFav = favorites.includes(b.name);
-    if (aFav && !bFav) return -1;
-    if (!aFav && bFav) return 1;
-    return a.name.localeCompare(b.name);
-  });
+  const sortedSites = [...sites].sort((a, b) => compareSites(a, b, selectedSite, favorites));
 
   if (detailsObserver) detailsObserver.disconnect();
   detailsObserver = new IntersectionObserver((entries) => {
