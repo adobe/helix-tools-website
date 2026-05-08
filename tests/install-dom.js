@@ -10,4 +10,6 @@ if (typeof global.document === 'undefined') {
   });
   global.window = dom.window;
   global.document = dom.window.document;
+  global.HTMLElement = dom.window.HTMLElement;
+  global.customElements = dom.window.customElements;
 }
