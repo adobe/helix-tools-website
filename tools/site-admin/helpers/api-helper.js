@@ -1,151 +1,145 @@
-import { ADMIN_API_BASE } from './constants.js';
+import admin from '../../../scripts/helix-admin.js';
+import { executeAdminRequest, AuthMode } from '../../../utils/admin-request.js';
 
-/**
- * Get the sites config path for an org
- * @param {string} orgValue - Organization name
- * @returns {string} Path to sites config
- */
-export const getSitesPath = (orgValue) => `/config/${orgValue}/sites`;
-
-/**
- * Get the site config path
- * @param {string} orgValue - Organization name
- * @param {string} siteName - Site name
- * @returns {string} Path to site config
- */
-export const getSitePath = (orgValue, siteName) => `${getSitesPath(orgValue)}/${siteName}.json`;
-
-/**
- * Base fetch function for Admin API calls
- * @param {string} path - API path (appended to ADMIN_API_BASE)
- * @param {object} options - Fetch options
- * @param {Function} logFn - Optional logging function (consoleBlock, status, details)
- * @returns {Promise<Response>}
- */
-export const adminFetch = async (path, options = {}, logFn = null) => {
-  const url = `${ADMIN_API_BASE}${path}`;
-  const method = options.method || 'GET';
-  const resp = await fetch(url, options);
-  if (logFn) {
-    logFn(resp.status, [method, url, resp.headers.get('x-error') || '']);
+const logResult = (logFn, result) => {
+  if (logFn && result) {
+    const { method, url } = result.request;
+    logFn(result.status, [method, url, result.error]);
   }
-  return resp;
 };
 
 /**
- * Fetch list of sites for an org
+ * Fetch list of sites for an org. Uses PREFLIGHT_AND_RETRY — entry-point fetch.
  */
 export const fetchSites = async (orgValue, logFn = null) => {
-  const resp = await adminFetch(`${getSitesPath(orgValue)}.json`, {}, logFn);
-  if (resp.ok) {
-    const data = await resp.json();
-    return { sites: data.sites, status: resp.status };
+  const handle = admin.config({ org: orgValue }).select('sites.json');
+  const result = await executeAdminRequest(
+    () => handle.read(),
+    { org: orgValue, policy: AuthMode.PREFLIGHT_AND_RETRY },
+  );
+  logResult(logFn, result);
+  if (result?.ok) {
+    const data = await result.json();
+    return { sites: data.sites, status: result.status };
   }
-  return { sites: null, status: resp.status };
+  return { sites: null, status: result?.status ?? 0 };
 };
 
 /**
- * Fetch site details/config
+ * Fetch site details/config.
  */
 export const fetchSiteDetails = async (orgValue, siteName) => {
-  const resp = await fetch(`${ADMIN_API_BASE}${getSitePath(orgValue, siteName)}`);
-  return resp.ok ? resp.json() : null;
+  const result = await executeAdminRequest(
+    () => admin.config({ org: orgValue, site: siteName }).read(),
+    { org: orgValue, site: siteName },
+  );
+  return result?.ok ? result.json() : null;
 };
 
 /**
- * Fetch site access config
+ * Fetch site access config.
  */
 export const fetchSiteAccess = async (orgValue, siteName, logFn = null) => {
-  const resp = await adminFetch(getSitePath(orgValue, siteName), {}, logFn);
-  if (resp.ok) {
-    const config = await resp.json();
+  const result = await executeAdminRequest(
+    () => admin.config({ org: orgValue, site: siteName }).read(),
+    { org: orgValue, site: siteName },
+  );
+  logResult(logFn, result);
+  if (result?.ok) {
+    const config = await result.json();
     return config.access || {};
   }
   return {};
 };
 
 /**
- * Update site access config
+ * Update site access config — reads current config first, then writes back with updated access.
  */
 export const updateSiteAccess = async (orgValue, siteName, accessConfig, logFn = null) => {
-  const path = getSitePath(orgValue, siteName);
-  const currentResp = await adminFetch(path, {}, logFn);
-  const currentConfig = currentResp.ok ? await currentResp.json() : {};
+  const handle = admin.config({ org: orgValue, site: siteName });
+  const readResult = await executeAdminRequest(
+    () => handle.read(),
+    { org: orgValue, site: siteName },
+  );
+  logResult(logFn, readResult);
+  if (!readResult?.ok) return false;
+  const currentConfig = await readResult.json();
   currentConfig.access = accessConfig;
-
-  const resp = await adminFetch(path, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(currentConfig),
-  }, logFn);
-  return resp.ok;
+  const writeResult = await executeAdminRequest(
+    () => handle.update(JSON.stringify(currentConfig)),
+    { org: orgValue, site: siteName },
+  );
+  logResult(logFn, writeResult);
+  return writeResult?.ok ?? false;
 };
 
 /**
- * Save site config (create or update)
+ * Save site config (create or update).
  */
 export const saveSiteConfig = async (orgValue, siteName, siteConfig, logFn = null) => {
-  const path = getSitePath(orgValue, siteName);
-  const resp = await adminFetch(path, {
-    method: 'POST',
-    body: JSON.stringify(siteConfig),
-    headers: { 'content-type': 'application/json' },
-  }, logFn);
-  await resp.text();
-  return resp.ok;
+  const result = await executeAdminRequest(
+    () => admin.config({ org: orgValue, site: siteName }).update(JSON.stringify(siteConfig)),
+    { org: orgValue, site: siteName },
+  );
+  logResult(logFn, result);
+  return result?.ok ?? false;
 };
 
 /**
- * Save site code config separately (required for BYO Git)
+ * Save site code config separately (required for BYO Git).
  */
 export const saveSiteCodeConfig = async (orgValue, siteName, codeConfig, logFn = null) => {
-  const resp = await adminFetch(
-    `${getSitesPath(orgValue)}/${siteName}/code.json`,
-    {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(codeConfig),
-    },
-    logFn,
+  const handle = admin.config({ org: orgValue, site: siteName }).select('code.json');
+  const result = await executeAdminRequest(
+    () => handle.update(JSON.stringify(codeConfig)),
+    { org: orgValue, site: siteName },
   );
-  await resp.text();
-  return resp.ok;
+  logResult(logFn, result);
+  return result?.ok ?? false;
 };
 
 /**
- * Delete site config
+ * Delete site config.
  */
 export const deleteSiteConfig = async (orgValue, siteName, logFn = null) => {
-  const path = getSitePath(orgValue, siteName);
-  const resp = await adminFetch(path, { method: 'DELETE' }, logFn);
-  await resp.text();
-  return resp.ok;
+  const result = await executeAdminRequest(
+    () => admin.config({ org: orgValue, site: siteName }).remove(),
+    { org: orgValue, site: siteName },
+  );
+  logResult(logFn, result);
+  return result?.ok ?? false;
 };
 
 /**
- * Fetch secrets for a site
+ * Fetch secrets for a site.
  */
 export const fetchSecrets = async (orgValue, siteName, logFn = null) => {
-  const resp = await adminFetch(`${getSitesPath(orgValue)}/${siteName}/secrets.json`, {}, logFn);
-  if (resp.ok) return Object.values(await resp.json());
-  if (resp.status === 404) return [];
+  const handle = admin.config({ org: orgValue, site: siteName }).select('secrets.json');
+  const result = await executeAdminRequest(
+    () => handle.read(),
+    { org: orgValue, site: siteName },
+  );
+  logResult(logFn, result);
+  if (result?.ok) return Object.values(await result.json());
+  if (result?.status === 404) return [];
   return null;
 };
 
 /**
- * Create a new secret
+ * Create a new (unnamed) secret.
  */
 export const createSecret = async (orgValue, siteName, logFn = null) => {
-  const resp = await adminFetch(
-    `${getSitesPath(orgValue)}/${siteName}/secrets.json`,
-    { method: 'POST' },
-    logFn,
+  const handle = admin.config({ org: orgValue, site: siteName }).select('secrets.json');
+  const result = await executeAdminRequest(
+    () => handle.update(null),
+    { org: orgValue, site: siteName },
   );
-  return resp.ok ? resp.json() : null;
+  logResult(logFn, result);
+  return result?.ok ? result.json() : null;
 };
 
 /**
- * Create a named secret with an optional value
+ * Create a named secret with an optional value.
  */
 export const createNamedSecret = async (
   orgValue,
@@ -154,91 +148,94 @@ export const createNamedSecret = async (
   secretValue = null,
   logFn = null,
 ) => {
-  const options = { method: 'POST' };
-  if (secretValue) {
-    options.headers = { 'content-type': 'application/json' };
-    options.body = JSON.stringify({ value: secretValue });
-  }
-  const resp = await adminFetch(
-    `${getSitesPath(orgValue)}/${siteName}/secrets/${encodeURIComponent(secretName)}.json`,
-    options,
-    logFn,
+  const handle = admin.config({ org: orgValue, site: siteName })
+    .select(`secrets/${encodeURIComponent(secretName)}.json`);
+  const body = secretValue ? JSON.stringify({ value: secretValue }) : null;
+  const result = await executeAdminRequest(
+    () => handle.update(body),
+    { org: orgValue, site: siteName },
   );
-  if (!resp.ok) return null;
+  logResult(logFn, result);
+  if (!result?.ok) return null;
   try {
-    return await resp.json();
+    return await result.json();
   } catch {
     return { id: secretName };
   }
 };
 
 /**
- * Delete a secret
+ * Delete a secret.
  */
 export const deleteSecret = async (orgValue, siteName, secretId, logFn = null) => {
-  const resp = await adminFetch(
-    `${getSitesPath(orgValue)}/${siteName}/secrets/${encodeURIComponent(secretId)}.json`,
-    { method: 'DELETE' },
-    logFn,
+  const handle = admin.config({ org: orgValue, site: siteName })
+    .select(`secrets/${encodeURIComponent(secretId)}.json`);
+  const result = await executeAdminRequest(
+    () => handle.remove(),
+    { org: orgValue, site: siteName },
   );
-  return resp.ok;
+  logResult(logFn, result);
+  return result?.ok ?? false;
 };
 
 /**
- * Fetch API keys for a site
+ * Fetch API keys for a site.
  */
 export const fetchApiKeys = async (orgValue, siteName, logFn = null) => {
-  const resp = await adminFetch(`${getSitesPath(orgValue)}/${siteName}/apiKeys.json`, {}, logFn);
-  if (resp.ok) {
-    const data = await resp.json();
+  const handle = admin.config({ org: orgValue, site: siteName }).select('apiKeys.json');
+  const result = await executeAdminRequest(
+    () => handle.read(),
+    { org: orgValue, site: siteName },
+  );
+  logResult(logFn, result);
+  if (result?.ok) {
+    const data = await result.json();
     return Object.entries(data).map(([id, val]) => ({ id, ...val }));
   }
-  if (resp.status === 404) return [];
+  if (result?.status === 404) return [];
   return null;
 };
 
 /**
- * Create a new API key
- * @param {string} orgValue - Organization name
- * @param {string} siteName - Site name
+ * Create a new API key.
+ * @param {string} orgValue
+ * @param {string} siteName
  * @param {object} [body] - Optional body with roles and description
- * @param {Function} [logFn] - Optional logging function
+ * @param {Function} [logFn]
  */
 export const createApiKey = async (orgValue, siteName, body = null, logFn = null) => {
-  const options = { method: 'POST' };
-  if (body) {
-    options.headers = { 'content-type': 'application/json' };
-    options.body = JSON.stringify(body);
-  }
-  const resp = await adminFetch(
-    `${getSitesPath(orgValue)}/${siteName}/apiKeys.json`,
-    options,
-    logFn,
+  const handle = admin.config({ org: orgValue, site: siteName }).select('apiKeys.json');
+  const result = await executeAdminRequest(
+    () => handle.update(body ? JSON.stringify(body) : null),
+    { org: orgValue, site: siteName },
   );
-  return resp.ok ? resp.json() : null;
+  logResult(logFn, result);
+  return result?.ok ? result.json() : null;
 };
 
 /**
- * Delete an API key
+ * Delete an API key.
  */
 export const deleteApiKey = async (orgValue, siteName, keyId, logFn = null) => {
-  const resp = await adminFetch(
-    `${getSitesPath(orgValue)}/${siteName}/apiKeys/${encodeURIComponent(keyId)}.json`,
-    { method: 'DELETE' },
-    logFn,
+  const handle = admin.config({ org: orgValue, site: siteName })
+    .select(`apiKeys/${encodeURIComponent(keyId)}.json`);
+  const result = await executeAdminRequest(
+    () => handle.remove(),
+    { org: orgValue, site: siteName },
   );
-  return resp.ok;
+  logResult(logFn, result);
+  return result?.ok ?? false;
 };
 
 /**
- * Fetch PSI scores for a site
+ * Fetch PSI scores for a site.
  */
 export const fetchPsiScores = async (orgValue, siteName) => {
   const liveUrl = `https://main--${siteName}--${orgValue}.aem.live/`;
-  const apiUrl = `${ADMIN_API_BASE}/psi/${orgValue}/${siteName}/main?url=${encodeURIComponent(liveUrl)}`;
-  const resp = await fetch(apiUrl);
-  if (!resp.ok) return null;
-  const data = await resp.json();
+  const result = await admin.psi({ org: orgValue, site: siteName })
+    .get('', { params: { url: liveUrl } });
+  if (!result.ok) return null;
+  const data = await result.json();
   const categories = data.lighthouseResult?.categories || {};
   return {
     performance: Math.round((categories.performance?.score || 0) * 100),

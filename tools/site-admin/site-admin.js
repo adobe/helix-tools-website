@@ -1,7 +1,6 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
 import { VIEW_STORAGE_KEY } from './helpers/constants.js';
 import { fetchSites, fetchSiteDetails } from './helpers/api-helper.js';
 import {
@@ -218,11 +217,6 @@ const displaySitesForOrg = async (orgValue) => {
 
   if (status === 200 && sites) {
     displaySites(sites);
-  } else if (status === 401) {
-    const loggedIn = await ensureLogin(orgValue);
-    if (loggedIn) {
-      return displaySitesForOrg(orgValue);
-    }
   } else if (status === 403 && selectedSite) {
     displaySites([{ name: selectedSite }], { limitedAccess: true });
   } else if (status === 403) {
@@ -232,7 +226,6 @@ const displaySitesForOrg = async (orgValue) => {
     msg.textContent = 'You do not have org admin access. Enter a site name above to manage just that site.';
     sitesElem.appendChild(msg);
   }
-  return null;
 };
 
 window.addEventListener('sites-refresh', (e) => {
@@ -287,7 +280,6 @@ const initSiteAdmin = async () => {
   const form = document.getElementById('site-admin-form');
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const { submitter } = e;
 
     const orgValue = org.value;
     if (!orgValue) return;
@@ -298,14 +290,6 @@ const initSiteAdmin = async () => {
     if (siteValue) url.searchParams.set('site', siteValue);
     else url.searchParams.delete('site');
     window.history.replaceState({}, document.title, url.href);
-
-    const loggedIn = await ensureLogin(orgValue, siteValue || undefined);
-    if (!loggedIn) {
-      window.addEventListener('profile-update', ({ detail: loginInfo }) => {
-        if (loginInfo.includes(orgValue)) submitter?.click();
-      }, { once: true });
-      return;
-    }
 
     displaySitesForOrg(orgValue);
   });

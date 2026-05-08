@@ -256,6 +256,7 @@ function createAdmin(defaults = {}) {
   function index(coords) { return bindOperation(opBase('index', coords), ['get', 'update', 'remove']); }
   function sitemap(coords) { return bindOperation(opBase('sitemap', coords), ['update']); }
   function job(coords) { return bindOperation(opBase('job', coords), ['get', 'remove']); }
+  function psi(coords) { return bindOperation(opBase('psi', coords), ['get']); }
 
   /**
    * Derive a client whose init defaults are merged with `extra` (later wins).
@@ -277,6 +278,7 @@ function createAdmin(defaults = {}) {
     index,
     sitemap,
     job,
+    psi,
     raw,
     suggestions,
     coordsFromURL,
