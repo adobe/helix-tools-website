@@ -212,6 +212,7 @@ function createAdmin(defaults = {}) {
       remove: (path, opts) => request({ method: 'DELETE', url: join(path), params: opts?.params }),
       url: baseUrl,
     };
+    if (!caps.includes('url')) caps.push('url');
     return Object.fromEntries(caps.map((c) => [c, all[c]]));
   }
 
@@ -250,14 +251,14 @@ function createAdmin(defaults = {}) {
     return request(init);
   }
 
-  function status(coords) { return bindOperation(opBase('status', coords), ['get', 'update', 'url']); }
-  function preview(coords) { return bindOperation(opBase('preview', coords), ['get', 'update', 'remove', 'url']); }
-  function live(coords) { return bindOperation(opBase('live', coords), ['get', 'update', 'remove', 'url']); }
-  function code(coords) { return bindOperation(opBase('code', coords), ['get', 'update', 'remove', 'url']); }
-  function log(coords) { return bindOperation(opBase('log', coords), ['get', 'update', 'url']); }
-  function index(coords) { return bindOperation(opBase('index', coords), ['get', 'update', 'remove', 'url']); }
-  function sitemap(coords) { return bindOperation(opBase('sitemap', coords), ['update', 'url']); }
-  function job(coords) { return bindOperation(opBase('job', coords), ['get', 'remove', 'url']); }
+  function status(coords) { return bindOperation(opBase('status', coords), ['get', 'update']); }
+  function preview(coords) { return bindOperation(opBase('preview', coords), ['get', 'update', 'remove']); }
+  function live(coords) { return bindOperation(opBase('live', coords), ['get', 'update', 'remove']); }
+  function code(coords) { return bindOperation(opBase('code', coords), ['get', 'update', 'remove']); }
+  function log(coords) { return bindOperation(opBase('log', coords), ['get', 'update']); }
+  function index(coords) { return bindOperation(opBase('index', coords), ['get', 'update', 'remove']); }
+  function sitemap(coords) { return bindOperation(opBase('sitemap', coords), ['update']); }
+  function job(coords) { return bindOperation(opBase('job', coords), ['get', 'remove']); }
 
   /**
    * Derive a client whose init defaults are merged with `extra` (later wins).
