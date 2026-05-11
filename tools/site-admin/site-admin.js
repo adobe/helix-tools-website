@@ -259,11 +259,6 @@ const displaySitesForOrg = async (orgValue) => {
     if (siteResp.ok) {
       const details = await siteResp.json();
       displaySites([{ name: selectedSite, details }], { limitedAccess: true });
-    } else if (siteResp.status === 401) {
-      const loggedIn = await ensureLogin(orgValue, selectedSite);
-      if (loggedIn) {
-        return displaySitesForOrg(orgValue);
-      }
     } else if (siteResp.status === 403 || siteResp.status === 404) {
       showAccessMessage(`Site "${selectedSite}" isn't available in org "${orgValue}". It may not exist, or you may not have access to it.`);
     } else {
