@@ -8,7 +8,7 @@ export const getFavorites = (orgValue) => {
   return stored ? JSON.parse(stored) : [];
 };
 
-export const setFavorites = (orgValue, favorites) => {
+const setFavorites = (orgValue, favorites) => {
   localStorage.setItem(`${FAVORITES_STORAGE_KEY}-${orgValue}`, JSON.stringify(favorites));
 };
 
@@ -117,9 +117,8 @@ export const buildSiteConfig = (site, codeSrc, contentSrc, byogit = null) => {
   }
   const content = { source: { type: 'markup', url: contentSrc } };
 
-  const contentURL = new URL(contentSrc);
-
   if (contentSrc.startsWith('https://drive.google.com/drive')) {
+    const contentURL = new URL(contentSrc);
     content.source.type = 'google';
     content.source.id = contentURL.pathname.split('/').pop();
   }

@@ -640,7 +640,7 @@ export const openSecretModal = (siteName, orgValue) => openManageItemsModal(site
     if (body?.name) {
       const handle = admin.config({ org, site })
         .select(`secrets/${encodeURIComponent(body.name)}.json`);
-      const secretBody = (body.value || null) ? JSON.stringify({ value: body.value }) : null;
+      const secretBody = body.value ? JSON.stringify({ value: body.value }) : null;
       const resp = await executeAdminRequest(() => handle.update(secretBody), { org, site });
       if (!resp?.ok) return null;
       let data;

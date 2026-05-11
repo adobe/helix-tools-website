@@ -232,6 +232,12 @@ const displaySitesForOrg = async (orgValue) => {
     msg.className = 'access-message';
     msg.textContent = 'You do not have org admin access. Enter a site name above to manage just that site.';
     sitesElem.appendChild(msg);
+  } else if (!sitesResult) {
+    sitesElem.ariaHidden = false;
+    const msg = document.createElement('p');
+    msg.className = 'access-message';
+    msg.textContent = 'Sign-in required. Click List to try again.';
+    sitesElem.appendChild(msg);
   }
 };
 

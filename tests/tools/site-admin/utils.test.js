@@ -103,7 +103,8 @@ describe('site-admin:utils.js', () => {
     });
 
     it('when both are favorites, falls back to alphabetical order', () => {
-      assert.equal(compareSites(s('alpha'), s('beta'), null, ['alpha', 'beta']), compareSites(s('alpha'), s('beta'), null, []));
+      assert.ok(compareSites(s('alpha'), s('beta'), null, ['alpha', 'beta']) < 0);
+      assert.ok(compareSites(s('beta'), s('alpha'), null, ['alpha', 'beta']) > 0);
     });
 
     it('when neither is a favorite, sorts alphabetically', () => {
