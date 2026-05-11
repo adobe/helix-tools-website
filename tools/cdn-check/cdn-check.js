@@ -1,7 +1,8 @@
 /* eslint-disable no-await-in-loop -- sequential awaits required: DNS DoH provider fallback chain,
  * IP metadata provider chain (ipwho → ipapi → RDAP), and ordered CDN checks must not race. */
-import { ensureLogin } from '../../blocks/profile/profile.js';
 import classifyIpNetwork from './cdn-check-network.js';
+import admin from '../../scripts/helix-admin.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 
 // CORS proxy for cross-origin requests (fcors.org). The key is sent as a query param on
 // every proxied request and is visible in DevTools — it is not a server secret. It exists
@@ -938,19 +939,27 @@ async function checkCdnConfig(org, site, sharedCdnProd = null) {
   }
 
   try {
-    const configUrl = `https://admin.hlx.page/config/${org}/aggregated/${site}.json`;
-    const resp = await fetch(configUrl);
+    const result = await executeAdminRequest(
+      () => admin.config({ org }).select('aggregated').select(`${site}.json`).read(),
+      { org, site, policy: AuthMode.PREFLIGHT_AND_RETRY },
+    );
 
-    if (!resp.ok) {
-      if (handleAuthError(resp.status, checkId)) {
+    if (!result) {
+      updateCheckState(checkId, 'fail', 'Sign In Required');
+      addResultLine(checkId, 'Sign in is required to check this project.', 'error');
+      return { score: 0, cdnConfig: null, authError: true };
+    }
+
+    if (!result.ok) {
+      if (handleAuthError(result.status, checkId)) {
         return { score: 0, cdnConfig: null, authError: true };
       }
       updateCheckState(checkId, 'fail', 'Failed');
-      addResultLine(checkId, `Failed to fetch config: ${resp.status}`, 'error');
+      addResultLine(checkId, `Failed to fetch config: ${result.status}`, 'error');
       return { score: 0, cdnConfig: null };
     }
 
-    const config = await resp.json();
+    const config = await result.json();
     const cdnConfig = config.cdn?.prod;
     return materializeCdnProdCheckResult(cdnConfig);
   } catch (e) {
@@ -1256,9 +1265,9 @@ async function check404Caching(cdnConfig, aemUrl, prodPageUrlOverride = null) {
   const checkId = 'check-404-caching';
 
   // Use production host, or aem.live host for managed CDN
-const prodHost = prodPageUrlOverride
-      ? new URL(prodPageUrlOverride).host
-      : (cdnConfig?.host || aemUrl.host);
+  const prodHost = prodPageUrlOverride
+    ? new URL(prodPageUrlOverride).host
+    : (cdnConfig?.host || aemUrl.host);
 
   if (!prodHost) {
     updateCheckState(checkId, 'skip', 'Skipped');
@@ -1653,9 +1662,6 @@ async function checkRedirects(org, site, branch, cdnConfig) {
 
     addResultLine(checkId, `Request: ${testUrl}`, 'info');
 
-    // Use reveal=headers to get the raw redirect response without following it
-    const aemTestUrl = `https://${branch}--${site}--${org}.aem.live${source}${source.includes('?') ? '&' : '?'}${randomParam}`;
-
     try {
       const testResp = await fetch(corsProxy(testUrl, { revealHeaders: true }), {
         method: 'GET',
@@ -1749,17 +1755,6 @@ async function runChecks(pageUrl, prodPageUrl = null) {
   const { cdnProd: sharedCdnProd, purgeReport: sharedPurgeSnapshot } = parseCdnProdShareFromSearch(
     new URLSearchParams(window.location.search),
   );
-
-  // Ensure login (skip when cdn.prod was supplied in the URL — no admin.hlx.page fetch)
-  if (!sharedCdnProd && !await ensureLogin(org, site)) {
-    // Wait for login event
-    window.addEventListener('profile-update', async ({ detail: loginInfo }) => {
-      if (loginInfo.includes(org)) {
-        runChecks(pageUrl, prodPageUrl);
-      }
-    }, { once: true });
-    return;
-  }
 
   const prodForGate = prodPageUrl && String(prodPageUrl).trim();
   if (prodForGate) {
