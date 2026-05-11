@@ -18,9 +18,20 @@ const org = document.getElementById('org');
 const site = document.getElementById('site');
 const consoleBlock = document.querySelector('.console');
 const sitesElem = document.querySelector('div#sites');
+const siteNotFoundHint = document.querySelector('.site-not-found-hint');
 
 // Logging wrapper for API calls
 const logFn = (status, details) => logResponse(consoleBlock, status, details);
+
+const hideSiteNotFoundHint = () => {
+  siteNotFoundHint.hidden = true;
+  siteNotFoundHint.textContent = '';
+};
+
+const showSiteNotFoundHint = (siteName, orgValue) => {
+  siteNotFoundHint.textContent = `Site "${siteName}" not found in Organization "${orgValue}"`;
+  siteNotFoundHint.hidden = false;
+};
 
 const applyDetailsToCard = (card, details) => {
   const contentUrl = details.content?.source?.url || '';
@@ -212,7 +223,11 @@ const displaySites = (sites, { limitedAccess = false } = {}) => {
 
   if (selectedSite) {
     const selectedCard = findCardBySite(selectedSite);
-    if (selectedCard) selectedCard.classList.add('selected');
+    if (selectedCard) {
+      selectedCard.classList.add('selected');
+    } else {
+      showSiteNotFoundHint(selectedSite, org.value);
+    }
   }
 };
 
@@ -227,6 +242,7 @@ const showAccessMessage = (text) => {
 const displaySitesForOrg = async (orgValue) => {
   sitesElem.setAttribute('aria-hidden', 'true');
   sitesElem.replaceChildren();
+  hideSiteNotFoundHint();
 
   const selectedSite = new URLSearchParams(window.location.search).get('site');
   const { sites, status } = await fetchSites(orgValue, logFn);
@@ -249,12 +265,12 @@ const displaySitesForOrg = async (orgValue) => {
         return displaySitesForOrg(orgValue);
       }
     } else if (siteResp.status === 403 || siteResp.status === 404) {
-      showAccessMessage(`Site "${selectedSite}" is not available in org "${orgValue}". It may not exist, or you may not have access to it.`);
+      showAccessMessage(`Site "${selectedSite}" isn't available in org "${orgValue}". It may not exist, or you may not have access to it.`);
     } else {
       showAccessMessage(`Failed to load site "${selectedSite}" (HTTP ${siteResp.status}).`);
     }
   } else if (status === 403) {
-    showAccessMessage('You do not have org admin access. Enter a site name above to manage just that site.');
+    showAccessMessage("You're not an admin of this org. Enter a site name above to manage just that site.");
   }
   return null;
 };
@@ -333,6 +349,8 @@ const initSiteAdmin = async () => {
 
     displaySitesForOrg(orgValue);
   });
+
+  form.addEventListener('reset', hideSiteNotFoundHint);
 
   const params = new URLSearchParams(window.location.search);
   if (params.get('org')) {

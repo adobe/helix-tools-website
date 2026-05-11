@@ -21,6 +21,10 @@
     }
   }
 
+  .site-not-found-hint {
+    color: light-dark(var(--red-800), var(--red-500));
+  }
+
   .modal dialog {
     position: fixed;
     top: 50%;
