@@ -5,7 +5,7 @@
 import { createModalStructure } from './ui/modal-ui.js';
 import generateReport from './reports/report-generator.js';
 import cleanupMetricsParameter from './cleanup-utils.js';
-import checkRumAdminAccess from './rum-admin-auth.js';
+import { hasValidDomainKey, validateDomainKeyWithBundles } from './domainkey-context.js';
 
 let modalInstance = null;
 
@@ -42,19 +42,19 @@ async function updateProviderName(providerSpan) {
   providerSpan.textContent = getProviderName();
 }
 
-function setupGenerateButton(modal) {
+async function setupGenerateButton(modal) {
   const generateBtn = modal.querySelector('#report-generate-btn');
   const statusDiv = modal.querySelector('#report-status');
   const providerSpan = modal.querySelector('#provider-name');
 
-  updateProviderName(providerSpan);
+  await updateProviderName(providerSpan);
 
   generateBtn?.addEventListener('click', async () => {
     await generateReport(statusDiv, generateBtn, modal);
   });
 }
 
-function disableForNonAdmin(modal) {
+function disableInvalidDomainKey(modal) {
   const btn = modal.querySelector('#report-generate-btn');
   const info = modal.querySelector('.report-info');
 
@@ -65,8 +65,32 @@ function disableForNonAdmin(modal) {
 
   if (info) {
     info.classList.add('warning');
-    info.innerHTML = `<p><strong>Access Restricted</strong></p>
-      <p>You don't have permission to generate reports. Contact your OpTel administrator.</p>`;
+    info.innerHTML = `<div id="report-gate-message" class="report-gate-message">
+      <p><strong>Invalid domain key</strong></p>
+      <p>This domain key is not accepted for the current domain. Add the correct key in the URL, then open this dialog again to continue generating the report.</p>
+    </div>`;
+  }
+}
+
+async function disableUntilDashboardReady(modal) {
+  const btn = modal.querySelector('#report-generate-btn');
+  const info = modal.querySelector('.report-info');
+  const providerSpan = modal.querySelector('#provider-name');
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Generate Report';
+  }
+
+  if (info) info.classList.add('warning');
+
+  await updateProviderName(providerSpan);
+
+  const gate = modal.querySelector('#report-gate-message');
+  if (gate) {
+    gate.hidden = false;
+    gate.innerHTML = `<p><strong>Dashboard not ready</strong></p>
+      <p>A domain key is set once the dashboard has finished loading. Wait for data to appear, or turn off Incognito mode, then open this dialog again.</p>`;
   }
 }
 
@@ -83,17 +107,20 @@ export async function openReportModal() {
   modalInstance = overlay;
   setupCloseHandlers(modal);
 
-  const btn = modal.querySelector('#report-generate-btn');
-
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Validating access...';
+  if (!hasValidDomainKey()) {
+    await disableUntilDashboardReady(modal);
+    return overlay;
   }
 
-  const { isAdmin } = await checkRumAdminAccess();
+  const btn = modal.querySelector('#report-generate-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Checking domain key...';
+  }
 
-  if (!isAdmin) {
-    disableForNonAdmin(modal);
+  const bundlesAcceptsKey = await validateDomainKeyWithBundles();
+  if (!bundlesAcceptsKey) {
+    disableInvalidDomainKey(modal);
     return overlay;
   }
 
@@ -102,7 +129,7 @@ export async function openReportModal() {
     btn.textContent = 'Generate Report';
   }
 
-  setupGenerateButton(modal);
+  await setupGenerateButton(modal);
   return overlay;
 }
 

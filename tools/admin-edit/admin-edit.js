@@ -182,7 +182,7 @@ function updateAdminURLSuggestions({ org, site }) {
 }
 
 async function init() {
-  adminURL.value = localStorage.getItem('admin-url') || 'https://admin.hlx.page/status/adobe/aem-boilerplate/main/';
+  adminURL.value = localStorage.getItem('admin-url') || admin.status({ org: 'adobe', site: 'aem-boilerplate' }).url;
 
   // populate datalist with well-known config locations on load
   updateAdminURLSuggestions(admin.coordsFromURL(adminURL.value));

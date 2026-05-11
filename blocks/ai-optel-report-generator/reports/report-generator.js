@@ -77,7 +77,7 @@ function handleGenerationError(body, progress, status, btn, origText, err) {
   // Display error message with appropriate context
   let errorMessage;
   if (isAuth) {
-    errorMessage = 'Authentication failed. Please ensure you have a valid RUM admin token.';
+    errorMessage = 'Authentication failed. Check your OpTel domain key or RUM bundler token.';
   } else if (isFatal) {
     errorMessage = err.message;
   } else {

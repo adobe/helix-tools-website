@@ -56,6 +56,20 @@ describe('helix-admin.js', () => {
         /cannot include both site and profile/,
       );
     });
+
+    it('exposes .url equal to the bound admin URL (site-scoped)', () => {
+      assert.equal(
+        admin.config({ org: 'adobe', site: 'x' }).url,
+        'https://admin.hlx.page/config/adobe/sites/x.json',
+      );
+    });
+
+    it('exposes .url equal to the bound admin URL (org-only)', () => {
+      assert.equal(
+        admin.config({ org: 'adobe' }).url,
+        'https://admin.hlx.page/config/adobe.json',
+      );
+    });
   });
 
   describe('coord-vs-select equivalence', () => {
@@ -140,6 +154,12 @@ describe('helix-admin.js', () => {
         calls[0].url,
         'https://admin.hlx.page/config/adobe/sites/x/cdn/prod.json',
       );
+    });
+
+    it('.url on the descended node matches the URL used for requests', async () => {
+      const node = admin.config({ org: 'adobe', site: 'x' }).select('cdn.json');
+      await node.read();
+      assert.equal(node.url, calls[0].url);
     });
 
     it('returns a reusable handle — read parent, then descend to update child', async () => {
@@ -399,6 +419,13 @@ describe('helix-admin.js', () => {
 
     it('does not expose .remove', () => {
       assert.equal(admin.status({ org: 'adobe', site: 'x' }).remove, undefined);
+    });
+
+    it('exposes .url equal to the base operation URL', () => {
+      assert.equal(
+        admin.status({ org: 'adobe', site: 'x' }).url,
+        'https://admin.hlx.page/status/adobe/x/main',
+      );
     });
   });
 
@@ -782,6 +809,30 @@ describe('helix-admin.js', () => {
     it('ref: null omits the ref segment (Helix 6 compat)', async () => {
       await admin.status({ org: 'adobe', site: 'x', ref: null }).get('');
       assert.equal(calls[0].url, 'https://admin.hlx.page/status/adobe/x');
+    });
+
+    it('exposes .url on every operation resource', () => {
+      const coords = { org: 'adobe', site: 'x' };
+      const resources = [
+        admin.status(coords),
+        admin.preview(coords),
+        admin.live(coords),
+        admin.code(coords),
+        admin.log(coords),
+        admin.index(coords),
+        admin.sitemap(coords),
+        admin.job(coords),
+      ];
+      resources.forEach((r) => {
+        assert.equal(typeof r.url, 'string');
+        assert.ok(r.url.startsWith('https://admin.hlx.page/'));
+      });
+    });
+
+    it('.url matches the base URL used by .get(\'\')', async () => {
+      const resource = admin.preview({ org: 'adobe', site: 'x' });
+      await resource.get('');
+      assert.equal(resource.url, calls[0].url);
     });
   });
 

@@ -1,9 +1,14 @@
 /**
  * AWS Bedrock API Integration via RUM Bundler Proxy
+ * Authenticates via domainkey (passed in request body/query params).
  */
 
 import { AI_MODELS, BEDROCK_CONFIG } from '../config.js';
-import { getAdminToken, hasAdminToken } from '../rum-admin-auth.js';
+import { getEffectiveDomainKey, getPageDomain } from '../domainkey-context.js';
+
+export function hasBedrockToken() {
+  return !!getEffectiveDomainKey();
+}
 
 const MAX_RETRIES = 4;
 const ENDPOINT = BEDROCK_CONFIG.PROXY_ENDPOINT;
@@ -35,33 +40,26 @@ export async function submitUsage(reportId) {
     return;
   }
 
-  const token = getAdminToken();
-  if (!token) {
+  const domainkey = getEffectiveDomainKey();
+  if (!domainkey) {
     return;
   }
 
   try {
-    const response = await fetch(USAGE_ENDPOINT, {
+    await fetch(USAGE_ENDPOINT, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        domain: getPageDomain(),
+        domainkey,
         reportId,
         model: usageTracker.model || 'unknown',
         inputTokens: usageTracker.inputTokens,
         outputTokens: usageTracker.outputTokens,
       }),
     });
-
-    if (!response.ok) {
-      // eslint-disable-next-line no-console
-      console.warn('[Bedrock-Usage] Failed to submit:', response.status);
-    }
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn('[Bedrock-Usage] Error submitting usage:', err.message);
+  } catch {
+    // Ignore network errors for usage telemetry (fetch only throws on network failure).
   }
 }
 
@@ -117,6 +115,8 @@ function buildRequestBody(params) {
   } = params;
 
   const body = {
+    domain: getPageDomain(),
+    domainkey: getEffectiveDomainKey(),
     modelId: params.modelId || AI_MODELS.BEDROCK_MODEL_ID,
     messages: messages.map(transformMessage),
     max_tokens: maxTokens,
@@ -170,9 +170,6 @@ function normalizeResponseContent(content, tools = []) {
 
 /** Call Bedrock API via RUM Bundler Proxy with retry logic */
 export async function callBedrockAPI(params) {
-  const token = getAdminToken();
-  if (!token) throw new Error('RUM admin token not found. Please ensure you are logged in.');
-
   const requestBody = buildRequestBody(params);
   let lastError;
 
@@ -180,10 +177,7 @@ export async function callBedrockAPI(params) {
     // eslint-disable-next-line no-await-in-loop
     const response = await fetch(ENDPOINT, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody),
     });
 
@@ -210,7 +204,7 @@ export async function callBedrockAPI(params) {
 
     // Handle auth errors immediately
     if (response.status === 401 || response.status === 403) {
-      const authError = new Error('Invalid or expired RUM admin token. Please log in again.');
+      const authError = new Error('Authentication failed. Check your domain key or RUM bundler token.');
       authError.isAuthError = true;
       throw authError;
     }
@@ -239,23 +233,17 @@ export async function callBedrockAPI(params) {
  * @returns {Promise<{jobId: string}>}
  */
 async function submitBedrockJob(params) {
-  const token = getAdminToken();
-  if (!token) throw new Error('RUM admin token not found. Please ensure you are logged in.');
-
   const requestBody = buildRequestBody(params);
 
   const response = await fetch(JOBS_ENDPOINT, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {
-      const authError = new Error('Invalid or expired RUM admin token. Please log in again.');
+      const authError = new Error('Authentication failed. Check your domain key or RUM bundler token.');
       authError.isAuthError = true;
       throw authError;
     }
@@ -273,16 +261,12 @@ async function submitBedrockJob(params) {
  * @returns {Promise<object>} - Job result when complete
  */
 async function pollJobStatus(jobId) {
-  const token = getAdminToken();
-  if (!token) throw new Error('RUM admin token not found.');
-
-  const jobUrl = `${JOBS_ENDPOINT}/${jobId}`;
+  const domainkey = getEffectiveDomainKey();
+  const domain = getPageDomain();
+  const jobUrl = `${JOBS_ENDPOINT}/${jobId}?domain=${encodeURIComponent(domain)}&domainkey=${encodeURIComponent(domainkey)}`;
 
   const response = await fetch(jobUrl, {
     method: 'GET',
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
   });
 
   if (!response.ok) {
@@ -351,8 +335,6 @@ export async function callBedrockAPIAsync(params, onProgress = null) {
     }
 
     if (job.status === 'failed') {
-      // eslint-disable-next-line no-console
-      console.error('[Bedrock-Async] Job failed:', job.error);
       throw new Error(`Bedrock job failed: ${job.error?.message || 'Unknown error'}`);
     }
   }
@@ -360,4 +342,4 @@ export async function callBedrockAPIAsync(params, onProgress = null) {
   throw new Error(`Job ${jobId} timed out after ${MAX_POLL_TIME / 1000} seconds`);
 }
 
-export { getAdminToken as getBedrockToken, hasAdminToken as hasBedrockToken };
+export { getEffectiveDomainKey as getBedrockToken };
