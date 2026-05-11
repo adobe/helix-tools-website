@@ -72,10 +72,10 @@ const applyDetailsToCard = (card, details) => {
       lighthouseBtn.title = 'Lighthouse unavailable for authenticated sites';
     }
     if (hasPreviewAuth) {
-      card.querySelector('.auth-icon.auth-preview').removeAttribute('aria-hidden');
+      card.querySelector('.auth-icon.auth-preview')?.removeAttribute('aria-hidden');
     }
     if (hasLiveAuth) {
-      card.querySelector('.auth-icon.auth-live').removeAttribute('aria-hidden');
+      card.querySelector('.auth-icon.auth-live')?.removeAttribute('aria-hidden');
     }
   } else {
     delete card.dataset.hasAuth;
@@ -117,7 +117,7 @@ const updateSiteCount = () => {
 let detailsObserver;
 
 const displaySites = (sites, { limitedAccess = false } = {}) => {
-  sitesElem.ariaHidden = false;
+  sitesElem.removeAttribute('aria-hidden');
   sitesElem.textContent = '';
 
   const selectedSite = new URLSearchParams(window.location.search).get('site');
@@ -217,7 +217,7 @@ const displaySites = (sites, { limitedAccess = false } = {}) => {
 };
 
 const showAccessMessage = (text) => {
-  sitesElem.ariaHidden = false;
+  sitesElem.removeAttribute('aria-hidden');
   const msg = document.createElement('p');
   msg.className = 'access-message';
   msg.textContent = text;
