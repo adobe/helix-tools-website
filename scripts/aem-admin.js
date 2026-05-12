@@ -221,7 +221,6 @@ function createAdmin(defaults = {}) {
   }
 
   return {
-    isH6: true,
     config,
     status,
     preview,
