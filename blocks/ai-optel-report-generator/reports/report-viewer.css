@@ -177,6 +177,7 @@ facet-sidebar.report-view-active > form {
 .back-to-report-btn svg {
   width: 24px;
   height: 24px;
+  stroke: white;
 }
 
 /* Back to Report button - floating (hidden by default) */
@@ -220,6 +221,7 @@ facet-sidebar.report-view-active > form {
 .back-to-report-floating svg {
   width: 24px;
   height: 24px;
+  stroke: white;
 }
 
 @keyframes gentle-glow {

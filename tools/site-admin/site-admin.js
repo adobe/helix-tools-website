@@ -3,7 +3,7 @@ import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { VIEW_STORAGE_KEY } from './helpers/constants.js';
-import { fetchSites, fetchSiteDetails } from './helpers/api-helper.js';
+import { fetchSites, getSitePath, adminFetch } from './helpers/api-helper.js';
 import {
   loadIcon,
   icon,
@@ -18,89 +18,103 @@ const org = document.getElementById('org');
 const site = document.getElementById('site');
 const consoleBlock = document.querySelector('.console');
 const sitesElem = document.querySelector('div#sites');
+const siteNotFoundHint = document.querySelector('.site-not-found-hint');
 
 // Logging wrapper for API calls
 const logFn = (status, details) => logResponse(consoleBlock, status, details);
 
-const populateCardDetails = (card, orgValue) => {
+const hideSiteNotFoundHint = () => {
+  siteNotFoundHint.hidden = true;
+  siteNotFoundHint.textContent = '';
+};
+
+const showSiteNotFoundHint = (siteName, orgValue) => {
+  siteNotFoundHint.textContent = `Site "${siteName}" not found in Organization "${orgValue}"`;
+  siteNotFoundHint.hidden = false;
+};
+
+const applyDetailsToCard = (card, details) => {
+  const contentUrl = details.content?.source?.url || '';
+  const contentSourceType = details.content?.source?.type || '';
+  const codeUrl = details.code?.source?.url || '';
+  const sourceType = getContentSourceType(contentUrl, contentSourceType);
+
+  const badge = card.querySelector('.source-badge');
+  if (badge) {
+    badge.textContent = sourceType.label;
+    badge.className = `source-badge source-${sourceType.type}`;
+    badge.title = sourceType.type.toUpperCase();
+  }
+
+  const codeSource = card.querySelector('.site-card-source[data-type="code"]');
+  const contentSource = card.querySelector('.site-card-source[data-type="content"]');
+  const contentEditorUrl = getDAEditorURL(contentUrl);
+
+  if (codeSource) {
+    codeSource.title = codeUrl || 'Not configured';
+    if (codeUrl) codeSource.href = codeUrl;
+    else codeSource.removeAttribute('href');
+  }
+  if (contentSource) {
+    contentSource.title = contentUrl || 'Not configured';
+    if (contentEditorUrl) contentSource.href = contentEditorUrl;
+    else contentSource.removeAttribute('href');
+  }
+
+  card.dataset.codeUrl = codeUrl;
+  card.dataset.contentUrl = contentUrl;
+
+  const isByogit = details.code?.source?.type === 'byogit'
+    || codeUrl.includes('cm-repo.adobe.io');
+  if (isByogit) {
+    card.dataset.byogitOwner = details.code?.source?.owner || details.code?.owner || '';
+    card.dataset.byogitRepo = details.code?.source?.repo || details.code?.repo || '';
+  }
+
+  const hasPreviewAuth = details.access?.site || details.access?.preview;
+  const hasLiveAuth = details.access?.site || details.access?.live;
+  const hasAnyAuth = hasPreviewAuth || hasLiveAuth;
+
+  const lighthouseBtn = card.querySelector('.menu-item[data-action="lighthouse"]');
+  if (hasAnyAuth) {
+    card.dataset.hasAuth = 'true';
+    if (lighthouseBtn) {
+      lighthouseBtn.disabled = true;
+      lighthouseBtn.title = 'Lighthouse unavailable for authenticated sites';
+    }
+    if (hasPreviewAuth) {
+      card.querySelector('.auth-icon.auth-preview')?.removeAttribute('aria-hidden');
+    }
+    if (hasLiveAuth) {
+      card.querySelector('.auth-icon.auth-live')?.removeAttribute('aria-hidden');
+    }
+  } else {
+    delete card.dataset.hasAuth;
+    if (lighthouseBtn) {
+      lighthouseBtn.disabled = false;
+      lighthouseBtn.title = '';
+    }
+    card.querySelector('.auth-icon.auth-preview')?.setAttribute('aria-hidden', 'true');
+    card.querySelector('.auth-icon.auth-live')?.setAttribute('aria-hidden', 'true');
+  }
+
+  const cdnHost = details.cdn?.prod?.host || details.cdn?.host;
+  const cdnEl = card.querySelector('.site-card-cdn');
+  if (cdnHost && cdnEl) {
+    cdnEl.querySelector('span').textContent = cdnHost;
+    cdnEl.href = `https://${cdnHost}`;
+    cdnEl.classList.add('visible');
+  } else if (cdnEl) {
+    cdnEl.classList.remove('visible');
+  }
+};
+
+const populateCardDetails = async (card, orgValue) => {
   const siteName = card.dataset.site;
-  fetchSiteDetails(orgValue, siteName).then((details) => {
-    if (!details) return;
-
-    const contentUrl = details.content?.source?.url || '';
-    const contentSourceType = details.content?.source?.type || '';
-    const codeUrl = details.code?.source?.url || '';
-    const sourceType = getContentSourceType(contentUrl, contentSourceType);
-
-    const badge = card.querySelector('.source-badge');
-    if (badge) {
-      badge.textContent = sourceType.label;
-      badge.className = `source-badge source-${sourceType.type}`;
-      badge.title = sourceType.type.toUpperCase();
-    }
-
-    const codeSource = card.querySelector('.site-card-source[data-type="code"]');
-    const contentSource = card.querySelector('.site-card-source[data-type="content"]');
-    const contentEditorUrl = getDAEditorURL(contentUrl);
-
-    if (codeSource) {
-      codeSource.title = codeUrl || 'Not configured';
-      if (codeUrl) codeSource.href = codeUrl;
-      else codeSource.removeAttribute('href');
-    }
-    if (contentSource) {
-      contentSource.title = contentUrl || 'Not configured';
-      if (contentEditorUrl) contentSource.href = contentEditorUrl;
-      else contentSource.removeAttribute('href');
-    }
-
-    card.dataset.codeUrl = codeUrl;
-    card.dataset.contentUrl = contentUrl;
-
-    const isByogit = details.code?.source?.type === 'byogit'
-      || codeUrl.includes('cm-repo.adobe.io');
-    if (isByogit) {
-      card.dataset.byogitOwner = details.code?.source?.owner || details.code?.owner || '';
-      card.dataset.byogitRepo = details.code?.source?.repo || details.code?.repo || '';
-    }
-
-    const hasPreviewAuth = details.access?.site || details.access?.preview;
-    const hasLiveAuth = details.access?.site || details.access?.live;
-    const hasAnyAuth = hasPreviewAuth || hasLiveAuth;
-
-    const lighthouseBtn = card.querySelector('.menu-item[data-action="lighthouse"]');
-    if (hasAnyAuth) {
-      card.dataset.hasAuth = 'true';
-      if (lighthouseBtn) {
-        lighthouseBtn.disabled = true;
-        lighthouseBtn.title = 'Lighthouse unavailable for authenticated sites';
-      }
-      if (hasPreviewAuth) {
-        card.querySelector('.auth-icon.auth-preview').removeAttribute('aria-hidden');
-      }
-      if (hasLiveAuth) {
-        card.querySelector('.auth-icon.auth-live').removeAttribute('aria-hidden');
-      }
-    } else {
-      delete card.dataset.hasAuth;
-      if (lighthouseBtn) {
-        lighthouseBtn.disabled = false;
-        lighthouseBtn.title = '';
-      }
-      card.querySelector('.auth-icon.auth-preview')?.setAttribute('aria-hidden', 'true');
-      card.querySelector('.auth-icon.auth-live')?.setAttribute('aria-hidden', 'true');
-    }
-
-    const cdnHost = details.cdn?.prod?.host || details.cdn?.host;
-    const cdnEl = card.querySelector('.site-card-cdn');
-    if (cdnHost && cdnEl) {
-      cdnEl.querySelector('span').textContent = cdnHost;
-      cdnEl.href = `https://${cdnHost}`;
-      cdnEl.classList.add('visible');
-    } else if (cdnEl) {
-      cdnEl.classList.remove('visible');
-    }
-  });
+  const resp = await adminFetch(getSitePath(orgValue, siteName), {}, logFn);
+  if (!resp.ok) return;
+  const details = await resp.json();
+  applyDetailsToCard(card, details);
 };
 
 const findCardBySite = (name) => sitesElem.querySelector(`.site-card[data-site="${CSS.escape(name)}"]`);
@@ -114,7 +128,7 @@ const updateSiteCount = () => {
 let detailsObserver;
 
 const displaySites = (sites, { limitedAccess = false } = {}) => {
-  sitesElem.ariaHidden = false;
+  sitesElem.removeAttribute('aria-hidden');
   sitesElem.textContent = '';
 
   const selectedSite = new URLSearchParams(window.location.search).get('site');
@@ -198,20 +212,37 @@ const displaySites = (sites, { limitedAccess = false } = {}) => {
   sortedSites.forEach((s) => {
     const card = createSiteCard(s, org.value, { limitedAccess });
     grid.appendChild(card);
-    detailsObserver.observe(card);
+    if (s.details) {
+      applyDetailsToCard(card, s.details);
+    } else {
+      detailsObserver.observe(card);
+    }
   });
 
   sitesElem.appendChild(grid);
 
   if (selectedSite) {
     const selectedCard = findCardBySite(selectedSite);
-    if (selectedCard) selectedCard.classList.add('selected');
+    if (selectedCard) {
+      selectedCard.classList.add('selected');
+    } else {
+      showSiteNotFoundHint(selectedSite, org.value);
+    }
   }
+};
+
+const showAccessMessage = (text) => {
+  sitesElem.removeAttribute('aria-hidden');
+  const msg = document.createElement('p');
+  msg.className = 'access-message';
+  msg.textContent = text;
+  sitesElem.appendChild(msg);
 };
 
 const displaySitesForOrg = async (orgValue) => {
   sitesElem.setAttribute('aria-hidden', 'true');
   sitesElem.replaceChildren();
+  hideSiteNotFoundHint();
 
   const selectedSite = new URLSearchParams(window.location.search).get('site');
   const { sites, status } = await fetchSites(orgValue, logFn);
@@ -224,13 +255,17 @@ const displaySitesForOrg = async (orgValue) => {
       return displaySitesForOrg(orgValue);
     }
   } else if (status === 403 && selectedSite) {
-    displaySites([{ name: selectedSite }], { limitedAccess: true });
+    const siteResp = await adminFetch(getSitePath(orgValue, selectedSite), {}, logFn);
+    if (siteResp.ok) {
+      const details = await siteResp.json();
+      displaySites([{ name: selectedSite, details }], { limitedAccess: true });
+    } else if (siteResp.status === 403 || siteResp.status === 404) {
+      showAccessMessage(`Site "${selectedSite}" isn't available in org "${orgValue}". It may not exist, or you may not have access to it.`);
+    } else {
+      showAccessMessage(`Failed to load site "${selectedSite}" (HTTP ${siteResp.status}).`);
+    }
   } else if (status === 403) {
-    sitesElem.ariaHidden = false;
-    const msg = document.createElement('p');
-    msg.className = 'access-message';
-    msg.textContent = 'You do not have org admin access. Enter a site name above to manage just that site.';
-    sitesElem.appendChild(msg);
+    showAccessMessage("You're not an admin of this org. Enter a site name above to manage just that site.");
   }
   return null;
 };
@@ -309,6 +344,8 @@ const initSiteAdmin = async () => {
 
     displaySitesForOrg(orgValue);
   });
+
+  form.addEventListener('reset', hideSiteNotFoundHint);
 
   const params = new URLSearchParams(window.location.search);
   if (params.get('org')) {
