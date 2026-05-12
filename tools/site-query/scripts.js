@@ -76,6 +76,11 @@ function updateTableError(table, errCode) {
           title: '401 Unauthorized',
           msg: 'Unable to display results. The site returned 401 — if this site has authentication enabled, site-query cannot access its content.',
         };
+      case 403:
+        return {
+          title: '403 Forbidden',
+          msg: 'Unable to display results. The site returned 403 — access to this content is restricted.',
+        };
       case 404:
         return {
           title: '404 Not Found Error',
@@ -384,6 +389,8 @@ async function init(doc) {
       console.error(err);
       if (err.status === 401 || err.message.startsWith('Unauthorized')) {
         updateTableError(table, 401);
+      } else if (err.status === 403) {
+        updateTableError(table, 403);
       } else if (err.message.startsWith('Failed on initial fetch')) {
         updateTableError(table, 499);
       } else if (err.message.startsWith('Not found')) {
