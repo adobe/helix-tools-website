@@ -14,9 +14,12 @@ const refreshSites = (orgValue, action, siteName) => {
 };
 
 const logResult = (logFn, result) => {
-  if (logFn && result) {
+  if (!logFn) return;
+  if (result) {
     const { method, url } = result.request;
     logFn(result.status, [method, url, result.error]);
+  } else {
+    logFn(0, ['', '', 'request cancelled (sign-in required or aborted)']);
   }
 };
 

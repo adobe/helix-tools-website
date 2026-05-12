@@ -241,7 +241,7 @@ const displaySitesForOrg = async (orgValue) => {
   const selectedSite = new URLSearchParams(window.location.search).get('site');
   const sitesResult = await executeAdminRequest(
     () => admin.config({ org: orgValue }).select('sites.json').read(),
-    { org: orgValue, policy: AuthMode.PREFLIGHT_AND_RETRY },
+    { org: orgValue, site: selectedSite, policy: AuthMode.PREFLIGHT_AND_RETRY },
   );
   if (sitesResult) {
     const { method, url } = sitesResult.request;

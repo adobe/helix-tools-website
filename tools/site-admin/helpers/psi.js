@@ -1,4 +1,5 @@
 import admin from '../../../scripts/helix-admin.js';
+import { executeAdminRequest, AuthMode } from '../../../utils/admin-request.js';
 import {
   getPsiScores,
   savePsiScores,
@@ -50,9 +51,12 @@ export const runPsiForCard = async (card, siteName, orgValue) => {
   `;
 
   const liveUrl = `https://main--${siteName}--${orgValue}.aem.live/`;
-  const resp = await admin.psi({ org: orgValue, site: siteName }).get('', { params: { url: liveUrl } });
+  const resp = await executeAdminRequest(
+    () => admin.psi({ org: orgValue, site: siteName }).get('', { params: { url: liveUrl } }),
+    { org: orgValue, site: siteName, policy: AuthMode.NONE },
+  );
   let result = null;
-  if (resp.ok) {
+  if (resp?.ok) {
     const data = await resp.json();
     const categories = data.lighthouseResult?.categories || {};
     result = {
