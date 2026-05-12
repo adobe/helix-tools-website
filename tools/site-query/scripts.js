@@ -1,7 +1,9 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
+
+let admin;
 
 function getFormData(form) {
   const data = {};
@@ -286,6 +288,7 @@ async function processUrl(sitemapUrl, query, queryType, org, site) {
 }
 
 async function init(doc) {
+  admin = await getAdminClient();
   doc.querySelector('.site-query').dataset.status = 'loading';
   await initConfigField();
 

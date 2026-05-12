@@ -1,77 +1,53 @@
+import getAdminClient from '../../scripts/admin-compat.js';
+
 export async function addToSnapshot(owner, repo, snapshot, paths) {
-  const adminURL = `https://admin.hlx.page/snapshot/${owner}/${repo}/main/${snapshot}`;
-  const url = `${adminURL}/*`;
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      paths,
-    }),
-  });
-  return resp;
+  const admin = await getAdminClient();
+  return admin.snapshot({ org: owner, site: repo }).update(
+    `${snapshot}/*`,
+    JSON.stringify({ paths }),
+  );
 }
 
 export async function deleteFromSnapshot(owner, repo, snapshot, path) {
-  const adminURL = `https://admin.hlx.page/snapshot/${owner}/${repo}/main/${snapshot}`;
-  const url = `${adminURL}${path}`;
-  const resp = await fetch(url, { method: 'DELETE' });
-  return resp;
+  const admin = await getAdminClient();
+  return admin.snapshot({ org: owner, site: repo }).remove(`${snapshot}${path}`);
 }
 
 export async function fetchSnapshotManifest(owner, repo, snapshot) {
-  const adminURL = `https://admin.hlx.page/snapshot/${owner}/${repo}/main/${snapshot}`;
-  const resp = await fetch(adminURL);
-  if (resp.status === 200) {
-    const { manifest } = await resp.json();
-    return manifest;
-  }
-  return null;
+  const admin = await getAdminClient();
+  const result = await admin.snapshot({ org: owner, site: repo }).get(snapshot);
+  if (!result.ok) return null;
+  const { manifest } = await result.json();
+  return manifest;
 }
 
 export async function fetchStatus(owner, repo, snapshot, path) {
+  const admin = await getAdminClient();
+  const statusAdmin = admin.status({ org: owner, site: repo });
   const status = {};
-  const adminSnapshotURL = `https://admin.hlx.page/status/${owner}/${repo}/main/.snapshots/${snapshot}${path}`;
-  const respSnapshot = await fetch(adminSnapshotURL);
-  if (respSnapshot.status === 200) {
-    status.snapshot = await respSnapshot.json();
-  }
-  const adminPageURL = `https://admin.hlx.page/status/${owner}/${repo}/main${path}`;
-  const resp = await fetch(adminPageURL);
-  if (resp.status === 200) {
-    status.preview = await resp.json();
-  }
+  const snapshotResult = await statusAdmin.get(`.snapshots/${snapshot}${path}`);
+  if (snapshotResult.ok) status.snapshot = await snapshotResult.json();
+  const pageResult = await statusAdmin.get(path);
+  if (pageResult.ok) status.preview = await pageResult.json();
   return status;
 }
 
 export async function updateReviewStatus(owner, repo, snapshot, status) {
-  const adminURL = `https://admin.hlx.page/snapshot/${owner}/${repo}/main/${snapshot}`;
-  const resp = await fetch(`${adminURL}?review=${status}`, {
-    method: 'POST',
-  });
-  return resp;
+  const admin = await getAdminClient();
+  return admin.snapshot({ org: owner, site: repo })
+    .update(snapshot, null, { params: { review: status } });
 }
 
 export async function updateScheduledPublish(org, site, snapshotId) {
   const adminURL = 'https://helix-snapshot-scheduler-prod.adobeaem.workers.dev/schedule';
-  const body = {
-    org,
-    site,
-    snapshotId,
-  };
-
-  const headers = {
-    'content-type': 'application/json',
-  };
-
-  const resp = await fetch(`${adminURL}`, {
+  const body = { org, site, snapshotId };
+  const resp = await fetch(adminURL, {
     method: 'POST',
-    headers,
+    headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   });
-  const result = resp.headers.get('X-Error');
-  return { status: resp.status, text: result };
+  const text = resp.headers.get('X-Error');
+  return { status: resp.status, text };
 }
 
 export async function isRegisteredForSnapshotScheduler(org, site) {

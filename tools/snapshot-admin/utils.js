@@ -1,30 +1,7 @@
-// Snapshot admin utilities
+import getAdminClient from '../../scripts/admin-compat.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 
-const AEM_ORIGIN = 'https://admin.hlx.page';
-
-let org;
-let site;
-
-function formatError(resp) {
-  if (resp.status === 401) {
-    return {
-      error: 'Unauthorized. Please make sure you are logged in to the sidekick for the correct organization and site.',
-      status: resp.status,
-    };
-  }
-  if (resp.status === 403) {
-    return {
-      error: 'Forbidden. Please make sure your user has the correct permissions to take this action.',
-      status: resp.status,
-    };
-  }
-  return {
-    error: `Error: ${resp.headers.get('x-error') || resp.status}`,
-    status: resp.status,
-  };
-}
-
-function formatResources(name, resources) {
+function formatResources(org, site, name, resources) {
   return resources.map((res) => ({
     path: res.path,
     aemPreview: `https://main--${site}--${org}.aem.page${res.path}`,
@@ -44,6 +21,13 @@ function filterPaths(hrefs) {
   }, []);
 }
 
+function formatError(result) {
+  if (result.error) return result.error;
+  if (result.status === 401) return 'Please make sure you are logged in.';
+  if (result.status === 403) return 'Please make sure your user has the correct permissions.';
+  return `Error: ${result.status}`;
+}
+
 function comparePaths(first, second) {
   return {
     added: second.filter((item) => !first.includes(item)),
@@ -51,146 +35,120 @@ function comparePaths(first, second) {
   };
 }
 
-export async function saveManifest(name, manifestToSave) {
-  const opts = {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  };
-
-  if (manifestToSave) {
-    opts.body = JSON.stringify(manifestToSave);
-  }
-
-  const resp = await fetch(`${AEM_ORIGIN}/snapshot/${org}/${site}/main/${name}`, opts);
-  if (!resp.ok) return formatError(resp);
-  const { manifest } = await resp.json();
-  manifest.resources = formatResources(name, manifest.resources);
-  return { manifest, status: resp.status };
+export async function fetchSnapshots(org, site) {
+  const admin = await getAdminClient();
+  const result = await executeAdminRequest(
+    () => admin.snapshot({ org, site }).get(),
+    { org, site, policy: AuthMode.PREFLIGHT_AND_RETRY },
+  );
+  if (!result) return null;
+  if (!result.ok) return { error: formatError(result), status: result.status };
+  const json = await result.json();
+  return { snapshots: json.snapshots.map((name) => ({ org, site, name })), status: result.status };
 }
 
-export async function reviewSnapshot(name, state) {
-  const message = `Snapshot ${name} request ${state}`;
-  const opts = {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      review: state,
-      message,
-    }),
-  };
-  // Review status
-  const review = `?review=${state}`;
-  const resp = await fetch(`${AEM_ORIGIN}/snapshot/${org}/${site}/main/${name}${review}`, opts);
-  if (!resp.ok) return formatError(resp);
-  return { success: true, status: resp.status };
-}
-
-export async function fetchManifest(name) {
-  const resp = await fetch(`${AEM_ORIGIN}/snapshot/${org}/${site}/main/${name}`, {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-  if (!resp.ok) return formatError(resp);
-  const { manifest } = await resp.json();
-  manifest.resources = formatResources(name, manifest.resources);
-  return { manifest, status: resp.status };
-}
-
-export async function fetchSnapshots() {
-  const resp = await fetch(`${AEM_ORIGIN}/snapshot/${org}/${site}/main`, {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-  if (!resp.ok) return formatError(resp);
-  const json = await resp.json();
-
-  const snapshots = json.snapshots.map((snapshot) => (
-    { org, site, name: snapshot }
-  ));
-
-  return { snapshots, status: resp.status };
-}
-
-export async function deleteSnapshotUrls(name, paths = ['/*']) {
-  const results = await Promise.all(paths.map(async (path) => {
-    const opts = {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    };
-    const resp = await fetch(`${AEM_ORIGIN}/snapshot/${org}/${site}/main/${name}${path}`, opts);
-    if (!resp.ok) return formatError(resp);
-    return { success: resp.status };
-  }));
-  const firstError = results.find((result) => result.error);
-  if (firstError) return firstError;
-  return results[0];
-}
-
-export async function deleteSnapshot(name) {
-  const opts = {
-    method: 'DELETE',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  };
-  const resp = await fetch(`${AEM_ORIGIN}/snapshot/${org}/${site}/main/${name}`, opts);
-  if (!resp.ok) return formatError(resp);
-  return { status: resp.status };
-}
-
-export function setOrgSite(suppliedOrg, suppliedSite) {
-  org = suppliedOrg;
-  site = suppliedSite;
-}
-
-export async function updatePaths(name, currPaths, editedHrefs) {
-  const paths = filterPaths(editedHrefs);
-  const { removed, added } = comparePaths(currPaths, paths);
-
-  // Handle deletes
-  if (removed.length > 0) {
-    const deleteResult = await deleteSnapshotUrls(name, removed);
-    if (deleteResult.error) return deleteResult;
-  }
-
-  // Handle adds
-  if (added.length > 0) {
-    const opts = {
-      method: 'POST',
-      body: JSON.stringify({ paths: added }),
-      headers: { 'Content-Type': 'application/json' },
-    };
-
-    // This is technically a bulk ops request
-    const resp = await fetch(`${AEM_ORIGIN}/snapshot/${org}/${site}/main/${name}/*`, opts);
-    if (!resp.ok) return formatError(resp);
-  }
-
-  // The formatting of the response will be bulk job-like,
-  // so shamelessly use the supplied paths as our truth.
-  const toFormat = paths.map((path) => ({ path }));
-  return formatResources(name, toFormat);
+export async function fetchManifest(org, site, name) {
+  const admin = await getAdminClient();
+  const result = await executeAdminRequest(
+    () => admin.snapshot({ org, site }).get(name),
+    { org, site, policy: AuthMode.PREFLIGHT_AND_RETRY },
+  );
+  if (!result) return null;
+  if (!result.ok) return { error: formatError(result), status: result.status };
+  const { manifest } = await result.json();
+  manifest.resources = formatResources(org, site, name, manifest.resources);
+  return { manifest, status: result.status };
 }
 
 /**
- * Add event listeners to password fields for show/hide functionality
+ * Save a snapshot manifest. Returns `{ status }` on success; the saved manifest is not
+ * returned — callers that need the updated state should reload via fetchManifest.
  */
+export async function saveManifest(org, site, name, manifestToSave) {
+  const admin = await getAdminClient();
+  const body = manifestToSave !== undefined && manifestToSave !== null
+    ? JSON.stringify(manifestToSave)
+    : null;
+  const result = await executeAdminRequest(
+    () => admin.snapshot({ org, site }).update(name, body),
+    { org, site },
+  );
+  if (!result) return null;
+  if (!result.ok) return { error: formatError(result), status: result.status };
+  return { status: result.status };
+}
+
+export async function reviewSnapshot(org, site, name, state) {
+  const admin = await getAdminClient();
+  const message = `Snapshot ${name} request ${state}`;
+  const result = await executeAdminRequest(
+    // API requires review state in both the query param and the body
+    () => admin.snapshot({ org, site }).update(
+      name,
+      JSON.stringify({ review: state, message }),
+      { params: { review: state } },
+    ),
+    { org, site },
+  );
+  if (!result) return null;
+  if (!result.ok) return { error: formatError(result), status: result.status };
+  return { success: true, status: result.status };
+}
+
+export async function deleteSnapshotUrls(org, site, name, paths = ['/*']) {
+  const admin = await getAdminClient();
+  const earlyExit = await paths.reduce(async (chain, path) => {
+    const prev = await chain;
+    if (prev !== undefined) return prev;
+    const result = await executeAdminRequest(
+      () => admin.snapshot({ org, site }).remove(`${name}${path}`),
+      { org, site },
+    );
+    if (!result) return null;
+    if (!result.ok) return { error: formatError(result), status: result.status };
+    return undefined;
+  }, Promise.resolve(undefined));
+  return earlyExit !== undefined ? earlyExit : { success: true };
+}
+
+export async function deleteSnapshot(org, site, name) {
+  const admin = await getAdminClient();
+  const result = await executeAdminRequest(
+    () => admin.snapshot({ org, site }).remove(name),
+    { org, site },
+  );
+  if (!result) return null;
+  if (!result.ok) return { error: formatError(result), status: result.status };
+  return { status: result.status };
+}
+
+export async function updatePaths(org, site, name, currPaths, editedHrefs) {
+  const admin = await getAdminClient();
+  const paths = filterPaths(editedHrefs);
+  const { removed, added } = comparePaths(currPaths, paths);
+
+  if (removed.length > 0) {
+    const deleteResult = await deleteSnapshotUrls(org, site, name, removed);
+    if (!deleteResult || deleteResult.error) return deleteResult;
+  }
+
+  if (added.length > 0) {
+    const result = await executeAdminRequest(
+      () => admin.snapshot({ org, site }).update(`${name}/*`, JSON.stringify({ paths: added })),
+      { org, site },
+    );
+    if (!result) return null;
+    if (!result.ok) return { error: formatError(result), status: result.status };
+  }
+
+  return formatResources(org, site, name, paths.map((path) => ({ path })));
+}
+
+/** Add event listeners to password fields for show/hide functionality */
 export function addPasswordFieldListeners() {
   const passwordFields = document.querySelectorAll('.password-field');
   passwordFields.forEach((field) => {
-    field.addEventListener('focus', () => {
-      field.type = 'text';
-    });
-    field.addEventListener('blur', () => {
-      field.type = 'password';
-    });
+    field.addEventListener('focus', () => { field.type = 'text'; });
+    field.addEventListener('blur', () => { field.type = 'password'; });
   });
 }
