@@ -1,5 +1,5 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import { initConfigField } from '../../utils/config/config.js';
+import { getProjectFromUrl } from '../../utils/config/config.js';
 import { toClassName } from '../../scripts/aem.js';
 import admin from '../../scripts/helix-admin.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
@@ -7,8 +7,6 @@ import { logResponse } from '../../blocks/console/console.js';
 import deriveReindexPaths from './utils.js';
 
 const adminForm = document.getElementById('admin-form');
-const site = document.getElementById('site');
-const org = document.getElementById('org');
 const consoleBlock = document.querySelector('.console');
 const addIndexButton = document.getElementById('add-index');
 const fetchButton = document.getElementById('fetch');
@@ -162,9 +160,10 @@ function displayIndexDetails(indexName, indexDef, newIndex = false) {
 
     await ensureYaml();
     const yamlText = YAML.stringify(loadedIndices);
+    const { org, site } = getProjectFromUrl();
     const result = await executeAdminRequest(
-      () => admin.config({ org: org.value, site: site.value }).select('content/query.yaml').update(yamlText),
-      { org: org.value, site: site.value },
+      () => admin.config({ org, site }).select('content/query.yaml').update(yamlText),
+      { org, site },
     );
     if (!result) return;
     const { method, url } = result.request;
@@ -231,9 +230,10 @@ function showJobStatus(jobDetails) {
 }
 
 async function reIndex(indexNames, paths) {
+  const { org, site } = getProjectFromUrl();
   const result = await executeAdminRequest(
-    () => admin.index({ org: org.value, site: site.value }).update('/*', JSON.stringify({ paths, indexNames })),
-    { org: org.value, site: site.value },
+    () => admin.index({ org, site }).update('/*', JSON.stringify({ paths, indexNames })),
+    { org, site },
   );
   if (!result) return { success: false };
   const { method, url } = result.request;
@@ -247,9 +247,10 @@ async function reIndex(indexNames, paths) {
 }
 
 async function fetchJobDetails(topic, name) {
+  const { org, site } = getProjectFromUrl();
   const result = await executeAdminRequest(
-    () => admin.job({ org: org.value, site: site.value }).get(`${topic}/${name}/details`),
-    { org: org.value, site: site.value },
+    () => admin.job({ org, site }).get(`${topic}/${name}/details`),
+    { org, site },
   );
   if (!result) return null;
   const { method, url } = result.request;
@@ -267,9 +268,10 @@ async function removeIndex(name) {
 
   await ensureYaml();
   const yamlText = YAML.stringify(loadedIndices);
+  const { org, site } = getProjectFromUrl();
   const result = await executeAdminRequest(
-    () => admin.config({ org: org.value, site: site.value }).select('content/query.yaml').update(yamlText),
-    { org: org.value, site: site.value },
+    () => admin.config({ org, site }).select('content/query.yaml').update(yamlText),
+    { org, site },
   );
   if (!result) return;
   const { method, url } = result.request;
@@ -404,8 +406,15 @@ function populateIndexes(indexes) {
   });
 }
 
+function syncSubmitEnabled() {
+  const { org, site } = getProjectFromUrl();
+  const ready = !!(org && site);
+  if (fetchButton) fetchButton.disabled = !ready;
+}
+
 async function init() {
-  await initConfigField();
+  syncSubmitEnabled();
+  window.addEventListener('tools:project-change', syncSubmitEnabled);
 
   addIndexButton.addEventListener('click', () => {
     displayIndexDetails('', {
@@ -439,9 +448,10 @@ async function init() {
 
   adminForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!org.value || !site.value) {
+    const { org, site } = getProjectFromUrl();
+    if (!org || !site) {
       // eslint-disable-next-line no-alert
-      alert('Please select an organization and site first');
+      alert('Select an org/site in the header to continue.');
       return;
     }
 
@@ -452,8 +462,8 @@ async function init() {
     try {
       // Preflight on the fetch (entry point); the resulting session covers later saves.
       const result = await executeAdminRequest(
-        () => admin.config({ org: org.value, site: site.value }).select('content/query.yaml').read(),
-        { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
+        () => admin.config({ org, site }).select('content/query.yaml').read(),
+        { org, site, policy: AuthMode.PREFLIGHT_AND_RETRY },
       );
       if (!result) return;
       const { method, url } = result.request;

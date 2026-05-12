@@ -4,10 +4,11 @@
 
 .profile #profile {
   display: block;
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   cursor: pointer;
+  color: var(--color-text);
 }
 
 .profile #profile .icon svg {

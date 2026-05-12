@@ -1,5 +1,5 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import { initConfigField, updateConfig } from '../../utils/config/config.js';
+import { getProjectFromUrl } from '../../utils/config/config.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import admin from '../../scripts/helix-admin.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
@@ -72,6 +72,11 @@ function clearResults(table) {
 function updateTableError(table, errCode, org, site) {
   const { title, msg } = (() => {
     switch (errCode) {
+      case 'project':
+        return {
+          title: 'No Project Selected',
+          msg: 'Select an org/site in the header to continue.',
+        };
       case 401:
         ensureLogin(org, site);
         return {
@@ -284,7 +289,6 @@ async function processUrl(sitemapUrl, query, queryType, org, site) {
 
 async function init(doc) {
   doc.querySelector('.site-query').dataset.status = 'loading';
-  await initConfigField();
 
   const form = doc.querySelector('#search-form');
   const table = doc.querySelector('.table table');
@@ -293,7 +297,16 @@ async function init(doc) {
   const noResults = table.querySelector('tbody.no-results');
   const stopButton = doc.querySelector('#stop-search');
   const caption = table.querySelector('caption');
+  const submitButton = form.querySelector('button[type="submit"]');
   let stopped = false;
+
+  const syncSubmitEnabled = () => {
+    const { org, site } = getProjectFromUrl();
+    const ready = !!(org && site);
+    if (submitButton) submitButton.disabled = !ready;
+  };
+  syncSubmitEnabled();
+  window.addEventListener('tools:project-change', syncSubmitEnabled);
 
   stopButton.addEventListener('click', () => {
     stopped = true;
@@ -304,13 +317,21 @@ async function init(doc) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    const { org, site } = getProjectFromUrl();
+    if (!org || !site) {
+      updateTableError(table, 'project', org, site);
+      stopButton.setAttribute('aria-hidden', 'true');
+      caption.setAttribute('aria-hidden', 'true');
+      return;
+    }
+
     stopped = false;
     results.setAttribute('aria-hidden', 'false');
     error.setAttribute('aria-hidden', 'true');
     noResults.setAttribute('aria-hidden', 'true');
 
     const {
-      org, site, query, sitemap, queryType, path,
+      query, sitemap, queryType, path,
     } = getFormData(form);
 
     try {
@@ -331,8 +352,6 @@ async function init(doc) {
         caption.setAttribute('aria-hidden', 'true');
         return;
       }
-
-      updateConfig();
 
       const sitemapUrls = sitemap.endsWith('.json') ? fetchQueryIndex(sitemap, live) : fetchSitemap(sitemap, live);
 

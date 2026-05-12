@@ -1,4 +1,5 @@
 import { registerToolReady } from '../../scripts/scripts.js';
+import { getProjectFromUrl } from '../../utils/config/config.js';
 import {
   fetchSnapshots,
   saveManifest,
@@ -7,8 +8,7 @@ import {
 
 // DOM Elements
 const sitePathForm = document.getElementById('site-path-form');
-const orgInput = document.getElementById('org');
-const siteInput = document.getElementById('site');
+const submitButton = sitePathForm.querySelector('button[type="submit"]');
 const snapshotsContainer = document.getElementById('snapshots-container');
 const snapshotsList = document.getElementById('snapshots-list');
 const createSnapshotForm = document.getElementById('create-snapshot-form');
@@ -23,8 +23,6 @@ const modalClose = document.querySelector('.modal-close');
 const modalOk = document.querySelector('.modal-ok');
 const modalOverlay = document.querySelector('.modal-overlay');
 
-let currentOrg = '';
-let currentSite = '';
 let snapshots = [];
 
 /**
@@ -117,12 +115,13 @@ function logResponse(cols) {
  */
 function createSnapshotCard(snapshot) {
   const { name } = snapshot;
+  const { org, site } = getProjectFromUrl();
   return `
     <div class="snapshot-card" data-snapshot="${name}">
       <div class="snapshot-header">
         <h3>${name}</h3>
         <div class="snapshot-actions">
-          <a href="snapshot-details.html?snapshot=https://main--${currentSite}--${currentOrg}.aem.page/.snapshots/${name}/.manifest.json" class="button small edit-snapshot">Edit</a>
+          <a href="snapshot-details.html?snapshot=https://main--${site}--${org}.aem.page/.snapshots/${name}/.manifest.json" class="button small edit-snapshot">Edit</a>
           <button class="button small danger delete-snapshot" data-action="delete" data-snapshot="${name}">Delete</button>
         </div>
       </div>
@@ -249,36 +248,12 @@ async function createSnapshot(snapshotName) {
   }
 }
 
-/**
- * Handle org input changes to enable/disable site field
- */
-orgInput.addEventListener('input', () => {
-  siteInput.disabled = !orgInput.value.trim();
-});
-
-/**
- * Handle org and site input changes to update currentOrg and currentSite
- */
-siteInput.addEventListener('change', async () => {
-  if (orgInput.value.trim() && siteInput.value.trim()) {
-    currentOrg = orgInput.value.trim();
-    currentSite = siteInput.value.trim();
-    setOrgSite(currentOrg, currentSite);
-  }
-});
-
-/**
- * Handle when config fields are populated programmatically (e.g., from sidekick)
- */
-siteInput.addEventListener('input', async () => {
-  if (orgInput.value && siteInput.value && !currentOrg && !currentSite) {
-    currentOrg = orgInput.value.trim();
-    currentSite = siteInput.value.trim();
-    siteInput.disabled = false;
-    setOrgSite(currentOrg, currentSite);
-    await loadSnapshots();
-  }
-});
+function syncSubmitEnabled() {
+  const { org, site } = getProjectFromUrl();
+  const ready = !!(org && site);
+  if (submitButton) submitButton.disabled = !ready;
+  setOrgSite(org, site);
+}
 
 /**
  * Handle site path form submission
@@ -286,29 +261,15 @@ siteInput.addEventListener('input', async () => {
 sitePathForm.addEventListener('submit', async (e) => {
   e.preventDefault();
 
+  const { org, site } = getProjectFromUrl();
+  if (!org || !site) {
+    await showModal('Missing Information', 'Select an org/site in the header to continue.');
+    return;
+  }
+
   try {
-    const org = orgInput.value.trim();
-    const site = siteInput.value.trim();
-
-    if (!org || !site) {
-      await showModal('Missing Information', 'Please enter both organization and site');
-      return;
-    }
-
-    currentOrg = org;
-    currentSite = site;
-
-    const sitePath = `${org}/${site}`;
-    localStorage.setItem('snapshot-admin-site-path', sitePath);
-
+    setOrgSite(org, site);
     await loadSnapshots();
-
-    // Update URL
-    const url = new URL(window.location);
-    url.searchParams.set('org', org);
-    url.searchParams.set('site', site);
-    // eslint-disable-next-line no-restricted-globals
-    window.history.pushState({}, '', url);
   } catch (error) {
     await showModal('Error', `Error loading snapshots: ${error.message}`);
   }
@@ -330,44 +291,22 @@ createSnapshotForm.addEventListener('submit', async (e) => {
 });
 
 async function init() {
-  // Initialize from URL parameters or localStorage
+  syncSubmitEnabled();
+  window.addEventListener('tools:project-change', syncSubmitEnabled);
+
   const params = new URLSearchParams(window.location.search);
   const snapshotParam = params.get('snapshot');
-  const orgParam = params.get('org');
-  const siteParam = params.get('site');
 
   // Check if we have a snapshot URL parameter and send to snapshot-details.html
   if (snapshotParam) {
     window.location.href = `snapshot-details.html?snapshot=${snapshotParam}`;
-  } else if (orgParam && siteParam) {
-    // Use org and site parameters
-    orgInput.value = orgParam;
-    siteInput.value = siteParam;
-    currentOrg = orgParam;
-    currentSite = siteParam;
-    // Enable the site field since we have both org and site values
-    siteInput.disabled = false;
-    setOrgSite(currentOrg, currentSite);
-    await loadSnapshots();
-  } else {
-    // No snapshot parameter, initialize config fields normally
-    try {
-      const { initConfigField } = await import('../../utils/config/config.js');
-      await initConfigField();
-      siteInput.disabled = false;
+    return;
+  }
 
-      // Check if config fields have values and set them up
-      if (orgInput.value && siteInput.value) {
-        currentOrg = orgInput.value;
-        currentSite = siteInput.value;
-        setOrgSite(currentOrg, currentSite);
-        await loadSnapshots();
-      }
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Failed to initialize config fields:', error);
-      // Continue loading the page even if config initialization fails
-    }
+  const { org, site } = getProjectFromUrl();
+  if (org && site) {
+    setOrgSite(org, site);
+    await loadSnapshots();
   }
 }
 

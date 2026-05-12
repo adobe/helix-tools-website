@@ -7,15 +7,18 @@ import assert from 'node:assert/strict';
 // Mock the profile and config modules before importing the helper. This is
 // one of the rare places where mocking is the right call (see TESTING.md):
 // the helper's only job IS to orchestrate ensureLogin + window events +
-// updateConfig into a result, so the seam under test is the contract with
+// updateStorage into a result, so the seam under test is the contract with
 // those collaborators.
 let ensureLoginStub;
-let updateConfigCalls;
+let updateStorageCalls;
+let updateStorageArgs;
 mock.module('../../blocks/profile/profile.js', {
   namedExports: { ensureLogin: (...args) => ensureLoginStub(...args) },
 });
 mock.module('../../utils/config/config.js', {
-  namedExports: { updateConfig: () => { updateConfigCalls += 1; } },
+  namedExports: {
+    updateStorage: (...args) => { updateStorageCalls += 1; updateStorageArgs = args; },
+  },
 });
 
 const { executeAdminRequest, AuthMode } = await import('../../utils/admin-request.js');
@@ -65,7 +68,8 @@ before(() => setupWindow());
 
 beforeEach(() => {
   ensureLoginStub = stubReturning(true);
-  updateConfigCalls = 0;
+  updateStorageCalls = 0;
+  updateStorageArgs = undefined;
 });
 
 describe('executeAdminRequest', () => {
@@ -201,17 +205,18 @@ describe('executeAdminRequest', () => {
     });
   });
 
-  describe('updateConfig persistence', () => {
-    it('runs after a successful request', async () => {
+  describe('updateStorage persistence', () => {
+    it('runs after a successful request with the auth org/site', async () => {
       ensureLoginStub = stubReturning(true);
-      await executeAdminRequest(requestFnReturning(200), { org: 'adobe' });
-      assert.equal(updateConfigCalls, 1);
+      await executeAdminRequest(requestFnReturning(200), { org: 'adobe', site: 'blog' });
+      assert.equal(updateStorageCalls, 1);
+      assert.deepEqual(updateStorageArgs, ['adobe', 'blog']);
     });
 
     it('does not run on non-2xx responses (404, 500, etc) — server didn\'t validate the org/site', async () => {
       ensureLoginStub = stubReturning(true);
       await executeAdminRequest(requestFnReturning(404), { org: 'adobe' });
-      assert.equal(updateConfigCalls, 0);
+      assert.equal(updateStorageCalls, 0);
     });
 
     it('does not run when the user cancels the preflight login', async () => {
@@ -222,7 +227,7 @@ describe('executeAdminRequest', () => {
       await new Promise((r) => { queueMicrotask(r); });
       dispatchProfile('cancelled');
       await promise;
-      assert.equal(updateConfigCalls, 0);
+      assert.equal(updateStorageCalls, 0);
     });
 
     it('does not run when the user cancels after a 401', async () => {
@@ -231,7 +236,7 @@ describe('executeAdminRequest', () => {
       await new Promise((r) => { queueMicrotask(r); });
       dispatchProfile('cancelled');
       await promise;
-      assert.equal(updateConfigCalls, 0);
+      assert.equal(updateStorageCalls, 0);
     });
   });
 });

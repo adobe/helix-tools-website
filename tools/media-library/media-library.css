@@ -151,19 +151,6 @@ body.media-library main > .workspace {
   margin-right: -50vw;
 }
 
-body.media-library #media-library-form .config-field {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: var(--spacing-l);
-  width: 100%;
-}
-
-@media (width < 600px) {
-  body.media-library #media-library-form .config-field {
-    grid-template-columns: 1fr;
-  }
-}
-
 body.media-library .media-library-config-bar {
   display: none;
   align-items: center;
@@ -188,10 +175,6 @@ body.media-library .media-library-config.form-collapsed #media-library-form {
 body.media-library .config-bar-label {
   font-size: 14px;
   color: light-dark(var(--gray-700), var(--gray-300));
-}
-
-body.media-library #media-library-form .config-field .form-field {
-  min-width: 0;
 }
 
 body.media-library #media-library-form .button-wrapper {

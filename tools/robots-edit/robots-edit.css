@@ -12,10 +12,6 @@
     grid-template-columns: 1fr max-content;
     gap: var(--spacing-l);
   }
-
-  .robots-edit #admin-form .config-field {
-    grid-column: 1 / span 2;
-  }
 }
 
 .robots-edit #admin-form .button-wrapper {

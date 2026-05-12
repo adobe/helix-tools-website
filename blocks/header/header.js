@@ -6,10 +6,17 @@ import {
   storeTheme,
 } from '../../scripts/scripts.js';
 import { loadFragment } from '../fragment/fragment.js';
+import { parseCategories } from './categories.js';
+import { createCombobox, CHEVRON_SVG } from './combobox.js';
+import {
+  loadProjects,
+  updateStorage,
+  getProjectFromUrl,
+} from '../../utils/config/config.js';
 
 // Theme toggle constants
-const THEMES = ['system', 'light', 'dark'];
-const themeIconsCache = {};
+const CONTRAST_ICON_URL = '/icons/s2-icon-contrast-20-n.svg';
+let contrastIconMarkup = null;
 
 const THEME_NAMES = {
   system: 'System',
@@ -20,13 +27,12 @@ const THEME_NAMES = {
 const EXPERIMENTAL_TOOLTIP = 'Experimental tools should be considered early-access: they may undergo significant changes without warning and are not yet widely adopted.';
 
 function getNextTheme(current) {
+  if (current === 'dark') return 'light';
+  if (current === 'light') return 'dark';
+  // No explicit preference yet ('system'): switch away from whatever the OS resolves to,
+  // and from here on the toggle just flips light <-> dark (never back to 'system').
   const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
-  const systemResolved = prefersDark ? 'dark' : 'light';
-  const opposite = prefersDark ? 'light' : 'dark';
-
-  if (current === 'system') return opposite;
-  if (current === opposite) return systemResolved;
-  return 'system';
+  return prefersDark ? 'light' : 'dark';
 }
 
 function getThemeLabel(current) {
@@ -58,49 +64,6 @@ function attachTooltip(ribbon, tooltip) {
   tooltip.addEventListener('focusout', hide);
 }
 
-async function isLabTool(url) {
-  try {
-    const resp = await fetch(url);
-    if (!resp.ok) return false;
-    const html = await resp.text();
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    return doc.querySelector('meta[name="lab"][content="true"]') !== null;
-  } catch {
-    return false;
-  }
-}
-
-async function decorateLabToolLink(link) {
-  const isLab = await isLabTool(link.href);
-  if (!isLab || link.querySelector('.experimental-icon')) return;
-  const icon = document.createElement('span');
-  icon.className = 'experimental-icon';
-  icon.textContent = '🧪';
-  icon.setAttribute('aria-hidden', 'true');
-  link.append(icon);
-}
-
-function observeLabToolLinks(container) {
-  const links = [...container.querySelectorAll('a[href]')];
-  if (!('IntersectionObserver' in window)) {
-    links.forEach((link) => {
-      setTimeout(() => decorateLabToolLink(link), 0);
-    });
-    return;
-  }
-
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (!entry.isIntersecting) return;
-      const link = entry.target;
-      observer.unobserve(link);
-      decorateLabToolLink(link);
-    });
-  }, { rootMargin: '200px' });
-
-  links.forEach((link) => observer.observe(link));
-}
-
 function decorateExperimentalRibbon(block) {
   const ribbon = document.createElement('div');
   const tooltip = document.createElement('span');
@@ -128,32 +91,25 @@ function decorateExperimentalRibbon(block) {
   block.prepend(ribbon);
 }
 
-async function fetchThemeIcon(theme) {
-  if (themeIconsCache[theme]) return themeIconsCache[theme];
+async function fetchContrastIcon() {
+  if (contrastIconMarkup !== null) return contrastIconMarkup;
   try {
-    const response = await fetch(`/icons/theme-${theme}.svg`);
-    if (response.ok) {
-      const svg = await response.text();
-      themeIconsCache[theme] = svg;
-      return svg;
-    }
+    const response = await fetch(CONTRAST_ICON_URL);
+    contrastIconMarkup = response.ok ? await response.text() : '';
   } catch (e) {
-    // Fetch failed
+    contrastIconMarkup = '';
   }
-  return '';
+  return contrastIconMarkup;
 }
 
 async function updateThemeButton(button, theme) {
-  const svg = await fetchThemeIcon(theme);
-  button.innerHTML = svg;
+  button.innerHTML = await fetchContrastIcon();
   button.setAttribute('aria-label', getThemeLabel(theme));
   button.setAttribute('title', getThemeLabel(theme));
 }
 
 async function initThemeToggle(button) {
   let currentTheme = getStoredTheme();
-  // Preload all icons
-  await Promise.all(THEMES.map((theme) => fetchThemeIcon(theme)));
   await updateThemeButton(button, currentTheme);
   button.addEventListener('click', async () => {
     currentTheme = getNextTheme(currentTheme);
@@ -163,52 +119,207 @@ async function initThemeToggle(button) {
   });
 }
 
-function clickToggleListener(e) {
-  const inNav = e.target.closest('.header-nav');
-  if (!inNav) {
-    const button = document.getElementById('toggle-nav');
-    const sections = document.getElementById('nav-sections');
-    // eslint-disable-next-line no-use-before-define
-    toggleNav(button, sections);
-  }
+// Shares the `aem-projects` localStorage shape and sidekick `getSites` source with the
+// per-tool org/site pickers (see utils/config/config.js). Header-prefixed ids keep
+// this picker's inputs distinct from any per-tool form inputs.
+function buildProjectFields() {
+  const wrap = document.createElement('div');
+  wrap.className = 'header-project';
+
+  const orgCombo = createCombobox({
+    id: 'header-org', label: 'Organization', placeholder: 'Select org', labelVisible: true,
+  });
+  const sep = document.createElement('span');
+  sep.className = 'header-project-sep';
+  sep.textContent = '/';
+  const siteCombo = createCombobox({
+    id: 'header-site', label: 'Site', placeholder: 'site', disabled: true, labelVisible: true,
+  });
+  wrap.append(orgCombo.element, sep, siteCombo.element);
+
+  let projects = { orgs: [], sitesByOrg: {} };
+
+  const persist = () => {
+    const org = orgCombo.getValue();
+    if (!org) return;
+    const site = siteCombo.getValue();
+    updateStorage(org, site);
+    const url = new URL(window.location.href);
+    url.searchParams.set('org', org);
+    if (site) url.searchParams.set('site', site);
+    else url.searchParams.delete('site');
+    window.history.replaceState({}, '', url);
+    window.dispatchEvent(new CustomEvent('tools:project-change', { detail: { org, site } }));
+  };
+
+  const refillSites = (org) => {
+    const sites = (org && projects.sitesByOrg[org]) || [];
+    siteCombo.setItems(sites);
+    const current = siteCombo.getValue();
+    if (current && !sites.includes(current)) siteCombo.setValue('');
+    siteCombo.setDisabled(!org);
+  };
+
+  orgCombo.on('commit', (org) => { refillSites(org); persist(); });
+  siteCombo.on('commit', () => persist());
+
+  (async () => {
+    const { org: urlOrg, site: urlSite } = getProjectFromUrl();
+    if (urlOrg) orgCombo.setValue(urlOrg);
+    if (urlSite) siteCombo.setValue(urlSite);
+    projects = await loadProjects();
+    orgCombo.setItems(projects.orgs);
+    let org = orgCombo.getValue();
+    if (!org && projects.orgs[0]) {
+      [org] = projects.orgs;
+      orgCombo.setValue(org);
+    }
+    if (org) {
+      const sites = projects.sitesByOrg[org] || [];
+      siteCombo.setItems(sites);
+      siteCombo.setDisabled(false);
+      if (!siteCombo.getValue() && sites[0]) siteCombo.setValue(sites[0]);
+      persist();
+    }
+  })();
+
+  return wrap;
 }
 
-function keyToggleListener(e) {
-  if (e.key === 'Escape') {
-    const button = document.getElementById('toggle-nav');
-    const sections = document.getElementById('nav-sections');
-    // eslint-disable-next-line no-use-before-define
-    toggleNav(button, sections);
-    button.focus();
-  }
+function buildMegaNav(categories) {
+  const wrap = document.createElement('div');
+  wrap.className = 'header-mega';
+
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'header-mega-trigger';
+  trigger.setAttribute('aria-haspopup', 'true');
+  trigger.setAttribute('aria-expanded', 'false');
+  trigger.setAttribute('aria-controls', 'header-mega-panel');
+  const triggerLabel = document.createTextNode('Tools');
+  const chevron = document.createElement('span');
+  chevron.className = 'header-mega-chevron';
+  chevron.setAttribute('aria-hidden', 'true');
+  chevron.innerHTML = CHEVRON_SVG;
+  trigger.append(triggerLabel, chevron);
+
+  const panel = document.createElement('nav');
+  panel.id = 'header-mega-panel';
+  panel.className = 'header-mega-panel';
+  panel.setAttribute('aria-label', 'Tools');
+  panel.hidden = true;
+
+  categories.forEach((cat) => {
+    const col = document.createElement('div');
+    col.className = 'header-mega-col';
+    const heading = document.createElement('h4');
+    heading.textContent = cat.label;
+    col.append(heading);
+    const ul = document.createElement('ul');
+    cat.tools.forEach((tool) => {
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = tool.url;
+      a.textContent = tool.label;
+      li.append(a);
+      ul.append(li);
+    });
+    col.append(ul);
+    panel.append(col);
+  });
+
+  wrap.append(trigger, panel);
+
+  const close = () => {
+    panel.hidden = true;
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.classList.remove('is-open');
+  };
+  const open = () => {
+    panel.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    trigger.classList.add('is-open');
+  };
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (panel.hidden) open();
+    else close();
+  });
+
+  document.addEventListener('click', (e) => {
+    if (panel.hidden) return;
+    if (!wrap.contains(e.target)) close();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !panel.hidden) {
+      close();
+      trigger.focus();
+    }
+  });
+
+  return wrap;
 }
 
-function closeOnFocusLost(e) {
-  const nav = e.currentTarget;
-  if ((nav && e.relatedTarget) && !nav.contains(e.relatedTarget)) {
-    const button = nav.querySelector('.toggle-nav');
-    const sections = nav.querySelector('.nav-sections');
-    // eslint-disable-next-line no-use-before-define
-    toggleNav(button, sections);
-  }
-}
+const HAMBURGER_SVG = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>';
+const CLOSE_SVG = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>';
 
-function toggleNav(button, sections) {
-  const expanded = button.getAttribute('aria-expanded') === 'true';
-  button.setAttribute('aria-expanded', !expanded);
-  sections.setAttribute('aria-hidden', expanded);
-  button.setAttribute('aria-label', !expanded ? 'Close navigation' : 'Open navigation');
+/**
+ * Collapses the header behind a hamburger on narrow viewports: the "Tools" nav and
+ * the right-side tools (org/site pickers, links, theme toggle, profile) move into a
+ * left slide-in drawer. On wide viewports the drawer is just an inline flex container
+ * and the toggle/backdrop are hidden by CSS — no DOM is moved back.
+ * @param {Element} nav The `.header-nav` element.
+ * @param {Element} block The header block element.
+ */
+function setupResponsiveNav(nav, block) {
+  const drawer = document.createElement('div');
+  drawer.className = 'header-drawer';
+  drawer.id = 'header-drawer';
 
-  const nav = button.closest('#nav');
-  if (!expanded) {
-    document.addEventListener('click', clickToggleListener);
-    window.addEventListener('keydown', keyToggleListener);
-    nav.addEventListener('focusout', closeOnFocusLost);
-  } else {
-    document.removeEventListener('click', clickToggleListener);
-    window.removeEventListener('keydown', keyToggleListener);
-    nav.removeEventListener('focusout', closeOnFocusLost);
-  }
+  const closeButton = document.createElement('button');
+  closeButton.type = 'button';
+  closeButton.className = 'header-drawer-close';
+  closeButton.setAttribute('aria-label', 'Close menu');
+  closeButton.innerHTML = CLOSE_SVG;
+  drawer.append(closeButton);
+
+  // everything but the logo moves into the drawer (in document order: mega, then tools)
+  nav.querySelectorAll(':scope > .header-mega, :scope > .nav-tools').forEach((el) => drawer.append(el));
+  nav.append(drawer);
+
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'header-nav-toggle';
+  toggle.setAttribute('aria-label', 'Open menu');
+  toggle.setAttribute('aria-expanded', 'false');
+  toggle.setAttribute('aria-controls', 'header-drawer');
+  toggle.innerHTML = HAMBURGER_SVG;
+  nav.append(toggle);
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'header-drawer-backdrop';
+  block.append(backdrop);
+
+  const setOpen = (open) => {
+    block.classList.toggle('is-nav-open', open);
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    if (open) document.body.setAttribute('data-scroll', 'disabled');
+    else document.body.removeAttribute('data-scroll');
+  };
+
+  toggle.addEventListener('click', () => setOpen(!block.classList.contains('is-nav-open')));
+  closeButton.addEventListener('click', () => setOpen(false));
+  backdrop.addEventListener('click', () => setOpen(false));
+  drawer.addEventListener('click', (e) => { if (e.target.closest('a[href]')) setOpen(false); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && block.classList.contains('is-nav-open')) {
+      setOpen(false);
+      toggle.focus();
+    }
+  });
 }
 
 /**
@@ -227,6 +338,13 @@ export default async function decorate(block) {
   nav.classList.add('header-nav');
   while (fragment.firstElementChild) nav.append(fragment.firstElementChild);
 
+  const navHtml = nav.innerHTML;
+  const categories = parseCategories(navHtml);
+  window.toolCategories = Object.freeze(Object.fromEntries(
+    categories.map((c) => [c.slug, Object.freeze({ label: c.label, tools: c.tools })]),
+  ));
+  window.dispatchEvent(new CustomEvent('tools:categories-ready', { detail: { categories } }));
+
   const classes = ['title', 'sections', 'tools'];
   classes.forEach((c, i) => {
     const section = nav.children[i];
@@ -236,68 +354,31 @@ export default async function decorate(block) {
     }
   });
 
-  // decorate title
+  // decorate title as a plain logo link (no dropdown trigger)
   const title = nav.querySelector('.nav-title');
   const sections = nav.querySelector('.nav-sections');
-  if (title) {
-    if (sections) {
-      // make button
-      const button = document.createElement('button');
-      button.classList.add('button', 'outline', 'toggle-nav');
-      button.id = 'toggle-nav';
-      button.setAttribute('aria-label', 'Open navigation');
-      button.setAttribute('aria-haspopup', true);
-      button.setAttribute('aria-expanded', false);
-      button.setAttribute('aria-controls', 'nav-sections');
-      button.textContent = title.textContent;
-      title.replaceWith(button);
-
-      const buttonIcon = document.createElement('span');
-      buttonIcon.classList.add('toggle-nav-icon');
-      button.append(buttonIcon);
-
-      button.addEventListener('click', () => {
-        toggleNav(button, sections);
-      });
-
-      sections.setAttribute('aria-hidden', true);
-    } else if (!title.querySelector('a[href]')) {
-      const content = title.querySelector('h1, h2, h3, h4, h5, h6, p');
+  if (title && !title.querySelector('a[href]')) {
+    const content = title.querySelector('h1, h2, h3, h4, h5, h6, p');
+    if (content && content.textContent) {
       content.className = 'title-content';
-      if (content && content.textContent) {
-        const link = document.createElement('a');
-        link.href = '/';
-        link.innerHTML = content.innerHTML;
-        content.innerHTML = link.outerHTML;
-      }
+      const link = document.createElement('a');
+      link.href = '/';
+      link.innerHTML = content.innerHTML;
+      content.innerHTML = link.outerHTML;
     }
   }
 
-  // decorate sections
-  if (sections) {
-    const wrapper = document.createElement('nav');
-    const ul = sections.querySelector('ul');
-    wrapper.append(ul);
-    sections.prepend(wrapper);
-    [...ul.children].forEach((li) => {
-      const subsection = li.querySelector('ul');
-      if (subsection) {
-        li.className = 'subsection';
-        const label = li.textContent.replace(subsection.textContent, '').trim();
-        if (label) {
-          const span = document.createElement('span');
-          span.textContent = label;
-          li.replaceChildren(span, subsection);
-        }
-      }
-    });
-    observeLabToolLinks(wrapper);
-  }
+  // drop the original nav-sections markup; replace it with the mega-nav.
+  if (sections) sections.remove();
 
   // add login button
   const tools = nav.querySelector('.nav-tools');
+  // place the mega-nav between the title and the tools area, where nav-sections used to live.
+  if (tools) nav.insertBefore(buildMegaNav(categories), tools);
+  else nav.append(buildMegaNav(categories));
   if (tools) {
     const toolsList = tools.querySelector('ul');
+    tools.prepend(buildProjectFields());
     toolsList.classList.add('tools-list');
 
     toolsList.querySelectorAll('a').forEach((a) => {
@@ -342,6 +423,8 @@ export default async function decorate(block) {
   navWrapper.className = 'nav-wrapper';
   navWrapper.append(nav);
   block.replaceChildren(navWrapper);
+
+  setupResponsiveNav(nav, block);
 
   // add experimental ribbon for pages with lab metadata
   const isLab = getMetadata('lab') === 'true';

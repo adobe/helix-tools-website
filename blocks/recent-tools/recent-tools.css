@@ -1,53 +1,44 @@
 main > .section.recent-tools-container > div {
-  max-width: unset;
-  padding: var(--spacing-s) var(--spacing-m);
-  margin: 0;
-  border-bottom: 1px solid var(--color-border);
+  margin: var(--spacing-s) var(--horizontal-spacing);
+  padding: var(--spacing-m);
+  border: 1px solid var(--color-border);
+  border-radius: var(--rounding-l);
 }
 
 .recent-tools {
-  .recent-tools-nav {
+  .recent-tools-title {
+    margin: 0 0 var(--spacing-s);
+    font-size: var(--heading-size-m);
+    font-weight: var(--weight-regular);
+  }
+
+  .recent-tools-nav ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: var(--spacing-s);
-    padding: 0 var(--horizontal-spacing);
+    gap: 6px;
 
-    h2 {
+    > li {
       margin: 0;
-      font-size: var(--body-size-s);
-      font-weight: 400;
-      color: color-mix(in srgb, currentcolor, transparent 40%);
-    }
 
-    ul {
-      margin: 0;
-      padding: 0;
-      list-style: none;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
+      a {
+        display: block;
+        font-size: var(--body-size-xs);
+        text-decoration: none;
+        padding: 3px 10px;
+        border-radius: 100px;
+        border: 1px solid var(--color-border);
+        background: var(--color-background);
+        color: var(--color-text);
+        transition: background-color 0.15s, box-shadow 0.15s, border-color 0.15s;
 
-      > li {
-        margin: 0;
-
-        a {
-          display: block;
-          font-size: var(--body-size-s);
-          text-decoration: none;
-          padding: 4px 14px;
-          border-radius: 100px;
-          border: 1px solid var(--color-border);
-          background: var(--color-background);
-          color: var(--color-text);
-          transition: background-color 0.15s, box-shadow 0.15s, border-color 0.15s;
-
-          &:hover {
-            background: var(--color-link);
-            color: white;
-            border-color: var(--color-link);
-            box-shadow: 0 2px 8px rgb(59 99 251 / 30%);
-          }
+        &:hover {
+          background: var(--color-link);
+          color: white;
+          border-color: var(--color-link);
+          box-shadow: 0 2px 8px rgb(59 99 251 / 30%);
         }
       }
     }

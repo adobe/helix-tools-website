@@ -2,7 +2,6 @@
 /* eslint-disable class-methods-use-this */
 import { buildModal, registerToolReady } from '../../scripts/scripts.js';
 import { decorateIcons } from '../../scripts/aem.js';
-import { initConfigField } from '../../utils/config/config.js';
 /* reporting utilities */
 /**
  * Generates sorted array of audit report rows.
@@ -583,7 +582,10 @@ function registerListeners(doc) {
       url, path,
     } = getFormData(form);
 
-    window.history.pushState({}, '', `${window.location.pathname}?url=${encodeURIComponent(url)}&path=${encodeURIComponent(path)}`);
+    const params = new URLSearchParams(window.location.search);
+    params.set('url', url);
+    params.set('path', path);
+    window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
 
     try {
       let sitemapUrls;
@@ -711,7 +713,6 @@ function registerListeners(doc) {
 }
 
 async function init() {
-  await initConfigField();
   const params = new URLSearchParams(window.location.search);
   if (params.has('url')) document.getElementById('url').value = decodeURIComponent(params.get('url'));
   if (params.has('path')) document.getElementById('path').value = decodeURIComponent(params.get('path'));

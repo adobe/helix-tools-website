@@ -9,6 +9,7 @@
   >
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="category" content="setup-configure">
   <title>Site Admin</title>
   <script nonce="aem" src="/scripts/aem.js" type="module"></script>
   <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
@@ -24,36 +25,15 @@
     <div>
       <h1>Site Admin</h1>
       <p>
-        Manage the sites of an org, or a single site you have access to.
+        Manage the sites of an org.
       </p>
     </div> 
 
     <!-- ADMIN FORM -->
     <div>
       <form id="site-admin-form">
-        <section class="form-field config-field">
-          <div class="form-field org-field">
-            <label for="org">Organization</label>
-            <input name="org" id="org" list="org-list" autocomplete="off" required />
-            <datalist id="org-list"></datalist>
-            <div class="field-help-text">
-              <p>
-                Make sure you are logged into sidekick on a project of the Organization selected
-              </p>
-            </div>
-          </div>
-          <div class="form-field">
-            <label for="site">Site (optional)</label>
-            <input name="site" id="site" list="site-list" autocomplete="off" />
-            <datalist id="site-list"></datalist>
-            <div class="field-help-text">
-              <p class="site-not-found-hint" role="alert" hidden></p>
-            </div>
-          </div>
-        </section>
         <p class="button-wrapper">
           <button type="submit" id="list" class="button">List</button>
-          <button type="reset" id="reset" class="button outline">Reset</button>
         </p>
       </form>
     </div>

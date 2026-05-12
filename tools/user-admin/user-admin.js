@@ -1,5 +1,5 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import { initConfigField } from '../../utils/config/config.js';
+import { getProjectFromUrl } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { loadIcon, icon, showToast } from '../../utils/card-ui/card-ui.js';
 import admin from '../../scripts/helix-admin.js';
@@ -9,8 +9,7 @@ import { parseUsersFromAccessConfig, buildAccessConfig } from './utils.js';
 const VIEW_STORAGE_KEY = 'user-admin-view';
 
 const adminForm = document.getElementById('admin-form');
-const site = document.getElementById('site');
-const org = document.getElementById('org');
+const submitButton = adminForm.querySelector('button[type="submit"]');
 const consoleBlock = document.querySelector('.console');
 const usersContainer = document.getElementById('users-container');
 const accessConfig = { type: 'org', users: [], originalSiteAccess: {} };
@@ -62,28 +61,30 @@ const ROLE_DESCRIPTIONS = {
 };
 
 async function getOrgConfig() {
+  const { org } = getProjectFromUrl();
   const result = await executeAdminRequest(
     async () => {
-      const res = await admin.config({ org: org.value }).read();
+      const res = await admin.config({ org }).read();
       logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
       return res;
     },
-    { org: org.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
+    { org, policy: AuthMode.PREFLIGHT_AND_RETRY },
   );
   if (!result) return null;
   return result.ok ? result.json() : null;
 }
 
 async function getSiteAccessConfig() {
+  const { org, site } = getProjectFromUrl();
   const result = await executeAdminRequest(
     async () => {
-      const res = await admin.config({ org: org.value, site: site.value })
+      const res = await admin.config({ org, site })
         .select('access.json')
         .read();
       logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
       return res;
     },
-    { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
+    { org, site, policy: AuthMode.PREFLIGHT_AND_RETRY },
   );
   if (!result) return null;
   if (result.status === 404) return { admin: { role: {} } };
@@ -91,30 +92,32 @@ async function getSiteAccessConfig() {
 }
 
 async function updateSiteAccess() {
+  const { org, site } = getProjectFromUrl();
   const access = buildAccessConfig(accessConfig.originalSiteAccess, accessConfig.users);
   const result = await executeAdminRequest(
     async () => {
-      const res = await admin.config({ org: org.value, site: site.value })
+      const res = await admin.config({ org, site })
         .select('access.json')
         .update(JSON.stringify(access));
       logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
       return res;
     },
-    { org: org.value, site: site.value },
+    { org, site },
   );
   return result?.ok ?? false;
 }
 
 async function updateOrgUserRoles(user) {
+  const { org } = getProjectFromUrl();
   const result = await executeAdminRequest(
     async () => {
-      const res = await admin.config({ org: org.value })
+      const res = await admin.config({ org })
         .select(`users/${user.id}.json`)
         .update(JSON.stringify(user));
       logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
       return res;
     },
-    { org: org.value },
+    { org },
   );
   return result?.ok ?? false;
 }
@@ -125,15 +128,16 @@ async function deleteUserFromSite(user) {
 }
 
 async function deleteUserFromOrg(user) {
+  const { org } = getProjectFromUrl();
   const result = await executeAdminRequest(
     async () => {
-      const res = await admin.config({ org: org.value })
+      const res = await admin.config({ org })
         .select(`users/${user.id}.json`)
         .remove();
       logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
       return res;
     },
-    { org: org.value },
+    { org },
   );
   return result?.ok ?? false;
 }
@@ -152,19 +156,20 @@ async function addUsersToSite(users) {
 }
 
 async function addUsersToOrg(users) {
+  const { org } = getProjectFromUrl();
   let added = 0;
   try {
     await users.reduce(async (prevPromise, user) => {
       await prevPromise;
       const result = await executeAdminRequest(
         async () => {
-          const res = await admin.config({ org: org.value })
+          const res = await admin.config({ org })
             .select('users.json')
             .update(JSON.stringify(user));
           logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
           return res;
         },
-        { org: org.value },
+        { org },
       );
       if (result?.ok) {
         added += 1;
@@ -829,11 +834,23 @@ function displayUsers(users) {
   usersContainer.appendChild(grid);
 }
 
+function syncSubmitEnabled() {
+  const { org } = getProjectFromUrl();
+  if (submitButton) submitButton.disabled = !org;
+}
+
 adminForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+
+  const { org, site } = getProjectFromUrl();
+  if (!org) {
+    usersContainer.innerHTML = '<p class="error">Select an org/site in the header to continue.</p>';
+    return;
+  }
+
   usersContainer.innerHTML = '<p class="loading">Loading users...</p>';
 
-  if (site.value) {
+  if (site) {
     accessConfig.type = 'site';
     const config = await getSiteAccessConfig();
     if (!config) {
@@ -862,9 +879,11 @@ async function init() {
   const neededIcons = ['user', 'edit', 'grid', 'list', 'trash'];
   await Promise.all(neededIcons.map(loadIcon));
 
-  await initConfigField();
+  syncSubmitEnabled();
+  window.addEventListener('tools:project-change', syncSubmitEnabled);
 
-  if (org.value) {
+  const { org } = getProjectFromUrl();
+  if (org) {
     adminForm.dispatchEvent(new Event('submit'));
   }
 }

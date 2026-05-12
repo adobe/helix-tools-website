@@ -1,5 +1,7 @@
 const EXCLUDE_TOOLS = ['/tools/optel/'];
 
+const TITLE_ID = 'recent-tools-title';
+
 function dedupKey(path) {
   return path.replace(/\/index\.html$/, '/').replace(/^(\/tools\/[^/]+)\.html$/, '$1/');
 }
@@ -27,20 +29,11 @@ function findTitle(path) {
   return tool ? tool.textContent : labelFromPath(path);
 }
 
-function buildRecentNav(merged, heading, hasStoredVisits) {
-  if (!heading) {
-    // eslint-disable-next-line no-param-reassign
-    heading = document.createElement('h2');
-    heading.textContent = 'Recent tools';
-  }
-  if (!hasStoredVisits) heading.textContent = 'Quick Access';
-
-  heading.id = 'recent-tools-nav-heading';
+function buildRecentNav(merged) {
   const nav = document.createElement('nav');
   nav.classList.add('recent-tools-nav');
-  nav.setAttribute('aria-labelledby', heading.id);
-  nav.append(heading);
-  nav.innerHTML += `
+  nav.setAttribute('aria-labelledby', TITLE_ID);
+  nav.innerHTML = `
     <ul>
       ${merged.map((v) => `<li><a href="${v.path}">${findTitle(v.path)}</a></li>`).join('')}
     </ul>
@@ -50,6 +43,7 @@ function buildRecentNav(merged, heading, hasStoredVisits) {
 
 export default async function decorate(block) {
   const visits = JSON.parse(localStorage.getItem('aem-tool-visits') || '[]');
+  const hasVisits = visits.length > 0;
   const links = [...block.querySelectorAll('a')].map((a) => {
     const path = new URL(a.href).pathname;
     return { path, ts: Date.now() };
@@ -59,6 +53,11 @@ export default async function decorate(block) {
     .map((item) => ({ ...item, key: dedupKey(item.path) }))
     .filter((item, i, arr) => arr.findIndex((v) => v.key === item.key) === i)
     .slice(0, 5);
-  const heading = block.querySelector('h2');
-  block.replaceChildren(buildRecentNav(merged, heading, visits.length > 0));
+
+  const title = document.createElement('h1');
+  title.id = TITLE_ID;
+  title.className = 'recent-tools-title';
+  title.textContent = hasVisits ? 'Continue where you left off' : 'Quick access';
+
+  block.replaceChildren(title, buildRecentNav(merged));
 }

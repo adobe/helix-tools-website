@@ -1,10 +1,11 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { decorateIcons } from '../../scripts/aem.js';
-import { initConfigField, updateConfig } from '../../utils/config/config.js';
+import { getProjectFromUrl } from '../../utils/config/config.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import loadingMessages from './loading-messages.js';
 
 const FORM = document.getElementById('status-form');
+const SUBMIT = FORM.querySelector('button[type="submit"]');
 const TABLE = document.querySelector('table');
 const CAPTION = TABLE.querySelector('caption');
 const RESULTS = TABLE.querySelector('.results');
@@ -596,8 +597,7 @@ function downloadCSVFile(csvData) {
 async function runFromParams(search) {
   const params = new URLSearchParams(search);
   if (params && params.size > 0) {
-    const org = params.get('org');
-    const site = params.get('site');
+    const { org, site } = getProjectFromUrl();
     const job = params.get('job');
     if (org && site && job) {
       try {
@@ -605,7 +605,6 @@ async function runFromParams(search) {
         setupJob(FORM, FORM.querySelector('button'));
         // fetch host config
         const { live, preview } = await validateHosts(org, site);
-        updateConfig();
         // fetch page status and display results
         const jobUrl = `https://admin.hlx.page/job/${org}/${site}/main/status/${job}`;
         await runAndDisplayJob(jobUrl, live, preview);
@@ -622,8 +621,31 @@ async function runFromParams(search) {
   }
 }
 
+/**
+ * Displays a literal error message in the results table.
+ * @param {string} title - Error title text.
+ * @param {string} message - Error message text.
+ */
+function showTableMessage(title, message) {
+  const titleEl = ERROR.querySelector('strong');
+  const messageEl = ERROR.querySelector('p:last-of-type');
+  titleEl.textContent = title;
+  messageEl.textContent = message;
+  CAPTION.setAttribute('aria-hidden', true);
+  updateTableDisplay('error');
+}
+
+/**
+ * Enables the submit button only when an org/site is selected in the header.
+ */
+function syncSubmitEnabled() {
+  const { org, site } = getProjectFromUrl();
+  if (SUBMIT) SUBMIT.disabled = !(org && site);
+}
+
 async function init() {
-  await initConfigField();
+  syncSubmitEnabled();
+  window.addEventListener('tools:project-change', syncSubmitEnabled);
 
   FORM.addEventListener('reset', () => {
     clearTable(RESULTS);
@@ -633,8 +655,12 @@ async function init() {
   FORM.addEventListener('submit', async (e) => {
     e.preventDefault();
     const { target, submitter } = e;
+    const { org, site } = getProjectFromUrl();
+    if (!org || !site) {
+      showTableMessage('Error', 'Select an org/site in the header to continue.');
+      return;
+    }
     const data = getFormData(target);
-    const { org, site } = data;
 
     if (!await ensureLogin(org, site)) {
       // not logged in yet, listen for profile-update event
@@ -655,7 +681,6 @@ async function init() {
       const { path } = data;
       // fetch host config
       const { live, preview } = await validateHosts(org, site);
-      updateConfig();
       // fetch page status and display results
       const jobUrl = await fetchJobUrl(org, site, path);
       if (!jobUrl) throw new Error('Failed to create page status job.');
@@ -715,8 +740,7 @@ async function init() {
   DIFFMODE.addEventListener('click', () => {
     if (DIFFMODE.disabled) return;
 
-    const data = getFormData(FORM);
-    const { org, site } = data;
+    const { org, site } = getProjectFromUrl();
     if (!org || !site) return;
 
     // Get the job ID from the current URL params

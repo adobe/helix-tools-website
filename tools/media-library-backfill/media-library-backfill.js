@@ -1,6 +1,6 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
-import { initConfigField, updateConfig } from '../../utils/config/config.js';
+import { getProjectFromUrl } from '../../utils/config/config.js';
 import admin from '../../scripts/helix-admin.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import {
@@ -92,8 +92,6 @@ const progressState = {
 function initDOM() {
   const form = document.getElementById('backfill-form');
   DOM.form = form;
-  DOM.org = form.querySelector('#org');
-  DOM.site = form.querySelector('#site');
   DOM.fallbackUser = form.querySelector('#fallback-user');
   DOM.runBtn = form.querySelector('#run-btn');
   DOM.cancelBtn = form.querySelector('#cancel-btn');
@@ -373,12 +371,16 @@ function disableForm() {
   DOM.cancelBtn.disabled = false;
 }
 
+function syncSubmitEnabled() {
+  const { org, site } = getProjectFromUrl();
+  DOM.runBtn.disabled = !(org && site);
+}
+
 function enableForm() {
   resetLoadingButton(DOM.runBtn);
   [...DOM.form.elements].forEach((el) => { el.disabled = false; });
   DOM.cancelBtn.hidden = true;
-  // site field should reflect org state
-  DOM.site.disabled = !DOM.org.value;
+  syncSubmitEnabled();
 }
 
 function isAborted() {
@@ -1980,11 +1982,13 @@ function showReport(startTime, exportResult) {
 }
 
 async function runBackfill() {
-  const org = DOM.org.value.trim();
-  const site = DOM.site.value.trim();
+  const { org, site } = getProjectFromUrl();
   const fallbackUser = DOM.fallbackUser.value.trim();
 
-  if (!org || !site) return;
+  if (!org || !site) {
+    log('Select an org/site in the header to continue.', 'error');
+    return;
+  }
 
   if (!await ensureLogin(org, site)) {
     window.addEventListener('profile-update', ({ detail: loginInfo }) => {
@@ -2185,7 +2189,6 @@ async function runBackfill() {
     if (isAborted()) return;
 
     showReport(startTime, exportResult);
-    updateConfig();
   } catch (err) {
     if (err.name === 'AbortError') {
       log('Backfill cancelled by user.', 'warn');
@@ -2225,8 +2228,9 @@ function registerListeners() {
 async function init() {
   initDOM();
   resetProgressTracking();
-  await initConfigField();
   registerListeners();
+  syncSubmitEnabled();
+  window.addEventListener('tools:project-change', syncSubmitEnabled);
 }
 
 registerToolReady(init());

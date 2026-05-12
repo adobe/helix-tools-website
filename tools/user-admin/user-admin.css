@@ -10,10 +10,6 @@
     grid-template-columns: 1fr max-content;
     gap: var(--spacing-l);
   }
-
-  .user-admin #admin-form .config-field {
-    grid-column: 1 / span 2;
-  }
 }
 
 .user-admin #admin-form .button-wrapper {
@@ -523,11 +519,4 @@ dialog.user-admin-modal .add-another-btn {
 
 dialog.user-admin-modal.confirm-dialog {
   max-width: 400px;
-}
-
-@media (width >= 600px) {
-  .user-admin .form-field.config-field .site-field::before {
-    bottom: 50%;
-    transform: translateY(50%);
-  }
 }

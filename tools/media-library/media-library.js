@@ -16,7 +16,7 @@ import t from './core/messages.js';
 import { MediaLibraryError, ErrorCodes, logMediaLibraryError } from './core/errors.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { registerToolReady } from '../../scripts/scripts.js';
-import { initConfigField, updateConfig } from '../../utils/config/config.js';
+import { getProjectFromUrl } from '../../utils/config/config.js';
 import {
   getMetadata,
   getMediaData,
@@ -89,21 +89,19 @@ function syncFilterToUrl() {
 }
 
 async function init() {
-  const orgInput = document.getElementById('org');
-  const siteInput = document.getElementById('site');
   const pathInput = document.getElementById('path');
   const workspace = document.getElementById('workspace');
   const configEl = document.querySelector('.media-library-config');
   const configBar = document.getElementById('config-bar');
   const configBarChange = document.getElementById('config-bar-change');
-  if (!orgInput || !siteInput) return;
+  const form = document.getElementById('media-library-form');
+  if (!form) return;
 
   const searchParams = new URLSearchParams(window.location.search);
   const pathParam = searchParams.get('path');
   const filterParam = searchParams.get('filter');
   if (pathParam && pathInput) pathInput.value = pathParam;
 
-  await initConfigField();
   mediaInfoModal = createMediaInfoModal();
 
   await Promise.all([
@@ -187,8 +185,8 @@ async function init() {
 
   setMediaLibraryContext({
     showMediaInfo: (opts) => mediaInfoModal?.show(opts),
-    getOrg: () => orgInput?.value,
-    getSite: () => siteInput?.value,
+    getOrg: () => getProjectFromUrl().org,
+    getSite: () => getProjectFromUrl().site,
     getPath: () => getPathFromInput(),
   });
 
@@ -458,14 +456,14 @@ async function init() {
     updateAppState({ isValidating: false });
   }
 
-  const form = document.getElementById('media-library-form');
   form?.addEventListener('submit', (e) => {
     e.preventDefault();
-    const org = orgInput.value?.trim();
-    const site = siteInput.value?.trim();
+    const { org, site } = getProjectFromUrl();
     const path = getPathFromInput();
-    if (!org || !site) return;
-    updateConfig();
+    if (!org || !site) {
+      updateAppState({ validationError: 'Select an org/site in the header to continue.' });
+      return;
+    }
     const url = new URL(window.location.href);
     if (path) url.searchParams.set('path', path);
     else url.searchParams.delete('path');
@@ -540,18 +538,26 @@ async function init() {
   });
 
   const loadBtn = document.getElementById('load-media');
+  function syncSubmitEnabled() {
+    if (!loadBtn) return;
+    if (getAppState().isValidating === true) return;
+    const { org, site } = getProjectFromUrl();
+    loadBtn.disabled = !(org && site);
+  }
   onStateChange(['isValidating'], (state) => {
     if (!loadBtn) return;
     const loading = state.isValidating === true;
     const textSpan = loadBtn.querySelector('.load-btn-text');
     const loadingSpan = loadBtn.querySelector('.load-btn-loading');
-    loadBtn.disabled = loading;
     if (textSpan) textSpan.hidden = loading;
     if (loadingSpan) loadingSpan.hidden = !loading;
+    if (loading) loadBtn.disabled = true;
+    else syncSubmitEnabled();
   });
+  syncSubmitEnabled();
+  window.addEventListener('tools:project-change', syncSubmitEnabled);
 
-  const initialOrg = orgInput.value?.trim();
-  const initialSite = siteInput.value?.trim();
+  const { org: initialOrg, site: initialSite } = getProjectFromUrl();
   const initialPath = getPathFromInput();
   if (initialOrg && initialSite) {
     loadFromCache(initialOrg, initialSite, initialPath).then((hadCache) => {

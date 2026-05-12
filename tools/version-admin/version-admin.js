@@ -1,17 +1,14 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { diffJson } from '../../vendor/diff/diff.js';
 import { logResponse } from '../../blocks/console/console.js';
-import { initConfigField } from '../../utils/config/config.js';
+import { getProjectFromUrl } from '../../utils/config/config.js';
 import admin from '../../scripts/helix-admin.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 
 const adminForm = document.getElementById('admin-form');
 const typeSelect = document.getElementById('type');
-const org = document.getElementById('org');
 const profile = document.getElementById('profile');
-const site = document.getElementById('site');
 const profileField = document.querySelector('.profile-field');
-const siteField = document.querySelector('.site-field');
 const consoleBlock = document.querySelector('.console');
 const versions = document.getElementById('versions');
 const versionsTitle = document.getElementById('versions-title');
@@ -22,8 +19,9 @@ const fetchButton = document.getElementById('fetch');
 const currentConfig = { type: '', versions: [], currentVersion: null };
 
 function coords() {
-  const c = { org: org.value };
-  if (typeSelect.value === 'site') c.site = site.value;
+  const { org, site } = getProjectFromUrl();
+  const c = { org };
+  if (typeSelect.value === 'site') c.site = site;
   else if (typeSelect.value === 'profile') c.profile = profile.value;
   return c;
 }
@@ -40,9 +38,10 @@ function formatDate(dateString) {
 }
 
 async function fetchVersions() {
+  const { org, site } = getProjectFromUrl();
   const result = await executeAdminRequest(
     () => admin.config(coords()).select('versions.json').read(),
-    { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
+    { org, site, policy: AuthMode.PREFLIGHT_AND_RETRY },
   );
   logResult(result);
   if (!result?.ok) return null;
@@ -53,20 +52,22 @@ async function fetchVersions() {
 }
 
 async function fetchVersionData(versionId) {
+  const { org, site } = getProjectFromUrl();
   const result = await executeAdminRequest(
     () => admin.config(coords()).select(`versions/${versionId}.json`).read(),
-    { org: org.value, site: site.value },
+    { org, site },
   );
   logResult(result);
   return result?.ok ? result.json() : null;
 }
 
 async function updateVersionName(versionId, newName) {
+  const { org, site } = getProjectFromUrl();
   const result = await executeAdminRequest(
     () => admin.config(coords())
       .select(`versions/${versionId}.json`)
       .update(JSON.stringify({ name: newName }), { params: { name: newName } }),
-    { org: org.value, site: site.value },
+    { org, site },
   );
   logResult(result);
   return !!result?.ok;
@@ -74,18 +75,20 @@ async function updateVersionName(versionId, newName) {
 
 // POST to the config root with ?restoreVersion=<id> and no body.
 async function restoreVersion(versionId) {
+  const { org, site } = getProjectFromUrl();
   const result = await executeAdminRequest(
     () => admin.config(coords()).update(null, { params: { restoreVersion: versionId } }),
-    { org: org.value, site: site.value },
+    { org, site },
   );
   logResult(result);
   return !!result?.ok;
 }
 
 async function deleteVersion(versionId) {
+  const { org, site } = getProjectFromUrl();
   const result = await executeAdminRequest(
     () => admin.config(coords()).select(`versions/${versionId}.json`).remove(),
-    { org: org.value, site: site.value },
+    { org, site },
   );
   logResult(result);
   return !!result?.ok;
@@ -301,29 +304,22 @@ function updateFieldVisibility() {
   const selectedType = typeSelect.value;
 
   profileField.style.display = selectedType === 'profile' ? 'block' : 'none';
-  siteField.style.display = selectedType === 'site' ? 'block' : 'none';
 
   // Clear dependent fields when type changes
   if (selectedType !== 'profile') {
     profile.value = '';
   }
-  if (selectedType !== 'site') {
-    site.value = '';
-  }
 
   // Update required attributes
   profile.required = selectedType === 'profile';
-  site.required = selectedType === 'site';
-
-  // Enable/disable site field based on type (for config utility compatibility)
-  site.disabled = selectedType !== 'site';
 }
 
 /**
  * Validate form inputs
  */
 function validateForm() {
-  if (!typeSelect.value || !org.value) {
+  const { org, site } = getProjectFromUrl();
+  if (!typeSelect.value || !org) {
     return false;
   }
 
@@ -331,11 +327,16 @@ function validateForm() {
     return false;
   }
 
-  if (typeSelect.value === 'site' && !site.value) {
+  if (typeSelect.value === 'site' && !site) {
     return false;
   }
 
   return true;
+}
+
+function syncSubmitEnabled() {
+  const { org } = getProjectFromUrl();
+  fetchButton.disabled = !org;
 }
 
 // Event listeners
@@ -343,6 +344,13 @@ typeSelect.addEventListener('change', updateFieldVisibility);
 
 adminForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+
+  const { org, site } = getProjectFromUrl();
+  if (!org || (typeSelect.value === 'site' && !site)) {
+    // eslint-disable-next-line no-alert
+    alert('Select an org/site in the header to continue.');
+    return;
+  }
 
   if (!validateForm()) {
     // eslint-disable-next-line no-alert
@@ -365,11 +373,11 @@ adminForm.addEventListener('submit', async (e) => {
   window.history.replaceState(null, '', url.href);
 
   // Update title
-  let titleText = `${org.value}`;
+  let titleText = `${org}`;
   if (typeSelect.value === 'profile') {
     titleText += ` / ${profile.value} (Profile)`;
   } else if (typeSelect.value === 'site') {
-    titleText += ` / ${site.value} (Site)`;
+    titleText += ` / ${site} (Site)`;
   } else {
     titleText += ' (Organization)';
   }
@@ -406,8 +414,8 @@ adminForm.addEventListener('submit', async (e) => {
 
 // Initialize
 async function init() {
-  // Initialize config field utility (handles org/site autofill from params/storage/sidekick)
-  await initConfigField();
+  syncSubmitEnabled();
+  window.addEventListener('tools:project-change', syncSubmitEnabled);
 
   // Initialize from URL parameters (type and profile are tool-specific)
   const params = new URLSearchParams(window.location.search);
@@ -426,10 +434,11 @@ async function init() {
   }
 
   // Auto-submit if we have the required parameters
-  if (typeParam && org.value
+  const { org, site } = getProjectFromUrl();
+  if (typeParam && org
       && ((typeParam === 'org')
        || (typeParam === 'profile' && profileParam)
-       || (typeParam === 'site' && site.value))) {
+       || (typeParam === 'site' && site))) {
     adminForm.dispatchEvent(new Event('submit'));
   }
 }

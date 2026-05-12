@@ -1,6 +1,6 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { logResponse, logMessage } from '../../blocks/console/console.js';
-import { initConfigField } from '../../utils/config/config.js';
+import { getProjectFromUrl } from '../../utils/config/config.js';
 import { createModal } from '../../blocks/modal/modal.js';
 import admin from '../../scripts/helix-admin.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
@@ -87,8 +87,6 @@ const CDN_FIELDS = {
   ],
 };
 
-const org = document.getElementById('org');
-const site = document.getElementById('site');
 const configEditor = document.getElementById('config-editor');
 const configTbody = document.getElementById('config-tbody');
 const consoleBlock = document.querySelector('.console');
@@ -919,10 +917,9 @@ async function performMigration(configToMigrate) {
  * 401 retries both. PREFLIGHT_AND_RETRY because this is the entry point.
  */
 async function loadConfig() {
-  const orgVal = org.value;
-  const siteVal = site.value;
+  const { org: orgVal, site: siteVal } = getProjectFromUrl();
   if (!orgVal || !siteVal) {
-    logMessage(consoleBlock, 'error', ['LOAD', 'Please select both organization and site', '']);
+    logMessage(consoleBlock, 'error', ['LOAD', 'Select an org/site in the header to continue.', '']);
     return;
   }
 
@@ -1075,12 +1072,19 @@ function toggleInheritedProperties() {
   populateConfigTable();
 }
 
+function syncSubmitEnabled() {
+  const { org, site } = getProjectFromUrl();
+  const ready = !!(org && site);
+  const loadBtn = document.getElementById('load-config');
+  if (loadBtn) loadBtn.disabled = !ready;
+}
+
 /**
  * Initializes the config editor
  */
 async function init() {
-  // Initialize config field (handles URL params, localStorage, sidekick auto-population)
-  await initConfigField();
+  syncSubmitEnabled();
+  window.addEventListener('tools:project-change', syncSubmitEnabled);
 
   // Load config when form is submitted. Auth is handled inside loadConfig
   // via executeAdminRequest with PREFLIGHT_AND_RETRY.
@@ -1103,7 +1107,8 @@ const initPromise = init();
 
 initPromise.then(async () => {
   // Auto-load config if both org and site are set from URL params
-  if (org.value && site.value) {
+  const { org, site } = getProjectFromUrl();
+  if (org && site) {
     logMessage(consoleBlock, 'info', ['AUTO-LOAD', 'Auto-loading configuration from URL parameters', '']);
     await loadConfig();
   }
