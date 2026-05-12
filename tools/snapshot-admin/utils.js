@@ -1,4 +1,4 @@
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 
 function formatResources(org, site, name, resources) {
@@ -36,6 +36,7 @@ function comparePaths(first, second) {
 }
 
 export async function fetchSnapshots(org, site) {
+  const admin = await getAdminClient();
   const result = await executeAdminRequest(
     () => admin.snapshot({ org, site }).get(),
     { org, site, policy: AuthMode.PREFLIGHT_AND_RETRY },
@@ -47,6 +48,7 @@ export async function fetchSnapshots(org, site) {
 }
 
 export async function fetchManifest(org, site, name) {
+  const admin = await getAdminClient();
   const result = await executeAdminRequest(
     () => admin.snapshot({ org, site }).get(name),
     { org, site, policy: AuthMode.PREFLIGHT_AND_RETRY },
@@ -63,6 +65,7 @@ export async function fetchManifest(org, site, name) {
  * returned — callers that need the updated state should reload via fetchManifest.
  */
 export async function saveManifest(org, site, name, manifestToSave) {
+  const admin = await getAdminClient();
   const body = manifestToSave !== undefined && manifestToSave !== null
     ? JSON.stringify(manifestToSave)
     : null;
@@ -76,6 +79,7 @@ export async function saveManifest(org, site, name, manifestToSave) {
 }
 
 export async function reviewSnapshot(org, site, name, state) {
+  const admin = await getAdminClient();
   const message = `Snapshot ${name} request ${state}`;
   const result = await executeAdminRequest(
     // API requires review state in both the query param and the body
@@ -92,6 +96,7 @@ export async function reviewSnapshot(org, site, name, state) {
 }
 
 export async function deleteSnapshotUrls(org, site, name, paths = ['/*']) {
+  const admin = await getAdminClient();
   const earlyExit = await paths.reduce(async (chain, path) => {
     const prev = await chain;
     if (prev !== undefined) return prev;
@@ -107,6 +112,7 @@ export async function deleteSnapshotUrls(org, site, name, paths = ['/*']) {
 }
 
 export async function deleteSnapshot(org, site, name) {
+  const admin = await getAdminClient();
   const result = await executeAdminRequest(
     () => admin.snapshot({ org, site }).remove(name),
     { org, site },
@@ -117,6 +123,7 @@ export async function deleteSnapshot(org, site, name) {
 }
 
 export async function updatePaths(org, site, name, currPaths, editedHrefs) {
+  const admin = await getAdminClient();
   const paths = filterPaths(editedHrefs);
   const { removed, added } = comparePaths(currPaths, paths);
 

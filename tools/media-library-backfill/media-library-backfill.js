@@ -1,7 +1,7 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import {
   discardBrokenMediaEntries,
@@ -813,6 +813,7 @@ async function runStatusJob(org, site, paths, {
   onPoll,
   pathsOnly = false,
 } = {}) {
+  const admin = await getAdminClient();
   const normalizedPaths = Array.isArray(paths) ? paths : [paths];
   const label = jobLabel || `status job (${normalizedPaths.join(', ')})`;
 
@@ -1319,6 +1320,7 @@ async function fetchLastModified(url) {
 }
 
 async function fetchContentSourceType(org, site) {
+  const admin = await getAdminClient();
   try {
     const response = await executeAdminRequest(
       () => admin.config({ org, site }).read(),

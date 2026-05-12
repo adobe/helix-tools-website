@@ -1,7 +1,7 @@
 /* eslint-disable no-await-in-loop -- sequential awaits required: DNS DoH provider fallback chain,
  * IP metadata provider chain (ipwho → ipapi → RDAP), and ordered CDN checks must not race. */
 import classifyIpNetwork from './cdn-check-network.js';
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 
 // CORS proxy for cross-origin requests (fcors.org). The key is sent as a query param on
@@ -9,6 +9,8 @@ import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 // for fcors rate/account attribution on their side; committing it matches shipping any
 // other public client-side token (code review: not a server secret—public attribution key only).
 // Rotate with fcors if quotas are abused.
+let admin;
+
 const CORS_PROXY_URL = 'https://www.fcors.org';
 const CORS_PROXY_KEY = 'iyIjewSFgBzbPVG3';
 
@@ -2107,6 +2109,7 @@ function setupEventListeners() {
 
 // Auto-run check if URL query params are present
 async function init() {
+  admin = await getAdminClient();
   setupEventListeners();
 
   const params = new URLSearchParams(window.location.search);

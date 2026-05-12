@@ -1,6 +1,6 @@
 import { createModal } from '../../../blocks/modal/modal.js';
 import { AUTH_STATUS_MAP } from './constants.js';
-import admin from '../../../scripts/helix-admin.js';
+import getAdminClient from '../../../scripts/admin-compat.js';
 import { executeAdminRequest } from '../../../utils/admin-request.js';
 import escapeHtml from '../../../utils/html.js';
 import {
@@ -47,6 +47,7 @@ export const saveSiteAndRefresh = async (
   action = 'update',
   byogit = null,
 ) => {
+  const admin = await getAdminClient();
   const siteConfig = buildSiteConfig(existingConfig, codeSrc, contentSrc, byogit);
   const saveResult = await executeAdminRequest(
     () => admin.config({ org: orgValue, site: siteName }).update(JSON.stringify(siteConfig)),
@@ -87,6 +88,7 @@ export const deleteSiteAndRefresh = async (
   dialogCloseCallback,
   logFn = null,
 ) => {
+  const admin = await getAdminClient();
   const result = await executeAdminRequest(
     () => admin.config({ org: orgValue, site: siteName }).remove(),
     { org: orgValue, site: siteName },
@@ -168,6 +170,7 @@ export const openEditSourceModal = async (
   logFn = null,
   byogitDefaults = null,
 ) => {
+  const admin = await getAdminClient();
   const isByogit = !!byogitDefaults;
   const byogitOwner = escapeHtml(byogitDefaults?.owner || '');
   const byogitRepo = escapeHtml(byogitDefaults?.repo || '');
@@ -284,6 +287,7 @@ export const openEditSourceModal = async (
 };
 
 export const openAuthModal = async (siteName, orgValue) => {
+  const admin = await getAdminClient();
   const { dialog, container, showModal } = await setupModal('auth-modal', `
     <div class="site-modal-header">
       <h2>Authentication</h2>
@@ -631,6 +635,7 @@ export const openSecretModal = (siteName, orgValue) => openManageItemsModal(site
   itemNamePlural: 'Secrets',
   iconName: 'lock',
   fetchFn: async (org, site) => {
+    const admin = await getAdminClient();
     const resp = await executeAdminRequest(
       () => admin.config({ org, site }).select('secrets.json').read(),
       { org, site },
@@ -640,6 +645,7 @@ export const openSecretModal = (siteName, orgValue) => openManageItemsModal(site
     return null;
   },
   createFn: async (org, site, body) => {
+    const admin = await getAdminClient();
     if (body?.name) {
       const handle = admin.config({ org, site })
         .select(`secrets/${encodeURIComponent(body.name)}.json`);
@@ -658,6 +664,7 @@ export const openSecretModal = (siteName, orgValue) => openManageItemsModal(site
     return resp?.ok ? resp.json() : null;
   },
   deleteFn: async (org, site, secretId) => {
+    const admin = await getAdminClient();
     const handle = admin.config({ org, site })
       .select(`secrets/${encodeURIComponent(secretId)}.json`);
     const resp = await executeAdminRequest(() => handle.remove(), { org, site });
@@ -721,6 +728,7 @@ export const openApiKeyModal = (siteName, orgValue) => openManageItemsModal(site
   itemNamePlural: 'API Keys',
   iconName: 'key',
   fetchFn: async (org, site) => {
+    const admin = await getAdminClient();
     const resp = await executeAdminRequest(
       () => admin.config({ org, site }).select('apiKeys.json').read(),
       { org, site },
@@ -733,6 +741,7 @@ export const openApiKeyModal = (siteName, orgValue) => openManageItemsModal(site
     return null;
   },
   createFn: async (org, site, body) => {
+    const admin = await getAdminClient();
     const resp = await executeAdminRequest(
       () => admin.config({ org, site }).select('apiKeys.json').update(body ? JSON.stringify(body) : null),
       { org, site },
@@ -740,6 +749,7 @@ export const openApiKeyModal = (siteName, orgValue) => openManageItemsModal(site
     return resp?.ok ? resp.json() : null;
   },
   deleteFn: async (org, site, keyId) => {
+    const admin = await getAdminClient();
     const handle = admin.config({ org, site })
       .select(`apiKeys/${encodeURIComponent(keyId)}.json`);
     const resp = await executeAdminRequest(() => handle.remove(), { org, site });
@@ -880,6 +890,7 @@ export const openAddSiteModal = async (
 
   secretStep.querySelector('.skip-secret-btn').addEventListener('click', () => dialog.close());
   secretStep.querySelector('.save-secret-btn').addEventListener('click', async () => {
+    const admin = await getAdminClient();
     const secretValue = secretStep.querySelector('#byogit-secret-value').value.trim();
     if (!secretValue) return;
     const btn = secretStep.querySelector('.save-secret-btn');

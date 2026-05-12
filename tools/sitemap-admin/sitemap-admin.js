@@ -1,9 +1,11 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField } from '../../utils/config/config.js';
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { escapeXml, parseHreflang, collectSitemapEntries } from './utils.js';
+
+let admin;
 
 const adminForm = document.getElementById('admin-form');
 const site = document.getElementById('site');
@@ -572,6 +574,7 @@ async function showIndexDialog() {
 }
 
 async function init() {
+  admin = await getAdminClient();
   await initConfigField();
 
   addSitemapButton.addEventListener('click', () => {

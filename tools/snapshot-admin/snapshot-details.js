@@ -1,5 +1,5 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import {
   fetchManifest,
   saveManifest,
@@ -23,6 +23,8 @@ const modalMessage = document.getElementById('modal-message');
 const modalClose = document.querySelector('.modal-close');
 const modalOk = document.querySelector('.modal-ok');
 const modalOverlay = document.querySelector('.modal-overlay');
+
+let admin;
 
 let currentOrg = '';
 let currentSite = '';
@@ -520,6 +522,7 @@ snapshotDetails.addEventListener('click', async (e) => {
 
 // Initialize the page
 async function init() {
+  admin = await getAdminClient();
   // Get snapshot parameter from URL
   const params = new URLSearchParams(window.location.search);
   const snapshotParam = params.get('snapshot');
