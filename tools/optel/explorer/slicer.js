@@ -355,7 +355,8 @@ function init() {
   const endDate = params.get('endDate') ? `${params.get('endDate')}` : null;
 
   elems.incognito.addEventListener('change', async () => {
-    loader.domainKey = elems.incognito.getAttribute('domainkey');
+    const dk = elems.incognito.getAttribute('domainkey');
+    loader.domainKey = dk;
 
     await loadData(elems.viewSelect.value);
     draw();
@@ -379,8 +380,11 @@ function init() {
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   elems.timezoneElement.textContent = timezone;
 
-  if (elems.incognito.getAttribute('domainkey')) {
-    loadData(elems.viewSelect.value).then(draw);
+  const domainKeyAttr = elems.incognito.getAttribute('domainkey');
+  if (domainKeyAttr) {
+    loadData(elems.viewSelect.value).then(() => {
+      draw();
+    });
   }
 
   elems.filterInput.addEventListener('input', () => {

@@ -195,16 +195,22 @@
   cursor: not-allowed;
 }
 
+.report-generate-btn:focus {
+  color: white;
+}
+
 .report-generate-btn:hover:not(:disabled),
 .report-action-btn.primary:hover:not(:disabled) {
   background: var(--color-btn-primary-hover);
   transform: translateY(-1px);
   cursor: pointer;
+  color: white;
 }
 
 .report-generate-btn:active:not(:disabled) {
   transform: scale(0.98);
   background: var(--color-btn-primary-hover);
+  color: white;
 }
 
 /* Info & Status Messages */
@@ -236,6 +242,18 @@
 .report-info .provider-text {
   font-size: 12px;
   opacity: 0.8;
+}
+
+.report-info .report-gate-message {
+  margin-top: var(--spacing-md);
+}
+
+.report-info .report-gate-message p {
+  margin: 0 0 var(--spacing-xs);
+}
+
+.report-info .report-gate-message p:last-child {
+  margin-bottom: 0;
 }
 
 .report-status {

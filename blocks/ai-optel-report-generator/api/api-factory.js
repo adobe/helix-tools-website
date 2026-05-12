@@ -15,7 +15,7 @@ export function getApiProvider() {
  */
 export async function callAI(params) {
   if (!hasBedrockToken()) {
-    throw new Error('RUM admin token not found. Please ensure you are logged in.');
+    throw new Error('Domain key required for AI analysis. Ensure the dashboard has loaded with a valid domain key.');
   }
   return callBedrockAPI(params);
 }
@@ -28,11 +28,13 @@ export async function callAI(params) {
  */
 export async function callAIAsync(params, onProgress = null) {
   if (!hasBedrockToken()) {
-    throw new Error('RUM admin token not found. Please ensure you are logged in.');
+    throw new Error('Domain key required for AI analysis. Ensure the dashboard has loaded with a valid domain key.');
   }
   return callBedrockAPIAsync(params, onProgress);
 }
 
 export function getProviderName() {
-  return hasBedrockToken() ? 'AWS Bedrock (Claude Opus 4.6)' : 'No provider configured';
+  return hasBedrockToken()
+    ? 'AWS Bedrock (Claude Opus 4.6)'
+    : 'Domain key required';
 }

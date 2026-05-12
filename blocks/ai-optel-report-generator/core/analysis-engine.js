@@ -80,7 +80,7 @@ async function callAnthropicAPI(dashboardData, facetTools, progressCallback) {
     const { getApiProvider } = await import('../api/api-factory.js');
     const provider = getApiProvider();
     if (!provider.hasToken) {
-      throw new Error('AWS Bedrock token not found. Please configure your token.');
+      throw new Error('Domain key required for AI analysis. Ensure the dashboard has loaded with a valid domain key.');
     }
 
     // Get system prompt
