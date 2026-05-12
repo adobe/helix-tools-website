@@ -1,6 +1,5 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
 import admin from '../../scripts/helix-admin.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 
@@ -69,14 +68,18 @@ function clearResults(table) {
   caption.setAttribute('aria-hidden', true);
 }
 
-function updateTableError(table, errCode, org, site) {
+function updateTableError(table, errCode) {
   const { title, msg } = (() => {
     switch (errCode) {
       case 401:
-        ensureLogin(org, site);
         return {
-          title: '401 Unauthorized Error',
-          msg: `Unable to display results. <a target="_blank" href="https://main--${site}--${org}.aem.page">Sign in to the ${site} project sidekick</a> to view the results.`,
+          title: 'Unauthorized',
+          msg: 'Unable to display results. You may not have access to this content.',
+        };
+      case 403:
+        return {
+          title: 'Forbidden',
+          msg: 'Unable to display results. Access to this content was denied.',
         };
       case 404:
         return {
@@ -86,7 +89,7 @@ function updateTableError(table, errCode, org, site) {
       case 499:
         return {
           title: 'Initial Fetch Failed',
-          msg: 'This is likely due to CORS. Either use a CORS allow plugin or add a header <code>Access-Control-Allow-Origin: https://tools.aem.live</code> in your site config.',
+          msg: 'This is likely due to CORS. Either use a CORS allow plugin or add these headers in your site config: <code>Access-Control-Allow-Origin: https://tools.aem.live</code> and <code>Access-Control-Allow-Credentials: true</code>.',
         };
       default:
         return {
@@ -137,7 +140,7 @@ function displayResult(url, matches, org, site) {
       // fallback to sidekick config if status doesn't provide edit URL
       if (!editUrl) {
         const configRes = await executeAdminRequest(
-          () => admin.raw('GET', `/sidekick/${org}/${site}/main/config.json`),
+          () => admin.sidekick({ org, site }).get('config.json'),
           { org, site },
         );
         if (!configRes) return; // login cancelled
@@ -177,7 +180,7 @@ async function* fetchQueryIndex(queryIndexPath, liveHost) {
     let res;
     try {
       // eslint-disable-next-line no-await-in-loop
-      res = await fetch(`https://${liveHost}${queryIndexPath}?offset=${offset}&limit=${limit}`);
+      res = await fetch(`https://${liveHost}${queryIndexPath}?offset=${offset}&limit=${limit}`, { credentials: 'include' });
     } catch (err) {
       throw new Error('Failed on initial fetch of index.', err);
     }
@@ -203,7 +206,7 @@ async function* fetchQueryIndex(queryIndexPath, liveHost) {
 async function* fetchSitemap(sitemapPath, liveHost) {
   let res;
   try {
-    res = await fetch(`https://${liveHost}${sitemapPath}`);
+    res = await fetch(`https://${liveHost}${sitemapPath}`, { credentials: 'include' });
     if (!res.ok) {
       const error = new Error(`Not found: ${sitemapPath}`);
       error.status = res.status;
@@ -248,7 +251,7 @@ async function* fetchSitemap(sitemapPath, liveHost) {
  * @param {string} queryType the query type
  */
 async function queryPage(url, query, queryType) {
-  const res = await fetch(url);
+  const res = await fetch(url, { credentials: 'include' });
   const html = await res.text();
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
@@ -326,7 +329,7 @@ async function init(doc) {
       const hostsJson = hostsResult.ok ? await hostsResult.json() : null;
       const live = hostsJson?.live?.url ? new URL(hostsJson.live.url).host : null;
       if (!live) {
-        updateTableError(table, hostsResult.status, org, site);
+        updateTableError(table, hostsResult.status);
         stopButton.setAttribute('aria-hidden', 'true');
         caption.setAttribute('aria-hidden', 'true');
         return;
@@ -385,13 +388,15 @@ async function init(doc) {
       // eslint-disable-next-line no-console
       console.error(err);
       if (err.status === 401 || err.message.startsWith('Unauthorized')) {
-        updateTableError(table, 401, org, site);
+        updateTableError(table, 401);
+      } else if (err.status === 403) {
+        updateTableError(table, 403);
       } else if (err.message.startsWith('Failed on initial fetch')) {
-        updateTableError(table, 499, org, site);
+        updateTableError(table, 499);
       } else if (err.message.startsWith('Not found')) {
-        updateTableError(table, 404, org, site);
+        updateTableError(table, 404);
       } else {
-        updateTableError(table, 500, org, site);
+        updateTableError(table, 500);
       }
     } finally {
       stopButton.setAttribute('aria-hidden', 'true');

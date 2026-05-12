@@ -666,6 +666,27 @@ describe('helix-admin.js', () => {
     });
   });
 
+  describe('admin.sidekick(coords)', () => {
+    it('.get("config.json") GETs the sidekick config', async () => {
+      await admin.sidekick({ org: 'adobe', site: 'x' }).get('config.json');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/sidekick/adobe/x/main/config.json');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('does not expose .update or .remove', () => {
+      const s = admin.sidekick({ org: 'adobe', site: 'x' });
+      assert.equal(s.update, undefined);
+      assert.equal(s.remove, undefined);
+    });
+
+    it('exposes .url equal to the base operation URL', () => {
+      assert.equal(
+        admin.sidekick({ org: 'adobe', site: 'x' }).url,
+        'https://admin.hlx.page/sidekick/adobe/x/main',
+      );
+    });
+  });
+
   describe('admin.log(coords)', () => {
     it('.get(path) GETs logs', async () => {
       await admin.log({ org: 'adobe', site: 'x' }).get('');
