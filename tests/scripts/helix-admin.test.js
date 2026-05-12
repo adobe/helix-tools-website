@@ -645,6 +645,82 @@ describe('helix-admin.js', () => {
     });
   });
 
+  describe('admin.snapshot(coords)', () => {
+    it('.get("") GETs the snapshot list', async () => {
+      await admin.snapshot({ org: 'adobe', site: 'x' }).get('');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/snapshot/adobe/x/main');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('.get("name") GETs the named snapshot manifest', async () => {
+      await admin.snapshot({ org: 'adobe', site: 'x' }).get('my-snapshot');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/snapshot/adobe/x/main/my-snapshot');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('.update("name", body) POSTs to the snapshot endpoint', async () => {
+      await admin.snapshot({ org: 'adobe', site: 'x' }).update('my-snapshot', '{"review":"approved"}');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/snapshot/adobe/x/main/my-snapshot');
+      assert.equal(calls[0].init.method, 'POST');
+      assert.equal(calls[0].init.body, '{"review":"approved"}');
+    });
+
+    it('.remove("name/*") DELETEs snapshot paths', async () => {
+      await admin.snapshot({ org: 'adobe', site: 'x' }).remove('my-snapshot/*');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/snapshot/adobe/x/main/my-snapshot/*');
+      assert.equal(calls[0].init.method, 'DELETE');
+    });
+
+    it('exposes .url equal to the base operation URL', () => {
+      assert.equal(
+        admin.snapshot({ org: 'adobe', site: 'x' }).url,
+        'https://admin.hlx.page/snapshot/adobe/x/main',
+      );
+    });
+  });
+
+  describe('admin.psi(coords)', () => {
+    it('.get() GETs the psi endpoint', async () => {
+      await admin.psi({ org: 'adobe', site: 'x' }).get('');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/psi/adobe/x/main');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('.get("", { params }) appends url query param', async () => {
+      await admin.psi({ org: 'adobe', site: 'x' })
+        .get('', { params: { url: 'https://main--x--adobe.aem.live/' } });
+      const u = new URL(calls[0].url);
+      assert.equal(u.searchParams.get('url'), 'https://main--x--adobe.aem.live/');
+    });
+
+    it('does not expose .update or .remove', () => {
+      const p = admin.psi({ org: 'adobe', site: 'x' });
+      assert.equal(p.update, undefined);
+      assert.equal(p.remove, undefined);
+    });
+  });
+
+  describe('admin.sidekick(coords)', () => {
+    it('.get("config.json") GETs the sidekick config', async () => {
+      await admin.sidekick({ org: 'adobe', site: 'x' }).get('config.json');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/sidekick/adobe/x/main/config.json');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('does not expose .update or .remove', () => {
+      const s = admin.sidekick({ org: 'adobe', site: 'x' });
+      assert.equal(s.update, undefined);
+      assert.equal(s.remove, undefined);
+    });
+
+    it('exposes .url equal to the base operation URL', () => {
+      assert.equal(
+        admin.sidekick({ org: 'adobe', site: 'x' }).url,
+        'https://admin.hlx.page/sidekick/adobe/x/main',
+      );
+    });
+  });
+
   describe('admin.log(coords)', () => {
     it('.get(path) GETs logs', async () => {
       await admin.log({ org: 'adobe', site: 'x' }).get('');
