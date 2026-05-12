@@ -2,7 +2,6 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import {
   fetchSnapshots,
   saveManifest,
-  setOrgSite,
 } from './utils.js';
 
 // DOM Elements
@@ -200,7 +199,8 @@ function displaySnapshots() {
  */
 async function loadSnapshots() {
   try {
-    const result = await fetchSnapshots();
+    const result = await fetchSnapshots(currentOrg, currentSite);
+    if (!result) return;
 
     if (result.error) {
       logResponse([result.status, 'GET', 'snapshots', result.error]);
@@ -228,7 +228,8 @@ async function createSnapshot(snapshotName) {
       resources: [],
     };
 
-    const result = await saveManifest(snapshotName, manifest);
+    const result = await saveManifest(currentOrg, currentSite, snapshotName, manifest);
+    if (!result) return;
 
     if (result.error) {
       logResponse([result.status, 'POST', `snapshot/${snapshotName}`, result.error]);
@@ -263,7 +264,6 @@ siteInput.addEventListener('change', async () => {
   if (orgInput.value.trim() && siteInput.value.trim()) {
     currentOrg = orgInput.value.trim();
     currentSite = siteInput.value.trim();
-    setOrgSite(currentOrg, currentSite);
   }
 });
 
@@ -275,7 +275,6 @@ siteInput.addEventListener('input', async () => {
     currentOrg = orgInput.value.trim();
     currentSite = siteInput.value.trim();
     siteInput.disabled = false;
-    setOrgSite(currentOrg, currentSite);
     await loadSnapshots();
   }
 });
@@ -347,7 +346,6 @@ async function init() {
     currentSite = siteParam;
     // Enable the site field since we have both org and site values
     siteInput.disabled = false;
-    setOrgSite(currentOrg, currentSite);
     await loadSnapshots();
   } else {
     // No snapshot parameter, initialize config fields normally
@@ -360,7 +358,6 @@ async function init() {
       if (orgInput.value && siteInput.value) {
         currentOrg = orgInput.value;
         currentSite = siteInput.value;
-        setOrgSite(currentOrg, currentSite);
         await loadSnapshots();
       }
     } catch (error) {
