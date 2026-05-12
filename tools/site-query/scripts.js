@@ -73,13 +73,13 @@ function updateTableError(table, errCode) {
     switch (errCode) {
       case 401:
         return {
-          title: '401 Unauthorized',
-          msg: 'Unable to display results. The site returned 401 — if this site has authentication enabled, site-query cannot access its content.',
+          title: 'Unauthorized',
+          msg: 'Unable to display results. You may not have access to this content.',
         };
       case 403:
         return {
-          title: '403 Forbidden',
-          msg: 'Unable to display results. The site returned 403 — access to this content is restricted.',
+          title: 'Forbidden',
+          msg: 'Unable to display results. Access to this content was denied.',
         };
       case 404:
         return {
