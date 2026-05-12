@@ -137,7 +137,7 @@ function displayResult(url, matches, org, site) {
       // fallback to sidekick config if status doesn't provide edit URL
       if (!editUrl) {
         const configRes = await executeAdminRequest(
-          () => admin.raw('GET', `/sidekick/${org}/${site}/main/config.json`),
+          () => admin.sidekick({ org, site }).get('config.json'),
           { org, site },
         );
         if (!configRes) return; // login cancelled
