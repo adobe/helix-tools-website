@@ -1,6 +1,5 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
 import admin from '../../scripts/helix-admin.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 
@@ -69,14 +68,13 @@ function clearResults(table) {
   caption.setAttribute('aria-hidden', true);
 }
 
-function updateTableError(table, errCode, org, site) {
+function updateTableError(table, errCode) {
   const { title, msg } = (() => {
     switch (errCode) {
       case 401:
-        ensureLogin(org, site);
         return {
-          title: '401 Unauthorized Error',
-          msg: `Unable to display results. <a target="_blank" href="https://main--${site}--${org}.aem.page">Sign in to the ${site} project sidekick</a> to view the results.`,
+          title: '401 Unauthorized',
+          msg: 'Unable to display results. The site returned 401 — if this site has authentication enabled, site-query cannot access its content.',
         };
       case 404:
         return {
@@ -326,7 +324,7 @@ async function init(doc) {
       const hostsJson = hostsResult.ok ? await hostsResult.json() : null;
       const live = hostsJson?.live?.url ? new URL(hostsJson.live.url).host : null;
       if (!live) {
-        updateTableError(table, hostsResult.status, org, site);
+        updateTableError(table, hostsResult.status);
         stopButton.setAttribute('aria-hidden', 'true');
         caption.setAttribute('aria-hidden', 'true');
         return;
@@ -385,13 +383,13 @@ async function init(doc) {
       // eslint-disable-next-line no-console
       console.error(err);
       if (err.status === 401 || err.message.startsWith('Unauthorized')) {
-        updateTableError(table, 401, org, site);
+        updateTableError(table, 401);
       } else if (err.message.startsWith('Failed on initial fetch')) {
-        updateTableError(table, 499, org, site);
+        updateTableError(table, 499);
       } else if (err.message.startsWith('Not found')) {
-        updateTableError(table, 404, org, site);
+        updateTableError(table, 404);
       } else {
-        updateTableError(table, 500, org, site);
+        updateTableError(table, 500);
       }
     } finally {
       stopButton.setAttribute('aria-hidden', 'true');
