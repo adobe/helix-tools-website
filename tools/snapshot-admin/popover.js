@@ -1,11 +1,11 @@
+import admin from '../../scripts/helix-admin.js';
 import {
-  fetchSnapshots,
-  // fetchManifest,
-  // saveManifest,
-  setOrgSite,
-  // updatePaths,
-  // reviewSnapshot,
-} from './utils.js';
+  fetchSnapshotManifest,
+  fetchStatus,
+  addToSnapshot,
+  deleteFromSnapshot,
+  updateReviewStatus,
+} from './snapshot-utils.js';
 
 const params = new URLSearchParams(window.location.search);
 const referrer = new URL(params.get('referrer'));
@@ -33,62 +33,6 @@ const PAGE_STATUS_WRAPPER = document.getElementById('page-status-wrapper');
 
 let currentSnapshot = null;
 let availableSnapshots = [];
-
-// Utility functions for snapshot operations
-async function addToSnapshot(owner, repo, snapshot, paths) {
-  const adminURL = `https://admin.hlx.page/snapshot/${owner}/${repo}/main/${snapshot}`;
-  const url = `${adminURL}/*`;
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      paths,
-    }),
-  });
-  return resp;
-}
-
-async function deleteFromSnapshot(owner, repo, snapshot, path) {
-  const adminURL = `https://admin.hlx.page/snapshot/${owner}/${repo}/main/${snapshot}`;
-  const url = `${adminURL}${path}`;
-  const resp = await fetch(url, { method: 'DELETE' });
-  return resp;
-}
-
-async function fetchSnapshotManifest(owner, repo, snapshot) {
-  const adminURL = `https://admin.hlx.page/snapshot/${owner}/${repo}/main/${snapshot}`;
-  const resp = await fetch(adminURL);
-  if (resp.status === 200) {
-    const { manifest } = await resp.json();
-    return manifest;
-  }
-  return null;
-}
-
-async function fetchStatus(owner, repo, snapshot, path) {
-  const status = {};
-  const adminSnapshotURL = `https://admin.hlx.page/status/${owner}/${repo}/main/.snapshots/${snapshot}${path}`;
-  const respSnapshot = await fetch(adminSnapshotURL);
-  if (respSnapshot.status === 200) {
-    status.snapshot = await respSnapshot.json();
-  }
-  const adminPageURL = `https://admin.hlx.page/status/${owner}/${repo}/main${path}`;
-  const resp = await fetch(adminPageURL);
-  if (resp.status === 200) {
-    status.preview = await resp.json();
-  }
-  return status;
-}
-
-async function updateReviewStatus(owner, repo, snapshot, status) {
-  const adminURL = `https://admin.hlx.page/snapshot/${owner}/${repo}/main/${snapshot}`;
-  const resp = await fetch(`${adminURL}?review=${status}`, {
-    method: 'POST',
-  });
-  return resp;
-}
 
 function resetUI() {
   PAGE_STATUS.textContent = 'Select a snapshot to view status...';
@@ -232,15 +176,15 @@ async function onSnapshotChange() {
 
 async function loadSnapshots() {
   try {
-    setOrgSite(OWNER, REPO);
-    const result = await fetchSnapshots();
+    const result = await admin.snapshot({ org: OWNER, site: REPO }).get();
 
-    if (result.error) {
+    if (!result.ok) {
       SNAPSHOT_SELECT.innerHTML = '<option value="">Error loading snapshots</option>';
       return;
     }
 
-    availableSnapshots = result.snapshots;
+    const json = await result.json();
+    availableSnapshots = json.snapshots.map((name) => ({ org: OWNER, site: REPO, name }));
 
     if (availableSnapshots.length === 0) {
       SNAPSHOT_SELECT.innerHTML = '<option value="">No snapshots available</option>';

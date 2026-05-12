@@ -1,8 +1,8 @@
 import { registerToolReady } from '../../scripts/scripts.js';
+import admin from '../../scripts/helix-admin.js';
 import {
   fetchManifest,
   saveManifest,
-  setOrgSite,
   deleteSnapshotUrls,
   deleteSnapshot,
   reviewSnapshot,
@@ -152,10 +152,11 @@ function parseSnapshotUrl(snapshotUrl) {
 async function createSnapshotDetailsHTML(snapshot, manifest) {
   const getCustomReviewHost = async () => {
     try {
-      const resp = await fetch(`https://admin.hlx.page/sidekick/${currentOrg}/${currentSite}/main/config.json`);
-      const json = await resp.json();
+      const result = await admin.sidekick({ org: currentOrg, site: currentSite }).get('config.json');
+      if (!result.ok) return null;
+      const json = await result.json();
       return json.reviewHost;
-    } catch (error) {
+    } catch {
       return null;
     }
   };
@@ -262,7 +263,8 @@ async function addSchedulerFieldIfRegistered(snapshotName, manifest) {
  */
 async function loadSnapshotDetails() {
   try {
-    const result = await fetchManifest(currentSnapshot);
+    const result = await fetchManifest(currentOrg, currentSite, currentSnapshot);
+    if (!result) return;
 
     if (result.error) {
       logResponse([result.status, 'GET', `snapshot/${currentSnapshot}`, result.error]);
@@ -326,7 +328,8 @@ async function saveSnapshot(snapshotName) {
     }
 
     // Save the manifest first
-    const saveResult = await saveManifest(snapshotName, newManifest);
+    const saveResult = await saveManifest(currentOrg, currentSite, snapshotName, newManifest);
+    if (!saveResult) return;
 
     if (saveResult.error) {
       logResponse([saveResult.status, 'POST', `snapshot/${snapshotName}`, saveResult.error]);
@@ -338,7 +341,14 @@ async function saveSnapshot(snapshotName) {
     // Update paths if they've changed
     const currentPaths = currentManifest.resources.map((resource) => resource.path);
     const newPaths = updatedPaths.map((path) => path.path);
-    const updateResult = await updatePaths(snapshotName, currentPaths, newPaths);
+    const updateResult = await updatePaths(
+      currentOrg,
+      currentSite,
+      snapshotName,
+      currentPaths,
+      newPaths,
+    );
+    if (!updateResult) return;
     if (updateResult.error) {
       logResponse([updateResult.status, 'POST', `snapshot/${snapshotName}`, updateResult.error]);
       await showModal('Error', `Error updating paths: ${updateResult.error}`);
@@ -377,7 +387,8 @@ async function deleteSnapshotAction(snapshotName) {
   if (!confirmed) return;
 
   try {
-    const result = await deleteSnapshotUrls(snapshotName);
+    const result = await deleteSnapshotUrls(currentOrg, currentSite, snapshotName);
+    if (!result) return;
 
     if (result.error) {
       logResponse([result.status, 'DELETE', `snapshot/${snapshotName}`, result.error]);
@@ -388,7 +399,8 @@ async function deleteSnapshotAction(snapshotName) {
     logResponse([200, 'DELETE', `snapshot/${snapshotName}/*`, 'Snapshot URLs deleted successfully']);
 
     // Now delete the snapshot
-    const deleteResult = await deleteSnapshot(snapshotName);
+    const deleteResult = await deleteSnapshot(currentOrg, currentSite, snapshotName);
+    if (!deleteResult) return;
     if (deleteResult.error) {
       logResponse([deleteResult.status, 'DELETE', `snapshot/${snapshotName}`, deleteResult.error]);
       await showModal('Error', `Error deleting snapshot: ${deleteResult.error}`);
@@ -422,7 +434,8 @@ async function handleReviewAction(snapshotName, action) {
         locked: isLocked,
       };
 
-      const result = await saveManifest(snapshotName, updatedManifest);
+      const result = await saveManifest(currentOrg, currentSite, snapshotName, updatedManifest);
+      if (!result) return;
 
       if (result.error) {
         logResponse([result.status, 'POST', `snapshot/${snapshotName}/manifest`, result.error]);
@@ -452,7 +465,8 @@ async function handleReviewAction(snapshotName, action) {
           return;
       }
 
-      const result = await reviewSnapshot(snapshotName, reviewState);
+      const result = await reviewSnapshot(currentOrg, currentSite, snapshotName, reviewState);
+      if (!result) return;
 
       if (result.error) {
         logResponse([result.status, 'POST', `snapshot/${snapshotName}/review`, result.error]);
@@ -467,7 +481,8 @@ async function handleReviewAction(snapshotName, action) {
     // Reload snapshot details to reflect the new state
     await loadSnapshotDetails();
   } catch (error) {
-    logResponse([500, 'POST', `snapshot/${snapshotName}/manifest`, error.message]);
+    const endpoint = (action === 'lock' || action === 'unlock') ? 'manifest' : 'review';
+    logResponse([500, 'POST', `snapshot/${snapshotName}/${endpoint}`, error.message]);
     await showModal('Error', `Error ${action}: ${error.message}`);
   }
 }
@@ -529,9 +544,6 @@ async function init() {
   currentOrg = org;
   currentSite = site;
   currentSnapshot = snapshotName;
-
-  // Set the org and site in the utils
-  setOrgSite(currentOrg, currentSite);
 
   // Load the snapshot details
   await loadSnapshotDetails();
