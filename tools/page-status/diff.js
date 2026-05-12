@@ -1,5 +1,5 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import { initConfigField } from '../../utils/config/config.js';
+import { getProjectFromUrl } from '../../utils/config/config.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import escapeHtml from '../../utils/html.js';
 
@@ -867,8 +867,9 @@ async function loadSinglePageDiff(path) {
 async function init() {
   // Get params from URL
   const params = new URLSearchParams(window.location.search);
-  currentOrg = params.get('org');
-  currentSite = params.get('site');
+  const project = getProjectFromUrl();
+  currentOrg = project.org;
+  currentSite = project.site;
   currentJob = params.get('job');
   currentPath = params.get('path');
   isEmbedMode = params.get('embed') === 'true';
@@ -879,13 +880,8 @@ async function init() {
     applyEmbedMode();
   }
 
-  // Initialize config field only if not in embed mode
-  if (!isEmbedMode) {
-    await initConfigField();
-  }
-
   if (!currentOrg || !currentSite) {
-    showError('Missing org or site parameters. Use ?org=<org>&site=<site>&path=<path> or &job=<jobId>');
+    showError('Select an org/site in the header to continue.');
     return;
   }
 

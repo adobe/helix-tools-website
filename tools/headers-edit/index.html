@@ -8,11 +8,11 @@
   >
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="category" content="setup-configure">
   <meta name="lab" content="true">
   <title>HTTP Headers Editor | AEM Tools</title>
   <script nonce="aem" src="/scripts/aem.js" type="module"></script>
   <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
-  <link rel="stylesheet" href="/utils/config/config.css" />
   <link rel="stylesheet" href="/styles/styles.css" />
   <script nonce="aem" src="/tools/headers-edit/headers-edit.js" type="module"></script>
   <link rel="stylesheet" href="/tools/headers-edit/headers-edit.css" />
@@ -26,18 +26,6 @@
 
     <div>
       <form id="admin-form">
-        <section class="form-field config-field">
-          <div class="form-field org-field">
-            <label for="org">Organization</label>
-            <input name="org" id="org" list="org-list" autocomplete="off" required />
-            <datalist id="org-list"></datalist>
-          </div>
-          <div class="form-field site-field">
-            <label for="site">Site</label>
-            <input name="site" id="site" list="site-list" autocomplete="off" disabled />
-            <datalist id="site-list"></datalist>
-          </div>
-        </section>
         <p class="button-wrapper">
           <button type="submit" id="fetch" class="button">Fetch</button>
         </p>

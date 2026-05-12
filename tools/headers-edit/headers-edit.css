@@ -12,10 +12,6 @@
     grid-template-columns: 1fr max-content;
     gap: var(--spacing-l);
   }
-
-  .headers-edit #admin-form .config-field {
-    grid-column: 1 / span 2;
-  }
 }
 
 .headers-edit .button-bar {

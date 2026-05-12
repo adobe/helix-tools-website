@@ -13,10 +13,6 @@
     grid-template-columns: 1fr max-content;
     gap: var(--spacing-l);
   }
-
-  .version-admin #admin-form .config-field {
-    grid-column: 1 / span 2;
-  }
 }
 
 #versions .button-wrapper {
@@ -73,12 +69,6 @@
   margin-top: var(--spacing-m);
   padding-top: var(--spacing-m);
   border-top: var(--border-s) solid var(--color-border);
-}
-
-.version-admin .config-field {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--spacing-m);
 }
 
 .version-admin .type-field {

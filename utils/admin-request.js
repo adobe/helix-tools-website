@@ -1,5 +1,5 @@
 import { ensureLogin } from '../blocks/profile/profile.js';
-import { updateConfig } from './config/config.js';
+import { updateStorage } from './config/config.js';
 
 /**
  * Auth-handling policy for {@link executeAdminRequest}.
@@ -32,9 +32,8 @@ function waitForLogin(org) {
  * Execute an admin API request with optional auth pre-check and 401 retry.
  * Returns `null` if the user fails to complete login.
  *
- * `updateConfig()` only fires on 2xx — a 4xx/5xx may not actually validate
- * the org/site combo (e.g. 404 could mean the org doesn't exist). It's a
- * no-op on pages without the org/site fields, so callers needn't opt in.
+ * Persistence to localStorage only fires on 2xx — a 4xx/5xx may not actually
+ * validate the org/site combo (e.g. 404 could mean the org doesn't exist).
  *
  * @template {{ status: number }} T
  * @param {() => Promise<T>} requestFn       must be safe to invoke twice
@@ -61,6 +60,6 @@ export async function executeAdminRequest(requestFn, authConfig) {
     result = await requestFn();
   }
 
-  if (result?.ok) updateConfig();
+  if (result?.ok) updateStorage(org, site);
   return result;
 }

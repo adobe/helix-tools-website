@@ -1,15 +1,68 @@
-.tool-catalog > form {
-  margin-bottom: var(--spacing-l);
+.tool-catalog .tool-catalog-toolbar {
+  display: flex;
+  gap: var(--spacing-m);
+  align-items: flex-end;
+  margin-bottom: var(--spacing-m);
+  flex-wrap: wrap;
+}
+
+.tool-catalog .tool-catalog-tabs {
+  display: flex;
+  gap: var(--spacing-m);
+  overflow-x: auto;
+  box-shadow: inset 0 -1px 0 0 var(--color-border);
+}
+
+.tool-catalog .tool-catalog-tab {
+  padding: var(--spacing-s) var(--spacing-xs);
+  color: var(--color-font-grey);
+  font-size: var(--body-size-s);
+  font-weight: var(--weight-regular);
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: inset 0 -2px 0 0 transparent;
+  transition: color 0.13s ease-in-out, box-shadow 0.13s ease-in-out;
+  
+  
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-link);
+    outline-offset: -2px;
+  }
+}
+
+.tool-catalog .tool-catalog-tab:hover {
+  color: var(--color-text);
+}
+
+.tool-catalog .tool-catalog-tab.is-active {
+  color: var(--color-text);
+  box-shadow: inset 0 -2px 0 0 var(--color-link);
+}
+
+.tool-catalog .tool-catalog-search {
+  min-width: 200px;
+  flex: 1;
 
   .form-field input {
     width: 100%;
-    padding: var(--spacing-s) var(--spacing-m);
+    box-sizing: border-box;
+    padding: var(--spacing-xs) var(--spacing-m);
     font-size: var(--body-size-m);
     border: 1px solid var(--color-border);
     border-radius: var(--rounding-l);
     background: var(--color-background);
     color: var(--color-text);
   }
+}
+
+@media (width < 600px) {
+  .tool-catalog .tool-catalog-tabs { flex-basis: 100%; }
+  .tool-catalog .tool-catalog-search { flex-basis: 100%; }
 }
 
 .tool-catalog > ul {
@@ -19,6 +72,17 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: var(--horizontal-spacing);
+}
+
+.tool-catalog .tool-catalog-empty {
+  margin: 0;
+  padding: var(--spacing-xl) 0;
+  color: var(--color-font-grey);
+  font-size: var(--body-size-m);
+}
+
+.tool-catalog .tool-catalog-empty[hidden] {
+  display: none;
 }
 
 .tool-catalog > ul > li {

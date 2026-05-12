@@ -8,6 +8,7 @@
   >
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="category" content="publish-manage">
   <title>Snapshot Admin</title>
   <meta name="description" content="Tool for managing snapshots in AEM">
   <meta name="lab" content="true">
@@ -27,21 +28,8 @@
     <!-- SITE PATH FORM -->
     <div>
       <form id="site-path-form">
-        <section class="form-field config-field">
-          <div class="form-field org-field">
-            <label for="org">Organization</label>
-            <input name="org" id="org" list="org-list" autocomplete="off" required />
-            <datalist id="org-list"></datalist>
-          </div>
-          <div class="form-field site-field">
-            <label for="site">Site</label>
-            <input name="site" id="site" list="site-list" autocomplete="off" disabled />
-            <datalist id="site-list"></datalist>
-          </div>
-        </section>
         <p class="button-wrapper">
           <button type="submit" id="load-snapshots" class="button">Load Snapshots</button>
-          <button type="reset" id="reset" class="button outline">Reset</button>
         </p>
       </form>
     </div>

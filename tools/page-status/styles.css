@@ -2,15 +2,11 @@
   .page-status form#status-form {
     display: grid;
     grid-template:
-      'config path' auto
+      'path path' auto
       'checkbox checkbox' auto
       'button button' 1fr / 1fr 1fr;
     align-items: baseline;
     gap: 0 var(--spacing-l);
-  }
-
-  .page-status form#status-form > .config-field {
-    grid-area: config;
   }
 
   .page-status form#status-form > .text-field {

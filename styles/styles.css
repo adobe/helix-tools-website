@@ -45,7 +45,7 @@
   --color-button-disabled-text: light-dark(var(--gray-400), var(--gray-500));
 
   /* fonts */
-  --body-font-family: robotoflex, robotoflex-fallback, sans-serif;
+  --body-font-family: 'Adobe Clean', adobe-clean, 'Trebuchet MS', sans-serif;
   --heading-font-family: var(--body-font-family);
   --code-font-family: robotomono, 'Courier New', monospace;
 
@@ -89,11 +89,23 @@ html[data-theme="dark"] {
   }
 }
 
-/* fallback fonts */
+/* fallback fonts — Trebuchet MS with metrics adjusted to match Adobe Clean */
 @font-face {
-  font-family: robotoflex-fallback;
-  size-adjust: 97.389%;
-  src: local('Arial');
+  font-family: 'Trebuchet MS';
+  src: local('Trebuchet MS');
+  font-weight: 400;
+  size-adjust: 88%;
+  ascent-override: 92%;
+  descent-override: 18%;
+}
+
+@font-face {
+  font-family: 'Trebuchet MS';
+  src: local('Trebuchet MS Bold'), local('Trebuchet MS');
+  font-weight: 700;
+  size-adjust: 90%;
+  ascent-override: 92%;
+  descent-override: 18%;
 }
 
 *,
@@ -121,7 +133,7 @@ body[data-scroll='disabled'] {
 }
 
 header {
-  position: fixed;
+  position: sticky;
   top: 0;
   width: 100%;
   min-height: var(--header-height);
@@ -134,9 +146,9 @@ header {
 main {
   max-width: 1200px;
   margin: 0 var(--horizontal-spacing);
-  padding: var(--header-height) 0;
   border-radius: var(--rounding-xl);
   background-color: var(--color-background);
+  padding: var(--spacing-s) 0;
 }
 
 @media (width >=900px) {
@@ -149,6 +161,7 @@ main {
 @media (width >=1264px) {
   main {
     max-width: 1200px;
+    margin: 24px auto;
   }
 }
 
@@ -382,6 +395,7 @@ h6 {
 
 h1 {
   font-size: var(--heading-size-xxl);
+  margin-top: 0;
 }
 
 h2 {

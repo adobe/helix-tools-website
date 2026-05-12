@@ -1,13 +1,12 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import { initConfigField } from '../../utils/config/config.js';
+import { getProjectFromUrl } from '../../utils/config/config.js';
 import admin from '../../scripts/helix-admin.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { escapeXml, parseHreflang, collectSitemapEntries } from './utils.js';
 
 const adminForm = document.getElementById('admin-form');
-const site = document.getElementById('site');
-const org = document.getElementById('org');
+const submitButton = adminForm.querySelector('button[type="submit"]');
 const consoleBlock = document.querySelector('.console');
 const addSitemapButton = document.getElementById('add-sitemap');
 
@@ -45,10 +44,11 @@ function logResult(result) {
 }
 
 async function saveSitemapYaml() {
+  const { org, site } = getProjectFromUrl();
   const yamlText = YAML.stringify(loadedSitemaps);
   return executeAdminRequest(
-    () => admin.config({ org: org.value, site: site.value }).select('content/sitemap.yaml').update(yamlText),
-    { org: org.value, site: site.value },
+    () => admin.config({ org, site }).select('content/sitemap.yaml').update(yamlText),
+    { org, site },
   );
 }
 
@@ -354,9 +354,10 @@ async function removeLanguage(sitemapName, langCode) {
 }
 
 async function generateSitemap(destination) {
+  const { org, site } = getProjectFromUrl();
   const result = await executeAdminRequest(
-    () => admin.sitemap({ org: org.value, site: site.value }).update(destination),
-    { org: org.value, site: site.value },
+    () => admin.sitemap({ org, site }).update(destination),
+    { org, site },
   );
   if (!result) return;
   const { method, url } = result.request;
@@ -491,9 +492,10 @@ function populateSitemaps(sitemaps) {
 }
 
 async function fetchCdnProdHost() {
+  const { org, site } = getProjectFromUrl();
   const result = await executeAdminRequest(
-    () => admin.config({ org: org.value, site: site.value }).select('cdn.json').read(),
-    { org: org.value, site: site.value },
+    () => admin.config({ org, site }).select('cdn.json').read(),
+    { org, site },
   );
   if (!result) return;
   logResult(result);
@@ -571,8 +573,15 @@ async function showIndexDialog() {
   });
 }
 
+function syncSubmitEnabled() {
+  const { org, site } = getProjectFromUrl();
+  const ready = !!(org && site);
+  if (submitButton) submitButton.disabled = !ready;
+}
+
 async function init() {
-  await initConfigField();
+  syncSubmitEnabled();
+  window.addEventListener('tools:project-change', syncSubmitEnabled);
 
   addSitemapButton.addEventListener('click', () => {
     showTypeSelectionDialog();
@@ -580,16 +589,17 @@ async function init() {
 
   adminForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!org.value || !site.value) {
+    const { org, site } = getProjectFromUrl();
+    if (!org || !site) {
       // eslint-disable-next-line no-alert
-      alert('Please select an organization and site first');
+      alert('Select an org/site in the header to continue.');
       return;
     }
 
     // Preflight on the fetch (entry point); the resulting session covers later saves.
     const result = await executeAdminRequest(
-      () => admin.config({ org: org.value, site: site.value }).select('content/sitemap.yaml').read(),
-      { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
+      () => admin.config({ org, site }).select('content/sitemap.yaml').read(),
+      { org, site, policy: AuthMode.PREFLIGHT_AND_RETRY },
     );
     if (!result) return;
     logResult(result);
@@ -609,7 +619,8 @@ async function init() {
     }
   });
 
-  if (org.value && site.value) {
+  const { org, site } = getProjectFromUrl();
+  if (org && site) {
     adminForm.requestSubmit();
   }
 }

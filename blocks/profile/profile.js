@@ -434,13 +434,20 @@ async function showModal(block, focusedOrg) {
   dialog.showModal();
 }
 
+const AVATAR_ICON_URL = '/icons/S2_Icon_UserAvatar_20_N.svg';
+
+async function loadAvatarIcon(iconSpan) {
+  try {
+    const resp = await fetch(AVATAR_ICON_URL);
+    if (resp.ok) iconSpan.innerHTML = await resp.text();
+  } catch (e) {
+    // leave the avatar empty if the icon can't be fetched
+  }
+}
+
 export default async function decorate(block) {
   const avatar = document.createElement('button');
-  avatar.innerHTML = `
-    <span class="icon">
-      <img src="/blocks/profile/profile.svg" alt="User">
-    </span>
-  `;
+  avatar.innerHTML = '<span class="icon"></span>';
   avatar.id = 'profile';
   avatar.setAttribute('type', 'button');
   avatar.setAttribute('title', 'Manage projects and sign in');
@@ -450,6 +457,7 @@ export default async function decorate(block) {
     showModal(block);
   });
   block.append(avatar);
+  loadAvatarIcon(avatar.querySelector('.icon'));
   dispatchProfileEvent('loaded');
 }
 

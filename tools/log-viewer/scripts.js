@@ -1,6 +1,7 @@
 /* eslint-disable class-methods-use-this */
 import { registerToolReady } from '../../scripts/scripts.js';
-import { initConfigField, updateConfig } from '../../utils/config/config.js';
+import { ensureLogin } from '../../blocks/profile/profile.js';
+import { getProjectFromUrl } from '../../utils/config/config.js';
 import admin from '../../scripts/helix-admin.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { loadPrism, highlight } from '../../utils/prism/prism.js';
@@ -13,6 +14,7 @@ const FIELDS = ['date-from', 'date-to'];
 
 // tool elements
 const FORM = document.getElementById('timeframe-form');
+const SUBMIT_BTN = FORM.querySelector('button[type="submit"]');
 const PICKER = FORM.querySelector('#timeframe');
 const PICKER_DROPDOWN = FORM.querySelector('#timeframe-menu');
 const PICKER_OPTIONS = PICKER_DROPDOWN.querySelectorAll('[role="option"]');
@@ -643,11 +645,27 @@ function getCellText(cell) {
 }
 
 /**
+ * Checks if the user is logged in to the specified org/site.
+ * @returns {Promise<boolean>} True if logged in, false otherwise.
+ */
+async function isLoggedIn() {
+  const { org, site } = getProjectFromUrl();
+  if (org && site) {
+    return ensureLogin(org, site);
+  }
+  return false;
+}
+
+function syncSubmitEnabled() {
+  const { org, site } = getProjectFromUrl();
+  const ready = !!(org && site);
+  if (SUBMIT_BTN) SUBMIT_BTN.disabled = !ready;
+}
+
+/**
  * Registers event listeners to handle form interactions, table updates, and UI behavior.
  */
 async function registerListeners() {
-  // await initConfigField();
-
   // enable timeframe dropdown
   PICKER.addEventListener('click', (e) => {
     const { target } = e;
@@ -692,32 +710,44 @@ async function registerListeners() {
   FORM.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    const { org, site } = getProjectFromUrl();
+    if (!org || !site) {
+      // eslint-disable-next-line no-alert
+      alert('Select an org/site in the header to continue.');
+      return;
+    }
+
+    if (!await isLoggedIn()) {
+      window.addEventListener('profile-update', ({ detail: loginInfo }) => {
+        if (loginInfo.includes(org)) {
+          FORM.querySelector('button[type="submit"]').click();
+        }
+      }, { once: true });
+      return;
+    }
+
     const { target, submitter } = e;
     disableForm(target, submitter);
     clearTable(RESULTS);
     updateTableDisplay('loading', TABLE);
 
     const data = getFormData(target);
-    const { org, site } = data;
-    if (org && site) {
-      // validate org/site config
-      const { live, preview, error: fetchHostError } = await fetchHosts(org, site);
-      if (fetchHostError) {
-        updateTableError(fetchHostError.status, org, site);
-      } else if (live && preview) {
-        // ensure log access
-        const timeframe = [...PICKER_OPTIONS].find((o) => o.getAttribute('aria-selected') === 'true').dataset.value;
-        const { logs, error } = await fetchLogs(org, site, timeframe);
-        if (!error) {
-          displayLogs(logs, live, preview);
-          updateConfig();
-          updateParams(data);
-        } else {
-          updateTableError(error.status, org, site);
-        }
+    // validate org/site config
+    const { live, preview, error: fetchHostError } = await fetchHosts(org, site);
+    if (fetchHostError) {
+      updateTableError(fetchHostError.status, org, site);
+    } else if (live && preview) {
+      // ensure log access
+      const timeframe = [...PICKER_OPTIONS].find((o) => o.getAttribute('aria-selected') === 'true').dataset.value;
+      const { logs, error } = await fetchLogs(org, site, timeframe);
+      if (!error) {
+        displayLogs(logs, live, preview);
+        updateParams(data);
       } else {
-        updateTableError('Project', org, site);
+        updateTableError(error.status, org, site);
       }
+    } else {
+      updateTableError('Project', org, site);
     }
 
     enableForm(target, submitter);
@@ -873,7 +903,8 @@ async function populateForm(doc) {
     // set default timeframe if not already set by params
     setTimeframeValues('1:00:00', FROM, TO);
   }
-  await initConfigField();
+  syncSubmitEnabled();
+  window.addEventListener('tools:project-change', syncSubmitEnabled);
 }
 
 registerToolReady(populateForm(document));

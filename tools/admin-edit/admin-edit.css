@@ -13,10 +13,6 @@
     gap: var(--spacing-l);
   }
 
-  .admin-edit #admin-form .config-field {
-    grid-column: 1 / span 2;
-  }
-
   .admin-edit #admin-form .url-field {
     margin-top: 0;
   }

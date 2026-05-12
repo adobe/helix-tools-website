@@ -1,7 +1,7 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import admin from '../../scripts/helix-admin.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
-import { initConfigField } from '../../utils/config/config.js';
+import { getProjectFromUrl } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 
 const adminForm = document.getElementById('admin-form');
@@ -9,8 +9,7 @@ const headersForm = document.getElementById('headers-form');
 const headersList = document.getElementById('headers-list');
 const addHeaderBtn = document.getElementById('add-header');
 const consoleBlock = document.querySelector('.console');
-const site = document.getElementById('site');
-const org = document.getElementById('org');
+const fetchBtn = document.getElementById('fetch');
 const pathSelect = document.getElementById('path-select');
 const addPathBtn = document.getElementById('add-path');
 const removePathBtn = document.getElementById('remove-path');
@@ -148,8 +147,15 @@ function removePath() {
   loadHeadersForPath(currentPath);
 }
 
+function syncSubmitEnabled() {
+  const { org, site } = getProjectFromUrl();
+  const ready = !!(org && site);
+  if (fetchBtn) fetchBtn.disabled = !ready;
+}
+
 async function init() {
-  await initConfigField();
+  syncSubmitEnabled();
+  window.addEventListener('tools:project-change', syncSubmitEnabled);
 
   addHeaderBtn.addEventListener('click', () => {
     headersList.append(createHeaderItem());
@@ -164,9 +170,10 @@ async function init() {
 
   headersForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!org.value || !site.value) {
+    const { org, site } = getProjectFromUrl();
+    if (!org || !site) {
       // eslint-disable-next-line no-alert
-      alert('Please select an organization and site first');
+      alert('Select an org/site in the header to continue.');
       return;
     }
 
@@ -179,12 +186,12 @@ async function init() {
       }
     });
 
-    const headers = admin.config({ org: org.value, site: site.value }).select('headers.json');
+    const headers = admin.config({ org, site }).select('headers.json');
     const result = await executeAdminRequest(
       () => (Object.keys(patchedHeaders).length === 0
         ? headers.remove()
         : headers.update(JSON.stringify(patchedHeaders))),
-      { org: org.value, site: site.value },
+      { org, site },
     );
     if (!result) return;
     const { method, url } = result.request;
@@ -193,16 +200,17 @@ async function init() {
 
   adminForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!org.value || !site.value) {
+    const { org, site } = getProjectFromUrl();
+    if (!org || !site) {
       // eslint-disable-next-line no-alert
-      alert('Please select an organization and site first');
+      alert('Select an org/site in the header to continue.');
       return;
     }
 
     // Preflight on the fetch (entry point); the resulting session covers later saves.
     const result = await executeAdminRequest(
-      () => admin.config({ org: org.value, site: site.value }).select('headers.json').read(),
-      { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
+      () => admin.config({ org, site }).select('headers.json').read(),
+      { org, site, policy: AuthMode.PREFLIGHT_AND_RETRY },
     );
     if (!result) return;
     headersList.innerHTML = '';
