@@ -89,7 +89,7 @@ function updateTableError(table, errCode) {
       case 499:
         return {
           title: 'Initial Fetch Failed',
-          msg: 'This is likely due to CORS. Either use a CORS allow plugin or add these headers in your site config: <code>Access-Control-Allow-Origin: https://tools.aem.live</code> and <code>Access-Control-Allow-Credentials: true</code>.',
+          msg: 'This is likely due to CORS. Either use a CORS allow plugin or add a header <code>Access-Control-Allow-Origin: https://tools.aem.live</code> in your site config.',
         };
       default:
         return {
@@ -180,7 +180,7 @@ async function* fetchQueryIndex(queryIndexPath, liveHost) {
     let res;
     try {
       // eslint-disable-next-line no-await-in-loop
-      res = await fetch(`https://${liveHost}${queryIndexPath}?offset=${offset}&limit=${limit}`, { credentials: 'include' });
+      res = await fetch(`https://${liveHost}${queryIndexPath}?offset=${offset}&limit=${limit}`);
     } catch (err) {
       throw new Error('Failed on initial fetch of index.', err);
     }
@@ -206,7 +206,7 @@ async function* fetchQueryIndex(queryIndexPath, liveHost) {
 async function* fetchSitemap(sitemapPath, liveHost) {
   let res;
   try {
-    res = await fetch(`https://${liveHost}${sitemapPath}`, { credentials: 'include' });
+    res = await fetch(`https://${liveHost}${sitemapPath}`);
     if (!res.ok) {
       const error = new Error(`Not found: ${sitemapPath}`);
       error.status = res.status;
@@ -251,7 +251,7 @@ async function* fetchSitemap(sitemapPath, liveHost) {
  * @param {string} queryType the query type
  */
 async function queryPage(url, query, queryType) {
-  const res = await fetch(url, { credentials: 'include' });
+  const res = await fetch(url);
   const html = await res.text();
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
