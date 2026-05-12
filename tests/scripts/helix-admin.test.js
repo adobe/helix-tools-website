@@ -178,9 +178,49 @@ describe('helix-admin.js — H5 URL contract', () => {
     });
   });
 
-  describe('admin.index(coords) URLs', () => {
-    it('.update("/*", body) hits /index/{org}/{site}/main/*', async () => {
-      await admin.index({ org: 'adobe', site: 'x' }).update('/*', JSON.stringify({ paths: ['/'] }));
+  describe('admin.sidekick(coords)', () => {
+    it('.get("config.json") GETs the sidekick config', async () => {
+      await admin.sidekick({ org: 'adobe', site: 'x' }).get('config.json');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/sidekick/adobe/x/main/config.json');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('does not expose .update or .remove', () => {
+      const s = admin.sidekick({ org: 'adobe', site: 'x' });
+      assert.equal(s.update, undefined);
+      assert.equal(s.remove, undefined);
+    });
+
+    it('exposes .url equal to the base operation URL', () => {
+      assert.equal(
+        admin.sidekick({ org: 'adobe', site: 'x' }).url,
+        'https://admin.hlx.page/sidekick/adobe/x/main',
+      );
+    });
+  });
+
+  describe('admin.log(coords)', () => {
+    it('.get(path) GETs logs', async () => {
+      await admin.log({ org: 'adobe', site: 'x' }).get('');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/log/adobe/x/main');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('.update(path) POSTs a log update', async () => {
+      await admin.log({ org: 'adobe', site: 'x' }).update('');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/log/adobe/x/main');
+      assert.equal(calls[0].init.method, 'POST');
+    });
+
+    it('does not expose .remove', () => {
+      assert.equal(admin.log({ org: 'adobe', site: 'x' }).remove, undefined);
+    });
+  });
+
+  describe('admin.index(coords)', () => {
+    it('.update("/*", body) POSTs application/json to the bulk index endpoint', async () => {
+      const payload = { paths: ['/'], indexNames: ['default'] };
+      await admin.index({ org: 'adobe', site: 'x' }).update('/*', JSON.stringify(payload));
       assert.equal(calls[0].url, 'https://admin.hlx.page/index/adobe/x/main/*');
     });
   });
