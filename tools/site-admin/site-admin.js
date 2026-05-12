@@ -1,15 +1,16 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
 import { VIEW_STORAGE_KEY } from './helpers/constants.js';
-import { fetchSites, getSitePath, adminFetch } from './helpers/api-helper.js';
+import admin from '../../scripts/helix-admin.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import {
   loadIcon,
   icon,
   getFavorites,
   getContentSourceType,
   getDAEditorURL,
+  compareSites,
 } from './helpers/utils.js';
 import { openAddSiteModal } from './helpers/modals.js';
 import createSiteCard from './helpers/site-card.js';
@@ -111,9 +112,12 @@ const applyDetailsToCard = (card, details) => {
 
 const populateCardDetails = async (card, orgValue) => {
   const siteName = card.dataset.site;
-  const resp = await adminFetch(getSitePath(orgValue, siteName), {}, logFn);
-  if (!resp.ok) return;
-  const details = await resp.json();
+  const detailsResult = await executeAdminRequest(
+    () => admin.config({ org: orgValue, site: siteName }).read(),
+    { org: orgValue, site: siteName },
+  );
+  const details = detailsResult?.ok ? await detailsResult.json() : null;
+  if (!details) return;
   applyDetailsToCard(card, details);
 };
 
@@ -187,17 +191,7 @@ const displaySites = (sites, { limitedAccess = false } = {}) => {
   }
 
   const favorites = getFavorites(org.value);
-  const sortedSites = [...sites].sort((a, b) => {
-    if (selectedSite) {
-      if (a.name === selectedSite) return -1;
-      if (b.name === selectedSite) return 1;
-    }
-    const aFav = favorites.includes(a.name);
-    const bFav = favorites.includes(b.name);
-    if (aFav && !bFav) return -1;
-    if (!aFav && bFav) return 1;
-    return a.name.localeCompare(b.name);
-  });
+  const sortedSites = [...sites].sort((a, b) => compareSites(a, b, selectedSite, favorites));
 
   if (detailsObserver) detailsObserver.disconnect();
   detailsObserver = new IntersectionObserver((entries) => {
@@ -245,29 +239,39 @@ const displaySitesForOrg = async (orgValue) => {
   hideSiteNotFoundHint();
 
   const selectedSite = new URLSearchParams(window.location.search).get('site');
-  const { sites, status } = await fetchSites(orgValue, logFn);
+  const sitesResult = await executeAdminRequest(
+    () => admin.config({ org: orgValue }).select('sites.json').read(),
+    { org: orgValue, site: selectedSite, policy: AuthMode.PREFLIGHT_AND_RETRY },
+  );
+  if (sitesResult) {
+    const { method, url } = sitesResult.request;
+    logFn(sitesResult.status, [method, url, sitesResult.error]);
+  }
+  const status = sitesResult?.status ?? 0;
+  const sites = sitesResult?.ok ? (await sitesResult.json()).sites : null;
 
   if (status === 200 && sites) {
     displaySites(sites);
-  } else if (status === 401) {
-    const loggedIn = await ensureLogin(orgValue);
-    if (loggedIn) {
-      return displaySitesForOrg(orgValue);
-    }
   } else if (status === 403 && selectedSite) {
-    const siteResp = await adminFetch(getSitePath(orgValue, selectedSite), {}, logFn);
-    if (siteResp.ok) {
-      const details = await siteResp.json();
+    const siteResult = await executeAdminRequest(
+      () => admin.config({ org: orgValue, site: selectedSite }).read(),
+      { org: orgValue, site: selectedSite },
+    );
+    if (siteResult?.ok) {
+      const details = await siteResult.json();
       displaySites([{ name: selectedSite, details }], { limitedAccess: true });
-    } else if (siteResp.status === 403 || siteResp.status === 404) {
+    } else if (siteResult?.status === 403 || siteResult?.status === 404) {
       showAccessMessage(`Site "${selectedSite}" isn't available in org "${orgValue}". It may not exist, or you may not have access to it.`);
+    } else if (!siteResult) {
+      showAccessMessage('Sign-in required. Click List to try again.');
     } else {
-      showAccessMessage(`Failed to load site "${selectedSite}" (HTTP ${siteResp.status}).`);
+      showAccessMessage(`Failed to load site "${selectedSite}" (HTTP ${siteResult.status}).`);
     }
   } else if (status === 403) {
     showAccessMessage("You're not an admin of this org. Enter a site name above to manage just that site.");
+  } else if (!sitesResult) {
+    showAccessMessage('Sign-in required. Click List to try again.');
   }
-  return null;
 };
 
 window.addEventListener('sites-refresh', (e) => {
@@ -322,7 +326,6 @@ const initSiteAdmin = async () => {
   const form = document.getElementById('site-admin-form');
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const { submitter } = e;
 
     const orgValue = org.value;
     if (!orgValue) return;
@@ -333,14 +336,6 @@ const initSiteAdmin = async () => {
     if (siteValue) url.searchParams.set('site', siteValue);
     else url.searchParams.delete('site');
     window.history.replaceState({}, document.title, url.href);
-
-    const loggedIn = await ensureLogin(orgValue, siteValue || undefined);
-    if (!loggedIn) {
-      window.addEventListener('profile-update', ({ detail: loginInfo }) => {
-        if (loginInfo.includes(orgValue)) submitter?.click();
-      }, { once: true });
-      return;
-    }
 
     displaySitesForOrg(orgValue);
   });

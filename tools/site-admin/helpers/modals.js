@@ -1,29 +1,26 @@
 import { createModal } from '../../../blocks/modal/modal.js';
 import { AUTH_STATUS_MAP } from './constants.js';
-import {
-  fetchSiteDetails,
-  fetchSiteAccess,
-  updateSiteAccess,
-  saveSiteConfig,
-  saveSiteCodeConfig,
-  deleteSiteConfig,
-  fetchSecrets,
-  createSecret,
-  createNamedSecret,
-  deleteSecret,
-  fetchApiKeys,
-  createApiKey,
-  deleteApiKey,
-} from './api-helper.js';
+import admin from '../../../scripts/helix-admin.js';
+import { executeAdminRequest } from '../../../utils/admin-request.js';
 import escapeHtml from '../../../utils/html.js';
 import {
-  icon, showToast, formatDate, isExpired,
+  icon, showToast, formatDate, isExpired, buildSiteConfig,
 } from './utils.js';
 
 /* eslint-disable no-alert, no-restricted-globals */
 
 const refreshSites = (orgValue, action, siteName) => {
   window.dispatchEvent(new CustomEvent('sites-refresh', { detail: { orgValue, action, siteName } }));
+};
+
+const logResult = (logFn, result) => {
+  if (!logFn) return;
+  if (result) {
+    const { method, url } = result.request;
+    logFn(result.status, [method, url, result.error]);
+  } else {
+    logFn(0, ['', '', 'request cancelled (sign-in required or aborted)']);
+  }
 };
 
 const setupModal = async (className, headerHtml) => {
@@ -39,42 +36,6 @@ const setupModal = async (className, headerHtml) => {
   return { dialog, container, showModal };
 };
 
-const buildSiteConfig = (site, codeSrc, contentSrc, byogit = null) => {
-  let code;
-  if (byogit) {
-    code = {
-      owner: byogit.owner,
-      repo: byogit.repo,
-      source: {
-        type: 'byogit',
-        url: 'https://cm-repo.adobe.io/api',
-        raw_url: 'https://cm-repo.adobe.io/api/raw',
-        owner: byogit.owner,
-        repo: byogit.repo,
-        secretId: 'cm-byog',
-      },
-    };
-  } else {
-    const codeURL = new URL(codeSrc);
-    const [, owner, repo] = codeURL.pathname.split('/');
-    code = { owner, repo, source: { type: 'github', url: codeSrc } };
-  }
-  const content = { source: { type: 'markup', url: contentSrc } };
-
-  const contentURL = new URL(contentSrc);
-
-  if (contentSrc.startsWith('https://drive.google.com/drive')) {
-    content.source.type = 'google';
-    content.source.id = contentURL.pathname.split('/').pop();
-  }
-
-  if (contentSrc.includes('sharepoint.com/')) {
-    content.source.type = 'onedrive';
-  }
-
-  return { ...site, content, code };
-};
-
 export const saveSiteAndRefresh = async (
   orgValue,
   siteName,
@@ -87,10 +48,15 @@ export const saveSiteAndRefresh = async (
   byogit = null,
 ) => {
   const siteConfig = buildSiteConfig(existingConfig, codeSrc, contentSrc, byogit);
-  let success = await saveSiteConfig(orgValue, siteName, siteConfig, logFn);
+  const saveResult = await executeAdminRequest(
+    () => admin.config({ org: orgValue, site: siteName }).update(JSON.stringify(siteConfig)),
+    { org: orgValue, site: siteName },
+  );
+  logResult(logFn, saveResult);
+  let success = saveResult?.ok ?? false;
 
   if (success && byogit) {
-    success = await saveSiteCodeConfig(orgValue, siteName, {
+    const codeConfig = {
       source: {
         type: 'byogit',
         url: 'https://cm-repo.adobe.io/api',
@@ -99,7 +65,13 @@ export const saveSiteAndRefresh = async (
         repo: byogit.repo,
         secretId: 'cm-byog',
       },
-    }, logFn);
+    };
+    const codeResult = await executeAdminRequest(
+      () => admin.config({ org: orgValue, site: siteName }).select('code.json').update(JSON.stringify(codeConfig)),
+      { org: orgValue, site: siteName },
+    );
+    logResult(logFn, codeResult);
+    success = codeResult?.ok ?? false;
   }
 
   if (success && dialogCloseCallback) {
@@ -115,7 +87,12 @@ export const deleteSiteAndRefresh = async (
   dialogCloseCallback,
   logFn = null,
 ) => {
-  const success = await deleteSiteConfig(orgValue, siteName, logFn);
+  const result = await executeAdminRequest(
+    () => admin.config({ org: orgValue, site: siteName }).remove(),
+    { org: orgValue, site: siteName },
+  );
+  logResult(logFn, result);
+  const success = result?.ok ?? false;
 
   if (success) {
     if (dialogCloseCallback) dialogCloseCallback();
@@ -279,7 +256,11 @@ export const openEditSourceModal = async (
       };
     }
 
-    const siteDetails = await fetchSiteDetails(orgValue, siteName) || {};
+    const detailsResult = await executeAdminRequest(
+      () => admin.config({ org: orgValue, site: siteName }).read(),
+      { org: orgValue, site: siteName },
+    );
+    const siteDetails = (detailsResult?.ok ? await detailsResult.json() : null) || {};
     const closeDialog = () => dialog.close();
     const success = await saveSiteAndRefresh(
       orgValue,
@@ -315,7 +296,11 @@ export const openAuthModal = async (siteName, orgValue) => {
     </div>
   `);
 
-  const access = await fetchSiteAccess(orgValue, siteName);
+  const accessResult = await executeAdminRequest(
+    () => admin.config({ org: orgValue, site: siteName }).read(),
+    { org: orgValue, site: siteName },
+  );
+  const access = accessResult?.ok ? ((await accessResult.json()).access || {}) : {};
 
   let currentScope = 'none';
   if (access.site) currentScope = 'site';
@@ -449,10 +434,14 @@ export const openAuthModal = async (siteName, orgValue) => {
     let newTokenValue = null;
 
     if (scope !== 'none' && !tokenId) {
-      const result = await createSecret(orgValue, siteName);
-      if (result) {
-        tokenId = result.id;
-        newTokenValue = result.value;
+      const secretResp = await executeAdminRequest(
+        () => admin.config({ org: orgValue, site: siteName }).select('secrets.json').update(null),
+        { org: orgValue, site: siteName },
+      );
+      const newSecret = secretResp?.ok ? await secretResp.json() : null;
+      if (newSecret) {
+        tokenId = newSecret.id;
+        newTokenValue = newSecret.value;
       }
     }
 
@@ -465,7 +454,21 @@ export const openAuthModal = async (siteName, orgValue) => {
 
     if (access.admin) newAccess.admin = access.admin;
 
-    const success = await updateSiteAccess(orgValue, siteName, newAccess);
+    const siteHandle = admin.config({ org: orgValue, site: siteName });
+    const readResult = await executeAdminRequest(
+      () => siteHandle.read(),
+      { org: orgValue, site: siteName },
+    );
+    let success = false;
+    if (readResult?.ok) {
+      const siteConfig = await readResult.json();
+      siteConfig.access = newAccess;
+      const writeResult = await executeAdminRequest(
+        () => siteHandle.update(JSON.stringify(siteConfig)),
+        { org: orgValue, site: siteName },
+      );
+      success = writeResult?.ok ?? false;
+    }
     btn.disabled = false;
     btn.textContent = success ? 'Saved!' : 'Save';
     if (success) {
@@ -627,18 +630,39 @@ export const openSecretModal = (siteName, orgValue) => openManageItemsModal(site
   itemName: 'Secret',
   itemNamePlural: 'Secrets',
   iconName: 'lock',
-  fetchFn: fetchSecrets,
+  fetchFn: async (org, site) => {
+    const resp = await executeAdminRequest(
+      () => admin.config({ org, site }).select('secrets.json').read(),
+      { org, site },
+    );
+    if (resp?.ok) return Object.values(await resp.json());
+    if (resp?.status === 404) return [];
+    return null;
+  },
   createFn: async (org, site, body) => {
     if (body?.name) {
-      const result = await createNamedSecret(org, site, body.name, body.value || null);
-      if (result && body.value) {
-        delete result.value;
-      }
-      return result;
+      const handle = admin.config({ org, site })
+        .select(`secrets/${encodeURIComponent(body.name)}.json`);
+      const secretBody = body.value ? JSON.stringify({ value: body.value }) : null;
+      const resp = await executeAdminRequest(() => handle.update(secretBody), { org, site });
+      if (!resp?.ok) return null;
+      let data;
+      try { data = await resp.json(); } catch { data = { id: body.name }; }
+      if (data && body.value) delete data.value;
+      return data;
     }
-    return createSecret(org, site);
+    const resp = await executeAdminRequest(
+      () => admin.config({ org, site }).select('secrets.json').update(null),
+      { org, site },
+    );
+    return resp?.ok ? resp.json() : null;
   },
-  deleteFn: deleteSecret,
+  deleteFn: async (org, site, secretId) => {
+    const handle = admin.config({ org, site })
+      .select(`secrets/${encodeURIComponent(secretId)}.json`);
+    const resp = await executeAdminRequest(() => handle.remove(), { org, site });
+    return resp?.ok ?? false;
+  },
   showExpiration: false,
   formHtml: `
     <div class="form-field">
@@ -696,9 +720,31 @@ export const openApiKeyModal = (siteName, orgValue) => openManageItemsModal(site
   itemName: 'API Key',
   itemNamePlural: 'API Keys',
   iconName: 'key',
-  fetchFn: fetchApiKeys,
-  createFn: createApiKey,
-  deleteFn: deleteApiKey,
+  fetchFn: async (org, site) => {
+    const resp = await executeAdminRequest(
+      () => admin.config({ org, site }).select('apiKeys.json').read(),
+      { org, site },
+    );
+    if (resp?.ok) {
+      const data = await resp.json();
+      return Object.entries(data).map(([id, val]) => ({ id, ...val }));
+    }
+    if (resp?.status === 404) return [];
+    return null;
+  },
+  createFn: async (org, site, body) => {
+    const resp = await executeAdminRequest(
+      () => admin.config({ org, site }).select('apiKeys.json').update(body ? JSON.stringify(body) : null),
+      { org, site },
+    );
+    return resp?.ok ? resp.json() : null;
+  },
+  deleteFn: async (org, site, keyId) => {
+    const handle = admin.config({ org, site })
+      .select(`apiKeys/${encodeURIComponent(keyId)}.json`);
+    const resp = await executeAdminRequest(() => handle.remove(), { org, site });
+    return resp?.ok ?? false;
+  },
   showExpiration: true,
   formHtml: `
     <div class="form-field">
@@ -839,7 +885,17 @@ export const openAddSiteModal = async (
     const btn = secretStep.querySelector('.save-secret-btn');
     btn.disabled = true;
     btn.textContent = 'Saving...';
-    const saved = await createNamedSecret(orgValue, createdSiteName, 'cm-byog', secretValue, logFn);
+    const secretHandle = admin.config({ org: orgValue, site: createdSiteName })
+      .select('secrets/cm-byog.json');
+    const secretResult = await executeAdminRequest(
+      () => secretHandle.update(JSON.stringify({ value: secretValue })),
+      { org: orgValue, site: createdSiteName },
+    );
+    logResult(logFn, secretResult);
+    let saved = null;
+    if (secretResult?.ok) {
+      try { saved = await secretResult.json(); } catch { saved = { id: 'cm-byog' }; }
+    }
     if (saved) {
       btn.textContent = 'Saved!';
       showToast('Cloud Manager secret saved', 'success');

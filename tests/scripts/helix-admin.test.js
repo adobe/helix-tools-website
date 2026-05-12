@@ -645,6 +645,27 @@ describe('helix-admin.js', () => {
     });
   });
 
+  describe('admin.psi(coords)', () => {
+    it('.get() GETs the psi endpoint', async () => {
+      await admin.psi({ org: 'adobe', site: 'x' }).get('');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/psi/adobe/x/main');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('.get("", { params }) appends url query param', async () => {
+      await admin.psi({ org: 'adobe', site: 'x' })
+        .get('', { params: { url: 'https://main--x--adobe.aem.live/' } });
+      const u = new URL(calls[0].url);
+      assert.equal(u.searchParams.get('url'), 'https://main--x--adobe.aem.live/');
+    });
+
+    it('does not expose .update or .remove', () => {
+      const p = admin.psi({ org: 'adobe', site: 'x' });
+      assert.equal(p.update, undefined);
+      assert.equal(p.remove, undefined);
+    });
+  });
+
   describe('admin.log(coords)', () => {
     it('.get(path) GETs logs', async () => {
       await admin.log({ org: 'adobe', site: 'x' }).get('');
