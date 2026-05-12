@@ -78,15 +78,26 @@ function createAdmin(defaults = {}) {
         init.headers = headers;
       }
     }
-    const resp = await fetch(finalUrl, init);
-    return {
-      ok: resp.ok,
-      status: resp.status,
-      text: () => resp.text(),
-      json: () => resp.json(),
-      error: resp.headers.get('x-error') || '',
-      request: { method, url: finalUrl },
-    };
+    try {
+      const resp = await fetch(finalUrl, init);
+      return {
+        ok: resp.ok,
+        status: resp.status,
+        text: () => resp.text(),
+        json: () => resp.json(),
+        error: resp.headers.get('x-error') || '',
+        request: { method, url: finalUrl },
+      };
+    } catch (err) {
+      return {
+        ok: false,
+        status: 0,
+        text: () => Promise.reject(err),
+        json: () => Promise.reject(err),
+        error: err.message,
+        request: { method, url: finalUrl },
+      };
+    }
   }
 
   function bindConfig(url) {
@@ -108,6 +119,7 @@ function createAdmin(defaults = {}) {
       update: (body, opts) => write('POST', body, opts),
       create: (body, opts) => write('PUT', body, opts),
       remove: (opts) => request({ method: 'DELETE', url, params: opts?.params }),
+      url,
     };
   }
 
@@ -152,7 +164,7 @@ function createAdmin(defaults = {}) {
       },
       remove: (path, opts) => request({ method: 'DELETE', url: join(path), params: opts?.params }),
     };
-    return Object.fromEntries(caps.map((c) => [c, all[c]]));
+    return { ...Object.fromEntries(caps.map((c) => [c, all[c]])), url: baseUrl };
   }
 
   function status(coords) { return bindOperation(opBase('status', coords), ['get', 'update']); }
@@ -163,6 +175,9 @@ function createAdmin(defaults = {}) {
   function index(coords) { return bindOperation(opBase('index', coords), ['get', 'update', 'remove']); }
   function sitemap(coords) { return bindOperation(opBase('sitemap', coords), ['update']); }
   function job(coords) { return bindOperation(opBase('job', coords), ['get', 'remove']); }
+  function psi(coords) { return bindOperation(opBase('psi', coords), ['get']); }
+  function snapshot(coords) { return bindOperation(opBase('snapshot', coords), ['get', 'update', 'remove']); }
+  function sidekick(coords) { return bindOperation(opBase('sidekick', coords), ['get']); }
 
   /**
    * Return well-known admin URL suggestions for the given coords, suitable
@@ -216,6 +231,9 @@ function createAdmin(defaults = {}) {
     index,
     sitemap,
     job,
+    psi,
+    snapshot,
+    sidekick,
     raw,
     suggestions,
     coordsFromURL,
