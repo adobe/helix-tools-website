@@ -24,16 +24,18 @@ function deriveContentType(url) {
 /**
  * Normalized response envelope returned by every admin API call.
  *
- * Non-2xx is carried via `ok`/`status`/`error`, never thrown. `text()` and
- * `json()` wrap the underlying Response body, which is single-use — call
- * one, not both, and only once.
+ * Both non-2xx HTTP responses and network-level errors (DNS failure, timeout,
+ * CORS block) are carried via `ok`/`status`/`error` — they never throw.
+ * Network errors produce `ok: false`, `status: 0`, and `error` set to the
+ * caught message. `text()` and `json()` reject on network errors and wrap the
+ * underlying Response body otherwise — single-use, call one, not both.
  *
  * @typedef {object} AdminResponse
  * @property {boolean} ok
  * @property {number} status
  * @property {() => Promise<string>} text
  * @property {() => Promise<any>} json
- * @property {string} error                            `x-error` header, '' if absent
+ * @property {string} error   `x-error` header on HTTP responses; thrown message on network error
  * @property {{method: string, url: string}} request   echo for logging
  */
 
@@ -97,15 +99,26 @@ function createAdmin(defaults = {}) {
         init.headers = headers;
       }
     }
-    const resp = await fetch(finalUrl, init);
-    return {
-      ok: resp.ok,
-      status: resp.status,
-      text: () => resp.text(),
-      json: () => resp.json(),
-      error: resp.headers.get('x-error') || '',
-      request: { method, url: finalUrl },
-    };
+    try {
+      const resp = await fetch(finalUrl, init);
+      return {
+        ok: resp.ok,
+        status: resp.status,
+        text: () => resp.text(),
+        json: () => resp.json(),
+        error: resp.headers.get('x-error') || '',
+        request: { method, url: finalUrl },
+      };
+    } catch (err) {
+      return {
+        ok: false,
+        status: 0,
+        text: () => Promise.reject(err),
+        json: () => Promise.reject(err),
+        error: err.message,
+        request: { method, url: finalUrl },
+      };
+    }
   }
 
   /**
