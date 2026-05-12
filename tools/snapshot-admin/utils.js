@@ -21,6 +21,13 @@ function filterPaths(hrefs) {
   }, []);
 }
 
+function formatError(result) {
+  if (result.error) return result.error;
+  if (result.status === 401) return 'Please make sure you are logged in.';
+  if (result.status === 403) return 'Please make sure your user has the correct permissions.';
+  return `Error: ${result.status}`;
+}
+
 function comparePaths(first, second) {
   return {
     added: second.filter((item) => !first.includes(item)),
@@ -34,7 +41,7 @@ export async function fetchSnapshots(org, site) {
     { org, site, policy: AuthMode.PREFLIGHT_AND_RETRY },
   );
   if (!result) return null;
-  if (!result.ok) return { error: result.error || `Error: ${result.status}`, status: result.status };
+  if (!result.ok) return { error: formatError(result), status: result.status };
   const json = await result.json();
   return { snapshots: json.snapshots.map((name) => ({ org, site, name })), status: result.status };
 }
@@ -45,12 +52,16 @@ export async function fetchManifest(org, site, name) {
     { org, site, policy: AuthMode.PREFLIGHT_AND_RETRY },
   );
   if (!result) return null;
-  if (!result.ok) return { error: result.error || `Error: ${result.status}`, status: result.status };
+  if (!result.ok) return { error: formatError(result), status: result.status };
   const { manifest } = await result.json();
   manifest.resources = formatResources(org, site, name, manifest.resources);
   return { manifest, status: result.status };
 }
 
+/**
+ * Save a snapshot manifest. Returns `{ status }` on success; the saved manifest is not
+ * returned — callers that need the updated state should reload via fetchManifest.
+ */
 export async function saveManifest(org, site, name, manifestToSave) {
   const body = manifestToSave !== undefined && manifestToSave !== null
     ? JSON.stringify(manifestToSave)
@@ -60,13 +71,14 @@ export async function saveManifest(org, site, name, manifestToSave) {
     { org, site },
   );
   if (!result) return null;
-  if (!result.ok) return { error: result.error || `Error: ${result.status}`, status: result.status };
+  if (!result.ok) return { error: formatError(result), status: result.status };
   return { status: result.status };
 }
 
 export async function reviewSnapshot(org, site, name, state) {
   const message = `Snapshot ${name} request ${state}`;
   const result = await executeAdminRequest(
+    // API requires review state in both the query param and the body
     () => admin.snapshot({ org, site }).update(
       name,
       JSON.stringify({ review: state, message }),
@@ -75,24 +87,23 @@ export async function reviewSnapshot(org, site, name, state) {
     { org, site },
   );
   if (!result) return null;
-  if (!result.ok) return { error: result.error || `Error: ${result.status}`, status: result.status };
+  if (!result.ok) return { error: formatError(result), status: result.status };
   return { success: true, status: result.status };
 }
 
 export async function deleteSnapshotUrls(org, site, name, paths = ['/*']) {
-  const results = await Promise.all(paths.map(async (path) => {
+  const earlyExit = await paths.reduce(async (chain, path) => {
+    const prev = await chain;
+    if (prev !== undefined) return prev;
     const result = await executeAdminRequest(
       () => admin.snapshot({ org, site }).remove(`${name}${path}`),
       { org, site },
     );
     if (!result) return null;
-    if (!result.ok) return { error: result.error || `Error: ${result.status}`, status: result.status };
-    return { success: result.status };
-  }));
-  if (results.some((r) => r === null)) return null;
-  const firstError = results.find((r) => r.error);
-  if (firstError) return firstError;
-  return results[0];
+    if (!result.ok) return { error: formatError(result), status: result.status };
+    return undefined;
+  }, Promise.resolve(undefined));
+  return earlyExit ?? { success: true };
 }
 
 export async function deleteSnapshot(org, site, name) {
@@ -101,7 +112,7 @@ export async function deleteSnapshot(org, site, name) {
     { org, site },
   );
   if (!result) return null;
-  if (!result.ok) return { error: result.error || `Error: ${result.status}`, status: result.status };
+  if (!result.ok) return { error: formatError(result), status: result.status };
   return { status: result.status };
 }
 
@@ -120,7 +131,7 @@ export async function updatePaths(org, site, name, currPaths, editedHrefs) {
       { org, site },
     );
     if (!result) return null;
-    if (!result.ok) return { error: result.error || `Error: ${result.status}`, status: result.status };
+    if (!result.ok) return { error: formatError(result), status: result.status };
   }
 
   return formatResources(org, site, name, paths.map((path) => ({ path })));

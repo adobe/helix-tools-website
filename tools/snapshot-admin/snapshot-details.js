@@ -151,10 +151,14 @@ function parseSnapshotUrl(snapshotUrl) {
  */
 async function createSnapshotDetailsHTML(snapshot, manifest) {
   const getCustomReviewHost = async () => {
-    const result = await admin.sidekick({ org: currentOrg, site: currentSite }).get('config.json');
-    if (!result.ok) return null;
-    const json = await result.json();
-    return json.reviewHost;
+    try {
+      const result = await admin.sidekick({ org: currentOrg, site: currentSite }).get('config.json');
+      if (!result.ok) return null;
+      const json = await result.json();
+      return json.reviewHost;
+    } catch {
+      return null;
+    }
   };
 
   const { name } = snapshot;
