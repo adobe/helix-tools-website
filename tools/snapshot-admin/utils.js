@@ -103,7 +103,7 @@ export async function deleteSnapshotUrls(org, site, name, paths = ['/*']) {
     if (!result.ok) return { error: formatError(result), status: result.status };
     return undefined;
   }, Promise.resolve(undefined));
-  return earlyExit ?? { success: true };
+  return earlyExit !== undefined ? earlyExit : { success: true };
 }
 
 export async function deleteSnapshot(org, site, name) {

@@ -481,7 +481,8 @@ async function handleReviewAction(snapshotName, action) {
     // Reload snapshot details to reflect the new state
     await loadSnapshotDetails();
   } catch (error) {
-    logResponse([500, 'POST', `snapshot/${snapshotName}/manifest`, error.message]);
+    const endpoint = (action === 'lock' || action === 'unlock') ? 'manifest' : 'review';
+    logResponse([500, 'POST', `snapshot/${snapshotName}/${endpoint}`, error.message]);
     await showModal('Error', `Error ${action}: ${error.message}`);
   }
 }
