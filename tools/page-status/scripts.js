@@ -3,6 +3,7 @@ import { decorateIcons } from '../../scripts/aem.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import loadingMessages from './loading-messages.js';
+import classifySequenceStatus from './status.js';
 
 const FORM = document.getElementById('status-form');
 const TABLE = document.querySelector('table');
@@ -319,34 +320,11 @@ function buildLink(text, url, path) {
  * @returns {HTMLSpanElement} Status light element indicating status and sequence.
  */
 function buildSequenceStatus(edit, preview, publish) {
-  // check if a date is valid
-  const date = (d) => !Number.isNaN(d.getTime());
-  const editDate = new Date(edit);
-  const previewDate = new Date(preview);
-  const publishDate = new Date(publish);
-  const inSequence = (editDate <= previewDate && previewDate <= publishDate);
+  const { label, positive } = classifySequenceStatus(edit, preview, publish);
   const span = document.createElement('span');
   span.className = 'status-light';
-  let status;
-  if (!date(editDate)) {
-    status = 'No source';
-    span.classList.add('negative');
-  } else if (date(editDate) && !date(previewDate) && !date(publishDate)) {
-    status = 'Not previewed';
-    span.classList.add('positive');
-  } else if (
-    date(editDate)
-    && date(previewDate)
-    && !date(publishDate)
-    && editDate <= previewDate
-  ) {
-    status = 'Not published';
-    span.classList.add('positive');
-  } else {
-    status = inSequence ? 'Current' : 'Pending changes';
-    span.classList.add('positive');
-  }
-  span.textContent = status;
+  span.classList.add(positive ? 'positive' : 'negative');
+  span.textContent = label;
   return span;
 }
 
