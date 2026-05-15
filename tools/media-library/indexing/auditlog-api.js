@@ -3,6 +3,8 @@ import { executeAdminRequest, AuthMode } from '../../../utils/admin-request.js';
 import { MediaLibraryError, ErrorCodes, logMediaLibraryError } from '../core/errors.js';
 import t from '../core/messages.js';
 
+export { processAuditLog } from './transforms.js';
+
 const DEFAULT_LIMIT = 1000;
 const authedAdmin = admin.withRequestInit({ credentials: 'include' });
 
@@ -68,45 +70,4 @@ export async function fetchAllAuditLog(org, site, timeParams, onChunk = null, op
   }
 
   return allEntries;
-}
-
-function isPdfSvgOrFragment(path) {
-  if (!path) return false;
-  const cleanPath = path.split('?')[0].split('#')[0];
-  return /\.(pdf|svg)$/i.test(cleanPath) || (cleanPath.includes('/fragments/') && !cleanPath.includes('.'));
-}
-
-function getContentType(ext) {
-  if (ext === 'pdf') return 'application/pdf';
-  if (ext === 'svg') return 'image/svg+xml';
-  return null;
-}
-
-export function processAuditLog(entries, org, site) {
-  if (!entries || entries.length === 0) return [];
-
-  return entries
-    .filter((entry) => entry.route === 'preview')
-    .filter((entry) => isPdfSvgOrFragment(entry.path))
-    .map((entry) => {
-      const cleanPath = entry.path.split('?')[0].split('#')[0];
-      const ext = cleanPath.split('.').pop()?.toLowerCase() || '';
-
-      const url = `https://main--${site}--${org}.aem.page${entry.path}`;
-      return {
-        hash: url,
-        url,
-        path: url,
-        name: cleanPath.split('/').pop() || cleanPath,
-        timestamp: entry.timestamp,
-        user: entry.user || 'Unknown',
-        operation: 'ingest',
-        doc: '',
-        resourcePath: null,
-        contentType: getContentType(ext),
-        mediaHash: null,
-        width: null,
-        height: null,
-      };
-    });
 }
