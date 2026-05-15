@@ -1,72 +1,68 @@
-/**
- * Medialog API client - fetches and transforms medialog data
- */
+import admin from '../../../scripts/helix-admin.js';
+import { executeAdminRequest, AuthMode } from '../../../utils/admin-request.js';
 import { getDedupeKey } from '../core/urls.js';
 import { MediaLibraryError, ErrorCodes, logMediaLibraryError } from '../core/errors.js';
 import t from '../core/messages.js';
 
-const CONFIG = {
-  API_URL: 'https://admin.hlx.page/medialog',
-  DEFAULT_LIMIT: 1000,
-};
+const DEFAULT_LIMIT = 1000;
+const authedAdmin = admin.withRequestInit({ credentials: 'include' });
 
-/**
- * Fetch medialog from Admin API.
- * @param {string} org - Organization
- * @param {string} site - Site
- * @param {object} timeParams - { since } for full or { from, to } for incremental (ISO)
- * @param {string} [nextToken] - Pagination token
- */
-export async function fetchMediaLog(org, site, timeParams, nextToken) {
-  const url = new URL(`${CONFIG.API_URL}/${org}/${site}/main`);
-  if (timeParams.from && timeParams.to) {
-    url.searchParams.set('from', timeParams.from);
-    url.searchParams.set('to', timeParams.to);
+function checkError(result) {
+  if (result.ok) return;
+  const { url } = result.request;
+  if (result.status === 401) {
+    logMediaLibraryError(ErrorCodes.EDS_AUTH_EXPIRED, { status: 401, endpoint: url });
+    throw new MediaLibraryError(ErrorCodes.EDS_AUTH_EXPIRED, t('EDS_AUTH_EXPIRED'), { status: 401 });
   }
-  if (nextToken) url.searchParams.set('nextToken', nextToken);
-  url.searchParams.set('limit', CONFIG.DEFAULT_LIMIT);
-
-  const response = await fetch(url.toString(), { credentials: 'include' });
-
-  if (!response.ok) {
-    const endpoint = url.toString();
-    if (response.status === 401) {
-      logMediaLibraryError(ErrorCodes.EDS_AUTH_EXPIRED, { status: 401, endpoint });
-      throw new MediaLibraryError(ErrorCodes.EDS_AUTH_EXPIRED, t('EDS_AUTH_EXPIRED'), { status: 401 });
-    }
-    if (response.status === 403) {
-      logMediaLibraryError(ErrorCodes.EDS_LOG_DENIED, { status: 403, endpoint });
-      throw new MediaLibraryError(ErrorCodes.EDS_LOG_DENIED, t('EDS_LOG_DENIED'), { status: 403 });
-    }
-    throw new Error(`Failed to fetch medialog: ${response.status}`);
+  if (result.status === 403) {
+    logMediaLibraryError(ErrorCodes.EDS_LOG_DENIED, { status: 403, endpoint: url });
+    throw new MediaLibraryError(ErrorCodes.EDS_LOG_DENIED, t('EDS_LOG_DENIED'), { status: 403 });
   }
-
-  const data = await response.json();
-  return {
-    entries: data.entries || [],
-    nextToken: data.nextToken || (data.links?.next ? new URL(data.links.next).searchParams.get('nextToken') : null),
-  };
+  throw new Error(`Failed to fetch medialog: ${result.status}`);
 }
 
 /**
  * Fetch all medialog entries (with pagination).
- * @param {string} org - Organization
- * @param {string} site - Site
- * @param {object} timeParams - { since } for full or { from, to } for incremental
+ * @param {string} org
+ * @param {string} site
+ * @param {object} timeParams - { from, to } for incremental; empty for full
  * @param {Function} [onChunk] - Callback (entries) for each page; enables progressive display
  */
 export async function fetchAllMediaLog(org, site, timeParams, onChunk = null) {
+  const handle = authedAdmin.medialog({ org, site });
   const allEntries = [];
   let nextToken = null;
-  let done = false;
+  let first = true;
 
-  while (!done) {
+  for (;;) {
+    const params = { limit: DEFAULT_LIMIT };
+    if (timeParams.from && timeParams.to) {
+      params.from = timeParams.from;
+      params.to = timeParams.to;
+    }
+    if (nextToken) params.nextToken = nextToken;
+
+    const policy = first ? AuthMode.PREFLIGHT_AND_RETRY : AuthMode.RETRY_ON_401;
+    first = false;
+
     // eslint-disable-next-line no-await-in-loop -- pagination must be sequential
-    const { entries, nextToken: token } = await fetchMediaLog(org, site, timeParams, nextToken);
+    const result = await executeAdminRequest(() => handle.get('', { params }), { org, site, policy });
+    if (!result) return allEntries; // login cancelled
+
+    checkError(result);
+
+    // eslint-disable-next-line no-await-in-loop
+    const data = await result.json();
+    const { entries = [] } = data;
+    const token = data.nextToken || (data.links?.next
+      ? new URL(data.links.next).searchParams.get('nextToken')
+      : null);
+
+    if (!entries.length) break;
     allEntries.push(...entries);
-    if (entries.length > 0 && onChunk) onChunk(entries);
+    if (onChunk) onChunk(entries);
     nextToken = token;
-    done = !nextToken;
+    if (entries.length < DEFAULT_LIMIT || !nextToken) break;
   }
 
   return allEntries;

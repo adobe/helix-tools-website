@@ -254,6 +254,7 @@ async function init() {
     if (!isIncrementalEligible(metadata)) return;
 
     try {
+      // Gate on existing session — background refresh should not prompt for login.
       if (!(await ensureLogin(orgKey, siteKey))) return;
 
       const cachedMediaData = await getMediaData(orgKey, siteKey, pathKey);

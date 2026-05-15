@@ -1,57 +1,53 @@
-import { ensureLogin } from '../../../blocks/profile/profile.js';
+import admin from '../../../scripts/helix-admin.js';
+import { executeAdminRequest, AuthMode } from '../../../utils/admin-request.js';
 import { IndexConfig } from '../core/constants.js';
 
-const STATUS_BASE = 'https://admin.hlx.page/status';
+const authedAdmin = admin.withRequestInit({ credentials: 'include' });
 
-function fetchWithAuth(url, options = {}) {
-  return fetch(url, {
-    ...options,
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  });
-}
+/**
+ * @typedef {{ handle: object, topic: string, name: string }} JobDescriptor
+ */
 
 export async function createBulkStatusJob(org, repo, ref = 'main') {
-  await ensureLogin(org, repo);
-
-  const url = `${STATUS_BASE}/${org}/${repo}/${ref}/*`;
-  const resp = await fetchWithAuth(url, {
-    method: 'POST',
-    body: JSON.stringify({
+  const result = await executeAdminRequest(
+    () => authedAdmin.status({ org, site: repo, ref }).update('*', JSON.stringify({
       paths: ['/*'],
       select: ['preview'],
-    }),
-  });
+    })),
+    { org, site: repo, policy: AuthMode.RETRY_ON_401 },
+  );
 
-  if (!resp.ok) {
-    const text = await resp.text();
-    throw new Error(`Failed to create bulk status job: ${resp.status} - ${text}`);
+  if (!result) throw new Error('Bulk status job creation cancelled: login required');
+  if (!result.ok) {
+    const text = await result.text();
+    throw new Error(`Failed to create bulk status job: ${result.status} - ${text}`);
   }
 
-  const data = await resp.json();
+  const data = await result.json();
   if (!data.job || data.job.state !== 'created') {
     throw new Error('Bulk status job creation failed or returned unexpected state');
   }
 
-  const jobUrl = data.links?.self;
-  if (!jobUrl || typeof jobUrl !== 'string') {
-    throw new Error('Bulk status job response missing links.self URL');
+  const { topic, name } = data.job;
+  if (!topic || !name) {
+    throw new Error('Bulk status job response missing job topic or name');
   }
 
   return {
-    jobId: data.job.name,
-    jobUrl,
+    handle: authedAdmin.job({ org, site: repo, ref }),
+    topic,
+    name,
   };
 }
 
 const BULK_JOB_TERMINAL_SUCCESS = ['completed', 'stopped'];
 const BULK_JOB_TERMINAL_FAILURE = ['failed', 'error', 'cancelled'];
 
+/**
+ * @param {JobDescriptor} job
+ */
 export async function pollStatusJob(
-  jobUrl,
+  job,
   pollIntervalMs = IndexConfig.STATUS_POLL_INTERVAL_MS,
   onProgress = null,
   maxDurationMs = IndexConfig.STATUS_POLL_MAX_DURATION_MS,
@@ -59,14 +55,12 @@ export async function pollStatusJob(
 ) {
   const startedAt = startTime ?? Date.now();
 
-  const resp = await fetchWithAuth(jobUrl);
-  if (!resp.ok) {
-    throw new Error(`Failed to fetch job status: ${resp.status}`);
-  }
+  const result = await job.handle.get(`${job.topic}/${job.name}`);
+  if (!result.ok) throw new Error(`Failed to fetch job status: ${result.status}`);
 
   const {
     state, progress, error, cancelled,
-  } = await resp.json();
+  } = await result.json();
   if (onProgress && progress) {
     onProgress(progress);
   }
@@ -89,17 +83,17 @@ export async function pollStatusJob(
   await new Promise((resolve) => {
     setTimeout(resolve, pollIntervalMs);
   });
-  return pollStatusJob(jobUrl, pollIntervalMs, onProgress, maxDurationMs, startedAt);
+  return pollStatusJob(job, pollIntervalMs, onProgress, maxDurationMs, startedAt);
 }
 
-export async function getStatusJobDetails(jobUrl) {
-  const detailsUrl = `${jobUrl}/details`;
-  const resp = await fetchWithAuth(detailsUrl);
+/**
+ * @param {JobDescriptor} job
+ */
+export async function getStatusJobDetails(job) {
+  const result = await job.handle.get(`${job.topic}/${job.name}/details`);
 
-  if (!resp.ok) {
-    throw new Error(`Failed to fetch job details: ${resp.status}`);
-  }
+  if (!result.ok) throw new Error(`Failed to fetch job details: ${result.status}`);
 
-  const { data } = await resp.json();
+  const { data } = await result.json();
   return data?.resources || [];
 }

@@ -260,6 +260,7 @@ function createAdmin(defaults = {}) {
   function job(coords) { return bindOperation(opBase('job', coords), ['get', 'remove']); }
   function psi(coords) { return bindOperation(opBase('psi', coords), ['get']); }
   function sidekick(coords) { return bindOperation(opBase('sidekick', coords), ['get']); }
+  function medialog(coords) { return bindOperation(opBase('medialog', coords), ['get']); }
 
   /**
    * Derive a client whose init defaults are merged with `extra` (later wins).
@@ -283,6 +284,7 @@ function createAdmin(defaults = {}) {
     job,
     psi,
     sidekick,
+    medialog,
     raw,
     suggestions,
     coordsFromURL,

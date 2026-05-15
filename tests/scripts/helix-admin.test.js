@@ -705,6 +705,33 @@ describe('helix-admin.js', () => {
     });
   });
 
+  describe('admin.medialog(coords)', () => {
+    it('.get("") GETs the medialog endpoint', async () => {
+      await admin.medialog({ org: 'adobe', site: 'x' }).get('');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/medialog/adobe/x/main');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('.get("", { params }) appends pagination params', async () => {
+      await admin.medialog({ org: 'adobe', site: 'x' }).get('', { params: { limit: 1000, nextToken: 'tok' } });
+      assert.ok(calls[0].url.includes('limit=1000'));
+      assert.ok(calls[0].url.includes('nextToken=tok'));
+    });
+
+    it('does not expose .update or .remove', () => {
+      const ml = admin.medialog({ org: 'adobe', site: 'x' });
+      assert.equal(ml.update, undefined);
+      assert.equal(ml.remove, undefined);
+    });
+
+    it('exposes .url equal to the base operation URL', () => {
+      assert.equal(
+        admin.medialog({ org: 'adobe', site: 'x' }).url,
+        'https://admin.hlx.page/medialog/adobe/x/main',
+      );
+    });
+  });
+
   describe('admin.index(coords)', () => {
     it('.update("/*", body) POSTs application/json to the bulk index endpoint', async () => {
       const payload = { paths: ['/'], indexNames: ['default'] };
