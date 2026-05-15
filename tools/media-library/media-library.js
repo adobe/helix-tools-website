@@ -17,6 +17,7 @@ import { MediaLibraryError, ErrorCodes, logMediaLibraryError } from './core/erro
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
+import { AuthMode } from '../../utils/admin-request.js';
 import {
   getMetadata,
   getMediaData,
@@ -260,8 +261,8 @@ async function init() {
       const timeParams = incrementalTimeParams(metadata.lastFetchTime);
 
       const [newMedialog, newAuditlog] = await Promise.all([
-        fetchAllMediaLog(orgKey, siteKey, timeParams),
-        fetchAllAuditLog(orgKey, siteKey, timeParams),
+        fetchAllMediaLog(orgKey, siteKey, timeParams, null, { policy: AuthMode.NONE }),
+        fetchAllAuditLog(orgKey, siteKey, timeParams, null, { policy: AuthMode.NONE }),
       ]);
 
       if (newMedialog.length === 0 && newAuditlog.length === 0) return;
@@ -295,7 +296,7 @@ async function init() {
 
       await doSetMediaData(savedData);
     } catch {
-      // ignore
+      // Safe to ignore: errors leave cached data intact; next refresh will retry.
     }
   }
 
