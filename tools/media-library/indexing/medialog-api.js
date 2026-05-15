@@ -7,7 +7,7 @@ import t from '../core/messages.js';
 const DEFAULT_LIMIT = 1000;
 const authedAdmin = admin.withRequestInit({ credentials: 'include' });
 
-function checkError(result) {
+async function checkError(result) {
   if (result.ok) return;
   const { url } = result.request;
   if (result.status === 401) {
@@ -18,7 +18,8 @@ function checkError(result) {
     logMediaLibraryError(ErrorCodes.EDS_LOG_DENIED, { status: 403, endpoint: url });
     throw new MediaLibraryError(ErrorCodes.EDS_LOG_DENIED, t('EDS_LOG_DENIED'), { status: 403 });
   }
-  throw new Error(`Failed to fetch medialog: ${result.status}`);
+  const errorText = await result.text();
+  throw new Error(`Failed to fetch medialog: ${result.status} - ${errorText}`);
 }
 
 /**
@@ -28,13 +29,15 @@ function checkError(result) {
  * @param {object} timeParams - { from, to } for incremental; empty for full
  * @param {Function} [onChunk] - Callback (entries) for each page; enables progressive display
  */
-export async function fetchAllMediaLog(org, site, timeParams, onChunk = null) {
+export async function fetchAllMediaLog(org, site, timeParams, onChunk = null, options = {}) {
+  const { policy: authPolicy } = options;
   const handle = authedAdmin.medialog({ org, site });
   const allEntries = [];
   let nextToken = null;
+  let done = false;
   let first = true;
 
-  for (;;) {
+  while (!done) {
     const params = { limit: DEFAULT_LIMIT };
     if (timeParams.from && timeParams.to) {
       params.from = timeParams.from;
@@ -42,14 +45,15 @@ export async function fetchAllMediaLog(org, site, timeParams, onChunk = null) {
     }
     if (nextToken) params.nextToken = nextToken;
 
-    const policy = first ? AuthMode.PREFLIGHT_AND_RETRY : AuthMode.RETRY_ON_401;
+    const policy = authPolicy ?? (first ? AuthMode.PREFLIGHT_AND_RETRY : AuthMode.RETRY_ON_401);
     first = false;
 
     // eslint-disable-next-line no-await-in-loop -- pagination must be sequential
     const result = await executeAdminRequest(() => handle.get('', { params }), { org, site, policy });
     if (!result) return allEntries; // login cancelled
 
-    checkError(result);
+    // eslint-disable-next-line no-await-in-loop
+    await checkError(result);
 
     // eslint-disable-next-line no-await-in-loop
     const data = await result.json();
@@ -62,7 +66,7 @@ export async function fetchAllMediaLog(org, site, timeParams, onChunk = null) {
     allEntries.push(...entries);
     if (onChunk) onChunk(entries);
     nextToken = token;
-    if (entries.length < DEFAULT_LIMIT || !nextToken) break;
+    done = entries.length < DEFAULT_LIMIT || !token;
   }
 
   return allEntries;

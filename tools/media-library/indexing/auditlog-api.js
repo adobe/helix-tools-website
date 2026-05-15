@@ -29,7 +29,8 @@ async function checkError(result) {
  * @param {object} timeParams - { from, to } for incremental; empty for full
  * @param {Function} [onChunk] - Callback (entries) per page; enables progressive emit
  */
-export async function fetchAllAuditLog(org, site, timeParams, onChunk = null) {
+export async function fetchAllAuditLog(org, site, timeParams, onChunk = null, options = {}) {
+  const { policy: authPolicy } = options;
   const handle = authedAdmin.log({ org, site });
   const allEntries = [];
   let nextToken = null;
@@ -44,7 +45,7 @@ export async function fetchAllAuditLog(org, site, timeParams, onChunk = null) {
     }
     if (nextToken) params.nextToken = nextToken;
 
-    const policy = first ? AuthMode.PREFLIGHT_AND_RETRY : AuthMode.RETRY_ON_401;
+    const policy = authPolicy ?? (first ? AuthMode.PREFLIGHT_AND_RETRY : AuthMode.RETRY_ON_401);
     first = false;
 
     // eslint-disable-next-line no-await-in-loop -- pagination must be sequential
@@ -61,8 +62,9 @@ export async function fetchAllAuditLog(org, site, timeParams, onChunk = null) {
 
     allEntries.push(...entries);
     if (onChunk) onChunk(entries);
-    nextToken = links?.next ? new URL(links.next).searchParams.get('nextToken') : null;
-    done = entries.length < DEFAULT_LIMIT || !nextToken;
+    const token = data.nextToken || (links?.next ? new URL(links.next).searchParams.get('nextToken') : null);
+    nextToken = token;
+    done = entries.length < DEFAULT_LIMIT || !token;
   }
 
   return allEntries;

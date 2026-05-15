@@ -5,7 +5,12 @@ import { IndexConfig } from '../core/constants.js';
 const authedAdmin = admin.withRequestInit({ credentials: 'include' });
 
 /**
- * @typedef {{ handle: object, topic: string, name: string }} JobDescriptor
+ * @typedef {object} JobDescriptor
+ * @property {object} handle
+ * @property {string} topic
+ * @property {string} name
+ * @property {string} org
+ * @property {string} site
  */
 
 export async function createBulkStatusJob(org, repo, ref = 'main') {
@@ -37,6 +42,8 @@ export async function createBulkStatusJob(org, repo, ref = 'main') {
     handle: authedAdmin.job({ org, site: repo, ref }),
     topic,
     name,
+    org,
+    site: repo,
   };
 }
 
@@ -55,7 +62,11 @@ export async function pollStatusJob(
 ) {
   const startedAt = startTime ?? Date.now();
 
-  const result = await job.handle.get(`${job.topic}/${job.name}`);
+  const result = await executeAdminRequest(
+    () => job.handle.get(`${job.topic}/${job.name}`),
+    { org: job.org, site: job.site, policy: AuthMode.RETRY_ON_401 },
+  );
+  if (!result) throw new Error('Job status poll cancelled: login required');
   if (!result.ok) throw new Error(`Failed to fetch job status: ${result.status}`);
 
   const {
@@ -90,8 +101,11 @@ export async function pollStatusJob(
  * @param {JobDescriptor} job
  */
 export async function getStatusJobDetails(job) {
-  const result = await job.handle.get(`${job.topic}/${job.name}/details`);
-
+  const result = await executeAdminRequest(
+    () => job.handle.get(`${job.topic}/${job.name}/details`),
+    { org: job.org, site: job.site, policy: AuthMode.RETRY_ON_401 },
+  );
+  if (!result) throw new Error('Job details cancelled: login required');
   if (!result.ok) throw new Error(`Failed to fetch job details: ${result.status}`);
 
   const { data } = await result.json();
