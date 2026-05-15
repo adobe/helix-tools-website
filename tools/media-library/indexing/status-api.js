@@ -64,9 +64,8 @@ export async function pollStatusJob(
 
   const result = await executeAdminRequest(
     () => job.handle.get(`${job.topic}/${job.name}`),
-    { org: job.org, site: job.site, policy: AuthMode.RETRY_ON_401 },
+    { org: job.org, site: job.site, policy: AuthMode.NONE },
   );
-  if (!result) throw new Error('Job status poll cancelled: login required');
   if (!result.ok) throw new Error(`Failed to fetch job status: ${result.status}`);
 
   const {
@@ -103,9 +102,8 @@ export async function pollStatusJob(
 export async function getStatusJobDetails(job) {
   const result = await executeAdminRequest(
     () => job.handle.get(`${job.topic}/${job.name}/details`),
-    { org: job.org, site: job.site, policy: AuthMode.RETRY_ON_401 },
+    { org: job.org, site: job.site, policy: AuthMode.NONE },
   );
-  if (!result) throw new Error('Job details cancelled: login required');
   if (!result.ok) throw new Error(`Failed to fetch job details: ${result.status}`);
 
   const { data } = await result.json();

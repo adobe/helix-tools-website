@@ -24,6 +24,7 @@ async function checkError(result) {
     logMediaLibraryError(ErrorCodes.EDS_LOG_DENIED, { status: 403, endpoint: url });
     throw new MediaLibraryError(ErrorCodes.EDS_LOG_DENIED, t('EDS_LOG_DENIED'), { status: 403 });
   }
+  if (result.status === 404) throw new Error('Media log not found for this site.');
   const errorText = await result.text();
   throw new Error(`Failed to fetch medialog: ${result.status} - ${errorText}`);
 }

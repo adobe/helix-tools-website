@@ -255,6 +255,8 @@ async function init() {
     if (!isIncrementalEligible(metadata)) return;
 
     try {
+      if (!(await ensureLogin(orgKey, siteKey))) return;
+
       const cachedMediaData = await getMediaData(orgKey, siteKey, pathKey);
       const timeParams = incrementalTimeParams(metadata.lastFetchTime);
 
@@ -294,9 +296,7 @@ async function init() {
 
       await doSetMediaData(savedData);
     } catch {
-      // Safe to ignore: auth failures are logged in checkError before throwing;
-      // other errors (network, etc.) leave the cached data intact and the next
-      // scheduled refresh will retry.
+      // Safe to ignore: errors leave cached data intact; next refresh will retry.
     }
   }
 
