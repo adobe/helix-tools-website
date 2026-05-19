@@ -13,8 +13,8 @@ import {
 // within the 63-character DNS label limit. We validate against the `main` branch
 // because every site has one — feature branches are warned about separately.
 const MAX_HOSTNAME_LENGTH = 63;
-const WARN_HOSTNAME_LENGTH = 58;
-const SITE_NAME_PATTERN = /^-?[a-z0-9]+(-[a-z0-9]+)*-?$/;
+const WARN_HOSTNAME_LENGTH = 56;
+const SITE_NAME_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*-?$/;
 
 const mainHostnameLength = (siteName, orgValue) => `main--${siteName}--${orgValue}`.length;
 
@@ -808,8 +808,8 @@ export const openAddSiteModal = async (
         <label for="new-site-name">Site Name <span class="label-preview">(Domain Preview: <code><span class="label-domain"></span>.aem.page</code>)</span></label>
         <input type="text" id="new-site-name" required placeholder="my-site" pattern="[a-z0-9-]+" />
         <p class="field-hint">Lowercase letters, numbers, and hyphens only</p>
-        <p class="field-error" aria-hidden="true"></p>
-        <p class="field-warning" aria-hidden="true"></p>
+        <p class="field-error" role="alert" aria-hidden="true"></p>
+        <p class="field-warning" aria-live="polite" aria-hidden="true"></p>
       </div>
       <div class="form-field code-url-field"${isByogit ? ' aria-hidden="true"' : ''}>
         <label for="new-site-code">GitHub Repository URL</label>
@@ -894,14 +894,14 @@ export const openAddSiteModal = async (
     let error = '';
     let warning = '';
     if (candidate && !SITE_NAME_PATTERN.test(candidate)) {
-      error = 'Site names may only contain lowercase letters, numbers, and single hyphens.';
+      error = 'Site names may only contain lowercase letters, numbers, and single hyphens, and cannot start with a hyphen.';
     } else if (candidate) {
       const length = mainHostnameLength(candidate, orgValue);
       if (length > MAX_HOSTNAME_LENGTH) {
         error = 'This site name exceeds the domain label limit.';
       } else if (length > WARN_HOSTNAME_LENGTH) {
         const branchMax = maxBranchLength(candidate, orgValue);
-        warning = `Warning: This site name will leave only ${branchMax} characters for branch names (4 characters minimum).`;
+        warning = `Warning: This site name will leave only ${branchMax} characters for branch names (4 characters minimum to accommodate <code>main</code>).`;
       }
     }
     setMessage(errorEl, error);
@@ -971,8 +971,8 @@ export const openAddSiteModal = async (
     const codeUrl = codeInput.value.trim();
     const contentUrl = container.querySelector('#new-site-content').value.trim();
 
-    if (siteName.startsWith('-') || siteName.endsWith('-')) {
-      setMessage(errorEl, 'Site names cannot start or end with a hyphen.');
+    if (siteName.endsWith('-')) {
+      setMessage(errorEl, 'Site names cannot end with a hyphen.');
       setMessage(warningEl, '');
       hintEl.setAttribute('aria-hidden', 'true');
       return;
