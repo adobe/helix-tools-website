@@ -90,7 +90,7 @@ function createPropertyRow(propertiesContainer, {
 
   nameField.addEventListener('blur', () => {
     const name = nameField.value.trim();
-    if (name) {
+    if (name && !selectFirstField.value.trim()) {
       selectFirstField.value = metaSelectFirstForProperty(name);
     }
   });
