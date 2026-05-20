@@ -77,10 +77,15 @@ function createPropertyRow(propertiesContainer, {
   const isNewRow = !propName
     && propInfo.value === undefined
     && propInfo.values === undefined;
-  valueField.value = propInfo.value
-    ?? propInfo.values?.join?.('\n')
-    ?? propInfo.values
-    ?? (isNewRow ? 'attribute(el, "content")' : '');
+  if (propInfo.value !== undefined) {
+    valueField.value = propInfo.value;
+  } else if (propInfo.values !== undefined) {
+    valueField.value = propInfo.values?.join?.('\n') ?? propInfo.values;
+  } else if (isNewRow) {
+    valueField.value = 'attribute(el, "content")';
+  } else {
+    valueField.value = '';
+  }
 
   property.querySelector('label[for="index-property-name"]').htmlFor = nameField.id;
   property.querySelector('label[for="index-property-select"]').htmlFor = selectField.id;
