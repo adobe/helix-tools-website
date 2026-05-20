@@ -59,7 +59,9 @@ export default class SkylineChart extends AbstractChart {
         if (this.chartConfig.unit === 'day') startDate.setDate(endDate.getDate() - 30);
         if (this.chartConfig.unit === 'hour') startDate.setDate(endDate.getDate() - 7);
         if (this.chartConfig.unit === 'week') startDate.setMonth(endDate.getMonth() - 12);
-        if (this.chartConfig.unit === 'month') startDate.setMonth(endDate.getMonth() - 1);
+        if (this.chartConfig.unit === 'month') {
+          startDate.setMonth(endDate.getMonth() - (this.chartConfig.units || 1));
+        }
       } else {
         startDate = new Date(this.chartConfig.startDate);
       }
@@ -599,6 +601,14 @@ export default class SkylineChart extends AbstractChart {
         view,
         unit: 'week',
         units: 52,
+        focus,
+        startDate,
+        endDate,
+      },
+      '2years': {
+        view,
+        unit: 'month',
+        units: 24,
         focus,
         startDate,
         endDate,
