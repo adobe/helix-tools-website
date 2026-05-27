@@ -352,7 +352,7 @@ export default class DateRangePicker extends HTMLElement {
     // Sanitize value to prevent XSS in querySelector
     // CSS.escape would be ideal but use a safe approach for browser compatibility
     // Only allow known valid values to prevent injection
-    const validValues = ['week', 'month', 'year', 'custom'];
+    const validValues = ['week', 'month', 'year', '2years', 'custom'];
     const sanitizedValue = validValues.includes(value) ? value : '';
     const option = sanitizedValue ? dropdownElement.querySelector(`li[data-value="${sanitizedValue}"]`) : null;
     if (!option) {
@@ -431,6 +431,11 @@ export default class DateRangePicker extends HTMLElement {
       const lastYear = new Date(now);
       lastYear.setFullYear(now.getFullYear() - 1);
       fromElement.value = toDateString(lastYear);
+      toElement.value = toDateString(now);
+    } else if (value === '2years') {
+      const last2Years = new Date(now);
+      last2Years.setFullYear(now.getFullYear() - 2);
+      fromElement.value = toDateString(last2Years);
       toElement.value = toDateString(now);
     } else if (value === 'custom') {
       [fromElement, toElement].forEach((field) => {

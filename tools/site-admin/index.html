@@ -24,7 +24,7 @@
     <div>
       <h1>Site Admin</h1>
       <p>
-        Manage the sites of an org.
+        Manage the sites of an org, or a single site you have access to.
       </p>
     </div> 
 
@@ -38,14 +38,17 @@
             <datalist id="org-list"></datalist>
             <div class="field-help-text">
               <p>
-                Make sure you are logged into sidekick on a project of the org selected
+                Make sure you are logged into sidekick on a project of the Organization selected
               </p>
             </div>
           </div>
-          <div class="form-field site-field" style="display: none;">
-            <label for="site">Site</label>
-            <input name="site" id="site" list="site-list" autocomplete="off" disabled />
+          <div class="form-field">
+            <label for="site">Site (optional)</label>
+            <input name="site" id="site" list="site-list" autocomplete="off" />
             <datalist id="site-list"></datalist>
+            <div class="field-help-text">
+              <p class="site-not-found-hint" role="alert" hidden></p>
+            </div>
           </div>
         </section>
         <p class="button-wrapper">

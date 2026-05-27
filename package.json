@@ -32,14 +32,14 @@
     "eslint-config-airbnb-base": "15.0.0",
     "eslint-plugin-import": "2.32.0",
     "jsdom": "^29.1.1",
-    "stylelint": "17.9.1",
+    "stylelint": "17.11.1",
     "stylelint-config-standard": "40.0.0"
   },
   "dependencies": {
     "@adobe/rum-distiller": "1.23.0",
-    "diff": "8.0.4",
+    "diff": "9.0.0",
     "echarts": "6.0.0",
     "prismjs": "1.30.0",
-    "yaml": "2.8.4"
+    "yaml": "2.9.0"
   }
 }

@@ -19,6 +19,7 @@ function createModalBody() {
     <div class="report-info">
       <p>Click "Generate Report" to start the AI-powered analysis of your site data.</p>
       <p class="provider-text">Provider: <span id="provider-name">Checking...</span></p>
+      <div id="report-gate-message" class="report-gate-message" hidden></div>
     </div>
     <div id="report-status" style="display: none;"></div>`;
 

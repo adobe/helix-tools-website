@@ -57,7 +57,9 @@ export default class RedirectPerfChart extends AbstractChart {
         if (this.chartConfig.unit === 'day') startDate.setDate(endDate.getDate() - 30);
         if (this.chartConfig.unit === 'hour') startDate.setDate(endDate.getDate() - 7);
         if (this.chartConfig.unit === 'week') startDate.setMonth(endDate.getMonth() - 12);
-        if (this.chartConfig.unit === 'month') startDate.setMonth(endDate.getMonth() - 1);
+        if (this.chartConfig.unit === 'month') {
+          startDate.setMonth(endDate.getMonth() - (this.chartConfig.units || 1));
+        }
       } else {
         startDate = new Date(this.chartConfig.startDate);
       }
@@ -295,6 +297,9 @@ export default class RedirectPerfChart extends AbstractChart {
       },
       year: {
         view, unit: 'week', units: 52, focus, startDate, endDate,
+      },
+      '2years': {
+        view, unit: 'month', units: 24, focus, startDate, endDate,
       },
       custom: {
         view: customView, unit, units, focus, startDate, endDate,

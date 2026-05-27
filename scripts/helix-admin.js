@@ -48,6 +48,33 @@ function deriveContentType(url) {
  *
  * @param {RequestInit} [defaults] merged into every request's init
  */
+/**
+ * Parse org and site coords from an admin API URL. Handles both config URLs
+ * (`/config/{org}/sites/{site}.json`) and operation URLs
+ * (`/{op}/{org}/{site}/{ref}/...`).
+ *
+ * @param {string} url - Full admin URL
+ * @returns {{org: string|null, site: string|null}}
+ */
+function coordsFromURL(url) {
+  try {
+    const parts = new URL(url).pathname.split('/').filter(Boolean);
+    if (parts[0] === 'config') {
+      const org = parts[1] ? parts[1].replace(/\.json$/, '') : null;
+      if (!org) return { org: null, site: null };
+      // parts[2] must be the literal 'sites' directory, not 'sites.json' (the list)
+      const site = (parts[2] === 'sites' && parts[3])
+        ? parts[3].replace(/\.json$/, '')
+        : null;
+      return { org, site };
+    }
+    // operation URL: /{op}/{org}/{site}/{ref}/...
+    return { org: parts[1] ?? null, site: parts[2] ?? null };
+  } catch {
+    return { org: null, site: null };
+  }
+}
+
 function createAdmin(defaults = {}) {
   async function request({
     method, url, body, contentType, params,
@@ -125,6 +152,7 @@ function createAdmin(defaults = {}) {
       update: (body, opts) => write('POST', body, opts),
       create: (body, opts) => write('PUT', body, opts),
       remove: (opts) => request({ method: 'DELETE', url, params: opts?.params }),
+      url,
     };
   }
 
@@ -165,6 +193,7 @@ function createAdmin(defaults = {}) {
    *
    * @param {string} baseUrl
    * @param {Array<'get'|'update'|'remove'>} caps
+   * @returns object with the requested caps as methods, plus `.url` always set to `baseUrl`
    */
   function bindOperation(baseUrl, caps) {
     function join(path = '') {
@@ -183,7 +212,42 @@ function createAdmin(defaults = {}) {
       },
       remove: (path, opts) => request({ method: 'DELETE', url: join(path), params: opts?.params }),
     };
-    return Object.fromEntries(caps.map((c) => [c, all[c]]));
+    return { ...Object.fromEntries(caps.map((c) => [c, all[c]])), url: baseUrl };
+  }
+
+  /**
+   * Return well-known admin URL suggestions for the given coords, suitable
+   * for populating a datalist. Callers receive H5 or H6 URLs depending on
+   * which client is active — no URL knowledge needed in the tool itself.
+   *
+   * @param {{org: string, site?: string}} coords
+   * @returns {Array<{url: string, label: string}>}
+   */
+  function suggestions({ org, site }) {
+    const result = [
+      { url: `${ADMIN_BASE}/config/${org}.json`, label: 'Org Config' },
+      { url: `${ADMIN_BASE}/config/${org}/profiles.json`, label: 'Profiles' },
+      { url: `${ADMIN_BASE}/config/${org}/sites.json`, label: 'Sites' },
+    ];
+    if (site) {
+      result.push(
+        { url: `${ADMIN_BASE}/config/${org}/sites/${site}.json`, label: 'Site Config' },
+        { url: opBase('status', { org, site }), label: 'Status' },
+        { url: opBase('preview', { org, site }), label: 'Preview' },
+        { url: opBase('live', { org, site }), label: 'Live' },
+      );
+    }
+    return result;
+  }
+
+  function raw(method, urlOrPath, body, opts) {
+    const url = urlOrPath.startsWith('/') ? `${ADMIN_BASE}${urlOrPath}` : urlOrPath;
+    const init = { method, url, params: opts?.params };
+    if (body !== undefined && body !== null) {
+      init.body = body;
+      init.contentType = opts?.contentType ?? 'application/json';
+    }
+    return request(init);
   }
 
   function status(coords) { return bindOperation(opBase('status', coords), ['get', 'update']); }
@@ -194,6 +258,9 @@ function createAdmin(defaults = {}) {
   function index(coords) { return bindOperation(opBase('index', coords), ['get', 'update', 'remove']); }
   function sitemap(coords) { return bindOperation(opBase('sitemap', coords), ['update']); }
   function job(coords) { return bindOperation(opBase('job', coords), ['get', 'remove']); }
+  function psi(coords) { return bindOperation(opBase('psi', coords), ['get']); }
+  function sidekick(coords) { return bindOperation(opBase('sidekick', coords), ['get']); }
+  function medialog(coords) { return bindOperation(opBase('medialog', coords), ['get']); }
 
   /**
    * Derive a client whose init defaults are merged with `extra` (later wins).
@@ -206,7 +273,22 @@ function createAdmin(defaults = {}) {
   }
 
   return {
-    config, status, preview, live, code, log, index, sitemap, job, withRequestInit,
+    config,
+    status,
+    preview,
+    live,
+    code,
+    log,
+    index,
+    sitemap,
+    job,
+    psi,
+    sidekick,
+    medialog,
+    raw,
+    suggestions,
+    coordsFromURL,
+    withRequestInit,
   };
 }
 

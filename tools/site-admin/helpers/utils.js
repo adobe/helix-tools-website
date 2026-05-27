@@ -8,7 +8,7 @@ export const getFavorites = (orgValue) => {
   return stored ? JSON.parse(stored) : [];
 };
 
-export const setFavorites = (orgValue, favorites) => {
+const setFavorites = (orgValue, favorites) => {
   localStorage.setItem(`${FAVORITES_STORAGE_KEY}-${orgValue}`, JSON.stringify(favorites));
 };
 
@@ -93,6 +93,53 @@ export const getScoreClass = (score) => {
 export const isExpired = (expirationDate) => {
   if (!expirationDate) return false;
   return new Date(expirationDate) < new Date();
+};
+
+export const buildSiteConfig = (site, codeSrc, contentSrc, byogit = null) => {
+  let code;
+  if (byogit) {
+    code = {
+      owner: byogit.owner,
+      repo: byogit.repo,
+      source: {
+        type: 'byogit',
+        url: 'https://cm-repo.adobe.io/api',
+        raw_url: 'https://cm-repo.adobe.io/api/raw',
+        owner: byogit.owner,
+        repo: byogit.repo,
+        secretId: 'cm-byog',
+      },
+    };
+  } else {
+    const codeURL = new URL(codeSrc);
+    const [, owner, repo] = codeURL.pathname.split('/');
+    code = { owner, repo, source: { type: 'github', url: codeSrc } };
+  }
+  const content = { source: { type: 'markup', url: contentSrc } };
+
+  if (contentSrc.startsWith('https://drive.google.com/drive')) {
+    const contentURL = new URL(contentSrc);
+    content.source.type = 'google';
+    content.source.id = contentURL.pathname.split('/').pop();
+  }
+
+  if (contentSrc.includes('sharepoint.com/')) {
+    content.source.type = 'onedrive';
+  }
+
+  return { ...site, content, code };
+};
+
+export const compareSites = (a, b, selectedSite, favorites) => {
+  if (selectedSite) {
+    if (a.name === selectedSite) return -1;
+    if (b.name === selectedSite) return 1;
+  }
+  const aFav = favorites.includes(a.name);
+  const bFav = favorites.includes(b.name);
+  if (aFav && !bFav) return -1;
+  if (!aFav && bFav) return 1;
+  return a.name.localeCompare(b.name);
 };
 
 // DA Editor URL helper

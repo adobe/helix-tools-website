@@ -21,6 +21,10 @@
     }
   }
 
+  .site-not-found-hint {
+    color: light-dark(var(--red-800), var(--red-500));
+  }
+
   .modal dialog {
     position: fixed;
     top: 50%;
@@ -159,6 +163,10 @@
     &:hover {
       border-color: var(--color-border);
       box-shadow: var(--shadow-hover);
+    }
+
+    &.selected {
+      box-shadow: var(--shadow-dragged);
     }
 
     &.deleting {
@@ -679,6 +687,14 @@
     white-space: nowrap;
   }
 
+  .access-message {
+    padding: var(--spacing-m);
+    background: var(--layer-elevated);
+    color: var(--color-font-grey);
+    text-align: center;
+    margin-inline: var(--horizontal-spacing);
+  }
+
   [aria-hidden='true'] {
     display: none;
   }
@@ -846,8 +862,32 @@
   box-shadow: 0 0 0 2px var(--blue-100);
 }
 
-.add-site-modal {
+.add-site-modal,
+.delete-modal {
   min-width: 400px;
+}
+
+.delete-modal label code {
+  background: var(--color-button-accent-bg);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.delete-modal .button.danger {
+  color: var(--gray-25);
+  background: var(--red-900);
+  border-color: var(--red-900);
+
+  &:hover:not(:disabled) {
+    background: var(--red-1000);
+    border-color: var(--red-1000);
+  }
+}
+
+.delete-modal .button.danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .site-modal .form-field .checkbox-label {

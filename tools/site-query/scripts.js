@@ -1,6 +1,7 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
+import admin from '../../scripts/helix-admin.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 
 function getFormData(form) {
   const data = {};
@@ -67,14 +68,18 @@ function clearResults(table) {
   caption.setAttribute('aria-hidden', true);
 }
 
-function updateTableError(table, errCode, org, site) {
+function updateTableError(table, errCode) {
   const { title, msg } = (() => {
     switch (errCode) {
       case 401:
-        ensureLogin(org, site);
         return {
-          title: '401 Unauthorized Error',
-          msg: `Unable to display results. <a target="_blank" href="https://main--${site}--${org}.aem.page">Sign in to the ${site} project sidekick</a> to view the results.`,
+          title: 'Unauthorized',
+          msg: 'Unable to display results. You may not have access to this content.',
+        };
+      case 403:
+        return {
+          title: 'Forbidden',
+          msg: 'Unable to display results. Access to this content was denied.',
         };
       case 404:
         return {
@@ -124,13 +129,21 @@ function displayResult(url, matches, org, site) {
     }
 
     try {
-      const statusRes = await fetch(`https://admin.hlx.page/status/${org}/${site}/main${url.pathname}?editUrl=auto`);
+      const statusRes = await executeAdminRequest(
+        () => admin.status({ org, site }).get(url.pathname, { params: { editUrl: 'auto' } }),
+        { org, site },
+      );
+      if (!statusRes) return; // login cancelled
       const status = await statusRes.json();
       let editUrl = status.edit && status.edit.url;
 
       // fallback to sidekick config if status doesn't provide edit URL
       if (!editUrl) {
-        const configRes = await fetch(`https://admin.hlx.page/sidekick/${org}/${site}/main/config.json`);
+        const configRes = await executeAdminRequest(
+          () => admin.sidekick({ org, site }).get('config.json'),
+          { org, site },
+        );
+        if (!configRes) return; // login cancelled
         const config = await configRes.json();
         const editUrlPattern = config.editUrl;
         if (editUrlPattern) {
@@ -271,32 +284,6 @@ async function processUrl(sitemapUrl, query, queryType, org, site) {
 
   return null;
 }
-/**
- * Fetches the live and preview host URLs for org/site.
- * @param {string} org - Organization name.
- * @param {string} site - Site name within org.
- * @returns {Promise<>} Object with `live` and `preview` hostnames.
- */
-async function fetchHosts(org, site) {
-  let status;
-  try {
-    const url = `https://admin.hlx.page/status/${org}/${site}/main`;
-    const res = await fetch(url);
-    status = res.status;
-    const json = await res.json();
-    return {
-      status,
-      live: new URL(json.live.url).host,
-      preview: new URL(json.preview.url).host,
-    };
-  } catch (error) {
-    return {
-      status,
-      live: null,
-      preview: null,
-    };
-  }
-}
 
 async function init(doc) {
   doc.querySelector('.site-query').dataset.status = 'loading';
@@ -334,9 +321,15 @@ async function init(doc) {
       disableForm(form);
 
       // fetch host config
-      const { status, live } = await fetchHosts(org, site);
-      if (!live || status !== 200) {
-        updateTableError(table, status, org, site);
+      const hostsResult = await executeAdminRequest(
+        () => admin.status({ org, site }).get(''),
+        { org, site, policy: AuthMode.PREFLIGHT_AND_RETRY },
+      );
+      if (!hostsResult) return; // login cancelled
+      const hostsJson = hostsResult.ok ? await hostsResult.json() : null;
+      const live = hostsJson?.live?.url ? new URL(hostsJson.live.url).host : null;
+      if (!live) {
+        updateTableError(table, hostsResult.status);
         stopButton.setAttribute('aria-hidden', 'true');
         caption.setAttribute('aria-hidden', 'true');
         return;
@@ -395,13 +388,15 @@ async function init(doc) {
       // eslint-disable-next-line no-console
       console.error(err);
       if (err.status === 401 || err.message.startsWith('Unauthorized')) {
-        updateTableError(table, 401, org, site);
+        updateTableError(table, 401);
+      } else if (err.status === 403) {
+        updateTableError(table, 403);
       } else if (err.message.startsWith('Failed on initial fetch')) {
-        updateTableError(table, 499, org, site);
+        updateTableError(table, 499);
       } else if (err.message.startsWith('Not found')) {
-        updateTableError(table, 404, org, site);
+        updateTableError(table, 404);
       } else {
-        updateTableError(table, 500, org, site);
+        updateTableError(table, 500);
       }
     } finally {
       stopButton.setAttribute('aria-hidden', 'true');
