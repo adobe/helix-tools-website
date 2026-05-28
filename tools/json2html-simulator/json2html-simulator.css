@@ -11,7 +11,6 @@ body.json2html-simulator {
   background: light-dark(var(--gray-50), var(--gray-900));
 }
 
-/* Mobile-first: tighter padding; expanded at >= 900px and >= 1200px breakpoints */
 body.json2html-simulator main {
   display: flex;
   flex-direction: column;
@@ -24,7 +23,6 @@ body.json2html-simulator main {
    HEADER SECTION
    ======================================== */
 
-/* Mobile: stack vertically; switches to row layout at >= 900px */
 body.json2html-simulator main > .simulator-header,
 body.json2html-simulator main > .simulator-header.section {
   display: flex;
@@ -62,7 +60,6 @@ body.json2html-simulator main > .simulator-header.section {
   text-decoration: underline;
 }
 
-/* Mobile: full-width buttons; reverts to inline at >= 900px */
 .simulator-header .header-actions {
   display: flex;
   gap: var(--spacing-100);
@@ -96,7 +93,6 @@ body.json2html-simulator main .simulator-header .header-actions-wrapper {
    CONTROL BAR
    ======================================== */
 
-/* Mobile: stack and align left; row layout at >= 900px */
 body.json2html-simulator main > .control-bar,
 body.json2html-simulator main > .control-bar.section {
   display: flex;
@@ -306,7 +302,6 @@ span.options-grid {
    VALIDATION MESSAGE
    ======================================== */
 
-/* Mobile: tighter offsets so banner stays in viewport on narrow screens */
 .validation-message-container {
   position: fixed;
   top: calc(var(--header-height) + var(--spacing-100));
@@ -483,18 +478,15 @@ body.json2html-simulator main .workspace > .default-content-wrapper {
   flex-direction: column;
 }
 
-/* Mobile: editors stack vertically; switched to row at >= 900px */
 .workspace section.editors-row {
   flex-direction: column;
 }
 
-/* Mobile: preview gets natural height; constrained to 40% at >= 900px */
 .workspace section.preview-panel {
   flex: 1 1 auto;
 }
 
 
-/* Top row: JSON and Template — stacked on mobile, side by side at >= 900px */
 .editors-row {
   display: flex;
   flex-direction: column;
@@ -517,7 +509,6 @@ body.json2html-simulator main .workspace > .default-content-wrapper {
    EDITOR PANEL
    ======================================== */
 
-/* Mobile: full-width stacked panels with min-height; switches to 50% flex at >= 900px */
 .editor-panel {
   flex: 1 1 auto;
   display: flex;
@@ -754,7 +745,7 @@ body.json2html-simulator .preview-status:has(.status-warning) .status-text {
   flex-shrink: 0;
 }
 
-/* Vertical resizer (between JSON and Template) — hidden on mobile, shown at >= 900px */
+/* Vertical resizer (between JSON and Template) */
 body.json2html-simulator main .resizer-vertical {
   display: none;
   flex: 0 0 4px;
@@ -805,7 +796,6 @@ body.json2html-simulator main .resizer-horizontal {
    PREVIEW PANEL
    ======================================== */
 
-/* Mobile: keeps a usable height; constrained to 40% flex at >= 900px */
 .preview-panel {
   flex: 1 1 auto;
   display: flex;
@@ -827,7 +817,6 @@ body.json2html-simulator main .resizer-horizontal {
   margin: 0;
 }
 
-/* Mobile: allows tab row to wrap below label/actions */
 .preview-header {
   flex: 0 0 auto;
   display: flex;
@@ -848,7 +837,6 @@ body.json2html-simulator main .resizer-horizontal {
   letter-spacing: 0.5px;
 }
 
-/* Mobile: tabs take a full row beneath label; inline at >= 600px */
 .preview-tabs {
   display: flex;
   gap: var(--spacing-50);
@@ -1024,7 +1012,6 @@ body.json2html-simulator main .resizer-horizontal {
    MODALS
    ======================================== */
 
-/* Mobile: tighter to viewport edges; expanded at >= 600px */
 .modal {
   border: none;
   border-radius: var(--rounding-l);
@@ -1090,7 +1077,6 @@ body.json2html-simulator main .resizer-horizontal {
   width: 700px;
 }
 
-/* Mobile: single column; multi-column auto-fill at >= 600px */
 .examples-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -1228,7 +1214,10 @@ body.json2html-simulator main .resizer-horizontal {
 
   .modal {
     max-width: 90vw;
-    margin: 0;
+
+    /* `margin: auto` preserves <dialog>'s UA-stylesheet centering — overriding
+       to `0` would push the dialog to the top-left at >= 600px. */
+    margin: auto;
   }
 
   .examples-grid {
