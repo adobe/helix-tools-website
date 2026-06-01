@@ -6,6 +6,7 @@ export default function decorate(widget) {
     const org = toClassName(params.get('org'));
     const site = toClassName(params.get('site'));
     const user = params.get('user');
+    const url = params.get('url');
 
     if (!user) {
       const userElement = document.querySelector('.bot-info-user');
@@ -19,7 +20,9 @@ export default function decorate(widget) {
     }
 
     const contentSource = document.querySelector('.bot-info-content-source');
-    const editUrl = `https://da.live/start?org=${org}&site=${site}`;
+    const editUrl = (!url || url.startsWith('https://content.da.live/'))
+      ? `https://da.live/start?org=${org}&site=${site}`
+      : new URL(url).origin;
 
     const editLink = document.createElement('a');
     editLink.target = '_blank';
