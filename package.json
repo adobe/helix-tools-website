@@ -38,7 +38,7 @@
   "dependencies": {
     "@adobe/rum-distiller": "1.23.0",
     "diff": "9.0.0",
-    "echarts": "6.0.0",
+    "echarts": "6.1.0",
     "prismjs": "1.30.0",
     "yaml": "2.9.0"
   }
