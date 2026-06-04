@@ -210,7 +210,7 @@ async function handleRegister() {
 
   setStatus('Registering site with scheduler…');
   const regResult = await api.registerSite(currentOrg, currentSite, keyResult.value);
-  log(regResult.resp, 'POST', '/register');
+  log(regResult.resp, 'POST', `/register/${currentOrg}/${currentSite}`);
   isBusy = false;
   registerBtn.disabled = false;
   if (!regResult.ok) {

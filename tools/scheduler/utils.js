@@ -38,10 +38,10 @@ export async function createPublishApiKey(org, site) {
 }
 
 export async function registerSite(org, site, apiKey) {
-  const resp = await fetch(`${WORKER}/register`, {
+  const resp = await fetch(`${WORKER}/register/${org}/${site}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ org, site, apiKey }),
+    body: JSON.stringify({ apiKey }),
   });
   if (resp.ok) return { ok: true, resp };
   return { ok: false, error: await readError(resp, 'Failed to register site with scheduler.'), resp };
@@ -117,12 +117,10 @@ export async function clearSnapshotScheduledPublish(org, site, snapshotId) {
 export async function schedulePage({
   org, site, path, userId, scheduledPublish,
 }) {
-  const resp = await fetch(`${WORKER}/schedule/page`, {
+  const resp = await fetch(`${WORKER}/schedule/page/${org}/${site}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      org, site, path, userId, scheduledPublish,
-    }),
+    body: JSON.stringify({ path, userId, scheduledPublish }),
   });
   if (resp.ok) return { ok: true, resp };
   return { ok: false, error: await readError(resp, 'Failed to schedule publish.'), resp };
