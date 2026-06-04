@@ -91,7 +91,7 @@
   margin: var(--spacing-l) 0 var(--spacing-s);
 }
 
-.scheduler .schedule-list {
+.scheduler #schedule-list {
   display: grid;
   border: 1px solid var(--color-border);
   border-radius: 6px;
