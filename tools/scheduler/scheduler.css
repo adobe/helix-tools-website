@@ -31,6 +31,12 @@
   display: none;
 }
 
+/* Global .button rule sets display: inline-block, which overrides the UA
+   [hidden] { display: none }. Re-assert it for our scoped buttons. */
+.scheduler .button[hidden] {
+  display: none;
+}
+
 .scheduler #status-container {
   margin-top: 0;
 }
