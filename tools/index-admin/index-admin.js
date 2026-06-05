@@ -584,7 +584,6 @@ function displayCopyIndexDialog() {
     copyBtn.textContent = 'Copying...';
 
     const mergedIndices = { ...loadedIndices.indices };
-    const mergedIndices = { ...loadedIndices.indices };
     selected.forEach((name) => {
       mergedIndices[name] = sourceIndices[name];
     });
