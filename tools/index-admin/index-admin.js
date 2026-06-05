@@ -538,8 +538,12 @@ function displayCopyIndexDialog() {
     copySection.hidden = true;
     copyBtn.disabled = true;
 
-    const parsed = await fetchSourceIndexConfig(org.value, sourceSite);
-    sourceSelect.disabled = false;
+    let parsed;
+    try {
+      parsed = await fetchSourceIndexConfig(org.value, sourceSite);
+    } finally {
+      sourceSelect.disabled = false;
+    }
 
     if (!parsed) {
       copySection.hidden = false;
@@ -579,12 +583,13 @@ function displayCopyIndexDialog() {
     copyBtn.disabled = true;
     copyBtn.textContent = 'Copying...';
 
+    const mergedIndices = { ...loadedIndices.indices };
     selected.forEach((name) => {
-      loadedIndices.indices[name] = sourceIndices[name];
+      mergedIndices[name] = sourceIndices[name];
     });
 
     await ensureYaml();
-    const yamlText = YAML.stringify(loadedIndices);
+    const yamlText = YAML.stringify({ ...loadedIndices, indices: mergedIndices });
     const saveResult = await executeAdminRequest(
       () => admin.config({ org: org.value, site: site.value })
         .select('content/query.yaml').update(yamlText),
@@ -601,6 +606,7 @@ function displayCopyIndexDialog() {
     logResponse(consoleBlock, saveResult.status, [method, url, saveResult.error]);
 
     if (saveResult.ok) {
+      loadedIndices = { ...loadedIndices, indices: mergedIndices };
       copyDialog.close();
       document.getElementById('indexes-list').innerHTML = '';
       adminForm.dispatchEvent(new Event('submit'));
@@ -629,7 +635,7 @@ function displayCopyIndexDialog() {
       sourceSelect.appendChild(option);
     });
     sourceSelect.disabled = otherSites.length === 0;
-  });
+  }).catch(() => {});
 }
 
 async function init() {
