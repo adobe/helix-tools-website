@@ -430,7 +430,7 @@
   }
 
   /* Copy Index Dialog */
-  .copy-index-section {
+  .copy-index-section:not([hidden]) {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-m);
