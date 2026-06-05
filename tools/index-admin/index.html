@@ -52,6 +52,7 @@
       <h2>Indices</h2>
       <p class="button-wrapper">
         <button type="button" id="add-index" class="button outline" disabled>Add Index</button>
+        <button type="button" id="copy-index" class="button outline" disabled>Copy Index</button>
       </p>
       <ul id="indexes-list">
       </ul>
@@ -171,6 +172,50 @@
         <button type="button" class="remove-property-btn" title="Remove Property"></button>
       </div>
     </div>
+  </template>
+  <template id="copy-index-dialog-template">
+    <dialog class="copy-index-dialog index-details">
+      <div class="index-details-content">
+        <div class="index-details-header">
+          <h3>Copy Index</h3>
+          <p class="index-dialog-context">
+            <span><strong>Organization:</strong> <span class="copy-dialog-org"></span></span>
+            <span><strong>Site:</strong> <span class="copy-dialog-site"></span></span>
+          </p>
+        </div>
+        <div class="index-details-body">
+          <form>
+            <div class="form-field">
+              <label for="copy-source-site">Source Site</label>
+              <select id="copy-source-site" disabled>
+                <option value="">Loading sites...</option>
+              </select>
+            </div>
+            <div class="copy-index-section" hidden>
+              <div class="form-field copy-overwrite-field">
+                <label class="copy-overwrite-label">
+                  <input type="checkbox" id="copy-overwrite">
+                  Overwrite Existing
+                </label>
+                <p class="copy-hint">
+                  When unchecked, indexes that already exist on the destination site cannot be selected.
+                </p>
+              </div>
+              <div class="copy-index-list" role="group" aria-label="Indexes to copy"></div>
+              <p class="copy-no-indexes" hidden></p>
+            </div>
+            <div class="button-area">
+              <p class="button-wrapper">
+                <button type="submit" id="do-copy" class="button" disabled>Copy</button>
+              </p>
+              <p class="button-wrapper">
+                <button type="button" id="cancel-copy" class="button outline">Cancel</button>
+              </p>
+            </div>
+          </form>
+        </div>
+      </div>
+    </dialog>
   </template>
   <template id="reindex-status-dialog-template">
     <dialog class="reindex-status-dialog">

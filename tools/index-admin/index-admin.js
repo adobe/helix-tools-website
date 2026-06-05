@@ -11,6 +11,7 @@ const site = document.getElementById('site');
 const org = document.getElementById('org');
 const consoleBlock = document.querySelector('.console');
 const addIndexButton = document.getElementById('add-index');
+const copyIndexButton = document.getElementById('copy-index');
 const fetchButton = document.getElementById('fetch');
 
 let loadedIndices;
@@ -422,8 +423,219 @@ function populateIndexes(indexes) {
   });
 }
 
+async function fetchSitesForOrg(orgValue) {
+  const result = await executeAdminRequest(
+    () => admin.config({ org: orgValue }).select('sites.json').read(),
+    { org: orgValue },
+  );
+  if (!result?.ok) return [];
+  const data = await result.json();
+  return data.sites || [];
+}
+
+async function fetchSourceIndexConfig(orgValue, sourceSite) {
+  const result = await executeAdminRequest(
+    () => admin.config({ org: orgValue, site: sourceSite })
+      .select('content/query.yaml').read(),
+    { org: orgValue, site: sourceSite },
+  );
+  if (!result) return null;
+  const { method, url } = result.request;
+  logResponse(consoleBlock, result.status, [method, url, result.error]);
+  if (result.status === 404) return { indices: {} };
+  if (!result.ok) return null;
+  await ensureYaml();
+  const yamlText = await result.text();
+  return YAML.parse(yamlText);
+}
+
+function renderCopyIndexList(container, sourceIndices, overwrite) {
+  const existingNames = new Set(Object.keys(loadedIndices.indices));
+  container.innerHTML = '';
+  Object.keys(sourceIndices).forEach((name) => {
+    const conflicts = existingNames.has(name);
+    const item = document.createElement('label');
+    item.className = 'copy-index-item';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.name = 'copy-index';
+    checkbox.value = name;
+    checkbox.disabled = conflicts && !overwrite;
+    if (!checkbox.disabled) checkbox.checked = true;
+    item.appendChild(checkbox);
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'copy-index-name';
+    nameSpan.textContent = name;
+    item.appendChild(nameSpan);
+
+    if (conflicts) {
+      const badge = document.createElement('span');
+      badge.className = 'copy-index-conflict-badge';
+      badge.textContent = 'exists';
+      item.appendChild(badge);
+    }
+
+    container.appendChild(item);
+  });
+}
+
+function displayCopyIndexDialog() {
+  document.querySelector('dialog.copy-index-dialog')?.remove();
+
+  const fragment = document.querySelector(
+    '#copy-index-dialog-template',
+  ).content.cloneNode(true);
+  const copyDialog = fragment.querySelector('dialog.copy-index-dialog');
+  document.body.append(fragment);
+
+  copyDialog.querySelector('.copy-dialog-org').textContent = org.value;
+  copyDialog.querySelector('.copy-dialog-site').textContent = site.value;
+
+  const sourceSelect = copyDialog.querySelector('#copy-source-site');
+  const copySection = copyDialog.querySelector('.copy-index-section');
+  const indexList = copyDialog.querySelector('.copy-index-list');
+  const noIndexesMsg = copyDialog.querySelector('.copy-no-indexes');
+  const overwriteCheckbox = copyDialog.querySelector('#copy-overwrite');
+  const copyBtn = copyDialog.querySelector('#do-copy');
+  const cancelBtn = copyDialog.querySelector('#cancel-copy');
+
+  copyDialog.showModal();
+
+  cancelBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    copyDialog.close();
+  });
+
+  copyDialog.addEventListener('close', () => copyDialog.remove());
+
+  copyDialog.addEventListener('click', (e) => {
+    if (e.target === copyDialog) copyDialog.close();
+  });
+
+  let sourceIndices = {};
+
+  overwriteCheckbox.addEventListener('change', () => {
+    const existingNames = new Set(Object.keys(loadedIndices.indices));
+    copyDialog.querySelectorAll('input[name="copy-index"]').forEach((cb) => {
+      if (existingNames.has(cb.value)) {
+        cb.disabled = !overwriteCheckbox.checked;
+        if (cb.disabled) cb.checked = false;
+      }
+    });
+  });
+
+  sourceSelect.addEventListener('change', async () => {
+    const sourceSite = sourceSelect.value;
+    if (!sourceSite) {
+      copySection.hidden = true;
+      copyBtn.disabled = true;
+      return;
+    }
+
+    sourceSelect.disabled = true;
+    copySection.hidden = true;
+    copyBtn.disabled = true;
+
+    const parsed = await fetchSourceIndexConfig(org.value, sourceSite);
+    sourceSelect.disabled = false;
+
+    if (!parsed) {
+      copySection.hidden = false;
+      noIndexesMsg.hidden = false;
+      noIndexesMsg.textContent = 'Could not load indexes from source site.';
+      indexList.innerHTML = '';
+      return;
+    }
+
+    sourceIndices = parsed.indices || {};
+    const indexNames = Object.keys(sourceIndices);
+    copySection.hidden = false;
+
+    if (indexNames.length > 0) {
+      noIndexesMsg.hidden = true;
+      renderCopyIndexList(indexList, sourceIndices, overwriteCheckbox.checked);
+      copyBtn.disabled = false;
+    } else {
+      indexList.innerHTML = '';
+      noIndexesMsg.hidden = false;
+      noIndexesMsg.textContent = 'No indexes found on source site.';
+    }
+  });
+
+  copyDialog.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const selected = [...copyDialog.querySelectorAll('input[name="copy-index"]:checked')]
+      .map((cb) => cb.value);
+
+    if (selected.length === 0) {
+      // eslint-disable-next-line no-alert
+      alert('Please select at least one index to copy.');
+      return;
+    }
+
+    copyBtn.disabled = true;
+    copyBtn.textContent = 'Copying...';
+
+    selected.forEach((name) => {
+      loadedIndices.indices[name] = sourceIndices[name];
+    });
+
+    await ensureYaml();
+    const yamlText = YAML.stringify(loadedIndices);
+    const saveResult = await executeAdminRequest(
+      () => admin.config({ org: org.value, site: site.value })
+        .select('content/query.yaml').update(yamlText),
+      { org: org.value, site: site.value },
+    );
+
+    if (!saveResult) {
+      copyBtn.disabled = false;
+      copyBtn.textContent = 'Copy';
+      return;
+    }
+
+    const { method, url } = saveResult.request;
+    logResponse(consoleBlock, saveResult.status, [method, url, saveResult.error]);
+
+    if (saveResult.ok) {
+      copyDialog.close();
+      document.getElementById('indexes-list').innerHTML = '';
+      adminForm.dispatchEvent(new Event('submit'));
+    } else {
+      // eslint-disable-next-line no-alert
+      alert('Failed to copy indexes, check console for details.');
+      copyBtn.disabled = false;
+      copyBtn.textContent = 'Copy';
+    }
+  });
+
+  fetchSitesForOrg(org.value).then((sites) => {
+    const currentSiteName = site.value;
+    const otherSites = sites.filter((s) => s.name !== currentSiteName);
+    sourceSelect.innerHTML = '';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = otherSites.length > 0
+      ? '-- Select a source site --'
+      : '-- No other sites found in this org --';
+    sourceSelect.appendChild(placeholder);
+    otherSites.forEach((s) => {
+      const option = document.createElement('option');
+      option.value = s.name;
+      option.textContent = s.name;
+      sourceSelect.appendChild(option);
+    });
+    sourceSelect.disabled = otherSites.length === 0;
+  });
+}
+
 async function init() {
   await initConfigField();
+
+  copyIndexButton.addEventListener('click', () => displayCopyIndexDialog());
 
   addIndexButton.addEventListener('click', () => {
     displayIndexDetails('', {
@@ -483,11 +695,13 @@ async function init() {
         loadedIndices = YAML.parse(yamlText);
         populateIndexes(loadedIndices.indices);
         addIndexButton.disabled = false;
+        copyIndexButton.disabled = false;
       } else if (result.status === 404) {
         // No index exists yet, but allow creating one
         loadedIndices = { indices: {} };
         populateIndexes(loadedIndices.indices);
         addIndexButton.disabled = false;
+        copyIndexButton.disabled = false;
       }
     } finally {
       // Restore button state

@@ -429,6 +429,114 @@
     }
   }
 
+  /* Copy Index Dialog */
+  .copy-index-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-m);
+  }
+
+  .copy-overwrite-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+  }
+
+  .copy-overwrite-label {
+    display: flex;
+    align-self: flex-start;
+    align-items: center;
+    gap: var(--spacing-s);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--color-font-grey);
+
+    input[type="checkbox"] {
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+      accent-color: var(--blue-700);
+      cursor: pointer;
+    }
+  }
+
+  .copy-hint {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--color-font-grey);
+  }
+
+  .copy-index-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: var(--spacing-s);
+    background: var(--color-background);
+  }
+
+  .copy-index-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-s);
+    padding: var(--spacing-xs) var(--spacing-s);
+    border-radius: 4px;
+    cursor: pointer;
+
+    &:hover {
+      background: light-dark(var(--blue-25), var(--gray-800));
+    }
+
+    input[type="checkbox"] {
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+      accent-color: var(--blue-700);
+      cursor: pointer;
+
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+    }
+  }
+
+  .copy-index-name {
+    flex: 1;
+    font-family: var(--code-font-family);
+    font-size: 0.875rem;
+  }
+
+  .copy-index-conflict-badge {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: light-dark(var(--gray-100), var(--gray-700));
+    color: var(--color-font-grey);
+    border: 1px solid var(--color-border);
+    white-space: nowrap;
+  }
+
+  .copy-no-indexes {
+    margin: 0;
+    padding: var(--spacing-s);
+    font-size: 0.875rem;
+    color: var(--color-font-grey);
+    text-align: center;
+  }
+
+  /* Specificity override: .form-field input { width: 100% } is (0,4,1);
+     this selector is also (0,4,1) but appears later, so source order wins. */
+  .copy-overwrite-field .copy-overwrite-label {
+    input[type="checkbox"] {
+      width: auto;
+    }
+  }
+
   /* Reindex Status Modal */
   .reindex-status-dialog {
     max-width: 800px;
