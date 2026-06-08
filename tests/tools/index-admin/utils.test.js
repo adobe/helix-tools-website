@@ -167,5 +167,68 @@ describe('index-admin:utils.js', () => {
       const withoutOverwrite = buildCopyIndexStates({ foo: {} }, new Set(), false);
       assert.deepEqual(withOverwrite, withoutOverwrite);
     });
+
+    it('returns the exact output shape for a single non-conflicting index', () => {
+      const result = buildCopyIndexStates({ foo: {} }, new Set(), false);
+      assert.deepEqual(result, [
+        {
+          name: 'foo', conflicts: false, disabled: false, checked: true,
+        },
+      ]);
+    });
+
+    it('returns the exact output shape for a single conflicting index with overwrite off', () => {
+      const result = buildCopyIndexStates({ foo: {} }, new Set(['foo']), false);
+      assert.deepEqual(result, [
+        {
+          name: 'foo', conflicts: true, disabled: true, checked: false,
+        },
+      ]);
+    });
+
+    it('returns the exact output shape for a single conflicting index with overwrite on', () => {
+      const result = buildCopyIndexStates({ foo: {} }, new Set(['foo']), true);
+      assert.deepEqual(result, [
+        {
+          name: 'foo', conflicts: true, disabled: false, checked: true,
+        },
+      ]);
+    });
+
+    it('extra names in existingNames that are not in source do not affect output', () => {
+      const result = buildCopyIndexStates(
+        { foo: {} },
+        new Set(['foo', 'bar', 'baz']),
+        false,
+      );
+      assert.deepEqual(result, [
+        {
+          name: 'foo', conflicts: true, disabled: true, checked: false,
+        },
+      ]);
+    });
+
+    it('flipping overwrite changes disabled/checked for conflicting items, same fixture', () => {
+      const source = { foo: {}, bar: {}, baz: {} };
+      const existing = new Set(['bar']);
+
+      const withoutOverwrite = buildCopyIndexStates(source, existing, false);
+      const withOverwrite = buildCopyIndexStates(source, existing, true);
+
+      const bar0 = withoutOverwrite.find((i) => i.name === 'bar');
+      const bar1 = withOverwrite.find((i) => i.name === 'bar');
+
+      assert.equal(bar0.disabled, true);
+      assert.equal(bar0.checked, false);
+      assert.equal(bar1.disabled, false);
+      assert.equal(bar1.checked, true);
+
+      // non-conflicting items are unaffected by overwrite
+      ['foo', 'baz'].forEach((name) => {
+        const before = withoutOverwrite.find((i) => i.name === name);
+        const after = withOverwrite.find((i) => i.name === name);
+        assert.deepEqual(before, after);
+      });
+    });
   });
 });
