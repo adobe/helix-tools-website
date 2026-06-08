@@ -7,29 +7,6 @@
  * @param {string[]} includes - Array of include patterns from index definition
  * @returns {string[]} Array of API paths to reindex
  */
-/**
- * Derive the enabled/disabled/checked state for each source index when
- * copying to a destination site.
- *
- * An index is disabled (and unchecked) when it already exists on the
- * destination AND overwrite is false. When overwrite is true, all indexes
- * are enabled regardless of conflicts.
- *
- * @param {Record<string, object>} sourceIndices - Index definitions from source
- * @param {Set<string>} existingNames - Index names already on the destination
- * @param {boolean} overwrite - Whether overwrite is enabled
- * @returns {{ name: string, conflicts: boolean, disabled: boolean, checked: boolean }[]}
- */
-export function buildCopyIndexStates(sourceIndices, existingNames, overwrite) {
-  return Object.keys(sourceIndices).map((name) => {
-    const conflicts = existingNames.has(name);
-    const disabled = conflicts && !overwrite;
-    return {
-      name, conflicts, disabled, checked: !disabled,
-    };
-  });
-}
-
 export default function deriveReindexPaths(includes) {
   if (!includes || includes.length === 0) {
     return ['/*'];
@@ -65,4 +42,27 @@ export default function deriveReindexPaths(includes) {
 
   // Dedupe paths
   return [...new Set(paths)];
+}
+
+/**
+ * Derive the enabled/disabled/checked state for each source index when
+ * copying to a destination site.
+ *
+ * An index is disabled (and unchecked) when it already exists on the
+ * destination AND overwrite is false. When overwrite is true, all indexes
+ * are enabled regardless of conflicts.
+ *
+ * @param {Record<string, object>} sourceIndices - Index definitions from source
+ * @param {Set<string>} existingNames - Index names already on the destination
+ * @param {boolean} overwrite - Whether overwrite is enabled
+ * @returns {{ name: string, conflicts: boolean, disabled: boolean, checked: boolean }[]}
+ */
+export function buildCopyIndexStates(sourceIndices, existingNames, overwrite) {
+  return Object.keys(sourceIndices).map((name) => {
+    const conflicts = existingNames.has(name);
+    const disabled = conflicts && !overwrite;
+    return {
+      name, conflicts, disabled, checked: !disabled,
+    };
+  });
 }

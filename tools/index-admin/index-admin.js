@@ -551,7 +551,7 @@ function displayCopyIndexDialog() {
     copyDialog.querySelectorAll('input[name="copy-index"]').forEach((cb) => {
       if (existingNames.has(cb.value)) {
         cb.disabled = !overwriteCheckbox.checked;
-        if (cb.disabled) cb.checked = false;
+        cb.checked = !cb.disabled;
       }
     });
   });
