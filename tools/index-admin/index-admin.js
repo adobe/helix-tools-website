@@ -434,7 +434,7 @@ async function fetchSitesForOrg(orgValue) {
     () => admin.config({ org: orgValue }).select('sites.json').read(),
     { org: orgValue },
   );
-  if (!result?.ok) return [];
+  if (!result?.ok) return null;
   const data = await result.json();
   return data.sites || [];
 }
@@ -650,13 +650,14 @@ function displayCopyIndexDialog() {
 
   fetchSitesForOrg(org.value).then((sites) => {
     const currentSiteName = site.value;
-    const otherSites = sites.filter((s) => s.name !== currentSiteName);
+    const otherSites = sites ? sites.filter((s) => s.name !== currentSiteName) : [];
     sourceSelect.innerHTML = '';
     const placeholder = document.createElement('option');
     placeholder.value = '';
-    placeholder.textContent = otherSites.length > 0
-      ? '-- Select a source site --'
-      : '-- No other sites found in this org --';
+    let placeholderText = '-- Select a source site --';
+    if (sites === null) placeholderText = '-- Could not load sites --';
+    else if (otherSites.length === 0) placeholderText = '-- No other sites found in this org --';
+    placeholder.textContent = placeholderText;
     sourceSelect.appendChild(placeholder);
     otherSites.forEach((s) => {
       const option = document.createElement('option');
