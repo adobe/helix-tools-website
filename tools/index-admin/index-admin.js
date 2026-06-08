@@ -423,6 +423,12 @@ function populateIndexes(indexes) {
   });
 }
 
+/**
+ * Fetch the list of sites for the given org.
+ * Returns an empty array if the request fails or the org has no sites.
+ * @param {string} orgValue
+ * @returns {Promise<{name: string}[]>}
+ */
 async function fetchSitesForOrg(orgValue) {
   const result = await executeAdminRequest(
     () => admin.config({ org: orgValue }).select('sites.json').read(),
@@ -433,6 +439,14 @@ async function fetchSitesForOrg(orgValue) {
   return data.sites || [];
 }
 
+/**
+ * Fetch and parse the query.yaml index config from a source site.
+ * Returns an object with an empty `indices` map for a 404, or null on
+ * any other failure or if the user cancels authentication.
+ * @param {string} orgValue
+ * @param {string} sourceSite
+ * @returns {Promise<{indices: Record<string, object>}|null>}
+ */
 async function fetchSourceIndexConfig(orgValue, sourceSite) {
   const result = await executeAdminRequest(
     () => admin.config({ org: orgValue, site: sourceSite })
@@ -449,6 +463,14 @@ async function fetchSourceIndexConfig(orgValue, sourceSite) {
   return YAML.parse(yamlText);
 }
 
+/**
+ * Render the list of source indexes as labelled checkboxes into container.
+ * Indexes that already exist on the destination site show an "exists" badge;
+ * their checkboxes are disabled unless overwrite is true.
+ * @param {HTMLElement} container
+ * @param {Record<string, object>} sourceIndices
+ * @param {boolean} overwrite
+ */
 function renderCopyIndexList(container, sourceIndices, overwrite) {
   const existingNames = new Set(Object.keys(loadedIndices.indices));
   container.innerHTML = '';
@@ -483,6 +505,12 @@ function renderCopyIndexList(container, sourceIndices, overwrite) {
     });
 }
 
+/**
+ * Clone the copy-index dialog template, populate org/site context, load the
+ * source-site list, and wire all event handlers. Handles the full dialog
+ * lifecycle: show → source-site selection → index list render → copy submit →
+ * close and refresh.
+ */
 function displayCopyIndexDialog() {
   document.querySelector('dialog.copy-index-dialog')?.remove();
 
