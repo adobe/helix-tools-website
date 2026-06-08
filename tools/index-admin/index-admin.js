@@ -4,7 +4,7 @@ import { toClassName } from '../../scripts/aem.js';
 import admin from '../../scripts/helix-admin.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { logResponse } from '../../blocks/console/console.js';
-import deriveReindexPaths from './utils.js';
+import deriveReindexPaths, { buildCopyIndexStates } from './utils.js';
 
 const adminForm = document.getElementById('admin-form');
 const site = document.getElementById('site');
@@ -452,33 +452,35 @@ async function fetchSourceIndexConfig(orgValue, sourceSite) {
 function renderCopyIndexList(container, sourceIndices, overwrite) {
   const existingNames = new Set(Object.keys(loadedIndices.indices));
   container.innerHTML = '';
-  Object.keys(sourceIndices).forEach((name) => {
-    const conflicts = existingNames.has(name);
-    const item = document.createElement('label');
-    item.className = 'copy-index-item';
+  buildCopyIndexStates(sourceIndices, existingNames, overwrite)
+    .forEach(({
+      name, conflicts, disabled, checked,
+    }) => {
+      const item = document.createElement('label');
+      item.className = 'copy-index-item';
 
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.name = 'copy-index';
-    checkbox.value = name;
-    checkbox.disabled = conflicts && !overwrite;
-    if (!checkbox.disabled) checkbox.checked = true;
-    item.appendChild(checkbox);
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.name = 'copy-index';
+      checkbox.value = name;
+      checkbox.disabled = disabled;
+      checkbox.checked = checked;
+      item.appendChild(checkbox);
 
-    const nameSpan = document.createElement('span');
-    nameSpan.className = 'copy-index-name';
-    nameSpan.textContent = name;
-    item.appendChild(nameSpan);
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'copy-index-name';
+      nameSpan.textContent = name;
+      item.appendChild(nameSpan);
 
-    if (conflicts) {
-      const badge = document.createElement('span');
-      badge.className = 'copy-index-conflict-badge';
-      badge.textContent = 'exists';
-      item.appendChild(badge);
-    }
+      if (conflicts) {
+        const badge = document.createElement('span');
+        badge.className = 'copy-index-conflict-badge';
+        badge.textContent = 'exists';
+        item.appendChild(badge);
+      }
 
-    container.appendChild(item);
-  });
+      container.appendChild(item);
+    });
 }
 
 function displayCopyIndexDialog() {

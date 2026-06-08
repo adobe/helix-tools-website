@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import deriveReindexPaths from '../../../tools/index-admin/utils.js';
+import deriveReindexPaths, { buildCopyIndexStates } from '../../../tools/index-admin/utils.js';
 
 describe('index-admin:utils.js', () => {
   describe('deriveReindexPaths', () => {
@@ -78,6 +78,94 @@ describe('index-admin:utils.js', () => {
       // segments: ['**', 'fragments', '**'] — first segment is wildcard, so pathSegments = []
       // basePath = '' → '/', which maps to '/*'
       assert.deepEqual(deriveReindexPaths(['**/fragments/**']), ['/*']);
+    });
+  });
+
+  describe('buildCopyIndexStates', () => {
+    it('returns an empty array when sourceIndices is empty', () => {
+      assert.deepEqual(buildCopyIndexStates({}, new Set(['existing']), false), []);
+    });
+
+    it('returns enabled+checked items when there are no conflicts', () => {
+      const result = buildCopyIndexStates(
+        { foo: {}, bar: {} },
+        new Set(),
+        false,
+      );
+      assert.equal(result.length, 2);
+      result.forEach((item) => {
+        assert.equal(item.conflicts, false);
+        assert.equal(item.disabled, false);
+        assert.equal(item.checked, true);
+      });
+    });
+
+    it('disables and unchecks conflicting items when overwrite is false', () => {
+      const result = buildCopyIndexStates(
+        { foo: {}, bar: {} },
+        new Set(['foo', 'bar']),
+        false,
+      );
+      result.forEach((item) => {
+        assert.equal(item.conflicts, true);
+        assert.equal(item.disabled, true);
+        assert.equal(item.checked, false);
+      });
+    });
+
+    it('enables and checks conflicting items when overwrite is true', () => {
+      const result = buildCopyIndexStates(
+        { foo: {}, bar: {} },
+        new Set(['foo', 'bar']),
+        true,
+      );
+      result.forEach((item) => {
+        assert.equal(item.conflicts, true);
+        assert.equal(item.disabled, false);
+        assert.equal(item.checked, true);
+      });
+    });
+
+    it('marks conflict correctly for only the matching names', () => {
+      const result = buildCopyIndexStates(
+        { foo: {}, bar: {}, baz: {} },
+        new Set(['bar']),
+        false,
+      );
+      const byName = Object.fromEntries(result.map((item) => [item.name, item]));
+      assert.equal(byName.foo.conflicts, false);
+      assert.equal(byName.foo.disabled, false);
+      assert.equal(byName.bar.conflicts, true);
+      assert.equal(byName.bar.disabled, true);
+      assert.equal(byName.baz.conflicts, false);
+      assert.equal(byName.baz.disabled, false);
+    });
+
+    it('enables all items when overwrite is true, even with mixed conflicts', () => {
+      const result = buildCopyIndexStates(
+        { foo: {}, bar: {}, baz: {} },
+        new Set(['bar']),
+        true,
+      );
+      result.forEach((item) => {
+        assert.equal(item.disabled, false);
+        assert.equal(item.checked, true);
+      });
+    });
+
+    it('preserves source index name order', () => {
+      const result = buildCopyIndexStates(
+        { c: {}, a: {}, b: {} },
+        new Set(),
+        false,
+      );
+      assert.deepEqual(result.map((item) => item.name), ['c', 'a', 'b']);
+    });
+
+    it('overwrite=false has no effect when there are no conflicts', () => {
+      const withOverwrite = buildCopyIndexStates({ foo: {} }, new Set(), true);
+      const withoutOverwrite = buildCopyIndexStates({ foo: {} }, new Set(), false);
+      assert.deepEqual(withOverwrite, withoutOverwrite);
     });
   });
 });
