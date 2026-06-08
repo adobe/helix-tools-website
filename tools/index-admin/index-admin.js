@@ -550,7 +550,7 @@ function displayCopyIndexDialog() {
     const existingNames = new Set(Object.keys(loadedIndices.indices));
     copyDialog.querySelectorAll('input[name="copy-index"]').forEach((cb) => {
       if (existingNames.has(cb.value)) {
-        cb.disabled = !overwriteCheckbox.checked;
+        cb.checked = !cb.disabled;
         if (cb.disabled) cb.checked = false;
       }
     });
