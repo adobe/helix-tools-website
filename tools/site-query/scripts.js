@@ -243,18 +243,16 @@ async function* fetchSitemap(sitemapPath, liveHost) {
   }
 }
 
-// the live host rate-limits at 200 requests/second/IP; stay well under that to
-// leave headroom for other tabs/tools sharing the same IP budget
-const MAX_REQUESTS_PER_SECOND = 100;
-
 /**
  * creates a rate limiter that spaces out request starts so they don't exceed
  * a maximum rate. await the returned function before each fetch.
  *
- * @param {number} maxPerSecond the maximum number of requests to start per second
  * @returns {() => Promise<void>} acquire a slot, resolving when it's safe to fetch
  */
-function createRateLimiter(maxPerSecond) {
+function createRateLimiter() {
+  // the live host rate-limits at 200 requests/second/IP; stay well under that to
+  // leave headroom for other tabs/tools sharing the same IP budget
+  const maxPerSecond = 100;
   const minInterval = 1000 / maxPerSecond;
   let nextTime = 0;
   return () => {
@@ -377,7 +375,7 @@ async function init(doc) {
       resultsOfElement.textContent = 0;
 
       const processingTasks = [];
-      const acquire = createRateLimiter(MAX_REQUESTS_PER_SECOND);
+      const acquire = createRateLimiter();
       const updateSearched = () => {
         searched += 1;
         resultsOfElement.textContent = searched;
