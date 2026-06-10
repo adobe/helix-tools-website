@@ -38,37 +38,65 @@ describe('classifySequenceStatus — with source date', () => {
   });
 });
 
+describe('classifySequenceStatus — no source for authored content', () => {
+  [undefined, null, 'not-a-date'].forEach((noSource) => {
+    const label = noSource === null ? 'null' : String(noSource);
+
+    it(`preserves No source warning when only preview exists [edit=${label}]`, () => {
+      const result = classifySequenceStatus(noSource, PREVIEW, undefined);
+      assert.equal(result.label, 'No source');
+      assert.equal(result.positive, false);
+    });
+
+    it(`preserves No source warning when preview and publish exist [edit=${label}]`, () => {
+      const result = classifySequenceStatus(noSource, PREVIEW, PUBLISH);
+      assert.equal(result.label, 'No source');
+      assert.equal(result.positive, false);
+    });
+  });
+});
+
 describe('classifySequenceStatus — no source (BYOM, issue #340)', () => {
   // Both undefined (absent field) and null (explicit API value) must be treated as no source.
   [undefined, null].forEach((noSource) => {
     const label = noSource === null ? 'null' : 'undefined';
 
     it(`returns No source (negative) when nothing exists [edit=${label}]`, () => {
-      const result = classifySequenceStatus(noSource, undefined, undefined);
+      const result = classifySequenceStatus(noSource, undefined, undefined, {
+        allowMissingSourceDate: true,
+      });
       assert.equal(result.label, 'No source');
       assert.equal(result.positive, false);
     });
 
     it(`returns Not published (positive) when only preview exists [edit=${label}]`, () => {
-      const result = classifySequenceStatus(noSource, PREVIEW, undefined);
+      const result = classifySequenceStatus(noSource, PREVIEW, undefined, {
+        allowMissingSourceDate: true,
+      });
       assert.equal(result.label, 'Not published');
       assert.equal(result.positive, true);
     });
 
     it(`returns Current (positive) when only publish exists [edit=${label}]`, () => {
-      const result = classifySequenceStatus(noSource, undefined, PUBLISH);
+      const result = classifySequenceStatus(noSource, undefined, PUBLISH, {
+        allowMissingSourceDate: true,
+      });
       assert.equal(result.label, 'Current');
       assert.equal(result.positive, true);
     });
 
     it(`returns Current (positive) when preview and publish are in sequence [edit=${label}]`, () => {
-      const result = classifySequenceStatus(noSource, PREVIEW, PUBLISH);
+      const result = classifySequenceStatus(noSource, PREVIEW, PUBLISH, {
+        allowMissingSourceDate: true,
+      });
       assert.equal(result.label, 'Current');
       assert.equal(result.positive, true);
     });
 
     it(`returns Pending changes (positive) when preview is newer than publish [edit=${label}]`, () => {
-      const result = classifySequenceStatus(noSource, PUBLISH, PREVIEW);
+      const result = classifySequenceStatus(noSource, PUBLISH, PREVIEW, {
+        allowMissingSourceDate: true,
+      });
       assert.equal(result.label, 'Pending changes');
       assert.equal(result.positive, true);
     });

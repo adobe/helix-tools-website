@@ -4,9 +4,13 @@
  * @param {string|null|undefined} edit - Source/edit last-modified date.
  * @param {string|null|undefined} preview - Preview last-modified date.
  * @param {string|null|undefined} publish - Publish last-modified date.
+ * @param {Object} [options] - Classification options.
+ * @param {boolean} [options.allowMissingSourceDate=false] - Whether missing source dates
+ * are expected.
  * @returns {{ label: string, positive: boolean }}
  */
-export default function classifySequenceStatus(edit, preview, publish) {
+export default function classifySequenceStatus(edit, preview, publish, options = {}) {
+  const { allowMissingSourceDate = false } = options;
   const valid = (d) => !Number.isNaN(d.getTime());
   // Treat null and undefined as absent — new Date(null) yields epoch which is a valid date.
   const editDate = new Date(edit ?? NaN);
@@ -14,8 +18,12 @@ export default function classifySequenceStatus(edit, preview, publish) {
   const publishDate = new Date(publish ?? NaN);
 
   if (!valid(editDate)) {
-    // No source (e.g. BYOM pages where sourceLastModified is null/absent from the admin API).
-    // Classify by preview/publish state rather than always returning a negative status.
+    if (!allowMissingSourceDate) {
+      return { label: 'No source', positive: false };
+    }
+
+    // BYOM pages have no sourceLastModified from the admin API. Classify by
+    // preview/publish state rather than always returning a negative status.
     if (!valid(previewDate) && !valid(publishDate)) {
       return { label: 'No source', positive: false };
     }

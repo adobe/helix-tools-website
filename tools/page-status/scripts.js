@@ -319,13 +319,19 @@ function buildLink(text, url, path) {
  * @param {string} publish - Publish date.
  * @returns {HTMLSpanElement} Status light element indicating status and sequence.
  */
-function buildSequenceStatus(edit, preview, publish) {
-  const { label, positive } = classifySequenceStatus(edit, preview, publish);
+function buildSequenceStatus(edit, preview, publish, options) {
+  const { label, positive } = classifySequenceStatus(edit, preview, publish, options);
   const span = document.createElement('span');
   span.className = 'status-light';
   span.classList.add(positive ? 'positive' : 'negative');
   span.textContent = label;
   return span;
+}
+
+function isBYOMContentSource(contentSource) {
+  const { type, url } = contentSource || {};
+  if (type !== 'markup') return false;
+  return !url?.startsWith('https://content.da.live') && !url?.includes('adobeaemcloud');
 }
 
 function buildRedirectIcon(redirectLocation) {
@@ -365,7 +371,7 @@ function buildRedirectIcon(redirectLocation) {
  * @param {string} resource.path - The resource's path.
  * @returns {HTMLTableRowElement|null} `<tr>` element for resource, or `null` if no `path`.
  */
-function buildResource(resource, live, preview) {
+function buildResource(resource, live, preview, options) {
   const {
     path,
     sourceLastModified,
@@ -381,6 +387,7 @@ function buildResource(resource, live, preview) {
       sourceLastModified,
       previewLastModified,
       publishLastModified,
+      options,
     );
     const cols = [
       path,
@@ -408,9 +415,9 @@ function buildResource(resource, live, preview) {
  * @param {string} live - Base URL for live links.
  * @param {string} preview - Base URL for preview links.
  */
-function displayResources(resources, live, preview) {
+function displayResources(resources, live, preview, options) {
   resources.forEach((resource) => {
-    const row = buildResource(resource, live, preview);
+    const row = buildResource(resource, live, preview, options);
     if (row) RESULTS.append(row);
   });
 }
@@ -452,6 +459,21 @@ async function validateHosts(org, site) {
     throw new Error(`Invalid project configuration for ${org}/${site}`);
   }
   return { live, preview };
+}
+
+async function fetchPageStatusOptions(org, site) {
+  let res;
+  try {
+    res = await fetch(`https://admin.hlx.page/config/${org}/sites/${site}.json`);
+  } catch {
+    return {};
+  }
+
+  if (!res.ok) return {};
+  const config = await res.json();
+  return {
+    allowMissingSourceDate: isBYOMContentSource(config.content?.source),
+  };
 }
 
 /**
@@ -530,12 +552,12 @@ async function runJob(url, retry = 10000) {
  * @param {string} preview - Base URL for preview resources.
  * @returns {Promise<>} Promise that resolves once job has run and results are displayed.
  */
-async function runAndDisplayJob(jobUrl, live, preview) {
+async function runAndDisplayJob(jobUrl, live, preview, options) {
   const paths = await runJob(jobUrl);
   if (!paths || paths.length === 0) {
     throw new Error('No page status data found.');
   }
-  displayResources(paths, live, preview);
+  displayResources(paths, live, preview, options);
   updateTableDisplay('results');
   enableActionButtons();
 }
@@ -582,11 +604,14 @@ async function runFromParams(search) {
         // initial setup
         setupJob(FORM, FORM.querySelector('button'));
         // fetch host config
-        const { live, preview } = await validateHosts(org, site);
+        const [{ live, preview }, options] = await Promise.all([
+          validateHosts(org, site),
+          fetchPageStatusOptions(org, site),
+        ]);
         updateConfig();
         // fetch page status and display results
         const jobUrl = `https://admin.hlx.page/job/${org}/${site}/main/status/${job}`;
-        await runAndDisplayJob(jobUrl, live, preview);
+        await runAndDisplayJob(jobUrl, live, preview, options);
         updateJobParam(job);
       } catch (error) {
         updateTableError('Job');
@@ -632,12 +657,15 @@ async function init() {
       setupJob(target, submitter);
       const { path } = data;
       // fetch host config
-      const { live, preview } = await validateHosts(org, site);
+      const [{ live, preview }, options] = await Promise.all([
+        validateHosts(org, site),
+        fetchPageStatusOptions(org, site),
+      ]);
       updateConfig();
       // fetch page status and display results
       const jobUrl = await fetchJobUrl(org, site, path);
       if (!jobUrl) throw new Error('Failed to create page status job.');
-      await runAndDisplayJob(jobUrl, live, preview);
+      await runAndDisplayJob(jobUrl, live, preview, options);
     } catch (error) {
       updateTableError('Job');
       removeJobParam();
