@@ -221,3 +221,14 @@ export function parseSidekickParams(searchString) {
 export function generateNonce() {
   return crypto.randomUUID();
 }
+
+export async function writeScheduleIntent(org, site, entry) {
+  const url = `${ADMIN}/log/${org}/${site}/main`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ entries: [entry] }),
+  });
+  if (resp.ok) return { ok: true, resp };
+  return { ok: false, error: await readError(resp, 'Failed to record schedule intent.'), resp };
+}
