@@ -1,4 +1,5 @@
 import { registerToolReady } from '../../scripts/scripts.js';
+import { ensureLogin } from '../../blocks/profile/profile.js';
 import * as api from './utils.js';
 
 const missingContext = document.getElementById('missing-context');
@@ -37,8 +38,16 @@ async function handleSchedule() {
     setStatus('Pick a date/time at least 5 minutes in the future.', 'warning');
     return;
   }
-
   disableForm(true);
+
+  setStatus('Signing in…');
+  const signedIn = await ensureLogin(org, site);
+  if (!signedIn) {
+    setStatus('Sign in to AEM to schedule this page.', 'warning');
+    disableForm(false);
+    return;
+  }
+
   setStatus('Previewing page…');
   const preview = await api.ensurePreview(org, site, path);
   if (!preview.ok) {
@@ -47,13 +56,26 @@ async function handleSchedule() {
     return;
   }
 
-  setStatus('Scheduling…');
-  const userId = await api.fetchUserEmail(org, site);
   const scheduledPublish = new Date(timeInput.value).toISOString();
-  const result = await api.schedulePage({
-    org, site, path, userId, scheduledPublish,
-  });
+  const nonce = api.generateNonce();
 
+  setStatus('Recording intent…');
+  const intent = await api.writeScheduleIntent(org, site, {
+    route: 'schedule-page-intent',
+    nonce,
+    path,
+    scheduledPublish,
+  });
+  if (!intent.ok) {
+    setStatus(intent.error || 'Could not record schedule intent.', 'warning');
+    disableForm(false);
+    return;
+  }
+
+  setStatus('Scheduling…');
+  const result = await api.schedulePage({
+    org, site, path, scheduledPublish, nonce,
+  });
   if (!result.ok) {
     setStatus(result.error, 'warning');
     disableForm(false);
