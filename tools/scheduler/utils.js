@@ -217,3 +217,7 @@ export function parseSidekickParams(searchString) {
     org, site, path, referrer,
   };
 }
+
+export function generateNonce() {
+  return crypto.randomUUID();
+}
