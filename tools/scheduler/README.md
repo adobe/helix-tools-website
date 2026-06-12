@@ -8,17 +8,17 @@ The tool ships two entry points in the same folder:
 
 | Path | Purpose |
 | --- | --- |
-| `/tools/scheduler/index.html` | Full management UI — register a site, list all scheduled items (pages + snapshots), delete schedules. |
+| `/tools/scheduler/index.html` | Full management UI — list all scheduled items (pages + snapshots) and delete schedules. |
 | `/tools/scheduler/schedule.html` | Compact popup designed to be opened as an AEM Sidekick popover plugin so authors can schedule the page they are viewing in one click. |
 
 ## Management UI
 
 1. Open `https://tools.aem.live/tools/scheduler/`.
 2. Enter the **Organization** and **Site** and click **Load schedule**.
-3. If the site has never used the scheduler, click **Register site** — this
-   mints a `publish`-role API key on the AEM admin API, then registers the
-   site with the worker.
-4. Once registered, the table shows each scheduled item with its type
+3. If the site is not yet enabled for scheduling, the status panel asks
+   you to contact your admin — site registration is handled out-of-band
+   through the AEM admin API, not from this UI.
+4. Once enabled, the table shows each scheduled item with its type
    (Page / Snapshot), target, publish time, requester, and a Delete action.
    Page rows link out to the published preview URL; snapshot rows link into
    the existing `snapshot-admin` tool for that snapshot.
@@ -47,8 +47,8 @@ this entry to `tools/sidekick/config.json` under `plugins`:
 `passConfig` injects `owner`, `repo`, `ref`, etc. as query parameters and
 `passReferrer` injects the current page URL — the popover uses
 `owner`/`repo` as `org`/`site` and the referrer's pathname as the page
-path. The site must already be registered through the management UI for
-the popover to schedule successfully.
+path. The site must already be enabled for scheduling for the popover to
+schedule successfully.
 
 ## Authentication
 
