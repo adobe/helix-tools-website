@@ -10,7 +10,6 @@ const siteInput = document.getElementById('site');
 const resetBtn = document.getElementById('reset');
 const statusContainer = document.getElementById('status-container');
 const statusText = statusContainer.querySelector('.status-text');
-const registerBtn = document.getElementById('register');
 const refreshBtn = document.getElementById('refresh');
 const scheduleContainer = document.getElementById('schedule-container');
 const scheduleList = document.getElementById('schedule-list');
@@ -21,7 +20,6 @@ const confirmOk = document.getElementById('confirm-ok');
 
 let currentOrg = '';
 let currentSite = '';
-let isBusy = false;
 let registered = null;
 
 function log(resp, method, url) {
@@ -42,8 +40,7 @@ function clearStatus() {
   delete statusContainer.dataset.kind;
 }
 
-function setButtons({ register, refresh }) {
-  registerBtn.hidden = !register;
+function setButtons({ refresh }) {
   refreshBtn.hidden = !refresh;
 }
 
@@ -202,7 +199,7 @@ function renderEntries(entries) {
 
 async function loadSiteState() {
   if (!currentOrg || !currentSite) return;
-  setButtons({ register: false, refresh: false });
+  setButtons({ refresh: false });
   renderEmptyList();
   setStatus('Checking scheduler registration…');
 
@@ -215,43 +212,14 @@ async function loadSiteState() {
   registered = reg.registered;
   if (!registered) {
     setStatus(
-      `${currentOrg}/${currentSite} is not registered for scheduling. Register to enable scheduler actions.`,
+      `${currentOrg}/${currentSite} is not registered for scheduling. Contact your admin to enable scheduling for this site.`,
       'info',
     );
-    setButtons({ register: true, refresh: false });
+    setButtons({ refresh: false });
     return;
   }
-  setButtons({ register: false, refresh: true });
+  setButtons({ refresh: true });
   await loadSchedule();
-}
-
-async function handleRegister() {
-  if (isBusy || registered) return;
-  isBusy = true;
-  registerBtn.disabled = true;
-  setStatus('Creating publish API key…');
-
-  await ensureLogin(currentOrg, currentSite);
-  const keyResult = await api.createPublishApiKey(currentOrg, currentSite);
-  log(keyResult.resp, 'POST', `/config/${currentOrg}/sites/${currentSite}/apiKeys.json`);
-  if (keyResult.error || !keyResult.value) {
-    isBusy = false;
-    registerBtn.disabled = false;
-    setStatus(keyResult.error || 'Failed to create API key.', 'warning');
-    return;
-  }
-
-  setStatus('Registering site with scheduler…');
-  const regResult = await api.registerSite(currentOrg, currentSite, keyResult.value);
-  log(regResult.resp, 'POST', `/register/${currentOrg}/${currentSite}`);
-  isBusy = false;
-  registerBtn.disabled = false;
-  if (!regResult.ok) {
-    setStatus(`API key created but registration failed. ${regResult.error}`, 'warning');
-    return;
-  }
-  setStatus(`${currentOrg}/${currentSite} has been registered.`, 'success');
-  await loadSiteState();
 }
 
 async function handleSubmit(event) {
@@ -271,7 +239,7 @@ function handleReset() {
   currentOrg = '';
   currentSite = '';
   registered = null;
-  setButtons({ register: false, refresh: false });
+  setButtons({ refresh: false });
   renderEmptyList();
   clearStatus();
 }
@@ -279,7 +247,6 @@ function handleReset() {
 initConfigField();
 siteForm.addEventListener('submit', handleSubmit);
 resetBtn.addEventListener('click', handleReset);
-registerBtn.addEventListener('click', handleRegister);
 refreshBtn.addEventListener('click', loadSiteState);
 
 registerToolReady();
