@@ -1,6 +1,8 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { generateNonce, writeScheduleIntent } from '../../../tools/scheduler/utils.js';
+import {
+  generateNonce, writeScheduleIntent, ensureViewNonce, __resetViewNonceForTests,
+} from '../../../tools/scheduler/utils.js';
 
 describe('scheduler:utils.js', () => {
   describe('generateNonce', () => {
@@ -48,6 +50,42 @@ describe('scheduler:utils.js', () => {
         const result = await writeScheduleIntent('o', 's', { route: 'r', nonce: 'n' });
         assert.equal(result.ok, false);
         assert.match(result.error, /forbidden/);
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+  });
+
+  describe('ensureViewNonce', () => {
+    it('writes one log entry and caches the nonce within the TTL', async () => {
+      __resetViewNonceForTests();
+      let postCount = 0;
+      const originalFetch = global.fetch;
+      global.fetch = async (url, opts) => {
+        if (url.startsWith('https://admin.hlx.page/log/') && opts?.method === 'POST') {
+          postCount += 1;
+          return new Response('', { status: 201 });
+        }
+        throw new Error(`Unexpected fetch: ${url}`);
+      };
+      try {
+        const n1 = await ensureViewNonce('o', 's');
+        const n2 = await ensureViewNonce('o', 's');
+        assert.equal(n1, n2);
+        assert.equal(postCount, 1);
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+
+    it('rotates the nonce for a different org/site', async () => {
+      __resetViewNonceForTests();
+      const originalFetch = global.fetch;
+      global.fetch = async () => new Response('', { status: 201 });
+      try {
+        const n1 = await ensureViewNonce('o1', 's1');
+        const n2 = await ensureViewNonce('o2', 's2');
+        assert.notEqual(n1, n2);
       } finally {
         global.fetch = originalFetch;
       }

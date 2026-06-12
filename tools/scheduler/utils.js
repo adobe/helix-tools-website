@@ -232,3 +232,30 @@ export async function writeScheduleIntent(org, site, entry) {
   if (resp.ok) return { ok: true, resp };
   return { ok: false, error: await readError(resp, 'Failed to record schedule intent.'), resp };
 }
+
+const VIEW_NONCE_TTL_MS = 25 * 60 * 1000;
+let viewNonceCache = null; // { key: 'org/site', nonce, writtenAt }
+
+// eslint-disable-next-line no-underscore-dangle
+export function __resetViewNonceForTests() {
+  viewNonceCache = null;
+}
+
+export async function ensureViewNonce(org, site) {
+  const key = `${org}/${site}`;
+  if (
+    viewNonceCache
+    && viewNonceCache.key === key
+    && Date.now() - viewNonceCache.writtenAt < VIEW_NONCE_TTL_MS
+  ) {
+    return viewNonceCache.nonce;
+  }
+  const nonce = generateNonce();
+  const result = await writeScheduleIntent(org, site, { route: 'view-schedule-intent', nonce });
+  if (!result.ok) {
+    viewNonceCache = null;
+    throw new Error(result.error || 'Could not record view intent.');
+  }
+  viewNonceCache = { key, nonce, writtenAt: Date.now() };
+  return nonce;
+}
