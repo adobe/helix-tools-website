@@ -118,9 +118,24 @@ async function handleDelete(entry) {
       return;
     }
   }
+  const nonce = api.generateNonce();
+  const route = entry.type === 'page'
+    ? 'delete-page-schedule-intent'
+    : 'delete-snapshot-schedule-intent';
+  const payload = entry.type === 'page' ? { path: entry.id } : { snapshotId: entry.id };
+  const intent = await api.writeScheduleIntent(
+    currentOrg,
+    currentSite,
+    { route, nonce, ...payload },
+  );
+  if (!intent.ok) {
+    setStatus(intent.error || 'Could not record delete intent.', 'warning');
+    return;
+  }
+
   const result = entry.type === 'snapshot'
-    ? await api.deleteSnapshotSchedule(currentOrg, currentSite, entry.id)
-    : await api.deletePageSchedule(currentOrg, currentSite, entry.id);
+    ? await api.deleteSnapshotSchedule(currentOrg, currentSite, entry.id, nonce)
+    : await api.deletePageSchedule(currentOrg, currentSite, entry.id, nonce);
   log(result.resp, 'DELETE', `/schedule/${entry.type}/${currentOrg}/${currentSite}/${entry.id}`);
   if (!result.ok) {
     setStatus(result.error, 'warning');
