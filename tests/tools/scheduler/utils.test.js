@@ -2,6 +2,10 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   generateNonce, writeScheduleIntent, ensureViewNonce, __resetViewNonceForTests,
+  schedulePage as schedulePageApi,
+  deletePageSchedule,
+  deleteSnapshotSchedule,
+  fetchSchedule,
 } from '../../../tools/scheduler/utils.js';
 
 describe('scheduler:utils.js', () => {
@@ -86,6 +90,66 @@ describe('scheduler:utils.js', () => {
         const n1 = await ensureViewNonce('o1', 's1');
         const n2 = await ensureViewNonce('o2', 's2');
         assert.notEqual(n1, n2);
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+  });
+
+  describe('worker-call signatures', () => {
+    it('schedulePage POSTs body { path, scheduledPublish, nonce } without userId', async () => {
+      let captured;
+      const originalFetch = global.fetch;
+      global.fetch = async (url, opts) => {
+        captured = { url, opts };
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      };
+      try {
+        await schedulePageApi({
+          org: 'o', site: 's', path: '/x', scheduledPublish: '2099-01-01T00:00:00Z', nonce: 'n1',
+        });
+        assert.equal(captured.url, 'https://helix-snapshot-scheduler-prod.adobeaem.workers.dev/schedule/page/o/s');
+        const body = JSON.parse(captured.opts.body);
+        assert.deepEqual(Object.keys(body).sort(), ['nonce', 'path', 'scheduledPublish']);
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+
+    it('deletePageSchedule appends ?nonce= to URL', async () => {
+      let capturedUrl;
+      const originalFetch = global.fetch;
+      global.fetch = async (url) => { capturedUrl = url; return new Response('', { status: 200 }); };
+      try {
+        await deletePageSchedule('o', 's', '/x', 'n1');
+        assert.match(capturedUrl, /\/schedule\/page\/o\/s\/x\?nonce=n1$/);
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+
+    it('deleteSnapshotSchedule appends ?nonce= to URL', async () => {
+      let capturedUrl;
+      const originalFetch = global.fetch;
+      global.fetch = async (url) => { capturedUrl = url; return new Response('', { status: 200 }); };
+      try {
+        await deleteSnapshotSchedule('o', 's', 'snap1', 'n2');
+        assert.match(capturedUrl, /\/schedule\/snapshot\/o\/s\/snap1\?nonce=n2$/);
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+
+    it('fetchSchedule appends ?nonce= to URL', async () => {
+      let capturedUrl;
+      const originalFetch = global.fetch;
+      global.fetch = async (url) => {
+        capturedUrl = url;
+        return new Response(JSON.stringify({}), { status: 200 });
+      };
+      try {
+        await fetchSchedule('o', 's', 'n3');
+        assert.match(capturedUrl, /\/schedule\/o\/s\?nonce=n3$/);
       } finally {
         global.fetch = originalFetch;
       }

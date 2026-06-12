@@ -20,33 +20,6 @@ export async function checkRegistration(org, site) {
   return { error: await readError(resp, 'Could not check scheduler registration.'), resp };
 }
 
-export async function createPublishApiKey(org, site) {
-  const resp = await fetch(`${ADMIN}/config/${org}/sites/${site}/apiKeys.json`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ description: 'Scheduler registration', roles: ['publish'] }),
-  });
-  if (!resp.ok) {
-    return { error: await readError(resp, 'Failed to create publish API key.'), resp };
-  }
-  try {
-    const json = await resp.json();
-    return { value: json.value, resp };
-  } catch {
-    return { error: 'Could not parse API key response.', resp };
-  }
-}
-
-export async function registerSite(org, site, apiKey) {
-  const resp = await fetch(`${WORKER}/register/${org}/${site}`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ apiKey }),
-  });
-  if (resp.ok) return { ok: true, resp };
-  return { ok: false, error: await readError(resp, 'Failed to register site with scheduler.'), resp };
-}
-
 export function normalizeEntries(payload, org, site) {
   const key = `${org}--${site}`;
   const items = payload?.[key] || {};
@@ -61,8 +34,9 @@ export function normalizeEntries(payload, org, site) {
     .sort((a, b) => new Date(a.scheduledPublish) - new Date(b.scheduledPublish));
 }
 
-export async function fetchSchedule(org, site) {
-  const resp = await fetch(`${WORKER}/schedule/${org}/${site}`);
+export async function fetchSchedule(org, site, nonce) {
+  const url = `${WORKER}/schedule/${org}/${site}?nonce=${encodeURIComponent(nonce)}`;
+  const resp = await fetch(url);
   if (!resp.ok) {
     return { error: await readError(resp, 'Could not load scheduled items.'), resp };
   }
@@ -75,17 +49,17 @@ export async function fetchSchedule(org, site) {
   return { entries: normalizeEntries(json, org, site), resp };
 }
 
-export async function deletePageSchedule(org, site, path) {
+export async function deletePageSchedule(org, site, path, nonce) {
   const idPath = path.startsWith('/') ? path : `/${path}`;
-  const url = `${WORKER}/schedule/page/${org}/${site}${idPath}`;
+  const url = `${WORKER}/schedule/page/${org}/${site}${idPath}?nonce=${encodeURIComponent(nonce)}`;
   const resp = await fetch(url, { method: 'DELETE' });
   if (resp.ok) return { ok: true, resp };
   return { ok: false, error: await readError(resp, 'Failed to delete scheduled page.'), resp };
 }
 
-export async function deleteSnapshotSchedule(org, site, snapshotId) {
+export async function deleteSnapshotSchedule(org, site, snapshotId, nonce) {
   const idPath = snapshotId.startsWith('/') ? snapshotId : `/${snapshotId}`;
-  const url = `${WORKER}/schedule/snapshot/${org}/${site}${idPath}`;
+  const url = `${WORKER}/schedule/snapshot/${org}/${site}${idPath}?nonce=${encodeURIComponent(nonce)}`;
   const resp = await fetch(url, { method: 'DELETE' });
   if (resp.ok) return { ok: true, resp };
   return { ok: false, error: await readError(resp, 'Failed to delete scheduled snapshot.'), resp };
@@ -115,12 +89,12 @@ export async function clearSnapshotScheduledPublish(org, site, snapshotId) {
 }
 
 export async function schedulePage({
-  org, site, path, userId, scheduledPublish,
+  org, site, path, scheduledPublish, nonce,
 }) {
   const resp = await fetch(`${WORKER}/schedule/page/${org}/${site}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ path, userId, scheduledPublish }),
+    body: JSON.stringify({ path, scheduledPublish, nonce }),
   });
   if (resp.ok) return { ok: true, resp };
   return { ok: false, error: await readError(resp, 'Failed to schedule publish.'), resp };
@@ -131,17 +105,6 @@ export async function ensurePreview(org, site, path) {
   const resp = await fetch(`${ADMIN}/preview/${org}/${site}/main${cleanPath}`, { method: 'POST' });
   if (resp.ok) return { ok: true, resp };
   return { ok: false, error: await readError(resp, 'Could not preview page before scheduling.'), resp };
-}
-
-export async function fetchUserEmail(org, site) {
-  try {
-    const resp = await fetch(`${ADMIN}/profile/${org}/${site}`);
-    if (!resp.ok) return '';
-    const json = await resp.json();
-    return json.email || '';
-  } catch {
-    return '';
-  }
 }
 
 export function formatDate(iso) {
