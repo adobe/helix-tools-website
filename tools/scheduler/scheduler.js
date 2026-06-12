@@ -68,8 +68,26 @@ function showConfirm(message, okLabel = 'Delete') {
 
 async function loadSchedule() {
   setStatus('Loading scheduled items…');
-  const result = await api.fetchSchedule(currentOrg, currentSite);
+  let viewNonce;
+  try {
+    viewNonce = await api.ensureViewNonce(currentOrg, currentSite);
+  } catch (err) {
+    setStatus(err.message || 'Could not record view intent.', 'warning');
+    renderEmptyList();
+    return;
+  }
+
+  let result = await api.fetchSchedule(currentOrg, currentSite, viewNonce);
   log(result.resp, 'GET', `/schedule/${currentOrg}/${currentSite}`);
+
+  if (result.error && /expired/i.test(result.error)) {
+    // session nonce stale — rotate and retry once
+    api.invalidateViewNonceCache();
+    const fresh = await api.ensureViewNonce(currentOrg, currentSite);
+    result = await api.fetchSchedule(currentOrg, currentSite, fresh);
+    log(result.resp, 'GET', `/schedule/${currentOrg}/${currentSite}`);
+  }
+
   if (result.error) {
     setStatus(result.error, 'warning');
     renderEmptyList();

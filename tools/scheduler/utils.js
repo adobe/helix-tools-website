@@ -222,3 +222,7 @@ export async function ensureViewNonce(org, site) {
   viewNonceCache = { key, nonce, writtenAt: Date.now() };
   return nonce;
 }
+
+export function invalidateViewNonceCache() {
+  viewNonceCache = null;
+}
