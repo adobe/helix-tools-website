@@ -425,7 +425,7 @@ function populateIndexes(indexes) {
 
 /**
  * Fetch the list of sites for the given org.
- * Returns an empty array if the request fails or the org has no sites.
+ * Returns null if the request fails, or an empty array if the org has no sites.
  * @param {string} orgValue
  * @returns {Promise<{name: string}[]>}
  */
