@@ -529,8 +529,8 @@
     text-align: center;
   }
 
-  /* Specificity override: .form-field input { width: 100% } is (0,1,1);
-     this selector is also (0,1,1) but appears later, so source order wins. */
+  /* Specificity override: .index-admin .form-field input { width: 100% } is (0,2,1);
+     .index-admin .copy-overwrite-field .copy-overwrite-label input[type="checkbox"] is (0,4,1). */
   .copy-overwrite-field .copy-overwrite-label {
     input[type="checkbox"] {
       width: auto;
