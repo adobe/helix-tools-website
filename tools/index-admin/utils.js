@@ -7,7 +7,7 @@
  * @param {string[]} includes - Array of include patterns from index definition
  * @returns {string[]} Array of API paths to reindex
  */
-export default function deriveReindexPaths(includes) {
+export function deriveReindexPaths(includes) {
   if (!includes || includes.length === 0) {
     return ['/*'];
   }

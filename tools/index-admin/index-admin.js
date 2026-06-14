@@ -4,7 +4,7 @@ import { toClassName } from '../../scripts/aem.js';
 import admin from '../../scripts/helix-admin.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { logResponse } from '../../blocks/console/console.js';
-import deriveReindexPaths, { buildCopyIndexStates } from './utils.js';
+import { buildCopyIndexStates, deriveReindexPaths } from './utils.js';
 
 const adminForm = document.getElementById('admin-form');
 const site = document.getElementById('site');
