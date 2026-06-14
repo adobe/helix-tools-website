@@ -460,7 +460,11 @@ async function fetchSourceIndexConfig(orgValue, sourceSite) {
   if (!result.ok) return null;
   await ensureYaml();
   const yamlText = await result.text();
-  return YAML.parse(yamlText);
+  try {
+    return YAML.parse(yamlText);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -729,7 +733,12 @@ async function init() {
       if (result.ok) {
         await ensureYaml();
         const yamlText = await result.text();
-        loadedIndices = YAML.parse(yamlText);
+        try {
+          loadedIndices = YAML.parse(yamlText);
+        } catch {
+          loadedIndices = null;
+        }
+        if (!loadedIndices) return;
         populateIndexes(loadedIndices.indices);
         addIndexButton.disabled = false;
         copyIndexButton.disabled = false;
