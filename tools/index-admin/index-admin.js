@@ -432,7 +432,7 @@ function populateIndexes(indexes) {
 async function fetchSitesForOrg(orgValue) {
   const result = await executeAdminRequest(
     () => admin.config({ org: orgValue }).select('sites.json').read(),
-    { org: orgValue },
+    { org: orgValue, policy: AuthMode.NONE },
   );
   if (!result?.ok) return null;
   const data = await result.json();
@@ -451,7 +451,7 @@ async function fetchSourceIndexConfig(orgValue, sourceSite) {
   const result = await executeAdminRequest(
     () => admin.config({ org: orgValue, site: sourceSite })
       .select('content/query.yaml').read(),
-    { org: orgValue, site: sourceSite },
+    { org: orgValue, site: sourceSite, policy: AuthMode.NONE },
   );
   if (!result) return null;
   const { method, url } = result.request;
