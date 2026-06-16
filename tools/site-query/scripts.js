@@ -79,7 +79,6 @@ function updateTableError(table, errCode) {
       case 403:
         return {
           title: 'Forbidden',
-          msg: 'Unable to display results. Access to this content was denied. If the site is protected, you need to add <code>tools.aem.live</code> to the site\'s <code>sidekick.trustedHosts</code>. See <a href="https://www.aem.live/developer/sidekick-development" target="_blank" rel="noopener">here</a> for more information.',
           msg: 'Unable to display results. Access to this content was denied. If the site is protected, you need to add <code>tools.aem.live</code> to the site\'s <code>sidekick.trustedHosts</code>. See the <a href="https://www.aem.live/developer/sidekick-development" target="_blank" rel="noopener noreferrer">sidekick development docs</a> for more information.',
       case 404:
         return {
