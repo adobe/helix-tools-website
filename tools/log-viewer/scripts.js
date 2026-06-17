@@ -242,9 +242,6 @@ function clearTable(table) {
 }
 
 /**
- * Class representing transformed data set with methods to rewrite/format properties for display.
- */
-/**
  * Builds a table row populated with log data.
  * @param {Object} data - Log data object.
  * @param {string} live - Hostname for live environment.
