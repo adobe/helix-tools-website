@@ -307,11 +307,16 @@ class RewrittenData {
     }
     if (type === 'indexer') {
       if (!this.data.changes) return value || '-';
+      // changes is producer-defined and not guaranteed to be an array of strings;
+      // normalize to an array and coerce items to strings so .map/.split never throw.
+      const changesList = Array.isArray(this.data.changes)
+        ? this.data.changes
+        : [this.data.changes];
       // sometimes ms appears in indexer path?
       const updateMs = !this.data.duration;
       if (updateMs) this.data.duration = 0;
-      const changes = this.data.changes.map((change) => {
-        const segments = change.split(' ');
+      const changes = changesList.map((change) => {
+        const segments = String(change).split(' ');
         const segment = segments.find((s) => s.startsWith('/'));
         if (updateMs) {
           const ms = segments.find((s) => s.endsWith('ms'));
