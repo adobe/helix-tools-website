@@ -157,7 +157,7 @@
   <p><b>SECTION STRUCTURE — business impact first, then user impact:</b></p>
   <ol>
     <li><b>Open with top pages affected by errors.</b> Use the PER-PAGE ERROR BREAKDOWN from cross-reference data. Lead with the pages that have the most errors, especially conversion-critical ones (checkout, cart, payment, signup, upload) or high-traffic pages. For each page: name it (linked), state its error count, and list the specific error types occurring ON that page (linked with nested facets). Include CWV impact if the per-page data shows poor+significant metrics.</li>
-    <li><b>Then cover the broader error patterns</b> in flowing narrative: total error rate, dominant error sources/targets globally. Use 2-3 bullets for the top error types. <b>Every bullet MUST be wrapped in a facet link</b> — error sources use <code>data-nested-facet="error.source"</code>, error targets use <code>data-nested-facet="error.target"</code>. No plain-text mentions of error sources or targets without a link.</li>
+    <li><b>Then cover the broader error patterns</b> in flowing narrative: total error rate, dominant error sources/targets globally. List each significant error type as a bullet — however many the data shows (do NOT pre-state a count like "two patterns" or "three sources" before the list). <b>Every bullet MUST be wrapped in a facet link</b> — error sources use <code>data-nested-facet="error.source"</code>, error targets use <code>data-nested-facet="error.target"</code>. No plain-text mentions of error sources or targets without a link.</li>
     <li><b>Close with user-facing consequence</b> — what real users experience because of these errors (broken forms, failed uploads, unresponsive pages). Connect each consequence to the specific page + error data that proves it. Every consequence statement must include a linked reference.</li>
   </ol>
 
@@ -171,7 +171,9 @@
     <li>The UX consequence paragraph MUST also be linked — if you say "users experience broken navigation", link to the specific error type and page where it happens. Every consequence claim needs a data-facet span pointing to the proof</li>
   </ul>
 
-  <p><b>STYLE:</b> Natural flowing paragraphs with 2-3 bullets where listing specifics. Every data point linked. Don't open with the dry error rate percentage — open with the pages where errors hit hardest. If you state a count ("dominated by two patterns"), the number of items that follow MUST match exactly — don't say "two" then list three.</p>
+  <p><b>COUNT-MATCH RULE:</b> If you state a number of items ("dominated by two patterns", "three key sources"), the items listed MUST match that number EXACTLY. Don't say "two" then list three or four. Count your bullets BEFORE writing the intro sentence.</p>
+
+  <p><b>STYLE:</b> Natural flowing paragraphs with bullets where listing specifics. Every data point linked. Don't open with the dry error rate percentage — open with the pages where errors hit hardest. NEVER pre-state a count before a list (no "dominated by two patterns", "three key sources"). Just list the items directly.</p>
 
   <p><b>ERROR COUNT ACCURACY:</b></p>
   <ul>
