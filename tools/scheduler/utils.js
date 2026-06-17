@@ -1,4 +1,4 @@
-const WORKER = 'https://helix-snapshot-scheduler-prod.adobeaem.workers.dev';
+const WORKER = 'https://helix-snapshot-scheduler-ci.adobeaem.workers.dev';
 const ADMIN = 'https://admin.hlx.page';
 
 async function readError(resp, fallback) {
