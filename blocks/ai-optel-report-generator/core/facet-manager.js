@@ -286,69 +286,72 @@ export async function crossReferenceErrors() {
 
   const results = { totalErrorCount, totalErrorCountRaw: errorCountTitle.split(' ')[0] };
 
-  // Read top-level facets (url, userAgent) while filtered to errors
-  ['url', 'userAgent'].forEach((facetName) => {
-    const facetEl = sidebar.querySelector(`[facet="${facetName}"]`);
-    if (!facetEl) return;
-    const items = extractLabelData(facetEl, false);
-    if (items.length > 0) {
-      results[facetName] = items.slice(0, 15);
+  try {
+    // Read top-level facets (url, userAgent) while filtered to errors
+    ['url', 'userAgent'].forEach((facetName) => {
+      const facetEl = sidebar.querySelector(`[facet="${facetName}"]`);
+      if (!facetEl) return;
+      const items = extractLabelData(facetEl, false);
+      if (items.length > 0) {
+        results[facetName] = items.slice(0, 15);
+      }
+    });
+
+    // Read nested error facets (error.source, error.target) with CWV metrics
+    ['error.source', 'error.target'].forEach((facetName) => {
+      const facetEl = sidebar.querySelector(`[facet="${facetName}"]`);
+      if (!facetEl) return;
+      const items = extractLabelData(facetEl, true);
+      if (items.length > 0) {
+        results[facetName] = items.slice(0, 10);
+      }
+    });
+
+    // Drill into top error-affected pages to get per-page error breakdowns
+    const urlFacetEl = sidebar.querySelector('[facet="url"]');
+    if (urlFacetEl && results.url && results.url.length > 0) {
+      const topPages = results.url.slice(0, 5);
+
+      const perPageErrors = await topPages.reduce(async (accPromise, page) => {
+        const acc = await accPromise;
+        const urlInput = urlFacetEl.querySelector(`input[value="${CSS.escape(page.text)}"]`);
+        if (!urlInput) return acc;
+
+        urlInput.click();
+        await new Promise((r) => { setTimeout(r, 1200); });
+
+        const pageBreakdown = { page: page.text, errorCount: page.count };
+
+        ['error.source', 'error.target'].forEach((facetName) => {
+          const facetEl = sidebar.querySelector(`[facet="${facetName}"]`);
+          if (!facetEl) return;
+          const items = extractLabelData(facetEl, true);
+          if (items.length > 0) {
+            pageBreakdown[facetName] = items.slice(0, 5);
+          }
+        });
+
+        acc.push(pageBreakdown);
+
+        urlInput.click();
+        await new Promise((r) => { setTimeout(r, 1200); });
+
+        return acc;
+      }, Promise.resolve([]));
+
+      if (perPageErrors.length > 0) {
+        results.perPageErrors = perPageErrors;
+      }
     }
-  });
-
-  // Read nested error facets (error.source, error.target) with CWV metrics
-  ['error.source', 'error.target'].forEach((facetName) => {
-    const facetEl = sidebar.querySelector(`[facet="${facetName}"]`);
-    if (!facetEl) return;
-    const items = extractLabelData(facetEl, true);
-    if (items.length > 0) {
-      results[facetName] = items.slice(0, 10);
-    }
-  });
-
-  // Drill into top error-affected pages to get per-page error breakdowns
-  const urlFacetEl = sidebar.querySelector('[facet="url"]');
-  if (urlFacetEl && results.url && results.url.length > 0) {
-    const topPages = results.url.slice(0, 5);
-
-    const perPageErrors = await topPages.reduce(async (accPromise, page) => {
-      const acc = await accPromise;
-      const urlInput = urlFacetEl.querySelector(`input[value="${CSS.escape(page.text)}"]`);
-      if (!urlInput) return acc;
-
-      urlInput.click();
-      await new Promise((r) => { setTimeout(r, 1200); });
-
-      const pageBreakdown = { page: page.text, errorCount: page.count };
-
-      ['error.source', 'error.target'].forEach((facetName) => {
-        const facetEl = sidebar.querySelector(`[facet="${facetName}"]`);
-        if (!facetEl) return;
-        const items = extractLabelData(facetEl, true);
-        if (items.length > 0) {
-          pageBreakdown[facetName] = items.slice(0, 5);
-        }
-      });
-
-      acc.push(pageBreakdown);
-
-      urlInput.click();
-      await new Promise((r) => { setTimeout(r, 1200); });
-
-      return acc;
-    }, Promise.resolve([]));
-
-    if (perPageErrors.length > 0) {
-      results.perPageErrors = perPageErrors;
+  } finally {
+    if (!wasChecked && errorInput.checked) {
+      errorInput.click();
+      await new Promise((r) => { setTimeout(r, 1500); });
     }
   }
 
-  // Restore original checkpoint state
-  if (!wasChecked) {
-    errorInput.click();
-    await new Promise((r) => { setTimeout(r, 1500); });
-  }
-
-  if (Object.keys(results).length === 0) return null;
+  const hasFacetData = results.url || results.userAgent
+    || results['error.source'] || results['error.target'] || results.perPageErrors;
+  if (!hasFacetData) return null;
   return results;
 }
