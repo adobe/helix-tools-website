@@ -135,6 +135,8 @@ facet-sidebar.report-view-active > form {
   border-radius: 3px;
 }
 
+/* Business Impact expandable section */
+
 /* Number formatting */
 .report-sections .content-item .num {
   font-family: 'SF Mono', monaco, consolas, 'Courier New', monospace;

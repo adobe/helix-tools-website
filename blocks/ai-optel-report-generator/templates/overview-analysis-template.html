@@ -42,6 +42,7 @@
   <p><b>EDGE DELIVERY SERVICES (EDS) SITE DETECTION:</b></p>
   <ul>
     <li><b>If tool responses include <code>checkpoint=viewblock</code>, this is an Edge Delivery Services site</b></li>
+    <li><b>NEVER mention detection logic in the report.</b> Do not say "viewblock checkpoints detected", "based on viewblock data", or explain how you identified the site as EDS. This is internal logic — the report reader already knows their site platform</li>
     <li>EDS sites have built-in automatic optimizations - tailor recommendations accordingly</li>
     <li><b>DO NOT recommend for EDS sites:</b>
       <ul>
@@ -124,7 +125,7 @@
   <ul>
     <li>Include date range context from DATA TIME PERIOD section</li>
     <li>"Rising"/"falling" = trends, not absolute performance - focus on actual values vs thresholds</li>
-    <li><b>CSS classes = severity:</b> <code>score-poor</code> = CRITICAL (failing CWV, MUST highlight), <code>score-ni</code> = needs improvement, <code>score-good</code> = passing</li>
+    <li><b>CWV status in tool responses:</b> <code>"status": "poor"</code> = CRITICAL (failing CWV, MUST highlight), <code>"status": "needs-improvement"</code> = needs improvement, <code>"status": "good"</code> = passing. <code>"significant": true</code> = statistically significant deviation (proven, not random noise — prioritize these)</li>
     <li><b>Business thresholds:</b> Engagement/conversion &lt;25% = CRITICAL, bounce &gt;60% = CRITICAL</li>
     <li>Analyze ALL facets - not just performance. Check facet title attributes for context</li>
     <li>UTM data captures parameter names only (privacy by design) - don't suggest capturing values</li>
@@ -142,7 +143,7 @@
 
   <p><b>CONDITIONAL SECTIONS:</b></p>
   <ul>
-    <li><b>JavaScript Errors:</b> Only include if errors ≥1% of total traffic (calculate: error count / page views × 100). Skip entirely if below threshold.</li>
+    <li><b>JavaScript Errors:</b> Always include if errors ≥1% of total traffic (calculate: error count / page views × 100). Also include if errors are below 1% BUT concentrated on conversion-critical pages (checkout, cart, payment, contact, signup, login) or affecting a specific device/locale segment entirely — low volume does not mean low impact.</li>
     <li><b>All Other Sections:</b> Always include (Executive Summary, Performance Impact, User Engagement, Traffic & Acquisition, Content Effectiveness, Conversion Funnel, Geographic Insights, Market Opportunities, Business Impact, Priority Actions)</li>
   </ul>
 
@@ -151,39 +152,118 @@
   <pre>&lt;p&gt;• &lt;span data-facet="checkpoint" data-facet-value="cwv-lcp"&gt;LCP at 3.2s exceeds 2.5s threshold—mobile bounce 65% vs desktop 32%.&lt;/span&gt;&lt;/p&gt;</pre>
 
   <h4>JAVASCRIPT ERRORS THAT NEED ATTENTION</h4>
-  <p><b>Only if errors ≥1% of traffic.</b> Calculate: (error count / page views) × 100</p>
+  <p><b>Include if errors ≥1% of traffic OR if errors concentrate on business-critical pages/segments.</b> Calculate overall rate: (error count / page views) × 100</p>
+
+  <p><b>SECTION STRUCTURE — business impact first, then user impact:</b></p>
+  <ol>
+    <li><b>Open with top pages affected by errors.</b> Use the PER-PAGE ERROR BREAKDOWN from cross-reference data. Lead with the pages that have the most errors, especially conversion-critical ones (checkout, cart, payment, signup, upload) or high-traffic pages. For each page: name it (linked), state its error count, and list the specific error types occurring ON that page (linked with nested facets). Include CWV impact if the per-page data shows poor+significant metrics.</li>
+    <li><b>Then cover the broader error patterns</b> in flowing narrative: total error rate, dominant error sources/targets globally. Use 2-3 bullets for the top error types. <b>Every bullet MUST be wrapped in a facet link</b> — error sources use <code>data-nested-facet="error.source"</code>, error targets use <code>data-nested-facet="error.target"</code>. No plain-text mentions of error sources or targets without a link.</li>
+    <li><b>Close with user-facing consequence</b> — what real users experience because of these errors (broken forms, failed uploads, unresponsive pages). Connect each consequence to the specific page + error data that proves it. Every consequence statement must include a linked reference.</li>
+  </ol>
+
+  <p><b>DATA-BACKED FINDINGS ONLY:</b></p>
+  <ul>
+    <li>Every finding MUST trace to a specific tool response or cross-reference result</li>
+    <li>DO NOT speculate: no "likely", "probably", "suggests", "may indicate", "potentially"</li>
+    <li>DO NOT infer correlations between separate data points — only cite what appears in the SAME filtered view</li>
+    <li>If the cross-reference shows errors ON a page, you can state that. If it doesn't, don't claim it</li>
+    <li>DO NOT mention conversion pages (signup, checkout, contact) unless the cross-reference data explicitly shows errors on those URLs. Generic statements like "preventing users from reaching conversion pages" without a linked page URL are banned</li>
+    <li>The UX consequence paragraph MUST also be linked — if you say "users experience broken navigation", link to the specific error type and page where it happens. Every consequence claim needs a data-facet span pointing to the proof</li>
+  </ul>
+
+  <p><b>STYLE:</b> Natural flowing paragraphs with 2-3 bullets where listing specifics. Every data point linked. Don't open with the dry error rate percentage — open with the pages where errors hit hardest. If you state a count ("dominated by two patterns"), the number of items that follow MUST match exactly — don't say "two" then list three.</p>
+
   <p><b>ERROR COUNT ACCURACY:</b></p>
   <ul>
-    <li><b>Use TOTAL from tool</b> when linking to <code>checkpoint=error</code> - don't link your calculated subset</li>
+    <li><b>Use TOTAL from tool</b> when linking to <code>checkpoint=error</code> — don't link your calculated subset</li>
     <li><b>If discussing "top N sources":</b> Mention aggregate WITHOUT link, then detail each source with nested facets</li>
-    <li><b>Example structure:</b> "The site experiences <code>&lt;span data-facet="checkpoint" data-facet-value="error"&gt;7.6m total errors&lt;/span&gt;</code> (~2.7% of traffic), with 5.8m concentrated in the top 5 sources. Leading issues include <code>&lt;span data-nested-facet="error.source" data-nested-value="serialization"&gt;2.1m serialization errors&lt;/span&gt;</code>, <code>&lt;span data-nested-facet="error.source" data-nested-value="network"&gt;1.8m network errors&lt;/span&gt;</code>, and <code>&lt;span data-nested-facet="error.target" data-nested-value="TypeError"&gt;1.2m TypeErrors&lt;/span&gt;</code>."</li>
   </ul>
+
   <p><b>TWO-LEVEL NESTED ERRORS:</b> If discussing errors with BOTH source AND target (e.g., "network TypeErrors"), use BOTH nested facets so both checkboxes enable.</p>
-  <p>2-3 paragraphs analyzing error patterns. Write flowing narrative; use bullets when listing 3+ specific errors. End with UX impact and recommendations.</p>
+
+  <p><b>LINKING RULES:</b></p>
+  <ul>
+    <li><b>Page references:</b> <code>&lt;span data-facet="url" data-facet-value="/path"&gt;page (COUNT errors)&lt;/span&gt;</code></li>
+    <li><b>Error sources:</b> <code>&lt;span data-facet="checkpoint" data-facet-value="error" data-nested-facet="error.source" data-nested-value="SOURCE"&gt;description&lt;/span&gt;</code></li>
+    <li><b>Error targets:</b> <code>&lt;span data-facet="checkpoint" data-facet-value="error" data-nested-facet="error.target" data-nested-value="TARGET"&gt;description&lt;/span&gt;</code></li>
+    <li><b>Error on a specific page (URL context):</b> Add <code>data-url-context="/path"</code> to error links when discussing errors that occur on a specific page. This enables BOTH the error checkbox AND the URL checkbox in the dashboard, showing the exact correlation. Example: <code>&lt;span data-facet="checkpoint" data-facet-value="error" data-nested-facet="error.source" data-nested-value="network" data-url-context="/track"&gt;network errors on /track&lt;/span&gt;</code></li>
+    <li><b>Device segments:</b> <code>&lt;span data-facet="userAgent" data-facet-value="VALUE"&gt;description&lt;/span&gt;</code></li>
+    <li><b>No unlinked data points.</b> Every page, error type, device, or count mentioned MUST be linked</li>
+    <li><b>No unproven claims.</b> Only cite what the cross-reference data explicitly shows</li>
+  </ul>
+  <p><b>WHEN TO USE data-url-context:</b> Use it when citing errors from the PER-PAGE ERROR BREAKDOWN. The cross-reference proves these errors occur on that specific page, so the link should filter to BOTH error type + page URL for easy validation.</p>
 
   <h4>PERFORMANCE IMPACT</h4>
-  <p>100-150 words. LCP/CLS/INP values, threshold comparisons, mobile vs desktop, impact on users/SEO. Link each CWV mention. Flowing narrative; bullets when needed.</p>
+  <p>100-150 words. Lead with the WORST CWV metrics — items with <code>"status": "poor"</code> and especially <code>"significant": true</code>. These are proven failures, not noise.</p>
+  <ul>
+    <li><b>Prioritize:</b> poor+significant > poor > needs-improvement. Skip metrics that are passing unless they provide useful contrast (e.g., "desktop LCP passes at 1.8s but mobile fails at 3.4s")</li>
+    <li><b>Quantify impact:</b> Compare to thresholds (LCP: 2.5s, CLS: 0.1, INP: 200ms). State what's failing and by how much</li>
+    <li><b>Break down by segment:</b> Mobile vs desktop, top pages vs site-wide. Highlight where poor CWV concentrates</li>
+    <li><b>Connect to consequences:</b> Poor LCP → SEO ranking penalty, user abandonment. Poor INP → broken interactions. Poor CLS → accidental clicks, frustration</li>
+    <li><b>Skip if all green:</b> If ALL CWV are passing (status: good), state that in 1-2 sentences and move on — don't invent problems</li>
+  </ul>
 
   <h4>USER ENGAGEMENT</h4>
-  <p>100-150 words. Sessions, page views, bounce rates, device breakdown. Connect to performance. Link device + engagement insights. Flowing narrative; bullets when needed.</p>
+  <p>100-150 words. Focus on signals that indicate problems or opportunities — not vanity metrics.</p>
+  <ul>
+    <li><b>Lead with:</b> Bounce rate (critical if >60%), engagement rate (critical if <25%), device split showing poor mobile engagement</li>
+    <li><b>Highlight disparities:</b> If mobile bounce is 2x desktop, that's the story — not total page views</li>
+    <li><b>Connect to CWV:</b> If a device segment has poor CWV (from tool data), connect it to its engagement metrics. "Mobile users experience 3.4s LCP and bounce at 68%" is provable if both data points come from the userAgent facet</li>
+    <li><b>Skip unremarkable:</b> Don't report session counts unless they reveal something (e.g., dramatic drop, unexpected ratio)</li>
+  </ul>
 
   <h4>TRAFFIC & ACQUISITION</h4>
-  <p>100-150 words. Traffic sources with counts, conversion comparison. Link traffic source insights. Flowing narrative; bullets when needed.</p>
+  <p>100-150 words. Focus on what's working, what's not, and where opportunity exists.</p>
+  <ul>
+    <li><b>Lead with:</b> Dominant traffic sources and their conversion effectiveness. If paid traffic has poor CWV (status: poor, significant), that's wasted spend — highlight it</li>
+    <li><b>Highlight imbalances:</b> Heavy reliance on one channel, high-volume sources with poor engagement, underperforming paid vs organic</li>
+    <li><b>Use acquisition facet data:</b> Only cite sources that appear in tool responses with counts</li>
+    <li><b>Skip generic:</b> Don't list all sources with counts — focus on the 2-3 that tell a story</li>
+  </ul>
 
   <h4>CONTENT EFFECTIVENESS</h4>
-  <p>100-150 words. Top pages, underperformers, content strategy. Link page URL insights. Flowing narrative; bullets when needed.</p>
+  <p>100-150 words. Focus on pages that need attention based on data signals.</p>
+  <ul>
+    <li><b>Lead with:</b> Pages with poor CWV (status: poor from url facet), high bounce, or low engagement — these are underperforming despite traffic</li>
+    <li><b>Highlight:</b> High-traffic pages with problems (poor performance, high errors, low conversion). Low-traffic pages that convert well (opportunity to drive more traffic)</li>
+    <li><b>Use url facet data:</b> Cite specific page paths and their metrics from tool responses</li>
+    <li><b>Skip:</b> Don't list top pages by traffic unless their metrics reveal issues. "Homepage gets most views" is not an insight</li>
+  </ul>
 
   <h4>CONVERSION FUNNEL</h4>
-  <p>100-150 words. User journey, drop-off points, opportunity size. Link checkpoint/URL insights. Flowing narrative; bullets when needed.</p>
+  <p>100-150 words. Focus on where users drop off and why.</p>
+  <ul>
+    <li><b>Lead with:</b> The biggest drop-off point in the funnel (if convert/click checkpoint data exists). Quantify the gap — "X users click but only Y convert"</li>
+    <li><b>Connect to problems:</b> If pages in the conversion path have poor CWV or errors (from cross-reference data), that's likely causing the drop-off</li>
+    <li><b>Quantify opportunity:</b> "Fixing the 3.4s LCP on /checkout could recover Z% of the N users who bounce there"</li>
+    <li><b>Skip if no data:</b> If no convert checkpoint or click funnel data exists, keep this section brief — don't speculate about journeys without data</li>
+  </ul>
 
   <h4>GEOGRAPHIC INSIGHTS</h4>
-  <p>100-150 words. User locations, regional variations. Link geo insights if facet exists. Flowing narrative; bullets when needed.</p>
+  <p>100-150 words. Only include if geographic/locale data exists in tool responses.</p>
+  <ul>
+    <li><b>Lead with:</b> Regions with poor CWV (status: poor) or disproportionate error rates — users in those regions have a broken experience</li>
+    <li><b>Highlight:</b> Performance gaps between regions (e.g., "users in region X experience 5.2s LCP vs 2.1s globally"). Regions where errors concentrate</li>
+    <li><b>Skip if no signal:</b> If geographic data shows even distribution with no poor metrics, state "No significant regional variations" in 1 sentence</li>
+  </ul>
 
   <h4>MARKET OPPORTUNITIES</h4>
-  <p>100-150 words. Quick wins, growth potential. Link only if referencing specific facet data. Flowing narrative; bullets when needed.</p>
+  <p>100-150 words. Actionable growth opportunities backed by data.</p>
+  <ul>
+    <li><b>Lead with:</b> Quick wins where fixing a data-proven problem unlocks value — e.g., "fixing mobile LCP would improve experience for 65% of traffic"</li>
+    <li><b>Base on data:</b> Every opportunity must reference a specific metric or finding from earlier sections. Not generic advice</li>
+    <li><b>Quantify:</b> "N users/month affected", "X% of traffic on this segment", "Y conversion gap"</li>
+    <li><b>Skip generic:</b> Don't suggest "SEO improvements" or "expand to new markets" without data showing the opportunity</li>
+  </ul>
 
   <h4>BUSINESS IMPACT</h4>
-  <p>100-150 words. Technical issues → business outcomes, quantified costs. Link key insights. Flowing narrative; bullets when needed.</p>
+  <p>100-150 words. Translate the technical findings into business cost.</p>
+  <ul>
+    <li><b>Lead with:</b> The highest-cost problem. Errors on conversion pages, poor CWV on high-traffic pages, broken device segments — whichever costs the business most</li>
+    <li><b>Quantify in business terms:</b> "N users/month hit errors on conversion pages", "X% of mobile sessions bounce due to slow load", "Y broken experiences per day on the primary funnel"</li>
+    <li><b>Reference earlier data:</b> This section synthesizes — it should cite the same data points (linked) from Performance, Errors, Engagement sections. Don't introduce new findings here</li>
+    <li><b>Rank by severity:</b> Revenue impact > user experience > SEO > brand perception</li>
+  </ul>
 
   <h4>PRIORITY ACTIONS</h4>
   <p><b>Edge Delivery Services SITE HANDLING:</b></p>
@@ -200,8 +280,10 @@
 
   <p><b>Standard Priority Actions Structure:</b></p>
   <p>List 4-6 quick wins (HIGH IMPACT + EASY FIX) when real issues exist. 2-3 high-impact actions when site is performing well. NO long-term projects or timelines.</p>
-  <p><b>Authoring Tasks (2-3 when needed):</b> Broken links, alt text, metadata, content improvements (NOT WebP for EDS sites)</p>
-  <p><b>Code Tasks (2-3 when needed):</b> Caching, error fixes, performance tweaks specific to actual problems (NOT image format for EDS sites)</p>
+  <p><b>EXACT category names (do NOT rename or invent others):</b></p>
+  <p><b>Content Actions (2-3 when needed):</b> Broken links, alt text, metadata, content improvements (NOT WebP for EDS sites)</p>
+  <p><b>Code Actions (2-3 when needed):</b> Caching, error fixes, performance tweaks specific to actual problems (NOT image format for EDS sites)</p>
+  <p><b>DO NOT use other category names</b> like "Infrastructure Tasks", "Technical Tasks", "Monitoring Tasks", etc. ALL actions must go under either "Content Actions" or "Code Actions".</p>
   <p><b>Prioritize:</b> (1) Real issues with data backing, (2) Quick wins, (3) High traffic impact, (4) CWV issues (if failing), (5) Revenue-impacting</p>
   <p><b>Format:</b> Wrap action in facet link, leave "Expected Impact:" unlinked</p>
   <pre>&lt;p&gt;• &lt;span data-facet="checkpoint" data-facet-value="cwv-lcp"&gt;Implement responsive images with srcset.&lt;/span&gt; Expected Impact: Reduce LCP from 3.3s toward 2.5s.&lt;/p&gt;</pre>
