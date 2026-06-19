@@ -4,7 +4,6 @@ import {
   pad,
   toDateTimeLocal,
   toUTCDate,
-  toISODate,
   calculatePastDate,
 } from '../../../tools/log-viewer/utils.js';
 
@@ -54,13 +53,6 @@ describe('log-viewer:utils.js', () => {
     it('correctly uses UTC values regardless of local timezone', () => {
       const date = new Date('2024-06-01T00:00:00Z');
       assert.equal(toUTCDate(date), '06/01/2024 00:00 UTC');
-    });
-  });
-
-  describe('toISODate', () => {
-    it('converts a date string to ISO format', () => {
-      const result = toISODate('2024-06-01T12:00:00Z');
-      assert.equal(result, '2024-06-01T12:00:00.000Z');
     });
   });
 

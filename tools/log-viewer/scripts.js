@@ -5,7 +5,7 @@ import admin from '../../scripts/helix-admin.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { loadPrism, highlight } from '../../utils/prism/prism.js';
 import {
-  toDateTimeLocal, toUTCDate, toISODate, calculatePastDate,
+  toDateTimeLocal, toUTCDate, calculatePastDate,
 } from './utils.js';
 
 // field ids
@@ -326,13 +326,14 @@ class RewrittenData {
       // sometimes ms appears in indexer path instead of duration field
       const updateMs = !data.duration;
       if (updateMs) data.duration = 0;
+      const changesList = Array.isArray(data.changes) ? data.changes : [data.changes];
       const fragment = document.createDocumentFragment();
-      data.changes.forEach((change, i) => {
+      changesList.forEach((change, i) => {
         if (i > 0) {
           fragment.append(document.createElement('br'));
           fragment.append(document.createElement('br'));
         }
-        const parts = change.split(' ');
+        const parts = String(change).split(' ');
         const segment = parts.find((s) => s.startsWith('/'));
         if (updateMs) {
           const ms = parts.find((s) => s.endsWith('ms') && s !== segment);
@@ -375,8 +376,10 @@ class RewrittenData {
     if (type === 'sitemap') {
       if (data.updated) {
         // source:sitemap logs carry an array of updated paths
+        const firstGroup = data.updated[0];
+        if (!Array.isArray(firstGroup)) return value || null;
         const fragment = document.createDocumentFragment();
-        data.updated[0].forEach((update, i) => {
+        firstGroup.forEach((update, i) => {
           if (i > 0) {
             fragment.append(document.createElement('br'));
             fragment.append(document.createElement('br'));
@@ -393,13 +396,16 @@ class RewrittenData {
         value,
       );
     }
+    if (type === 'auth') {
+      return value || null;
+    }
     // eslint-disable-next-line no-console
     console.warn('unhandled log type:', type, data);
     return value || null;
   }
 
   errors(value) {
-    if (!value || value.length === 0) return null;
+    if (!value || !Array.isArray(value) || value.length === 0) return null;
     const fragment = document.createDocumentFragment();
     const nodes = value.flatMap((err, i) => {
       const { message, target } = err;
@@ -522,7 +528,9 @@ function displayLogs(logs, live, preview) {
  */
 function writeTimeParams(timeframe) {
   if (timeframe === 'custom' || timeframe === 'today') {
-    const [from, to] = [FROM, TO].map((i) => encodeURIComponent(toISODate(i.value)));
+    const dates = [FROM, TO].map((i) => new Date(i.value)).sort((a, b) => a - b);
+    if (dates.some((d) => Number.isNaN(d.getTime()))) return 'since=1d';
+    const [from, to] = dates.map((d) => encodeURIComponent(d.toISOString()));
     return `from=${from}&to=${to}`;
   }
   const [days, hours, mins] = timeframe.split(':').map((v) => parseInt(v, 10));
@@ -855,6 +863,12 @@ function populateFromParams(search, doc) {
         selectTimeframe('Custom');
       }
     });
+    // if a partial deep link set only one bound, fill the other with a sensible default
+    if (PICKER.value === 'Custom') {
+      const now = new Date();
+      if (!TO.value) TO.value = toDateTimeLocal(now);
+      if (!FROM.value) FROM.value = toDateTimeLocal(calculatePastDate(0, 1, 0, now));
+    }
   }
 }
 

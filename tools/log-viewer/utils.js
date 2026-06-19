@@ -36,16 +36,6 @@ export function toUTCDate(date) {
 }
 
 /**
- * Converts date string to a formatted ISO string.
- * @param {string} str - Date string.
- * @returns {string} Date in ISO format ("YYYY-MM-DDTHH:MM:SS.sssZ").
- */
-export function toISODate(str) {
-  const date = new Date(str);
-  return date.toISOString();
-}
-
-/**
  * Calculates past date by subtracting specified days, hours, and minutes from reference date.
  * @param {number} days - Days to subtract.
  * @param {number} hours - Hours to subtract.
