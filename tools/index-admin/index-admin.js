@@ -21,12 +21,107 @@ async function ensureYaml() {
   YAML = YAML || await import('../../vendor/yaml/yaml.js');
 }
 
+const OG_META_PROPERTIES = new Set(['title', 'description', 'image']);
+
+function metaSelectFirstForProperty(propName) {
+  const name = propName.trim();
+  if (!name) return '';
+
+  const lower = name.toLowerCase();
+  if (OG_META_PROPERTIES.has(lower)) {
+    return `meta[property="og:${lower}"]`;
+  }
+  if (lower === 'date') {
+    return 'meta[name="publication-date"]';
+  }
+
+  const kebab = name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+  return `meta[name="${kebab}"]`;
+}
+
+function createPropertyRow(propertiesContainer, {
+  propName = '',
+  propInfo = {},
+  focusName = false,
+} = {}) {
+  const property = document.querySelector('#index-property-row-template').content
+    .querySelector('.index-property')
+    .cloneNode(true);
+  const idSuffix = propName
+    ? toClassName(propName)
+    : Math.random().toString(36).substring(2, 12);
+  property.dataset.idSuffix = idSuffix;
+
+  const nameField = property.querySelector('#index-property-name');
+  const selectField = property.querySelector('#index-property-select');
+  const selectFirstField = property.querySelector('#index-property-select-first');
+  const valueTypeField = property.querySelector('#index-property-value-type');
+  const valueField = property.querySelector('#index-property-value');
+
+  nameField.id = `index-property-name-${idSuffix}`;
+  selectField.id = `index-property-select-${idSuffix}`;
+  selectFirstField.id = `index-property-select-first-${idSuffix}`;
+  valueTypeField.id = `index-property-value-type-${idSuffix}`;
+  valueField.id = `index-property-value-${idSuffix}`;
+
+  nameField.value = propName;
+  selectField.value = propInfo.select || '';
+  selectFirstField.value = propInfo.selectFirst || '';
+  if (propInfo.value !== undefined) {
+    valueTypeField.value = 'value';
+  } else if (propInfo.values !== undefined) {
+    valueTypeField.value = 'values';
+  } else {
+    valueTypeField.value = 'value';
+  }
+  const isNewRow = !propName
+    && propInfo.value === undefined
+    && propInfo.values === undefined;
+  if (propInfo.value !== undefined) {
+    valueField.value = propInfo.value;
+  } else if (propInfo.values !== undefined) {
+    valueField.value = propInfo.values?.join?.('\n') ?? propInfo.values;
+  } else if (isNewRow) {
+    valueField.value = 'attribute(el, "content")';
+  } else {
+    valueField.value = '';
+  }
+
+  property.querySelector('label[for="index-property-name"]').htmlFor = nameField.id;
+  property.querySelector('label[for="index-property-select"]').htmlFor = selectField.id;
+  property.querySelector('label[for="index-property-select-first"]').htmlFor = selectFirstField.id;
+  property.querySelector('label[for="index-property-value-type"]').htmlFor = valueTypeField.id;
+  property.querySelector('label[for="index-property-value"]').htmlFor = valueField.id;
+
+  nameField.addEventListener('blur', () => {
+    const name = nameField.value.trim();
+    if (name && !selectFirstField.value.trim()) {
+      selectFirstField.value = metaSelectFirstForProperty(name);
+    }
+  });
+
+  property.querySelector('.remove-property-btn').addEventListener('click', () => {
+    property.remove();
+  });
+
+  propertiesContainer.appendChild(property);
+  if (focusName) {
+    nameField.focus({ preventScroll: true });
+    property.scrollIntoView({ block: 'nearest' });
+  }
+  return property;
+}
+
 function displayIndexDetails(indexName, indexDef, newIndex = false) {
   document.querySelector('dialog.index-details')?.remove();
 
   const fragment = document.querySelector('#index-details-dialog-template').content.cloneNode(true);
   const indexDetails = fragment.querySelector('dialog.index-details');
   document.body.append(fragment);
+
+  indexDetails.querySelector('.index-details-header h3').textContent = newIndex ? 'Add Index' : 'Edit Index';
+  indexDetails.querySelector('.index-dialog-org').textContent = org.value;
+  indexDetails.querySelector('.index-dialog-site').textContent = site.value;
 
   indexDetails.querySelector('#index-name').value = indexName;
   if (!newIndex) {
@@ -37,45 +132,9 @@ function displayIndexDetails(indexName, indexDef, newIndex = false) {
   indexDetails.querySelector('#index-exclude').value = indexDef?.exclude?.join('\n') || '';
 
   const propertiesContainer = indexDetails.querySelector('.properties-container');
+  const addPropertyRow = indexDetails.querySelector('.add-property-row');
   Object.entries(indexDef.properties).forEach(([propName, propInfo]) => {
-    propertiesContainer.append(document.querySelector('#index-property-row-template').content.cloneNode(true));
-    const property = propertiesContainer.lastElementChild;
-
-    const idSuffix = toClassName(propName);
-    property.dataset.idSuffix = idSuffix;
-    const nameField = property.querySelector('#index-property-name');
-    const selectField = property.querySelector('#index-property-select');
-    const selectFirstField = property.querySelector('#index-property-select-first');
-    const valueTypeField = property.querySelector('#index-property-value-type');
-    const valueField = property.querySelector('#index-property-value');
-
-    nameField.id = `index-property-name-${idSuffix}`;
-    selectField.id = `index-property-select-${idSuffix}`;
-    selectFirstField.id = `index-property-select-first-${idSuffix}`;
-    valueTypeField.id = `index-property-value-type-${idSuffix}`;
-    valueField.id = `index-property-value-${idSuffix}`;
-
-    nameField.value = propName;
-    selectField.value = propInfo.select || '';
-    selectFirstField.value = propInfo.selectFirst || '';
-    valueTypeField.value = propInfo.value !== undefined ? 'value' : 'values';
-    valueField.value = propInfo.value ?? propInfo.values?.join?.('\n') ?? propInfo.values ?? '';
-
-    const nameFieldLabel = property.querySelector('label[for="index-property-name"]');
-    const selectFieldLabel = property.querySelector('label[for="index-property-select"]');
-    const selectFirstFieldLabel = property.querySelector('label[for="index-property-select-first"]');
-    const valueTypeFieldLabel = property.querySelector('label[for="index-property-value-type"]');
-    const valueFieldLabel = property.querySelector('label[for="index-property-value"]');
-
-    nameFieldLabel.htmlFor = `index-property-name-${idSuffix}`;
-    selectFieldLabel.htmlFor = `index-property-select-${idSuffix}`;
-    selectFirstFieldLabel.htmlFor = `index-property-select-first-${idSuffix}`;
-    valueTypeFieldLabel.htmlFor = `index-property-value-type-${idSuffix}`;
-    valueFieldLabel.htmlFor = `index-property-value-${idSuffix}`;
-
-    property.querySelector('.remove-property-btn').addEventListener('click', () => {
-      property.remove();
-    });
+    createPropertyRow(propertiesContainer, { propName, propInfo });
   });
 
   indexDetails.showModal();
@@ -84,41 +143,9 @@ function displayIndexDetails(indexName, indexDef, newIndex = false) {
     indexDetails.remove();
   });
 
-  // Add event listeners for add/remove property buttons
-  const addPropertyBtn = indexDetails.querySelector('.add-property-btn');
+  const addPropertyBtn = addPropertyRow.querySelector('.add-property-btn');
   addPropertyBtn.addEventListener('click', () => {
-    propertiesContainer.append(document.querySelector('#index-property-row-template').content.cloneNode(true));
-    const property = propertiesContainer.lastElementChild;
-    const idSuffix = Math.random().toString(36).substring(2, 12);
-    property.dataset.idSuffix = idSuffix;
-
-    const nameField = property.querySelector('#index-property-name');
-    const selectField = property.querySelector('#index-property-select');
-    const selectFirstField = property.querySelector('#index-property-select-first');
-    const valueTypeField = property.querySelector('#index-property-value-type');
-    const valueField = property.querySelector('#index-property-value');
-
-    nameField.id = `index-property-name-${idSuffix}`;
-    selectField.id = `index-property-select-${idSuffix}`;
-    selectFirstField.id = `index-property-select-first-${idSuffix}`;
-    valueTypeField.id = `index-property-value-type-${idSuffix}`;
-    valueField.id = `index-property-value-${idSuffix}`;
-
-    const nameFieldLabel = property.querySelector('label[for="index-property-name"]');
-    const selectFieldLabel = property.querySelector('label[for="index-property-select"]');
-    const selectFirstFieldLabel = property.querySelector('label[for="index-property-select-first"]');
-    const valueTypeFieldLabel = property.querySelector('label[for="index-property-value-type"]');
-    const valueFieldLabel = property.querySelector('label[for="index-property-value"]');
-
-    nameFieldLabel.htmlFor = `index-property-name-${idSuffix}`;
-    selectFieldLabel.htmlFor = `index-property-select-${idSuffix}`;
-    selectFirstFieldLabel.htmlFor = `index-property-select-first-${idSuffix}`;
-    valueTypeFieldLabel.htmlFor = `index-property-value-type-${idSuffix}`;
-    valueFieldLabel.htmlFor = `index-property-value-${idSuffix}`;
-
-    property.querySelector('.remove-property-btn').addEventListener('click', () => {
-      property.remove();
-    });
+    createPropertyRow(propertiesContainer, { focusName: true });
   });
 
   const cancel = indexDetails.querySelector('#cancel-index');
@@ -187,13 +214,9 @@ function displayIndexDetails(indexName, indexDef, newIndex = false) {
     indexDetails.close();
   });
 
-  // close on click outside modal
+  // Close when clicking the dialog backdrop (not on keyboard-activated clicks)
   indexDetails.addEventListener('click', (e) => {
-    const {
-      left, right, top, bottom,
-    } = indexDetails.getBoundingClientRect();
-    const { clientX, clientY } = e;
-    if (clientX < left || clientX > right || clientY < top || clientY > bottom) {
+    if (e.target === indexDetails) {
       indexDetails.close();
     }
   });
@@ -215,13 +238,8 @@ function showJobStatus(jobDetails) {
     statusDialog.remove();
   });
 
-  // Close on click outside modal
   statusDialog.addEventListener('click', (e) => {
-    const {
-      left, right, top, bottom,
-    } = statusDialog.getBoundingClientRect();
-    const { clientX, clientY } = e;
-    if (clientX < left || clientX > right || clientY < top || clientY > bottom) {
+    if (e.target === statusDialog) {
       statusDialog.close();
       statusDialog.remove();
     }

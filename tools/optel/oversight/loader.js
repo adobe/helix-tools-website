@@ -144,6 +144,18 @@ export default class DataLoader {
     return chunks;
   }
 
+  async fetchPrevious24Months(endDate) {
+    const date = endDate ? new Date(endDate) : new Date();
+    const months = 25; // 25 to include 2 partial months (first and last)
+    const promises = [];
+    for (let i = 0; i < months; i += 1) {
+      promises.push(this.fetchUTCMonth(date.toISOString()));
+      date.setUTCMonth(date.getUTCMonth() - 1, 1);
+    }
+    const chunks = Promise.all(promises);
+    return chunks;
+  }
+
   async fetchDateRange(startDate, endDate = new Date().toISOString()) {
     const start = new Date(startDate);
     const end = new Date(endDate);

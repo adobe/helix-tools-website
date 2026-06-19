@@ -96,10 +96,10 @@ export async function buildMediaDataFromEntries(
  */
 export async function validatePathWithStatus(org, site, path, onProgress = () => {}) {
   onProgress({ stage: 'fetching', message: 'Validating path...' });
-  const { jobUrl } = await createBulkStatusJob(org, site, 'main');
+  const job = await createBulkStatusJob(org, site, 'main');
   onProgress({ stage: 'fetching', message: 'Checking path...' });
   await pollStatusJob(
-    jobUrl,
+    job,
     IndexConfig.STATUS_POLL_INTERVAL_MS,
     (progress) => {
       const msg = `Status: ${progress?.processed ?? 0}/${progress?.total ?? 0}...`;
@@ -107,7 +107,7 @@ export async function validatePathWithStatus(org, site, path, onProgress = () =>
     },
     IndexConfig.STATUS_POLL_MAX_DURATION_MS,
   );
-  const statusResources = await getStatusJobDetails(jobUrl);
+  const statusResources = await getStatusJobDetails(job);
   const filteredResources = path
     ? statusResources.filter((r) => pathUnder(r.path, path))
     : statusResources;
@@ -175,10 +175,10 @@ export async function fetchAndBuildMediaData(org, site, options = {}) {
 
     const runStatusJob = async () => {
       onProgress({ stage: 'fetching', message: 'Creating status job...' });
-      const { jobUrl } = await createBulkStatusJob(org, site, 'main');
+      const job = await createBulkStatusJob(org, site, 'main');
       onProgress({ stage: 'fetching', message: 'Polling status job for site discovery...' });
       await pollStatusJob(
-        jobUrl,
+        job,
         IndexConfig.STATUS_POLL_INTERVAL_MS,
         (progress) => {
           const msg = `Status: ${progress?.processed ?? 0}/${progress?.total ?? 0}...`;
@@ -186,7 +186,7 @@ export async function fetchAndBuildMediaData(org, site, options = {}) {
         },
         IndexConfig.STATUS_POLL_MAX_DURATION_MS,
       );
-      return getStatusJobDetails(jobUrl);
+      return getStatusJobDetails(job);
     };
 
     let statusPromise = null;

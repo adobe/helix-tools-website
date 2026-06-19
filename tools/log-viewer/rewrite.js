@@ -10,7 +10,7 @@ export class RewrittenData {
    * @param {Object} data - Original log entry.
    * @param {string} live - Live hostname.
    * @param {string} preview - Preview hostname.
-   * @param {Function} onAdminClick - Called with (requestFn, button) when an admin button is clicked.
+   * @param {Function} onAdminClick - Called with (requestFn, button) on admin button click.
    */
   constructor(data, live, preview, onAdminClick = async () => {}) {
     this.data = data;

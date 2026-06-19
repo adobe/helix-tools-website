@@ -49,7 +49,9 @@ describe('log-viewer:rewrite.js', () => {
 
   describe('RewrittenData.path() — code', () => {
     it('renders a github link', () => {
-      const a = rd({ route: 'code', owner: 'adobe', repo: 'site', ref: 'main' }).path('/');
+      const a = rd({
+        route: 'code', owner: 'adobe', repo: 'site', ref: 'main',
+      }).path('/');
       assert.equal(a.tagName, 'A');
       assert.match(a.href, /github\.com\/adobe\/site/);
     });
@@ -57,20 +59,26 @@ describe('log-viewer:rewrite.js', () => {
 
   describe('RewrittenData.path() — index / live', () => {
     it('renders live link for route:index', () => {
-      const a = rd({ route: 'index', owner: 'o', repo: 'r', ref: 'main' }).path('/foo');
+      const a = rd({
+        route: 'index', owner: 'o', repo: 'r', ref: 'main',
+      }).path('/foo');
       assert.equal(a.tagName, 'A');
       assert.match(a.href, new RegExp(LIVE));
     });
 
     it('renders live link for route:live', () => {
-      const a = rd({ route: 'live', owner: 'o', repo: 'r', ref: 'main' }).path('/foo');
+      const a = rd({
+        route: 'live', owner: 'o', repo: 'r', ref: 'main',
+      }).path('/foo');
       assert.match(a.href, new RegExp(LIVE));
     });
   });
 
   describe('RewrittenData.path() — preview', () => {
     it('renders a preview link', () => {
-      const a = rd({ route: 'preview', owner: 'o', repo: 'r', ref: 'main' }).path('/foo');
+      const a = rd({
+        route: 'preview', owner: 'o', repo: 'r', ref: 'main',
+      }).path('/foo');
       assert.equal(a.tagName, 'A');
       assert.match(a.href, new RegExp(PREVIEW));
     });
@@ -97,13 +105,17 @@ describe('log-viewer:rewrite.js', () => {
 
     it('truncates button text beyond 26 chars', () => {
       const long = '/a-very-long-path-segment-that-exceeds-the-limit';
-      const button = rd({ route: 'status', owner: 'o', repo: 'r', ref: 'main' }).path(long);
+      const button = rd({
+        route: 'status', owner: 'o', repo: 'r', ref: 'main',
+      }).path(long);
       assert.ok(button.textContent.length <= 27); // 26 chars + ellipsis char
     });
   });
 
   describe('RewrittenData.path() — indexer', () => {
-    const base = { route: 'indexer', owner: 'owner', repo: 'repo', ref: 'main' };
+    const base = {
+      route: 'indexer', owner: 'owner', repo: 'repo', ref: 'main',
+    };
 
     it('returns null when changes is absent', () => {
       assert.equal(rd({ ...base }).path(), null);
@@ -164,7 +176,9 @@ describe('log-viewer:rewrite.js', () => {
   });
 
   describe('RewrittenData.path() — snapshot', () => {
-    const base = { route: 'snapshot', owner: 'o', repo: 'r', ref: 'main', org: 'org', site: 'site' };
+    const base = {
+      route: 'snapshot', owner: 'o', repo: 'r', ref: 'main', org: 'org', site: 'site',
+    };
 
     it('returns an admin button when job field is present', () => {
       const button = rd({ ...base, job: 'job-123' }).path('/path');
