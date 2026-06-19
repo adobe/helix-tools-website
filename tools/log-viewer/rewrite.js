@@ -106,7 +106,9 @@ export class RewrittenData {
     if (type === 'sitemap') {
       // when source: sitemap, we get arrays of paths
       if (this.data.updated) {
-        const paths = this.data.updated[0].map(
+        const firstGroup = this.data.updated[0];
+        if (!Array.isArray(firstGroup)) return value || '-';
+        const paths = firstGroup.map(
           (update) => writeA(`${this.live}${update}`, update),
         );
         return paths.join('<br /><br />');
@@ -116,6 +118,9 @@ export class RewrittenData {
     }
     if (type === 'status') {
       return writeAdminDetails(`${ADMIN}/status/${this.data.owner}/${this.data.repo}/${this.data.ref}${value}`, value);
+    }
+    if (type === 'auth') {
+      return value || '-';
     }
     // eslint-disable-next-line no-console
     console.warn('unhandled log type:', type, this.data);
@@ -128,7 +133,7 @@ export class RewrittenData {
    * @returns {string} Error messages (or '-' if no errors present).
    */
   errors(value) {
-    if (!value || value.length === 0) return '-';
+    if (!value || !Array.isArray(value) || value.length === 0) return '-';
     const errs = value.map((err) => {
       const { message, target } = err;
       if (message) {
