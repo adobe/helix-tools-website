@@ -4,7 +4,7 @@ import admin from '../../scripts/helix-admin.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { loadPrism, highlight } from '../../utils/prism/prism.js';
 import {
-  toDateTimeLocal, toISODate, calculatePastDate,
+  toDateTimeLocal, calculatePastDate,
 } from './utils.js';
 import { RewrittenData } from './rewrite.js';
 
@@ -321,7 +321,8 @@ function displayLogs(logs, live, preview) {
  */
 function writeTimeParams(timeframe) {
   if (timeframe === 'custom' || timeframe === 'today') {
-    const [from, to] = [FROM, TO].map((i) => encodeURIComponent(toISODate(i.value)));
+    const dates = [FROM, TO].map((i) => new Date(i.value)).sort((a, b) => a - b);
+    const [from, to] = dates.map((d) => encodeURIComponent(d.toISOString()));
     return `from=${from}&to=${to}`;
   }
   const [days, hours, mins] = timeframe.split(':').map((v) => parseInt(v, 10));
