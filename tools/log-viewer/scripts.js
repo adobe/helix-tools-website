@@ -498,6 +498,15 @@ async function registerListeners() {
     }
   });
 
+  // swap from/to if user enters them out of order
+  [FROM, TO].forEach((input) => {
+    input.addEventListener('change', () => {
+      if (FROM.value && TO.value && FROM.value > TO.value) {
+        [FROM.value, TO.value] = [TO.value, FROM.value];
+      }
+    });
+  });
+
   // enable form clear
   FORM.addEventListener('reset', (e) => {
     e.preventDefault();
