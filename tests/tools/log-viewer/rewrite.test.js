@@ -129,6 +129,21 @@ describe('log-viewer:rewrite.js', () => {
       assert.doesNotThrow(() => rd({ ...base, changes: { count: 5 } }).path());
     });
 
+    it('does not throw when changes is a number (non-array)', () => {
+      assert.doesNotThrow(() => rd({ ...base, changes: 5 }).path());
+    });
+
+    it('does not throw when changes is an array of objects', () => {
+      assert.doesNotThrow(() => rd({ ...base, changes: [{ path: '/foo', ms: 12 }] }).path());
+    });
+
+    it('renders an admin button for a single change string', () => {
+      const fragment = rd({ ...base, changes: '/foo 12ms' }).path();
+      const buttons = [...fragment.childNodes].filter((n) => n.tagName === 'BUTTON');
+      assert.equal(buttons.length, 1);
+      assert.match(buttons[0].textContent, /\/foo/);
+    });
+
     it('renders admin buttons for each path segment', () => {
       const instance = rd({ ...base, changes: ['/foo 100ms', '/bar 200ms'] });
       const fragment = instance.path();
