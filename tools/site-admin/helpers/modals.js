@@ -9,6 +9,19 @@ import {
 
 /* eslint-disable no-alert, no-restricted-globals */
 
+// Preview/live hostnames follow `{branch}--{site}--{org}.aem.page` and must fit
+// within the 63-character DNS label limit. We validate against the `main` branch
+// because every site has one — feature branches are warned about separately.
+const MAX_HOSTNAME_LENGTH = 63;
+const WARN_HOSTNAME_LENGTH = 56;
+const SITE_NAME_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*-?$/;
+
+const mainHostnameLength = (siteName, orgValue) => `main--${siteName}--${orgValue}`.length;
+
+const maxBranchLength = (siteName, orgValue) => (
+  MAX_HOSTNAME_LENGTH - siteName.length - orgValue.length - 4
+);
+
 const refreshSites = (orgValue, action, siteName) => {
   window.dispatchEvent(new CustomEvent('sites-refresh', { detail: { orgValue, action, siteName } }));
 };
@@ -802,9 +815,11 @@ export const openAddSiteModal = async (
     </div>
     <form class="add-site-form">
       <div class="form-field">
-        <label for="new-site-name">Site Name</label>
+        <label for="new-site-name">Site Name <span class="label-preview">(Domain Preview: <code><span class="label-domain"></span>.aem.page</code>)</span></label>
         <input type="text" id="new-site-name" required placeholder="my-site" pattern="[a-z0-9-]+" />
         <p class="field-hint">Lowercase letters, numbers, and hyphens only</p>
+        <p class="field-error" role="alert" aria-hidden="true"></p>
+        <p class="field-warning" aria-live="polite" aria-hidden="true"></p>
       </div>
       <div class="form-field code-url-field"${isByogit ? ' aria-hidden="true"' : ''}>
         <label for="new-site-code">GitHub Repository URL</label>
@@ -868,6 +883,49 @@ export const openAddSiteModal = async (
   const byogitOwnerInput = container.querySelector('#new-site-byogit-owner');
   const byogitRepoInput = container.querySelector('#new-site-byogit-repo');
 
+  const siteNameInput = container.querySelector('#new-site-name');
+  const hintEl = siteNameInput.parentElement.querySelector('.field-hint');
+  const warningEl = container.querySelector('.field-warning');
+  const errorEl = container.querySelector('.field-error');
+  const labelPreviewEl = siteNameInput.parentElement.querySelector('.label-preview');
+  const labelDomainEl = labelPreviewEl.querySelector('.label-domain');
+  const createBtn = container.querySelector('.create-btn');
+  const setMessage = (el, html) => {
+    if (html) {
+      el.innerHTML = html;
+      el.setAttribute('aria-hidden', 'false');
+    } else {
+      el.textContent = '';
+      el.setAttribute('aria-hidden', 'true');
+    }
+  };
+  const validateSiteName = () => {
+    const candidate = siteNameInput.value.trim();
+    let error = '';
+    let warning = '';
+    if (candidate && !SITE_NAME_PATTERN.test(candidate)) {
+      error = 'Site names may only contain lowercase letters, numbers, and single hyphens, and cannot start with a hyphen.';
+    } else if (candidate) {
+      const length = mainHostnameLength(candidate, orgValue);
+      if (length > MAX_HOSTNAME_LENGTH) {
+        error = 'This site name exceeds the domain label limit.';
+      } else if (length > WARN_HOSTNAME_LENGTH) {
+        const branchMax = maxBranchLength(candidate, orgValue);
+        warning = `Warning: This site name will leave only ${branchMax} characters for branch names (4 characters minimum to accommodate <code>main</code>).`;
+      }
+    }
+    setMessage(errorEl, error);
+    setMessage(warningEl, warning);
+    hintEl.setAttribute('aria-hidden', error || warning ? 'true' : 'false');
+    const previewSite = candidate || siteNameInput.placeholder || 'my-site';
+    labelDomainEl.textContent = `main--${previewSite}--${orgValue}`;
+    labelPreviewEl.classList.toggle('error', !!error);
+    labelPreviewEl.classList.toggle('warning', !!warning);
+    createBtn.disabled = !candidate || !!error;
+  };
+  siteNameInput.addEventListener('input', validateSiteName);
+  validateSiteName();
+
   byogitCheckbox.addEventListener('change', () => {
     const { checked } = byogitCheckbox;
     if (checked) {
@@ -924,6 +982,20 @@ export const openAddSiteModal = async (
     const codeUrl = codeInput.value.trim();
     const contentUrl = container.querySelector('#new-site-content').value.trim();
 
+    if (siteName.endsWith('-')) {
+      setMessage(errorEl, 'Site names cannot end with a hyphen.');
+      setMessage(warningEl, '');
+      hintEl.setAttribute('aria-hidden', 'true');
+      return;
+    }
+
+    if (document.querySelector(`.site-card[data-site="${CSS.escape(siteName)}"]`)) {
+      setMessage(errorEl, `A site named <code>${escapeHtml(siteName)}</code> already exists.`);
+      setMessage(warningEl, '');
+      hintEl.setAttribute('aria-hidden', 'true');
+      return;
+    }
+
     let byogit = null;
     if (byogitCheckbox.checked) {
       byogit = {
@@ -932,7 +1004,6 @@ export const openAddSiteModal = async (
       };
     }
 
-    const createBtn = container.querySelector('.create-btn');
     createBtn.disabled = true;
     createBtn.innerHTML = 'Creating... <i class="symbol symbol-loading"></i>';
 

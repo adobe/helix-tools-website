@@ -97,18 +97,17 @@ export async function reviewSnapshot(org, site, name, state) {
 
 export async function deleteSnapshotUrls(org, site, name, paths = ['/*']) {
   const admin = await getAdminClient();
-  const earlyExit = await paths.reduce(async (chain, path) => {
-    const prev = await chain;
-    if (prev !== undefined) return prev;
+  for (let i = 0; i < paths.length; i += 1) {
+    const path = paths[i];
+    // eslint-disable-next-line no-await-in-loop
     const result = await executeAdminRequest(
       () => admin.snapshot({ org, site }).remove(`${name}${path}`),
       { org, site },
     );
     if (!result) return null;
     if (!result.ok) return { error: formatError(result), status: result.status };
-    return undefined;
-  }, Promise.resolve(undefined));
-  return earlyExit !== undefined ? earlyExit : { success: true };
+  }
+  return { success: true };
 }
 
 export async function deleteSnapshot(org, site, name) {

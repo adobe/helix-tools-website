@@ -1,12 +1,12 @@
-/* eslint-disable class-methods-use-this */
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { loadPrism, highlight } from '../../utils/prism/prism.js';
 import {
-  toDateTimeLocal, toUTCDate, toISODate, calculatePastDate,
+  toDateTimeLocal, calculatePastDate,
 } from './utils.js';
+import { RewrittenData } from './rewrite.js';
 
 // field ids
 let admin;
@@ -243,202 +243,33 @@ function clearTable(table) {
   DOWNLOADCSV.classList.add('disabled');
 }
 
-class RewrittenData {
-  constructor(data, live, preview) {
-    this.data = data;
-    this.live = live;
-    this.preview = preview;
-  }
-
-  timestamp(value) {
-    if (!value) return null;
-    return toUTCDate(new Date(value));
-  }
-
-  user(value) {
-    if (!value) return null;
-    const [username] = value.split('@');
-    const a = document.createElement('a');
-    a.href = `mailto:${value}`;
-    a.title = value;
-    a.textContent = username;
-    return a;
-  }
-
-  path(value) {
-    const { data } = this;
-    const type = data.route || data.source;
-    if (!type) return value || null;
-
-    const writeA = (href, text) => {
-      const a = document.createElement('a');
-      a.href = `https://${href}`;
-      a.target = '_blank';
-      a.textContent = text;
-      return a;
-    };
-
-    const writeAdminDetails = (requestFn, text) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'button outline';
-      button.value = text;
-      button.title = text;
-      button.textContent = text.length > 26 ? `${text.substring(0, 26)}…` : text;
-      button.addEventListener('click', async () => {
-        showLoadingButton(button);
-        try {
-          const { createModal } = await import('../../blocks/modal/modal.js');
-          const { org, site } = getFormData(FORM);
-          const res = await executeAdminRequest(requestFn, { org, site });
-          if (!res || !res.ok) throw new Error(`Failed to fetch details: ${res?.status}`);
-          const json = await res.json();
-          const pre = document.createElement('pre');
-          const code = document.createElement('code');
-          code.className = 'language-js';
-          code.textContent = JSON.stringify(json, null, 2);
-          pre.append(code);
-          const { showModal } = await createModal([pre]);
-          showModal();
-          await loadPrism();
-          highlight(document.querySelector('.modal'));
-        } catch (error) {
-          // eslint-disable-next-line no-console
-          console.error('Could not create modal:', error);
-        }
-        resetLoadingButton(button);
-      });
-      return button;
-    };
-
-    if (type === 'code') {
-      return writeA(`github.com/${data.owner}/${data.repo}/tree/${data.ref}`, value);
-    }
-    if (type === 'config') {
-      return writeAdminDetails(
-        () => admin.config({ org: data.org, site: data.site }).read(),
-        value,
-      );
-    }
-    if (type === 'index' || type === 'live') {
-      return writeA(`${this.live}${value}`, value);
-    }
-    if (type === 'indexer') {
-      if (!data.changes) return value || null;
-      // sometimes ms appears in indexer path instead of duration field
-      const updateMs = !data.duration;
-      if (updateMs) data.duration = 0;
-      const fragment = document.createDocumentFragment();
-      data.changes.forEach((change, i) => {
-        if (i > 0) {
-          fragment.append(document.createElement('br'));
-          fragment.append(document.createElement('br'));
-        }
-        const parts = change.split(' ');
-        const segment = parts.find((s) => s.startsWith('/'));
-        if (updateMs) {
-          const ms = parts.find((s) => s.endsWith('ms') && s !== segment);
-          if (ms) {
-            const n = Number.parseInt(ms.replace('ms', ''), 10);
-            if (!Number.isNaN(n)) data.duration += n;
-          }
-        }
-        if (segment) {
-          fragment.append(writeAdminDetails(
-            () => admin.index({ org: data.owner, site: data.repo, ref: data.ref }).get(segment),
-            segment,
-          ));
-        } else {
-          fragment.append('/');
-        }
-      });
-      return fragment;
-    }
-    if (type === 'job' || type.includes('-job')) {
-      return writeAdminDetails(
-        () => admin.job({ org: data.org, site: data.site, ref: data.ref }).get(`${value}/details`),
-        value,
-      );
-    }
-    if (type === 'snapshot') {
-      // snapshot logs carry the job ID in the 'job' field, not 'path'
-      const { job: jobId } = data;
-      if (jobId) {
-        return writeAdminDetails(
-          () => admin.job({ org: data.org, site: data.site, ref: data.ref }).get(`${jobId}/details`),
-          jobId,
-        );
-      }
-      return value || null;
-    }
-    if (type === 'preview') {
-      return writeA(`${this.preview}${value}`, value);
-    }
-    if (type === 'sitemap') {
-      if (data.updated) {
-        // source:sitemap logs carry an array of updated paths
-        const fragment = document.createDocumentFragment();
-        data.updated[0].forEach((update, i) => {
-          if (i > 0) {
-            fragment.append(document.createElement('br'));
-            fragment.append(document.createElement('br'));
-          }
-          fragment.append(writeA(`${this.live}${update}`, update));
-        });
-        return fragment;
-      }
-      return writeA(`${this.live}${data.path}`, data.path);
-    }
-    if (type === 'status') {
-      return writeAdminDetails(
-        () => admin.status({ org: data.owner, site: data.repo, ref: data.ref }).get(value),
-        value,
-      );
-    }
-    // eslint-disable-next-line no-console
-    console.warn('unhandled log type:', type, data);
-    return value || null;
-  }
-
-  errors(value) {
-    if (!value || value.length === 0) return null;
-    const fragment = document.createDocumentFragment();
-    const nodes = value.flatMap((err, i) => {
-      const { message, target } = err;
-      const text = message ? `${message} (${target})` : String(err);
-      return i === 0 ? [text] : [', ', document.createElement('br'), text];
-    });
-    fragment.append(...nodes);
-    return fragment;
-  }
-
-  method(value) {
-    if (!value) return null;
+/**
+ * Handles admin button clicks: fetches via requestFn and shows a JSON modal.
+ * @param {Function} requestFn - Admin API call returning a Response.
+ * @param {HTMLButtonElement} button - The button that triggered the click.
+ */
+async function onAdminClick(requestFn, button) {
+  showLoadingButton(button);
+  try {
+    const { createModal } = await import('../../blocks/modal/modal.js');
+    const { org, site } = getFormData(FORM);
+    const res = await executeAdminRequest(requestFn, { org, site });
+    if (!res || !res.ok) throw new Error(`Failed to fetch details: ${res?.status}`);
+    const json = await res.json();
+    const pre = document.createElement('pre');
     const code = document.createElement('code');
-    code.textContent = value;
-    return code;
+    code.className = 'language-js';
+    code.textContent = JSON.stringify(json, null, 2);
+    pre.append(code);
+    const { showModal } = await createModal([pre]);
+    showModal();
+    await loadPrism();
+    highlight(document.querySelector('.modal'));
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Could not create modal:', error);
   }
-
-  status(value) {
-    if (!value) return null;
-    const badge = document.createElement('span');
-    badge.textContent = value;
-    badge.className = `status-light http${Math.floor(value / 100) % 10}`;
-    return badge;
-  }
-
-  duration(value) {
-    if (!value) return null;
-    return `${(value / 1000).toFixed(1)} s`;
-  }
-
-  rewrite(keys) {
-    keys.forEach((key) => {
-      if (this[key]) {
-        this.data[key] = this[key](this.data[key]);
-      }
-    });
-  }
+  resetLoadingButton(button);
 }
 
 /**
@@ -470,7 +301,7 @@ function buildLog(data, live, preview) {
     'ip',
     'duration',
   ];
-  const formattedData = new RewrittenData(data, live, preview);
+  const formattedData = new RewrittenData(data, live, preview, onAdminClick, admin);
   formattedData.rewrite(cols);
 
   cols.forEach((col) => {
@@ -524,7 +355,9 @@ function displayLogs(logs, live, preview) {
  */
 function writeTimeParams(timeframe) {
   if (timeframe === 'custom' || timeframe === 'today') {
-    const [from, to] = [FROM, TO].map((i) => encodeURIComponent(toISODate(i.value)));
+    const dates = [FROM, TO].map((i) => new Date(i.value)).sort((a, b) => a - b);
+    if (dates.some((d) => Number.isNaN(d.getTime()))) return 'since=1d';
+    const [from, to] = dates.map((d) => encodeURIComponent(d.toISOString()));
     return `from=${from}&to=${to}`;
   }
   const [days, hours, mins] = timeframe.split(':').map((v) => parseInt(v, 10));
@@ -859,6 +692,12 @@ function populateFromParams(search, doc) {
         selectTimeframe('Custom');
       }
     });
+    // if a partial deep link set only one bound, fill the other with a sensible default
+    if (PICKER.value === 'Custom') {
+      const now = new Date();
+      if (!TO.value) TO.value = toDateTimeLocal(now);
+      if (!FROM.value) FROM.value = toDateTimeLocal(calculatePastDate(0, 1, 0, now));
+    }
   }
 }
 

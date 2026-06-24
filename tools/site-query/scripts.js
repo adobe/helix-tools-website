@@ -81,7 +81,7 @@ function updateTableError(table, errCode) {
       case 403:
         return {
           title: 'Forbidden',
-          msg: 'Unable to display results. Access to this content was denied.',
+          msg: 'Unable to display results. Access to this content was denied. If the site is protected, you need to add <code>tools.aem.live</code> to the site\'s <code>sidekick.trustedHosts</code>. See the <a href="https://www.aem.live/developer/sidekick-development" target="_blank" rel="noopener noreferrer">sidekick development docs</a> for more information.',
         };
       case 404:
         return {
@@ -246,13 +246,38 @@ async function* fetchSitemap(sitemapPath, liveHost) {
 }
 
 /**
+ * creates a rate limiter that spaces out request starts so they don't exceed
+ * a maximum rate. await the returned function before each fetch.
+ *
+ * @returns {() => Promise<void>} acquire a slot, resolving when it's safe to fetch
+ */
+function createRateLimiter() {
+  // the live host rate-limits at 200 requests/second/IP; stay well under that to
+  // leave headroom for other tabs/tools sharing the same IP budget
+  const maxPerSecond = 100;
+  const minInterval = 1000 / maxPerSecond;
+  let nextTime = 0;
+  return () => {
+    const now = performance.now();
+    const scheduled = Math.max(now, nextTime);
+    nextTime = scheduled + minInterval;
+    const wait = scheduled - now;
+    return wait > 0
+      ? new Promise((resolve) => { setTimeout(resolve, wait); })
+      : Promise.resolve();
+  };
+}
+
+/**
  * query the page for matches
  *
  * @param {URL} url the url to query
  * @param {string} query the query string
  * @param {string} queryType the query type
+ * @param {() => Promise<void>} acquire rate-limiter slot to await before fetching
  */
-async function queryPage(url, query, queryType) {
+async function queryPage(url, query, queryType, acquire) {
+  await acquire();
   const res = await fetch(url);
   const html = await res.text();
   const parser = new DOMParser();
@@ -273,9 +298,9 @@ async function queryPage(url, query, queryType) {
   return matches ? matches.length : 0;
 }
 
-async function processUrl(sitemapUrl, query, queryType, org, site) {
+async function processUrl(sitemapUrl, query, queryType, org, site, acquire) {
   try {
-    const matches = await queryPage(sitemapUrl, query, queryType);
+    const matches = await queryPage(sitemapUrl, query, queryType, acquire);
     if (matches > 0) {
       return displayResult(sitemapUrl, matches, org, site);
     }
@@ -353,6 +378,7 @@ async function init(doc) {
       resultsOfElement.textContent = 0;
 
       const processingTasks = [];
+      const acquire = createRateLimiter();
       const updateSearched = () => {
         searched += 1;
         resultsOfElement.textContent = searched;
@@ -363,7 +389,7 @@ async function init(doc) {
         if (stopped) break;
 
         if (sitemapUrl.pathname.startsWith(path)) {
-          const promise = processUrl(sitemapUrl, query, queryType, org, site)
+          const promise = processUrl(sitemapUrl, query, queryType, org, site, acquire)
             .then((tr) => {
               updateSearched();
               if (tr) {
