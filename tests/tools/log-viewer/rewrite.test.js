@@ -5,35 +5,110 @@ import { RewrittenData } from '../../../tools/log-viewer/rewrite.js';
 const LIVE = 'main--site--owner.aem.live';
 const PREVIEW = 'main--site--owner.aem.page';
 
+// Helpers
+const rd = (data, onAdminClick) => new RewrittenData(data, LIVE, PREVIEW, onAdminClick);
+const click = (el) => el.click();
+
 describe('log-viewer:rewrite.js', () => {
   describe('RewrittenData.timestamp()', () => {
-    it('returns "-" when no value', () => {
-      const rd = new RewrittenData({}, LIVE, PREVIEW);
-      assert.equal(rd.timestamp(null), '-');
-      assert.equal(rd.timestamp(undefined), '-');
-      assert.equal(rd.timestamp(0), '-');
+    it('returns null when no value', () => {
+      assert.equal(rd({}).timestamp(null), null);
+      assert.equal(rd({}).timestamp(0), null);
     });
 
-    it('formats a timestamp', () => {
-      const rd = new RewrittenData({}, LIVE, PREVIEW);
-      const result = rd.timestamp('2024-01-15T12:00:00Z');
+    it('formats a timestamp string', () => {
+      const result = rd({}).timestamp('2024-01-15T12:00:00Z');
       assert.match(result, /01\/15\/2024/);
       assert.match(result, /UTC/);
     });
   });
 
   describe('RewrittenData.user()', () => {
-    it('returns "-" when no value', () => {
-      const rd = new RewrittenData({}, LIVE, PREVIEW);
-      assert.equal(rd.user(null), '-');
-      assert.equal(rd.user(''), '-');
+    it('returns null when no value', () => {
+      assert.equal(rd({}).user(null), null);
+      assert.equal(rd({}).user(''), null);
     });
 
-    it('formats email as mailto link showing username', () => {
-      const rd = new RewrittenData({}, LIVE, PREVIEW);
-      const result = rd.user('alice@example.com');
-      assert.match(result, /href="mailto:alice@example\.com"/);
-      assert.match(result, /alice/);
+    it('returns an anchor with mailto href showing username', () => {
+      const a = rd({}).user('alice@example.com');
+      assert.equal(a.tagName, 'A');
+      assert.equal(a.href, 'mailto:alice@example.com');
+      assert.equal(a.textContent, 'alice');
+    });
+  });
+
+  describe('RewrittenData.path() — no type', () => {
+    it('returns value when no route or source', () => {
+      assert.equal(rd({}).path('/foo'), '/foo');
+    });
+
+    it('returns null when no type and no value', () => {
+      assert.equal(rd({}).path(null), null);
+    });
+  });
+
+  describe('RewrittenData.path() — code', () => {
+    it('renders a github link', () => {
+      const a = rd({
+        route: 'code', owner: 'adobe', repo: 'site', ref: 'main',
+      }).path('/');
+      assert.equal(a.tagName, 'A');
+      assert.match(a.href, /github\.com\/adobe\/site/);
+    });
+  });
+
+  describe('RewrittenData.path() — index / live', () => {
+    it('renders live link for route:index', () => {
+      const a = rd({
+        route: 'index', owner: 'o', repo: 'r', ref: 'main',
+      }).path('/foo');
+      assert.equal(a.tagName, 'A');
+      assert.match(a.href, new RegExp(LIVE));
+    });
+
+    it('renders live link for route:live', () => {
+      const a = rd({
+        route: 'live', owner: 'o', repo: 'r', ref: 'main',
+      }).path('/foo');
+      assert.match(a.href, new RegExp(LIVE));
+    });
+  });
+
+  describe('RewrittenData.path() — preview', () => {
+    it('renders a preview link', () => {
+      const a = rd({
+        route: 'preview', owner: 'o', repo: 'r', ref: 'main',
+      }).path('/foo');
+      assert.equal(a.tagName, 'A');
+      assert.match(a.href, new RegExp(PREVIEW));
+    });
+  });
+
+  describe('RewrittenData.path() — config / job / status (admin buttons)', () => {
+    it('returns a button for route:config', () => {
+      const button = rd({ route: 'config', org: 'org', site: 'site' }).path('/config.json');
+      assert.equal(button.tagName, 'BUTTON');
+      assert.equal(button.className, 'button outline');
+    });
+
+    it('calls onAdminClick with a requestFn and the button when clicked', () => {
+      let called = false;
+      let capturedFn;
+      let capturedButton;
+      const spy = (fn, btn) => { called = true; capturedFn = fn; capturedButton = btn; };
+      const button = rd({ route: 'config', org: 'org', site: 'site' }, spy).path('/config.json');
+      click(button);
+      assert.ok(called);
+      assert.equal(typeof capturedFn, 'function');
+      assert.equal(capturedButton, button);
+    });
+
+    it('truncates button text beyond 26 chars', () => {
+      const long = '/a-very-long-path-segment-that-exceeds-the-limit';
+      const button = rd({
+        route: 'status', owner: 'o', repo: 'r', ref: 'main',
+      }).path(long);
+      assert.ok(button.textContent.length <= 27); // 26 chars + ellipsis char
     });
   });
 
@@ -42,259 +117,166 @@ describe('log-viewer:rewrite.js', () => {
       route: 'indexer', owner: 'owner', repo: 'repo', ref: 'main',
     };
 
-    it('renders an array of change strings', () => {
-      const rd = new RewrittenData({ ...base, changes: ['/foo 12ms', '/bar 8ms'] }, LIVE, PREVIEW);
-      const html = rd.path();
-      assert.match(html, /\/foo/);
-      assert.match(html, /\/bar/);
-      assert.equal(rd.data.duration, 20);
+    it('returns null when changes is absent', () => {
+      assert.equal(rd({ ...base }).path(), null);
     });
 
-    it('does not throw when changes is a number (non-array)', () => {
-      const rd = new RewrittenData({ ...base, changes: 5 }, LIVE, PREVIEW);
-      assert.doesNotThrow(() => rd.path());
-    });
-
-    it('does not throw when changes is a single string (non-array)', () => {
-      const rd = new RewrittenData({ ...base, changes: '/foo 12ms' }, LIVE, PREVIEW);
-      let html;
-      assert.doesNotThrow(() => { html = rd.path(); });
-      assert.match(html, /\/foo/);
+    it('returns null when changes is null', () => {
+      assert.equal(rd({ ...base, changes: null }).path(), null);
     });
 
     it('does not throw when changes is a plain object (non-array)', () => {
-      const rd = new RewrittenData({ ...base, changes: { count: 5 } }, LIVE, PREVIEW);
-      assert.doesNotThrow(() => rd.path());
+      assert.doesNotThrow(() => rd({ ...base, changes: { count: 5 } }).path());
+    });
+
+    it('does not throw when changes is a number (non-array)', () => {
+      assert.doesNotThrow(() => rd({ ...base, changes: 5 }).path());
     });
 
     it('does not throw when changes is an array of objects', () => {
-      const rd = new RewrittenData({ ...base, changes: [{ path: '/foo', ms: 12 }] }, LIVE, PREVIEW);
-      assert.doesNotThrow(() => rd.path());
+      assert.doesNotThrow(() => rd({ ...base, changes: [{ path: '/foo', ms: 12 }] }).path());
     });
 
-    it('returns "-" when changes is absent', () => {
-      const rd = new RewrittenData({ ...base }, LIVE, PREVIEW);
-      assert.equal(rd.path(), '-');
+    it('renders an admin button for a single change string', () => {
+      const fragment = rd({ ...base, changes: '/foo 12ms' }).path();
+      const buttons = [...fragment.childNodes].filter((n) => n.tagName === 'BUTTON');
+      assert.equal(buttons.length, 1);
+      assert.match(buttons[0].textContent, /\/foo/);
     });
 
-    it('returns "-" when changes is null', () => {
-      const rd = new RewrittenData({ ...base, changes: null }, LIVE, PREVIEW);
-      assert.equal(rd.path(), '-');
+    it('renders admin buttons for each path segment', () => {
+      const instance = rd({ ...base, changes: ['/foo 100ms', '/bar 200ms'] });
+      const fragment = instance.path();
+      const buttons = [...fragment.childNodes].filter((n) => n.tagName === 'BUTTON');
+      assert.equal(buttons.length, 2);
     });
 
     it('accumulates duration from changes when duration is missing', () => {
-      const rd = new RewrittenData({ ...base, changes: ['/a 100ms', '/b 200ms'] }, LIVE, PREVIEW);
-      rd.path();
-      assert.equal(rd.data.duration, 300);
+      const instance = rd({ ...base, changes: ['/a 100ms', '/b 200ms'] });
+      instance.path();
+      assert.equal(instance.data.duration, 300);
     });
 
     it('does not overwrite existing duration', () => {
-      const rd = new RewrittenData({ ...base, changes: ['/a 100ms'], duration: 999 }, LIVE, PREVIEW);
-      rd.path();
-      assert.equal(rd.data.duration, 999);
+      const instance = rd({ ...base, changes: ['/a 100ms'], duration: 999 });
+      instance.path();
+      assert.equal(instance.data.duration, 999);
     });
   });
 
   describe('RewrittenData.path() — sitemap', () => {
     const base = { owner: 'owner', repo: 'repo', ref: 'main' };
 
-    it('renders links from updated[0] array (source: sitemap)', () => {
-      const rd = new RewrittenData(
-        { ...base, source: 'sitemap', updated: [['/foo', '/bar']] },
-        LIVE,
-        PREVIEW,
-      );
-      const html = rd.path();
-      assert.match(html, /\/foo/);
-      assert.match(html, /\/bar/);
+    it('renders links from updated[0] array', () => {
+      const fragment = rd({ ...base, source: 'sitemap', updated: [['/foo', '/bar']] }).path();
+      const links = [...fragment.childNodes].filter((n) => n.tagName === 'A');
+      assert.equal(links.length, 2);
+      assert.match(links[0].href, /\/foo/);
     });
 
-    it('does not throw when updated is empty array', () => {
-      const rd = new RewrittenData(
-        { ...base, source: 'sitemap', updated: [] },
-        LIVE,
-        PREVIEW,
-      );
-      assert.doesNotThrow(() => rd.path());
+    it('does not throw when updated is empty', () => {
+      assert.doesNotThrow(() => rd({ ...base, source: 'sitemap', updated: [] }).path());
     });
 
-    it('does not throw when updated[0] is not an array', () => {
-      const rd = new RewrittenData(
-        { ...base, source: 'sitemap', updated: ['/foo'] },
-        LIVE,
-        PREVIEW,
-      );
-      assert.doesNotThrow(() => rd.path());
+    it('returns null when updated[0] is not an array', () => {
+      const result = rd({ ...base, source: 'sitemap', updated: ['/foo'] }).path();
+      assert.equal(result, null);
     });
 
-    it('renders path link when no updated field (route: sitemap)', () => {
-      const rd = new RewrittenData(
-        { ...base, route: 'sitemap', path: '/sitemap.xml' },
-        LIVE,
-        PREVIEW,
-      );
-      const html = rd.path('/sitemap.xml');
-      assert.match(html, /sitemap\.xml/);
-      assert.match(html, new RegExp(LIVE));
+    it('renders a path link for route:sitemap (no updated)', () => {
+      const a = rd({ ...base, route: 'sitemap', path: '/sitemap.xml' }).path('/sitemap.xml');
+      assert.equal(a.tagName, 'A');
+      assert.match(a.href, /sitemap\.xml/);
     });
   });
 
   describe('RewrittenData.path() — snapshot', () => {
     const base = {
-      route: 'snapshot', owner: 'owner', repo: 'repo', ref: 'main',
+      route: 'snapshot', owner: 'o', repo: 'r', ref: 'main', org: 'org', site: 'site',
     };
 
-    it('renders job details link when job field is present', () => {
-      const rd = new RewrittenData({
-        ...base, org: 'org', site: 'site', job: 'job-123',
-      }, LIVE, PREVIEW);
-      const html = rd.path('/some/path');
-      assert.match(html, /job-123/);
+    it('returns an admin button when job field is present', () => {
+      const button = rd({ ...base, job: 'job-123' }).path('/path');
+      assert.equal(button.tagName, 'BUTTON');
+      assert.match(button.textContent, /job-123/);
     });
 
-    it('returns value when job field is absent', () => {
-      const rd = new RewrittenData({ ...base, org: 'org', site: 'site' }, LIVE, PREVIEW);
-      const result = rd.path('/some/path');
-      assert.equal(result, '/some/path');
+    it('returns value when job is absent', () => {
+      assert.equal(rd({ ...base }).path('/path'), '/path');
     });
 
-    it('returns "-" when no job and no value', () => {
-      const rd = new RewrittenData({ ...base, org: 'org', site: 'site' }, LIVE, PREVIEW);
-      assert.equal(rd.path(null), '-');
+    it('returns null when no job and no value', () => {
+      assert.equal(rd({ ...base }).path(null), null);
     });
   });
 
-  describe('RewrittenData.path() — code', () => {
-    it('renders github link', () => {
-      const rd = new RewrittenData(
-        {
-          route: 'code', owner: 'adobe', repo: 'site', ref: 'main',
-        },
-        LIVE,
-        PREVIEW,
-      );
-      const html = rd.path('/');
-      assert.match(html, /github\.com\/adobe\/site/);
-    });
-  });
-
-  describe('RewrittenData.path() — preview', () => {
-    it('renders preview link', () => {
-      const rd = new RewrittenData({
-        route: 'preview', owner: 'o', repo: 'r', ref: 'main',
-      }, LIVE, PREVIEW);
-      const html = rd.path('/foo');
-      assert.match(html, new RegExp(PREVIEW));
-      assert.match(html, /\/foo/);
-    });
-  });
-
-  describe('RewrittenData.path() — live/index', () => {
-    it('renders live link for route:live', () => {
-      const rd = new RewrittenData({
-        route: 'live', owner: 'o', repo: 'r', ref: 'main',
-      }, LIVE, PREVIEW);
-      const html = rd.path('/foo');
-      assert.match(html, new RegExp(LIVE));
+  describe('RewrittenData.path() — auth', () => {
+    it('returns value without console.warn', () => {
+      assert.equal(rd({ route: 'auth' }).path('/some'), '/some');
     });
 
-    it('renders live link for route:index', () => {
-      const rd = new RewrittenData({
-        route: 'index', owner: 'o', repo: 'r', ref: 'main',
-      }, LIVE, PREVIEW);
-      const html = rd.path('/foo');
-      assert.match(html, new RegExp(LIVE));
-    });
-  });
-
-  describe('RewrittenData.path() — no type', () => {
-    it('returns value when no route or source', () => {
-      const rd = new RewrittenData({}, LIVE, PREVIEW);
-      assert.equal(rd.path('/foo'), '/foo');
-    });
-
-    it('returns "-" when no type and no value', () => {
-      const rd = new RewrittenData({}, LIVE, PREVIEW);
-      assert.equal(rd.path(null), '-');
+    it('returns null when no value', () => {
+      assert.equal(rd({ route: 'auth' }).path(null), null);
     });
   });
 
   describe('RewrittenData.errors()', () => {
-    it('returns "-" for null', () => {
-      const rd = new RewrittenData({}, LIVE, PREVIEW);
-      assert.equal(rd.errors(null), '-');
-    });
+    it('returns null for null', () => assert.equal(rd({}).errors(null), null));
+    it('returns null for empty array', () => assert.equal(rd({}).errors([]), null));
+    it('does not throw when errors is a string', () => assert.doesNotThrow(() => rd({}).errors('oops')));
+    it('does not throw when errors is a plain object', () => assert.doesNotThrow(() => rd({}).errors({ msg: 'x' })));
 
-    it('returns "-" for empty array', () => {
-      const rd = new RewrittenData({}, LIVE, PREVIEW);
-      assert.equal(rd.errors([]), '-');
-    });
-
-    it('does not throw when errors is a string (non-array)', () => {
-      const rd = new RewrittenData({}, LIVE, PREVIEW);
-      assert.doesNotThrow(() => rd.errors('something went wrong'));
-    });
-
-    it('does not throw when errors is a plain object (non-array)', () => {
-      const rd = new RewrittenData({}, LIVE, PREVIEW);
-      assert.doesNotThrow(() => rd.errors({ message: 'oops' }));
-    });
-
-    it('formats error objects with message and target', () => {
-      const rd = new RewrittenData({}, LIVE, PREVIEW);
-      const result = rd.errors([{ message: 'Not found', target: '/foo' }]);
-      assert.match(result, /Not found/);
-      assert.match(result, /\/foo/);
+    it('formats error objects into a fragment', () => {
+      const fragment = rd({}).errors([{ message: 'Not found', target: '/foo' }]);
+      assert.equal(fragment.nodeName, '#document-fragment');
+      assert.match(fragment.textContent, /Not found/);
+      assert.match(fragment.textContent, /\/foo/);
     });
 
     it('joins multiple errors', () => {
-      const rd = new RewrittenData({}, LIVE, PREVIEW);
-      const result = rd.errors([
+      const fragment = rd({}).errors([
         { message: 'Err A', target: '/a' },
         { message: 'Err B', target: '/b' },
       ]);
-      assert.match(result, /Err A/);
-      assert.match(result, /Err B/);
+      assert.match(fragment.textContent, /Err A/);
+      assert.match(fragment.textContent, /Err B/);
     });
   });
 
   describe('RewrittenData.method()', () => {
-    it('returns "-" for null', () => {
-      const rd = new RewrittenData({}, LIVE, PREVIEW);
-      assert.equal(rd.method(null), '-');
-    });
+    it('returns null for null', () => assert.equal(rd({}).method(null), null));
 
-    it('wraps method in code tags', () => {
-      const rd = new RewrittenData({}, LIVE, PREVIEW);
-      assert.equal(rd.method('GET'), '<code>GET</code>');
+    it('wraps method in a code element', () => {
+      const code = rd({}).method('GET');
+      assert.equal(code.tagName, 'CODE');
+      assert.equal(code.textContent, 'GET');
+    });
+  });
+
+  describe('RewrittenData.status()', () => {
+    it('returns null for null', () => assert.equal(rd({}).status(null), null));
+
+    it('returns a span with status-light class', () => {
+      const span = rd({}).status(200);
+      assert.equal(span.tagName, 'SPAN');
+      assert.match(span.className, /status-light/);
+      assert.equal(span.textContent, '200');
     });
   });
 
   describe('RewrittenData.duration()', () => {
-    it('returns "-" for null', () => {
-      const rd = new RewrittenData({}, LIVE, PREVIEW);
-      assert.equal(rd.duration(null), '-');
-    });
-
-    it('returns "-" for zero', () => {
-      const rd = new RewrittenData({}, LIVE, PREVIEW);
-      assert.equal(rd.duration(0), '-');
-    });
-
-    it('formats ms as seconds', () => {
-      const rd = new RewrittenData({}, LIVE, PREVIEW);
-      assert.equal(rd.duration(1500), '1.5 s');
-    });
+    it('returns null for null', () => assert.equal(rd({}).duration(null), null));
+    it('returns null for zero', () => assert.equal(rd({}).duration(0), null));
+    it('formats ms as seconds string', () => assert.equal(rd({}).duration(1500), '1.5 s'));
   });
 
   describe('RewrittenData.rewrite()', () => {
-    it('applies known formatters and leaves unknown keys alone', () => {
-      const data = { method: 'GET', duration: 2000, unknownField: 'raw' };
-      const rd = new RewrittenData(data, LIVE, PREVIEW);
-      rd.rewrite(['method', 'duration', 'unknownField']);
-      assert.equal(rd.data.method, '<code>GET</code>');
-      assert.equal(rd.data.duration, '2.0 s');
-      assert.equal(rd.data.unknownField, 'raw');
+    it('applies known formatters and leaves unknown keys untouched', () => {
+      const instance = rd({ method: 'GET', duration: 2000, unknownField: 'raw' });
+      instance.rewrite(['method', 'duration', 'unknownField']);
+      assert.equal(instance.data.method.tagName, 'CODE');
+      assert.equal(instance.data.duration, '2.0 s');
+      assert.equal(instance.data.unknownField, 'raw');
     });
   });
 });

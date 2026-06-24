@@ -645,6 +645,40 @@ describe('helix-admin.js', () => {
     });
   });
 
+  describe('admin.snapshot(coords)', () => {
+    it('.get("") GETs the snapshot list', async () => {
+      await admin.snapshot({ org: 'adobe', site: 'x' }).get('');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/snapshot/adobe/x/main');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('.get("name") GETs the named snapshot manifest', async () => {
+      await admin.snapshot({ org: 'adobe', site: 'x' }).get('my-snapshot');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/snapshot/adobe/x/main/my-snapshot');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('.update("name", body) POSTs to the snapshot endpoint', async () => {
+      await admin.snapshot({ org: 'adobe', site: 'x' }).update('my-snapshot', '{"review":"approved"}');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/snapshot/adobe/x/main/my-snapshot');
+      assert.equal(calls[0].init.method, 'POST');
+      assert.equal(calls[0].init.body, '{"review":"approved"}');
+    });
+
+    it('.remove("name/*") DELETEs snapshot paths', async () => {
+      await admin.snapshot({ org: 'adobe', site: 'x' }).remove('my-snapshot/*');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/snapshot/adobe/x/main/my-snapshot/*');
+      assert.equal(calls[0].init.method, 'DELETE');
+    });
+
+    it('exposes .url equal to the base operation URL', () => {
+      assert.equal(
+        admin.snapshot({ org: 'adobe', site: 'x' }).url,
+        'https://admin.hlx.page/snapshot/adobe/x/main',
+      );
+    });
+  });
+
   describe('admin.psi(coords)', () => {
     it('.get() GETs the psi endpoint', async () => {
       await admin.psi({ org: 'adobe', site: 'x' }).get('');
@@ -881,6 +915,40 @@ describe('helix-admin.js', () => {
       const resource = admin.preview({ org: 'adobe', site: 'x' });
       await resource.get('');
       assert.equal(resource.url, calls[0].url);
+    });
+  });
+
+  describe('network error handling', () => {
+    it('returns ok=false with status=0 when fetch throws', async () => {
+      respond = () => { throw new TypeError('Failed to fetch'); };
+      const result = await admin.config({ org: 'adobe', site: 'x' }).read();
+      assert.equal(result.ok, false);
+      assert.equal(result.status, 0);
+    });
+
+    it('sets error to the thrown message', async () => {
+      respond = () => { throw new TypeError('Failed to fetch'); };
+      const result = await admin.config({ org: 'adobe', site: 'x' }).read();
+      assert.equal(result.error, 'Failed to fetch');
+    });
+
+    it('echoes method and url on the request descriptor despite the error', async () => {
+      respond = () => { throw new TypeError('Failed to fetch'); };
+      const result = await admin.config({ org: 'adobe', site: 'x' }).read();
+      assert.equal(result.request.method, 'GET');
+      assert.equal(result.request.url, 'https://admin.hlx.page/config/adobe/sites/x.json');
+    });
+
+    it('json() rejects with the original error', async () => {
+      respond = () => { throw new TypeError('Failed to fetch'); };
+      const result = await admin.config({ org: 'adobe', site: 'x' }).read();
+      await assert.rejects(() => result.json(), /Failed to fetch/);
+    });
+
+    it('text() rejects with the original error', async () => {
+      respond = () => { throw new TypeError('Failed to fetch'); };
+      const result = await admin.config({ org: 'adobe', site: 'x' }).read();
+      await assert.rejects(() => result.text(), /Failed to fetch/);
     });
   });
 

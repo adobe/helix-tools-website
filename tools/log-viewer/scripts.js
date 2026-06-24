@@ -242,6 +242,35 @@ function clearTable(table) {
 }
 
 /**
+ * Handles admin button clicks: fetches via requestFn and shows a JSON modal.
+ * @param {Function} requestFn - Admin API call returning a Response.
+ * @param {HTMLButtonElement} button - The button that triggered the click.
+ */
+async function onAdminClick(requestFn, button) {
+  showLoadingButton(button);
+  try {
+    const { createModal } = await import('../../blocks/modal/modal.js');
+    const { org, site } = getFormData(FORM);
+    const res = await executeAdminRequest(requestFn, { org, site });
+    if (!res || !res.ok) throw new Error(`Failed to fetch details: ${res?.status}`);
+    const json = await res.json();
+    const pre = document.createElement('pre');
+    const code = document.createElement('code');
+    code.className = 'language-js';
+    code.textContent = JSON.stringify(json, null, 2);
+    pre.append(code);
+    const { showModal } = await createModal([pre]);
+    showModal();
+    await loadPrism();
+    highlight(document.querySelector('.modal'));
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Could not create modal:', error);
+  }
+  resetLoadingButton(button);
+}
+
+/**
  * Builds a table row populated with log data.
  * @param {Object} data - Log data object.
  * @param {string} live - Hostname for live environment.
@@ -270,14 +299,17 @@ function buildLog(data, live, preview) {
     'ip',
     'duration',
   ];
-  const formattedData = new RewrittenData(data, live, preview);
+  const formattedData = new RewrittenData(data, live, preview, onAdminClick);
   formattedData.rewrite(cols);
 
   cols.forEach((col) => {
     const cell = document.createElement('td');
-    if (formattedData.data[col]) cell.innerHTML = formattedData.data[col];
+    const content = formattedData.data[col];
+    if (content instanceof Node) cell.append(content);
+    else if (content) cell.textContent = content;
     else cell.textContent = '-';
-    if (col === 'path' && data.errors !== '-') {
+
+    if (col === 'path' && formattedData.data.errors != null) {
       const errorSymbol = document.createElement('i');
       errorSymbol.classList.add('symbol-error');
       errorSymbol.textContent = '!';
@@ -322,6 +354,7 @@ function displayLogs(logs, live, preview) {
 function writeTimeParams(timeframe) {
   if (timeframe === 'custom' || timeframe === 'today') {
     const dates = [FROM, TO].map((i) => new Date(i.value)).sort((a, b) => a - b);
+    if (dates.some((d) => Number.isNaN(d.getTime()))) return 'since=1d';
     const [from, to] = dates.map((d) => encodeURIComponent(d.toISOString()));
     return `from=${from}&to=${to}`;
   }
@@ -498,15 +531,6 @@ async function registerListeners() {
     }
   });
 
-  // swap from/to if user enters them out of order
-  [FROM, TO].forEach((input) => {
-    input.addEventListener('change', () => {
-      if (FROM.value && TO.value && FROM.value > TO.value) {
-        [FROM.value, TO.value] = [TO.value, FROM.value];
-      }
-    });
-  });
-
   // enable form clear
   FORM.addEventListener('reset', (e) => {
     e.preventDefault();
@@ -617,37 +641,6 @@ async function registerListeners() {
 
   FILTER.closest('form').addEventListener('submit', (e) => e.preventDefault());
 
-  // enable admin details modal
-  RESULTS.addEventListener('click', async (e) => {
-    const { target } = e;
-    if (target.dataset.url) {
-      showLoadingButton(target);
-      try {
-        const url = new URL(target.dataset.url);
-        const { createModal } = await import('../../blocks/modal/modal.js');
-        const { org, site } = getFormData(FORM);
-        const res = await executeAdminRequest(
-          () => admin.raw('GET', url.href),
-          { org, site },
-        );
-        if (!res || !res.ok) throw new Error(`Failed to fetch details: ${res?.status}`);
-        const json = await res.json();
-        const modal = document.createElement('div');
-        modal.innerHTML = `<pre><code class="language-js">${JSON.stringify(json, null, 2)}
-          </code></pre>`;
-        const { showModal } = await createModal(modal.childNodes);
-        highlight(document.querySelector('.modal'));
-        showModal();
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.log('Could not create modal:', error);
-      }
-      resetLoadingButton(target);
-    }
-  });
-
-  RESULTS.addEventListener('click', loadPrism, { once: true });
-
   // enable table column expand/collapse
   [SOURCE_EXPANDER, PATH_EXPANDER].forEach((expander) => {
     expander.addEventListener('click', () => {
@@ -695,6 +688,12 @@ function populateFromParams(search, doc) {
         selectTimeframe('Custom');
       }
     });
+    // if a partial deep link set only one bound, fill the other with a sensible default
+    if (PICKER.value === 'Custom') {
+      const now = new Date();
+      if (!TO.value) TO.value = toDateTimeLocal(now);
+      if (!FROM.value) FROM.value = toDateTimeLocal(calculatePastDate(0, 1, 0, now));
+    }
   }
 }
 
