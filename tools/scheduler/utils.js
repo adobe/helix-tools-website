@@ -2,7 +2,7 @@ const WORKER = 'https://helix-snapshot-scheduler-prod.adobeaem.workers.dev';
 const ADMIN = 'https://admin.hlx.page';
 
 async function readError(resp, fallback) {
-  const xError = resp.headers.get('x-error') || resp.headers.get('X-Error');
+  const xError = resp.headers.get('x-error');
   if (xError) return xError;
   try {
     const text = await resp.text();
