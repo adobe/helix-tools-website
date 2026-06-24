@@ -29,7 +29,7 @@ failures are easy to diagnose.
 ## Sidekick plugin
 
 Any EDS project can add the scheduler popover to its Sidekick by appending
-this entry to `tools/sidekick/config.json` under `plugins`:
+this entry to `/{org}/sites/{site}/sidekick.json` under `plugins`:
 
 ```json
 {
@@ -38,7 +38,7 @@ this entry to `tools/sidekick/config.json` under `plugins`:
   "environments": ["edit", "preview", "prod"],
   "url": "https://tools.aem.live/tools/scheduler/schedule.html",
   "isPopover": true,
-  "popoverRect": "width: 380px; height: 280px",
+  "popoverRect": "width: 480px; height: 360px",
   "passReferrer": true,
   "passConfig": true
 }
