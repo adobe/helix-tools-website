@@ -168,7 +168,21 @@ export async function handleDynamicFacetToolCall(toolName, input, useQueue = tru
         }
 
         case 'analyze': {
-          const items = extractLabelData(facetEl, true);
+          const items = extractLabelData(facetEl, true).map((item) => {
+            if (!item.metrics) return item;
+            const enriched = { ...item, metrics: {} };
+            Object.entries(item.metrics).forEach(([metric, data]) => {
+              let status = 'good';
+              if (data.classes.includes('score-poor')) status = 'poor';
+              else if (data.classes.includes('score-ni')) status = 'needs-improvement';
+              enriched.metrics[metric] = {
+                value: data.value,
+                status,
+                significant: data.classes.includes('interesting'),
+              };
+            });
+            return enriched;
+          });
           return {
             success: true,
             facetName,
@@ -240,4 +254,104 @@ export function initializeDynamicFacets() {
 /** Reset cached facet tools */
 export function resetCachedFacetTools() {
   cachedFacetTools = null;
+}
+
+/**
+ * Cross-reference errors with URLs, user agents, and nested error facets
+ * by applying checkpoint=error filter and reading which pages/devices show errors,
+ * plus error.source and error.target breakdowns globally and per top page.
+ * Returns structured data for the business-impact analysis.
+ */
+export async function crossReferenceErrors() {
+  const sidebar = document.querySelector('facet-sidebar');
+  if (!sidebar) return null;
+
+  const checkpointEl = sidebar.querySelector('[facet="checkpoint"]');
+  if (!checkpointEl) return null;
+
+  const errorInput = checkpointEl.querySelector('input[value="error"]');
+  if (!errorInput) return null;
+
+  // Read the total error count from the checkbox label before filtering
+  const errorLabel = checkpointEl.querySelector('label[for*="error"]');
+  const errorCountEl = errorLabel?.querySelector('number-format');
+  const errorCountTitle = errorCountEl?.getAttribute('title') || '0';
+  const totalErrorCount = parseInt(errorCountTitle.split(' ')[0].replace(/\D/g, ''), 10) || 0;
+
+  const wasChecked = errorInput.checked;
+  if (!wasChecked) {
+    errorInput.click();
+    await new Promise((r) => { setTimeout(r, 1500); });
+  }
+
+  const results = { totalErrorCount, totalErrorCountRaw: errorCountTitle.split(' ')[0] };
+
+  try {
+    // Read top-level facets (url, userAgent) while filtered to errors
+    ['url', 'userAgent'].forEach((facetName) => {
+      const facetEl = sidebar.querySelector(`[facet="${facetName}"]`);
+      if (!facetEl) return;
+      const items = extractLabelData(facetEl, false);
+      if (items.length > 0) {
+        results[facetName] = items.slice(0, 15);
+      }
+    });
+
+    // Read nested error facets (error.source, error.target) with CWV metrics
+    ['error.source', 'error.target'].forEach((facetName) => {
+      const facetEl = sidebar.querySelector(`[facet="${facetName}"]`);
+      if (!facetEl) return;
+      const items = extractLabelData(facetEl, true);
+      if (items.length > 0) {
+        results[facetName] = items.slice(0, 10);
+      }
+    });
+
+    // Drill into top error-affected pages to get per-page error breakdowns
+    const urlFacetEl = sidebar.querySelector('[facet="url"]');
+    if (urlFacetEl && results.url && results.url.length > 0) {
+      const topPages = results.url.slice(0, 5);
+
+      const perPageErrors = await topPages.reduce(async (accPromise, page) => {
+        const acc = await accPromise;
+        const urlInput = urlFacetEl.querySelector(`input[value="${CSS.escape(page.text)}"]`);
+        if (!urlInput) return acc;
+
+        urlInput.click();
+        await new Promise((r) => { setTimeout(r, 1200); });
+
+        const pageBreakdown = { page: page.text, errorCount: page.count };
+
+        ['error.source', 'error.target'].forEach((facetName) => {
+          const facetEl = sidebar.querySelector(`[facet="${facetName}"]`);
+          if (!facetEl) return;
+          const items = extractLabelData(facetEl, true);
+          if (items.length > 0) {
+            pageBreakdown[facetName] = items.slice(0, 5);
+          }
+        });
+
+        acc.push(pageBreakdown);
+
+        urlInput.click();
+        await new Promise((r) => { setTimeout(r, 1200); });
+
+        return acc;
+      }, Promise.resolve([]));
+
+      if (perPageErrors.length > 0) {
+        results.perPageErrors = perPageErrors;
+      }
+    }
+  } finally {
+    if (!wasChecked && errorInput.checked) {
+      errorInput.click();
+      await new Promise((r) => { setTimeout(r, 1500); });
+    }
+  }
+
+  const hasFacetData = results.url || results.userAgent
+    || results['error.source'] || results['error.target'] || results.perPageErrors;
+  if (!hasFacetData) return null;
+  return results;
 }
