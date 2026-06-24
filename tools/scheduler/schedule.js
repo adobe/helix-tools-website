@@ -1,5 +1,3 @@
-import { registerToolReady } from '../../scripts/scripts.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
 import * as api from './utils.js';
 
 const missingContext = document.getElementById('missing-context');
@@ -39,14 +37,6 @@ async function handleSchedule() {
     return;
   }
   disableForm(true);
-
-  setStatus('Signing in…');
-  const signedIn = await ensureLogin(org, site);
-  if (!signedIn) {
-    setStatus('Sign in to AEM to schedule this page.', 'warning');
-    disableForm(false);
-    return;
-  }
 
   setStatus('Previewing page…');
   const preview = await api.ensurePreview(org, site, path);
@@ -107,4 +97,3 @@ timeInput.addEventListener('input', () => {
 scheduleBtn.addEventListener('click', handleSchedule);
 
 initContext();
-registerToolReady();

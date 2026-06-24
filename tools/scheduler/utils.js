@@ -1,6 +1,13 @@
 const WORKER = 'https://helix-snapshot-scheduler-prod.adobeaem.workers.dev';
 const ADMIN = 'https://admin.hlx.page';
 
+// Normalizes an id/path to leading-slash form with each segment URL-encoded,
+// so paths containing spaces or reserved characters produce a valid URL.
+function encodeIdPath(id) {
+  const trimmed = id.startsWith('/') ? id.slice(1) : id;
+  return `/${trimmed.split('/').map(encodeURIComponent).join('/')}`;
+}
+
 async function readError(resp, fallback) {
   const xError = resp.headers.get('x-error');
   if (xError) return xError;
@@ -50,7 +57,7 @@ export async function fetchSchedule(org, site, nonce) {
 }
 
 export async function deletePageSchedule(org, site, path, nonce) {
-  const idPath = path.startsWith('/') ? path : `/${path}`;
+  const idPath = encodeIdPath(path);
   const url = `${WORKER}/schedule/page/${org}/${site}${idPath}?nonce=${encodeURIComponent(nonce)}`;
   const resp = await fetch(url, { method: 'DELETE' });
   if (resp.ok) return { ok: true, resp };
@@ -58,7 +65,7 @@ export async function deletePageSchedule(org, site, path, nonce) {
 }
 
 export async function deleteSnapshotSchedule(org, site, snapshotId, nonce) {
-  const idPath = snapshotId.startsWith('/') ? snapshotId : `/${snapshotId}`;
+  const idPath = encodeIdPath(snapshotId);
   const url = `${WORKER}/schedule/snapshot/${org}/${site}${idPath}?nonce=${encodeURIComponent(nonce)}`;
   const resp = await fetch(url, { method: 'DELETE' });
   if (resp.ok) return { ok: true, resp };

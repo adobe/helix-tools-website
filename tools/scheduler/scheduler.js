@@ -80,9 +80,15 @@ async function loadSchedule() {
   if (result.error && /expired/i.test(result.error)) {
     // session nonce stale — rotate and retry once
     api.invalidateViewNonceCache();
-    const fresh = await api.ensureViewNonce(currentOrg, currentSite);
-    result = await api.fetchSchedule(currentOrg, currentSite, fresh);
-    log(result.resp, 'GET', `/schedule/${currentOrg}/${currentSite}`);
+    try {
+      const fresh = await api.ensureViewNonce(currentOrg, currentSite);
+      result = await api.fetchSchedule(currentOrg, currentSite, fresh);
+      log(result.resp, 'GET', `/schedule/${currentOrg}/${currentSite}`);
+    } catch (err) {
+      setStatus(err.message || 'Could not record view intent.', 'warning');
+      renderEmptyList();
+      return;
+    }
   }
 
   if (result.error) {
@@ -191,6 +197,8 @@ function renderEntries(entries) {
     deleteBtn.addEventListener('click', () => handleDelete(entry));
     actionsCell.append(deleteBtn);
 
+    [typeCell, itemCell, whenCell, byCell, actionsCell]
+      .forEach((cell) => cell.setAttribute('role', 'cell'));
     row.append(typeCell, itemCell, whenCell, byCell, actionsCell);
     scheduleList.append(row);
   });
