@@ -2,7 +2,19 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
+import admin from '../../scripts/helix-admin.js';
+import { executeAdminRequest } from '../../utils/admin-request.js';
 import * as api from './utils.js';
+
+// The tools-site shell can drive the profile login/retry flow, so Admin calls
+// go through executeAdminRequest. `same-origin` credentials match page-status.
+const scheduleAdmin = admin.withRequestInit({
+  mode: 'cors',
+  cache: 'no-cache',
+  credentials: 'same-origin',
+  redirect: 'follow',
+  referrerPolicy: 'no-referrer',
+});
 
 const siteForm = document.getElementById('site-form');
 const orgInput = document.getElementById('org');
@@ -24,8 +36,52 @@ let registered = null;
 
 function log(resp, method, url) {
   if (!resp) return;
-  const err = resp.headers?.get?.('x-error') || '';
+  // Worker calls return a raw Response (x-error header); Admin calls return the
+  // helix-admin envelope (error string). Handle both shapes.
+  const err = resp.error || resp.headers?.get?.('x-error') || '';
   logResponse(consoleBlock, resp.status, [method, url, err]);
+}
+
+// Records a schedule/delete intent in the Admin log. Auth is handled here (not
+// in utils.js) so the tools-site login/retry flow applies. Returns the shared
+// { ok, error, resp } envelope; resp is null when the user cancels login.
+async function writeIntent(org, site, entry) {
+  const res = await executeAdminRequest(
+    () => scheduleAdmin.log({ org, site }).update('', JSON.stringify({ entries: [entry] })),
+    { org, site },
+  );
+  if (!res) return { ok: false, error: 'Sign-in required to continue.', resp: null };
+  return { ok: res.ok, error: res.ok ? '' : (res.error || 'Failed to record intent.'), resp: res };
+}
+
+// Removes the scheduledPublish annotation from a snapshot's manifest metadata.
+async function clearSnapshotScheduledPublish(org, site, snapshotId) {
+  const name = snapshotId.startsWith('/') ? snapshotId.slice(1) : snapshotId;
+  const getRes = await executeAdminRequest(
+    () => scheduleAdmin.snapshot({ org, site }).get(`/${name}`),
+    { org, site },
+  );
+  if (!getRes) return { ok: false, error: 'Sign-in required to continue.', resp: null };
+  if (!getRes.ok) {
+    return { ok: false, error: getRes.error || 'Could not fetch snapshot manifest.', resp: getRes };
+  }
+  let manifest;
+  try {
+    ({ manifest } = await getRes.json());
+  } catch {
+    return { ok: false, error: 'Could not parse snapshot manifest.', resp: getRes };
+  }
+  if (manifest?.metadata) delete manifest.metadata.scheduledPublish;
+  const postRes = await executeAdminRequest(
+    () => scheduleAdmin.snapshot({ org, site }).update(`/${name}`, JSON.stringify(manifest)),
+    { org, site },
+  );
+  if (!postRes) return { ok: false, error: 'Sign-in required to continue.', resp: null };
+  return {
+    ok: postRes.ok,
+    error: postRes.ok ? '' : (postRes.error || 'Could not update snapshot metadata.'),
+    resp: postRes,
+  };
 }
 
 function setStatus(message, kind = 'info') {
@@ -65,9 +121,10 @@ function showConfirm(message, okLabel = 'Delete') {
 
 async function loadSchedule() {
   setStatus('Loading scheduled items…');
+  const writeViewIntent = (entry) => writeIntent(currentOrg, currentSite, entry);
   let viewNonce;
   try {
-    viewNonce = await api.ensureViewNonce(currentOrg, currentSite);
+    viewNonce = await api.ensureViewNonce(currentOrg, currentSite, writeViewIntent);
   } catch (err) {
     setStatus(err.message || 'Could not record view intent.', 'warning');
     renderEmptyList();
@@ -81,7 +138,7 @@ async function loadSchedule() {
     // session nonce stale — rotate and retry once
     api.invalidateViewNonceCache();
     try {
-      const fresh = await api.ensureViewNonce(currentOrg, currentSite);
+      const fresh = await api.ensureViewNonce(currentOrg, currentSite, writeViewIntent);
       result = await api.fetchSchedule(currentOrg, currentSite, fresh);
       log(result.resp, 'GET', `/schedule/${currentOrg}/${currentSite}`);
     } catch (err) {
@@ -113,24 +170,12 @@ async function handleDelete(entry) {
   if (!confirmed) return;
 
   setStatus('Deleting…');
-  if (entry.type === 'snapshot') {
-    const cleared = await api.clearSnapshotScheduledPublish(currentOrg, currentSite, entry.id);
-    log(cleared.resp, 'POST', `/snapshot/${currentOrg}/${currentSite}/main/${entry.id}`);
-    if (!cleared.ok) {
-      setStatus(cleared.error, 'warning');
-      return;
-    }
-  }
   const nonce = api.generateNonce();
   const route = entry.type === 'page'
     ? 'delete-page-schedule-intent'
     : 'delete-snapshot-schedule-intent';
   const payload = entry.type === 'page' ? { path: entry.id } : { snapshotId: entry.id };
-  const intent = await api.writeScheduleIntent(
-    currentOrg,
-    currentSite,
-    { route, nonce, ...payload },
-  );
+  const intent = await writeIntent(currentOrg, currentSite, { route, nonce, ...payload });
   if (!intent.ok) {
     setStatus(intent.error || 'Could not record delete intent.', 'warning');
     return;
@@ -143,6 +188,20 @@ async function handleDelete(entry) {
   if (!result.ok) {
     setStatus(result.error, 'warning');
     return;
+  }
+
+  // Clear the snapshot manifest's scheduledPublish annotation last, after the
+  // worker confirms the delete. Doing this only on worker success avoids the
+  // harmful state where the manifest shows the schedule as cancelled while the
+  // worker would still publish it. A failure here is the harmless direction:
+  // the worker schedule is already gone, only the display annotation lingers.
+  if (entry.type === 'snapshot') {
+    const cleared = await clearSnapshotScheduledPublish(currentOrg, currentSite, entry.id);
+    log(cleared.resp, 'POST', `/snapshot/${currentOrg}/${currentSite}/main/${entry.id}`);
+    if (!cleared.ok) {
+      setStatus(`Schedule deleted, but the snapshot's scheduled date could not be cleared: ${cleared.error}`, 'warning');
+      return;
+    }
   }
   await loadSchedule();
 }

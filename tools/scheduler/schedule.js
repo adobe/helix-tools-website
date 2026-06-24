@@ -1,4 +1,38 @@
+import admin from '../../scripts/helix-admin.js';
 import * as api from './utils.js';
+
+// The Sidekick popover cannot drive the tools-site profile login flow, so Admin
+// calls go directly through helix-admin and rely on Sidekick token injection
+// (same pattern as page-status/orphaned-pages-popover.js).
+const scheduleAdmin = admin.withRequestInit({
+  mode: 'cors',
+  cache: 'no-cache',
+  credentials: 'same-origin',
+  redirect: 'follow',
+  referrerPolicy: 'no-referrer',
+});
+
+// Previews the page so it can be scheduled. Returns the shared { ok, error,
+// resp } envelope.
+async function ensurePreview(org, site, path) {
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  const res = await scheduleAdmin.preview({ org, site }).update(cleanPath);
+  return {
+    ok: res.ok,
+    error: res.ok ? '' : (res.error || 'Could not preview page before scheduling.'),
+    resp: res,
+  };
+}
+
+// Records a schedule intent in the Admin log.
+async function writeIntent(org, site, entry) {
+  const res = await scheduleAdmin.log({ org, site }).update('', JSON.stringify({ entries: [entry] }));
+  return {
+    ok: res.ok,
+    error: res.ok ? '' : (res.error || 'Could not record schedule intent.'),
+    resp: res,
+  };
+}
 
 const missingContext = document.getElementById('missing-context');
 const formWrap = document.getElementById('schedule-form-wrap');
@@ -39,7 +73,7 @@ async function handleSchedule() {
   disableForm(true);
 
   setStatus('Previewing page…');
-  const preview = await api.ensurePreview(org, site, path);
+  const preview = await ensurePreview(org, site, path);
   if (!preview.ok) {
     setStatus(preview.error, 'warning');
     disableForm(false);
@@ -50,7 +84,7 @@ async function handleSchedule() {
   const nonce = api.generateNonce();
 
   setStatus('Recording intent…');
-  const intent = await api.writeScheduleIntent(org, site, {
+  const intent = await writeIntent(org, site, {
     route: 'schedule-page-intent',
     nonce,
     path,

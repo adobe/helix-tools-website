@@ -1,5 +1,4 @@
 const WORKER = 'https://helix-snapshot-scheduler-prod.adobeaem.workers.dev';
-const ADMIN = 'https://admin.hlx.page';
 
 // Normalizes an id/path to leading-slash form with each segment URL-encoded,
 // so paths containing spaces or reserved characters produce a valid URL.
@@ -72,29 +71,6 @@ export async function deleteSnapshotSchedule(org, site, snapshotId, nonce) {
   return { ok: false, error: await readError(resp, 'Failed to delete scheduled snapshot.'), resp };
 }
 
-export async function clearSnapshotScheduledPublish(org, site, snapshotId) {
-  const name = snapshotId.startsWith('/') ? snapshotId.slice(1) : snapshotId;
-  const url = `${ADMIN}/snapshot/${org}/${site}/main/${name}`;
-  const getResp = await fetch(url);
-  if (!getResp.ok) {
-    return { ok: false, error: await readError(getResp, 'Could not fetch snapshot manifest.'), resp: getResp };
-  }
-  let manifest;
-  try {
-    ({ manifest } = await getResp.json());
-  } catch {
-    return { ok: false, error: 'Could not parse snapshot manifest.', resp: getResp };
-  }
-  if (manifest?.metadata) delete manifest.metadata.scheduledPublish;
-  const postResp = await fetch(url, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(manifest),
-  });
-  if (postResp.ok) return { ok: true, resp: postResp };
-  return { ok: false, error: await readError(postResp, 'Could not update snapshot metadata.'), resp: postResp };
-}
-
 export async function schedulePage({
   org, site, path, scheduledPublish, nonce,
 }) {
@@ -105,13 +81,6 @@ export async function schedulePage({
   });
   if (resp.ok) return { ok: true, resp };
   return { ok: false, error: await readError(resp, 'Failed to schedule publish.'), resp };
-}
-
-export async function ensurePreview(org, site, path) {
-  const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  const resp = await fetch(`${ADMIN}/preview/${org}/${site}/main${cleanPath}`, { method: 'POST' });
-  if (resp.ok) return { ok: true, resp };
-  return { ok: false, error: await readError(resp, 'Could not preview page before scheduling.'), resp };
 }
 
 export function formatDate(iso) {
@@ -192,17 +161,6 @@ export function generateNonce() {
   return crypto.randomUUID();
 }
 
-export async function writeScheduleIntent(org, site, entry) {
-  const url = `${ADMIN}/log/${org}/${site}/main`;
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ entries: [entry] }),
-  });
-  if (resp.ok) return { ok: true, resp };
-  return { ok: false, error: await readError(resp, 'Failed to record schedule intent.'), resp };
-}
-
 const VIEW_NONCE_TTL_MS = 25 * 60 * 1000;
 let viewNonceCache = null; // { key: 'org/site', nonce, writtenAt }
 
@@ -211,7 +169,18 @@ export function __resetViewNonceForTests() {
   viewNonceCache = null;
 }
 
-export async function ensureViewNonce(org, site) {
+/**
+ * Returns a cached view-intent nonce for the org/site, writing a fresh one via
+ * the supplied `writeIntent` callback when the cache is empty or stale. The
+ * Admin `log` write lives in the caller (scheduler.js) so it can pick the auth
+ * context; this helper only owns the nonce lifecycle and TTL caching.
+ *
+ * @param {string} org
+ * @param {string} site
+ * @param {(entry: object) => Promise<{ok: boolean, error?: string}>} writeIntent
+ * @returns {Promise<string>}
+ */
+export async function ensureViewNonce(org, site, writeIntent) {
   const key = `${org}/${site}`;
   if (
     viewNonceCache
@@ -221,7 +190,7 @@ export async function ensureViewNonce(org, site) {
     return viewNonceCache.nonce;
   }
   const nonce = generateNonce();
-  const result = await writeScheduleIntent(org, site, { route: 'view-schedule-intent', nonce });
+  const result = await writeIntent({ route: 'view-schedule-intent', nonce });
   if (!result.ok) {
     viewNonceCache = null;
     throw new Error(result.error || 'Could not record view intent.');
