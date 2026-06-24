@@ -178,18 +178,6 @@ function createLoginButton(org, loginInfo, closeModal) {
     }, 60000);
   });
 
-  // enter ops mode if alt key is pressed
-  window.addEventListener('keydown', ({ altKey }) => {
-    if (altKey) {
-      document.querySelectorAll('#profile-modal button').forEach((button) => button.classList.add('ops'));
-    }
-  });
-  window.addEventListener('keyup', ({ altKey }) => {
-    if (!altKey) {
-      document.querySelectorAll('#profile-modal button').forEach((button) => button.classList.remove('ops'));
-    }
-  });
-
   return loginButton;
 }
 
@@ -404,6 +392,18 @@ async function showModal(block, focusedOrg) {
     dialog.classList.add('profile-modal');
     dialog.id = 'profile-modal';
     dialog.closedBy = 'any';
+    // enter ops mode if alt key is held — registered once here so it covers
+    // all buttons including dynamically added ones (e.g. Add project form)
+    window.addEventListener('keydown', ({ altKey }) => {
+      if (altKey) {
+        dialog.querySelectorAll('button').forEach((button) => button.classList.add('ops'));
+      }
+    });
+    window.addEventListener('keyup', ({ altKey }) => {
+      if (!altKey) {
+        dialog.querySelectorAll('button').forEach((button) => button.classList.remove('ops'));
+      }
+    });
     // Bind once — the dialog is reused; rebinding stacks duplicate emissions.
     dialog.addEventListener('close', () => {
       dialog.classList.remove('edit-mode');

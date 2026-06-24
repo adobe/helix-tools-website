@@ -15,7 +15,7 @@ body.json2html-simulator main {
   display: flex;
   flex-direction: column;
   min-height: calc(100vh - 60px); /* min-height lets main grow when options panel is open, keeping footer below content */
-  padding: calc(var(--header-height) + var(--spacing-300)) var(--spacing-200) var(--spacing-300) var(--spacing-200);
+  padding: calc(var(--header-height) + var(--spacing-200)) var(--spacing-100) var(--spacing-200);
   gap: var(--spacing-200);
 }
 
@@ -26,9 +26,8 @@ body.json2html-simulator main {
 body.json2html-simulator main > .simulator-header,
 body.json2html-simulator main > .simulator-header.section {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: var(--spacing-200);
   border-bottom: var(--border-s) solid var(--color-border);
   flex-shrink: 0;
@@ -66,6 +65,12 @@ body.json2html-simulator main > .simulator-header.section {
   gap: var(--spacing-100);
   flex-wrap: wrap;
   align-items: center;
+  width: 100%;
+}
+
+.simulator-header .header-actions .button {
+  flex: 1;
+  justify-content: center;
 }
 
 /* AEM wraps content in default-content-wrapper - make it flex row */
@@ -91,8 +96,8 @@ body.json2html-simulator main .simulator-header .header-actions-wrapper {
 body.json2html-simulator main > .control-bar,
 body.json2html-simulator main > .control-bar.section {
   display: flex;
-  justify-content: flex-end;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: var(--spacing-200);
   padding: var(--spacing-50) 0;
   background: transparent;
@@ -276,12 +281,11 @@ span.options-grid {
   font-size: var(--body-size-xs);
   color: var(--color-font-grey);
   background: light-dark(var(--gray-50), var(--gray-800));
-  padding: var(--spacing-100) var(--spacing-150);
+  padding: var(--spacing-100);
   border-radius: var(--rounding-s);
-  border-left: 3px solid var(--spectrum-blue);
+  border-left: var(--border-l) solid var(--spectrum-blue);
   margin-top: var(--spacing-100);
   line-height: var(--line-height-m);
-  padding-left: var(--spacing-100);
 }
 
 .option-hint code {
@@ -289,7 +293,7 @@ span.options-grid {
   font-size: var(--body-size-xs);
   background: var(--layer-elevated);
   padding: 2px 6px;
-  border-radius: var(--rounding-xs);
+  border-radius: var(--rounding-s);
   color: var(--spectrum-blue);
   font-weight: var(--weight-medium);
 }
@@ -300,10 +304,10 @@ span.options-grid {
 
 .validation-message-container {
   position: fixed;
-  top: calc(var(--header-height) + var(--spacing-300));
+  top: calc(var(--header-height) + var(--spacing-100));
   left: 50%;
   transform: translateX(-50%);
-  width: calc(100% - (2 * var(--spacing-200)));
+  width: calc(100% - (2 * var(--spacing-100)));
   max-width: 1200px;
   z-index: 100;
   animation: slide-down-validation 0.3s ease-out;
@@ -386,7 +390,7 @@ span.options-grid {
   font-size: var(--detail-size-m);
   background: light-dark(var(--gray-100), var(--gray-800));
   padding: 2px 6px;
-  border-radius: var(--rounding-xs);
+  border-radius: var(--rounding-s);
   color: var(--spectrum-blue);
 }
 
@@ -475,21 +479,19 @@ body.json2html-simulator main .workspace > .default-content-wrapper {
 }
 
 .workspace section.editors-row {
-  flex-direction: row;
+  flex-direction: column;
 }
 
 .workspace section.preview-panel {
-  flex: 1 1 40%;
-  min-height: 0;
+  flex: 1 1 auto;
 }
 
 
-/* Top row: JSON and Template side by side */
 .editors-row {
   display: flex;
-  flex: 1 1 60%;
+  flex-direction: column;
+  flex: 1 1 auto;
   width: 100%;
-  min-height: 100px;
   min-width: 0; /* Prevent content from affecting flex size */
   overflow: hidden;
 }
@@ -508,11 +510,13 @@ body.json2html-simulator main .workspace > .default-content-wrapper {
    ======================================== */
 
 .editor-panel {
-  flex: 1 1 50%;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  min-width: 200px;
+  min-width: 0;
+  min-height: 250px;
   overflow: hidden;
+  border-bottom: var(--border-s) solid var(--color-border);
 }
 
 .editor-panel.json-panel {
@@ -743,6 +747,7 @@ body.json2html-simulator .preview-status:has(.status-warning) .status-text {
 
 /* Vertical resizer (between JSON and Template) */
 body.json2html-simulator main .resizer-vertical {
+  display: none;
   flex: 0 0 4px;
   width: 4px;
   min-width: 4px;
@@ -752,13 +757,13 @@ body.json2html-simulator main .resizer-vertical {
   background: var(--color-border);
 }
 
-/* Horizontal resizer (between editors and preview) */
+/* Horizontal resizer (between editors and preview) — taller touch target on mobile */
 body.json2html-simulator main .resizer-horizontal {
-  flex: 0 0 4px;
+  flex: 0 0 8px;
   width: 100%;
-  height: 4px;
-  min-height: 4px;
-  max-height: 4px;
+  height: 8px;
+  min-height: 8px;
+  max-height: 8px;
   cursor: row-resize;
   background: var(--color-border);
 }
@@ -792,11 +797,11 @@ body.json2html-simulator main .resizer-horizontal {
    ======================================== */
 
 .preview-panel {
-  flex: 1 1 40%;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   width: 100%;
-  min-height: 80px;
+  min-height: 250px;
   min-width: 0;
   overflow: hidden;
   border-top: var(--border-s) solid var(--color-border);
@@ -815,6 +820,7 @@ body.json2html-simulator main .resizer-horizontal {
 .preview-header {
   flex: 0 0 auto;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   padding: var(--spacing-200) var(--spacing-300);
@@ -837,6 +843,9 @@ body.json2html-simulator main .resizer-horizontal {
   background: light-dark(var(--gray-200), var(--gray-700));
   border-radius: var(--rounding-s);
   padding: var(--spacing-50);
+  order: 1;
+  width: 100%;
+  justify-content: center;
 }
 
 .preview-tab {
@@ -979,7 +988,9 @@ body.json2html-simulator main .resizer-horizontal {
   color: var(--color-font-grey);
 }
 
+/* Mobile: hide keyboard shortcut hint (irrelevant on touch); shown at >= 900px */
 .preview-status .status-hint {
+  display: none;
   margin-left: auto;
   color: var(--color-font-grey);
   font-size: var(--detail-size-s);
@@ -987,7 +998,7 @@ body.json2html-simulator main .resizer-horizontal {
 
 .preview-status kbd {
   display: inline-block;
-  padding: var(--spacing-25) var(--spacing-75);
+  padding: var(--spacing-50) var(--spacing-75);
   background: light-dark(var(--gray-200), var(--gray-700));
   border: var(--border-s) solid var(--color-border);
   border-radius: var(--rounding-s);
@@ -1005,8 +1016,9 @@ body.json2html-simulator main .resizer-horizontal {
   border: none;
   border-radius: var(--rounding-l);
   padding: 0;
-  max-width: 90vw;
+  max-width: 95vw;
   max-height: 85vh;
+  margin: var(--spacing-200);
   box-shadow: var(--shadow-dragged);
   background: var(--layer-elevated);
 }
@@ -1067,7 +1079,7 @@ body.json2html-simulator main .resizer-horizontal {
 
 .examples-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: 1fr;
   gap: var(--spacing-300);
 }
 
@@ -1190,157 +1202,145 @@ body.json2html-simulator main .resizer-horizontal {
    RESPONSIVE DESIGN
    ======================================== */
 
-/* Large Screens - maximize workspace */
-@media (width >= 1200px) {
-  body.json2html-simulator main {
-    padding: calc(var(--header-height) + var(--spacing-300)) var(--spacing-100) var(--spacing-300) var(--spacing-100);
+/* Mobile-first responsive design: base styles target mobile.
+   Use min-width queries to progressively enhance for larger viewports. */
+
+/* Small tablets and up: looser spacing for validation banner & modal */
+@media (width >= 600px) {
+  .validation-message-container {
+    top: calc(var(--header-height) + var(--spacing-300));
+    width: calc(100% - (2 * var(--spacing-200)));
+  }
+
+  .modal {
+    max-width: 90vw;
+
+    /* `margin: auto` preserves <dialog>'s UA-stylesheet centering — overriding
+       to `0` would push the dialog to the top-left at >= 600px. */
+    margin: auto;
+  }
+
+  .examples-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+
+  .preview-tabs {
+    order: 0;
+    width: auto;
+    justify-content: flex-start;
   }
 }
 
-/* Extra Large Screens - wider layout for coding workspace */
-@media (width >= 1264px) {
-  /* Main content area */
+/* Tablet/desktop: switch to row layouts for header, control-bar and editors */
+@media (width >= 900px) {
   body.json2html-simulator main {
-    max-width: 1600px; /* +400px more than design system default (1200px) */
+    padding: calc(var(--header-height) + var(--spacing-300)) var(--spacing-200) var(--spacing-300);
   }
-  
-  /* Header nav alignment - needs higher specificity to override nested header CSS */
+
+  body.json2html-simulator main > .simulator-header,
+  body.json2html-simulator main > .simulator-header.section {
+    flex-flow: row wrap;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .simulator-header .header-actions {
+    width: auto;
+  }
+
+  .simulator-header .header-actions .button {
+    flex: 0 0 auto;
+  }
+
+  body.json2html-simulator main > .control-bar,
+  body.json2html-simulator main > .control-bar.section {
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
+  }
+
+  .workspace section.editors-row {
+    flex-direction: row;
+  }
+
+  .workspace section.preview-panel {
+    flex: 1 1 40%;
+    min-height: 0;
+  }
+
+  .editors-row {
+    flex-direction: row;
+    flex: 1 1 60%;
+    min-height: 100px;
+  }
+
+  .editor-panel {
+    flex: 1 1 50%;
+    min-width: 200px;
+    min-height: 0;
+    border-bottom: none;
+  }
+
+  .preview-panel {
+    flex: 1 1 40%;
+    min-height: 80px;
+  }
+
+  /* Restore vertical resizer between editors */
+  body.json2html-simulator main .resizer-vertical {
+    display: flex;
+  }
+
+  /* Slim horizontal resizer back down on desktop (precision over touch target) */
+  body.json2html-simulator main .resizer-horizontal {
+    flex: 0 0 4px;
+    height: 4px;
+    min-height: 4px;
+    max-height: 4px;
+  }
+
+  .preview-status .status-hint {
+    display: inline;
+  }
+}
+
+/* Large screens: tighter horizontal padding to maximize workspace width */
+@media (width >= 1200px) {
+  body.json2html-simulator main {
+    padding: calc(var(--header-height) + var(--spacing-300)) var(--spacing-100) var(--spacing-300);
+  }
+}
+
+/* Extra-large screens: widen the simulator main, header-nav, and footer to 1600px
+   so the header/footer stay aligned with the workspace. Below 1500px viewport the
+   experimental-ribbon is centered/inline and never overlaps content. */
+@media (width >= 1264px) {
+  body.json2html-simulator main {
+    max-width: 1600px;
+  }
+
+  /* Header nav alignment — needs extra specificity to override nested header CSS */
   body.json2html-simulator header.header-wrapper .header .header-nav {
     max-width: 1600px;
   }
-  
+
   /* Footer content alignment */
   body.json2html-simulator footer section {
     max-width: 1600px;
   }
 }
 
-/* Ultra-Wide Screens - maximize coding space while preventing panels from being too wide */
-@media (width >= 1920px) {
-  body.json2html-simulator main {
-    max-width: 1800px;
-    padding: calc(var(--header-height) + var(--spacing-300)) var(--spacing-50) var(--spacing-300) var(--spacing-50);
-  }
-  
-  body.json2html-simulator header.header-wrapper .header .header-nav {
-    max-width: 1800px;
-  }
-  
+/* >= 1500px viewport: the .experimental-ribbon (see blocks/header/header.css) flips
+   into corner mode (rotated -45deg, position fixed top-left, ~220px footprint).
+   Narrow max-width until the viewport is wide enough (>= 2040px) for the natural
+   centered margins to clear the ribbon. min(1600px, 100vw - 440px) leaves >=220px
+   on each side, matching the ribbon's footprint on the left and visual symmetry
+   on the right. Applied to header and footer too so they stay aligned with main. */
+@media (width >= 1500px) {
+  body.json2html-simulator main,
+  body.json2html-simulator header.header-wrapper .header .header-nav,
   body.json2html-simulator footer section {
-    max-width: 1800px;
-  }
-}
-
-/* Tablet */
-@media (width < 900px) {
-  .validation-message-container {
-    width: calc(100% - (2 * var(--spacing-300)));
-    top: calc(var(--header-height) + var(--spacing-200));
-  }
-
-  .workspace {
-    flex-direction: column;
-  }
-
-  .editor-panel {
-    max-width: 100%;
-    border-right: none;
-    border-bottom: var(--border-s) solid var(--color-border);
-    min-height: 300px;
-  }
-
-  .resizer {
-    width: 100%;
-    height: 8px;
-    cursor: row-resize;
-  }
-
-  .resizer-handle {
-    width: 40px;
-    height: 4px;
-  }
-
-  .preview-panel {
-    min-height: 300px;
-  }
-
-  .simulator-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .control-bar {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-}
-
-/* Mobile */
-@media (width < 600px) {
-  .validation-message-container {
-    width: calc(100% - (2 * var(--spacing-100)));
-    top: calc(var(--header-height) + var(--spacing-100));
-  }
-
-  .validation-message {
-    padding: var(--spacing-200);
-  }
-
-  .validation-close {
-    width: 28px;
-    height: 28px;
-    font-size: 24px;
-  }
-
-  .json2html-simulator main {
-    padding: var(--spacing-200);
-  }
-
-  .simulator-header .header-actions {
-    width: 100%;
-  }
-
-  .simulator-header .header-actions .button {
-    flex: 1;
-    justify-content: center;
-  }
-
-  .workspace {
-    min-height: auto;
-  }
-
-  .editor-panel,
-  .preview-panel {
-    min-height: 250px;
-  }
-
-  .preview-header {
-    flex-wrap: wrap;
-  }
-
-  .preview-tabs {
-    order: 1;
-    width: 100%;
-    justify-content: center;
-  }
-
-  .preview-status {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--spacing-100);
-  }
-
-  .preview-status .status-hint {
-    font-size: var(--detail-size-xs);
-  }
-
-  .modal {
-    max-width: 95vw;
-    margin: var(--spacing-200);
-  }
-
-  .examples-grid {
-    grid-template-columns: 1fr;
+    max-width: min(1600px, calc(100vw - 440px));
   }
 }
 
