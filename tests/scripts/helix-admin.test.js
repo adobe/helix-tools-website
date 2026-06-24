@@ -645,6 +645,48 @@ describe('helix-admin.js', () => {
     });
   });
 
+  describe('admin.psi(coords)', () => {
+    it('.get() GETs the psi endpoint', async () => {
+      await admin.psi({ org: 'adobe', site: 'x' }).get('');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/psi/adobe/x/main');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('.get("", { params }) appends url query param', async () => {
+      await admin.psi({ org: 'adobe', site: 'x' })
+        .get('', { params: { url: 'https://main--x--adobe.aem.live/' } });
+      const u = new URL(calls[0].url);
+      assert.equal(u.searchParams.get('url'), 'https://main--x--adobe.aem.live/');
+    });
+
+    it('does not expose .update or .remove', () => {
+      const p = admin.psi({ org: 'adobe', site: 'x' });
+      assert.equal(p.update, undefined);
+      assert.equal(p.remove, undefined);
+    });
+  });
+
+  describe('admin.sidekick(coords)', () => {
+    it('.get("config.json") GETs the sidekick config', async () => {
+      await admin.sidekick({ org: 'adobe', site: 'x' }).get('config.json');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/sidekick/adobe/x/main/config.json');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('does not expose .update or .remove', () => {
+      const s = admin.sidekick({ org: 'adobe', site: 'x' });
+      assert.equal(s.update, undefined);
+      assert.equal(s.remove, undefined);
+    });
+
+    it('exposes .url equal to the base operation URL', () => {
+      assert.equal(
+        admin.sidekick({ org: 'adobe', site: 'x' }).url,
+        'https://admin.hlx.page/sidekick/adobe/x/main',
+      );
+    });
+  });
+
   describe('admin.log(coords)', () => {
     it('.get(path) GETs logs', async () => {
       await admin.log({ org: 'adobe', site: 'x' }).get('');
@@ -660,6 +702,33 @@ describe('helix-admin.js', () => {
 
     it('does not expose .remove', () => {
       assert.equal(admin.log({ org: 'adobe', site: 'x' }).remove, undefined);
+    });
+  });
+
+  describe('admin.medialog(coords)', () => {
+    it('.get("") GETs the medialog endpoint', async () => {
+      await admin.medialog({ org: 'adobe', site: 'x' }).get('');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/medialog/adobe/x/main');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('.get("", { params }) appends pagination params', async () => {
+      await admin.medialog({ org: 'adobe', site: 'x' }).get('', { params: { limit: 1000, nextToken: 'tok' } });
+      assert.ok(calls[0].url.includes('limit=1000'));
+      assert.ok(calls[0].url.includes('nextToken=tok'));
+    });
+
+    it('does not expose .update or .remove', () => {
+      const ml = admin.medialog({ org: 'adobe', site: 'x' });
+      assert.equal(ml.update, undefined);
+      assert.equal(ml.remove, undefined);
+    });
+
+    it('exposes .url equal to the base operation URL', () => {
+      assert.equal(
+        admin.medialog({ org: 'adobe', site: 'x' }).url,
+        'https://admin.hlx.page/medialog/adobe/x/main',
+      );
     });
   });
 

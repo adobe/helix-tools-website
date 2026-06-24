@@ -65,75 +65,17 @@ export function buildFacetInfoSection(dashboardData) {
   ];
 
   sections.push(
-    '\nCORRECT USAGE EXAMPLES:',
-    '',
-    'IMPORTANT: Include relevant metrics/numbers INSIDE the data-facet span so they become part of the clickable link!',
-    'Use <number-format> tags with proper attributes for all numbers (see Number Formatting section).',
-    '',
-    '1. SIMPLE LINK (Main facet only - Checkpoint):',
-    '<p>• <span data-facet="checkpoint" data-facet-value="lcp">LCP events show <number-format title="2.3s ±0.4s" sample-size="1234"><span class="formatted-value">2.3s</span></number-format> average load time</span>.</p>',
-    'URL: ?checkpoint=lcp',
-    '',
-    '2. SIMPLE LINK (Main facet only - URL):',
-    '<p>• <span data-facet="url" data-facet-value="/checkout">The /checkout page has <number-format title="65% ±5%" sample-size="450"><span class="formatted-value">65%</span></number-format> bounce rate</span>.</p>',
-    'URL: ?url=/checkout',
-    '',
-    '3. SIMPLE LINK (Main facet only - UserAgent):',
-    'Tool returns: {"text": "All Mobile", "value": "mobile", "count": 8100}',
-    'CORRECT: <span data-facet="userAgent" data-facet-value="mobile">Mobile users have <number-format sample-size="8100"><span class="formatted-value">8.1k</span></number-format> page views</span>',
-    'WRONG: <span data-facet-value="All Mobile">... (uses "text" field - will NOT work)',
-    'ALWAYS use the "value" field from tool response, NEVER use "text" or "label"',
-    '',
-    '4. NESTED LINK (One nested facet - error.source):',
-    '<p>• <span data-facet="checkpoint" data-facet-value="error" data-nested-facet="error.source" data-nested-value="network">Network errors affect <number-format sample-size="456"><span class="formatted-value">456</span></number-format> users</span>.</p>',
-    'URL: ?checkpoint=error&error.source=network',
-    '',
-    '5. NESTED LINK (One nested facet - error.target directly, without source):',
-    '<p>• <span data-facet="checkpoint" data-facet-value="error" data-nested-facet="error.target" data-nested-value="TypeError: Cannot read property">This TypeError affects <number-format sample-size="89"><span class="formatted-value">89</span></number-format> users</span>.</p>',
-    'URL: ?checkpoint=error&error.target=TypeError: Cannot read property',
-    'You can link directly to error.target WITHOUT specifying error.source!',
-    '',
-    '6. NESTED LINK (Two nested facets - both source and target):',
-    '<p>• <span data-facet="checkpoint" data-facet-value="error" data-nested-facet="error.source" data-nested-value="network" data-nested-facet-2="error.target" data-nested-value-2="TypeError: Cannot read property">This specific TypeError from network: <number-format sample-size="45"><span class="formatted-value">45</span></number-format></span>.</p>',
-    'URL: ?checkpoint=error&error.source=network&error.target=TypeError: Cannot read property',
-    '',
-    '7. NESTED LINK (Click target URL - EXACT URL from tool required):',
-    'Tool returns: {"facet": "click.target", "value": "https://example.com/watch-collection.html", "count": 123}',
-    'CORRECT: <span data-facet="checkpoint" data-facet-value="click" data-nested-facet="click.target" data-nested-value="https://example.com/watch-collection.html">Watch collection clicks</span>',
-    'WRONG: data-nested-value="https://example.com/watches.html" (different URL - will NOT work!)',
-    'For nested facets with URLs: Use the EXACT full URL from tool response',
-    '',
-    'WHEN TO USE NESTED FACETS:',
-    '  • Use one nested facet when you have data for that specific dimension',
-    '  • Use two nested facets when you have data for both and want precise filtering',
-    '  • You can use .target WITHOUT .source - they are independent filters!',
-    '  ONLY create nested links if you called a tool for that nested facet!',
-  );
-
-  sections.push(
-    '\nINVALID EXAMPLES (will NOT work):',
-    '• <span data-facet="browser">Chrome</span> - Wrong facet! Use "userAgent" not "browser"',
-    '• <span data-facet="device">mobile</span> - Wrong facet! Use "userAgent" not "device"',
-    '• <span data-nested-facet="error.source" data-nested-value="network">...</span> - Missing parent checkpoint!',
-    '• <span data-facet="url" data-facet-value="/checkout">The page</span> has 3.2s LCP - Metric outside span!',
-    '',
-    'CRITICAL RULES:',
+    '\nRULES:',
     '  1. MAIN FACET REQUIRED: Every link needs data-facet and data-facet-value',
-    '  2. NESTED FACETS ARE OPTIONAL: Add them when you have specific drill-down data',
-    '  3. NESTED FACETS ARE INDEPENDENT: You can use .source, .target, or both',
-    '  4. ONLY create links for values AND facet names you see in TOOL RESPONSES',
-    '     DO NOT invent nested facet names - verify from "NESTED FACETS" list above',
-    '  5. ALWAYS use the EXACT "value" field from tool response, NEVER "text" or "label"',
-    '     Tool returns: {"text": "All Mobile", "value": "mobile", "count": 8100}',
-    '     USE: data-facet-value="mobile"',
-    '     NEVER: data-facet-value="All Mobile"',
-    '  6. Use EXACT value format from tool - DO NOT paraphrase, shorten, or modify',
-    '  7. SYNTAX REFERENCE:',
-    '     Simple: <span data-facet="NAME" data-facet-value="VALUE">text</span>',
+    '  2. NESTED FACETS ARE INDEPENDENT: .source and .target can be used alone or together',
+    '  3. ONLY use facet names and values from TOOL RESPONSES — never invent them',
+    '  4. ALWAYS use the "value" field from tool response, NEVER "text" or "label"',
+    '  5. Include metrics/numbers INSIDE the span so they become part of the clickable link',
+    '  6. SYNTAX:',
+    '     Simple: <span data-facet="NAME" data-facet-value="VALUE">text with numbers</span>',
     '     One nested: + data-nested-facet="NAME" data-nested-value="VALUE"',
     '     Two nested: + data-nested-facet-2="NAME" data-nested-value-2="VALUE"',
-    '  8. INCLUDE METRICS INSIDE SPANS: Put numbers inside data-facet span to make them clickable',
-    '  9. All links automatically PRESERVE existing url and userAgent filters',
+    '     URL context: + data-url-context="/page-path" (enables error + URL checkboxes together)',
     '',
     '==== END FACET INFO ====\n',
   );
@@ -167,7 +109,7 @@ function normalizeUrl(url) {
 /** Generate dashboard URL with facet params (preserves existing url/userAgent filters) */
 function generateFacetLink(facetName, facetValue, options = {}) {
   const {
-    nestedFacet, nestedValue, nestedFacet2, nestedValue2,
+    nestedFacet, nestedValue, nestedFacet2, nestedValue2, urlContext,
   } = options;
   const currentParams = new URL(window.location.href).searchParams;
   const params = new URLSearchParams();
@@ -200,6 +142,10 @@ function generateFacetLink(facetName, facetValue, options = {}) {
     if (nestedFacet2 && nestedValue2) {
       addParam(nestedFacet2, nestedValue2);
     }
+  }
+
+  if (urlContext) {
+    addParam('url', urlContext);
   }
 
   const { pathname } = window.location;
@@ -328,13 +274,17 @@ export function convertSpansToLinks(htmlContent) {
       return;
     }
 
+    const urlContext = el.getAttribute('data-url-context');
+
     const cv = correctValue(facetName, facetValue);
     const cn = nestedFacet ? correctValue(nestedFacet, nestedValue) : null;
     const cn2 = nestedFacet2 ? correctValue(nestedFacet2, nestedValue2) : null;
+    const cu = urlContext ? normalizeUrl(urlContext) : null;
 
     const allValid = isValidFacetValue(facetName, cv)
       && (!nestedFacet || isValidFacetValue(nestedFacet, cn))
-      && (!nestedFacet2 || isValidFacetValue(nestedFacet2, cn2));
+      && (!nestedFacet2 || isValidFacetValue(nestedFacet2, cn2))
+      && (!cu || isValidFacetValue('url', cu));
 
     if (!allValid) {
       stats.skippedNonExistent.push(`${facetName}="${facetValue}"`);
@@ -344,10 +294,11 @@ export function convertSpansToLinks(htmlContent) {
     let title = `View ${facetName}: ${cv}`;
     if (nestedFacet) title += ` + ${nestedFacet}: ${cn}`;
     if (nestedFacet2) title += ` + ${nestedFacet2}: ${cn2}`;
+    if (cu) title += ` on ${cu}`;
 
     const anchor = Object.assign(doc.createElement('a'), {
       href: generateFacetLink(facetName, cv, {
-        nestedFacet, nestedValue: cn, nestedFacet2, nestedValue2: cn2,
+        nestedFacet, nestedValue: cn, nestedFacet2, nestedValue2: cn2, urlContext: cu,
       }),
       className: 'facet-link',
       innerHTML: el.innerHTML,
