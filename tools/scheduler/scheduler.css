@@ -1,0 +1,192 @@
+.scheduler main > div {
+  margin-bottom: var(--spacing-l);
+}
+
+.scheduler #site-form {
+  display: grid;
+  gap: var(--spacing-s);
+}
+
+.scheduler #site-form .config-field {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-s);
+}
+
+@media (width >= 600px) {
+  .scheduler #site-form .config-field {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-m);
+  }
+}
+
+.scheduler #site-form .button-wrapper {
+  display: flex;
+  gap: var(--spacing-s);
+  align-items: center;
+  margin: 0;
+}
+
+.scheduler [aria-hidden='true'] {
+  display: none;
+}
+
+/* Global .button rule sets display: inline-block, which overrides the UA
+   [hidden] { display: none }. Re-assert it for our scoped buttons. */
+.scheduler .button[hidden] {
+  display: none;
+}
+
+.scheduler #status-container {
+  margin-top: 0;
+}
+
+.scheduler #status-card {
+  padding: var(--spacing-m);
+  border: 1px solid var(--color-border);
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: var(--layer-elevated);
+  display: flex;
+  gap: var(--spacing-m);
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+@media (width >= 600px) {
+  .scheduler #status-card {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.scheduler #status-container[data-kind='warning'] #status-card {
+  border-left-color: var(--red-900);
+}
+
+.scheduler #status-container[data-kind='success'] #status-card {
+  border-left-color: var(--green-900);
+}
+
+.scheduler #status-container[data-kind='info'] #status-card {
+  border-left-color: var(--blue-900);
+}
+
+.scheduler #status-card .status-text {
+  margin: 0;
+  font-size: var(--body-size-s);
+  color: var(--color-text);
+}
+
+.scheduler #status-card .button-wrapper {
+  display: flex;
+  gap: var(--spacing-s);
+  margin: 0;
+  flex-wrap: wrap;
+}
+
+.scheduler #schedule-container h2 {
+  font-size: var(--heading-size-m, 1.25rem);
+  margin: var(--spacing-l) 0 var(--spacing-s);
+}
+
+.scheduler #schedule-list {
+  display: grid;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--layer-elevated);
+}
+
+.scheduler .schedule-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-xs) var(--spacing-s);
+  padding: var(--spacing-s) var(--spacing-m);
+  border-bottom: 1px solid var(--color-border);
+  align-items: center;
+}
+
+.scheduler .schedule-row:last-child {
+  border-bottom: none;
+}
+
+.scheduler .schedule-header {
+  background: var(--layer-depth);
+  font-weight: 600;
+  font-size: var(--body-size-xs, 0.85rem);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--color-font-grey);
+  display: none;
+}
+
+@media (width >= 900px) {
+  .scheduler .schedule-row {
+    grid-template-columns: 90px minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1.2fr) auto;
+  }
+
+  .scheduler .schedule-header {
+    display: grid;
+  }
+}
+
+.scheduler .schedule-row .item-id {
+  word-break: break-all;
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+}
+
+.scheduler .schedule-row .item-id a {
+  color: var(--color-link);
+}
+
+.scheduler .schedule-row .duration {
+  display: inline-block;
+  margin-left: var(--spacing-xs);
+  color: var(--color-font-grey);
+  font-size: var(--body-size-xs, 0.85rem);
+}
+
+.scheduler .schedule-row .schedule-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+  justify-content: flex-start;
+}
+
+@media (width >= 900px) {
+  .scheduler .schedule-row .schedule-actions {
+    justify-content: flex-end;
+  }
+}
+
+.scheduler .confirm-dialog {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: var(--spacing-l);
+  max-width: min(420px, 90vw);
+  background: var(--layer-elevated);
+  color: var(--color-text);
+}
+
+.scheduler .confirm-dialog::backdrop {
+  background: rgb(0 0 0 / 40%);
+}
+
+.scheduler .confirm-dialog h3 {
+  margin: 0 0 var(--spacing-s);
+  font-size: var(--heading-size-s, 1.1rem);
+}
+
+.scheduler .confirm-dialog p {
+  margin: 0 0 var(--spacing-m);
+  font-size: var(--body-size-s);
+  overflow-wrap: anywhere;
+}
+
+.scheduler .confirm-actions {
+  display: flex;
+  gap: var(--spacing-s);
+  justify-content: flex-end;
+}

@@ -1,0 +1,94 @@
+.schedule {
+  margin: 0;
+  font-size: var(--body-size-s);
+}
+
+.schedule main {
+  padding: var(--spacing-m);
+}
+
+.schedule #schedule-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+.schedule h2 {
+  margin: 0;
+  font-size: var(--heading-size-s, 1.1rem);
+}
+
+.schedule .target-path,
+.schedule .target-site {
+  margin: 0;
+  display: flex;
+  gap: var(--spacing-xs);
+  align-items: baseline;
+}
+
+.schedule .label {
+  font-weight: 600;
+  color: var(--color-font-grey);
+  min-width: 3em;
+  font-size: var(--body-size-xs, 0.8rem);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.schedule .value {
+  word-break: break-all;
+  font-family: var(--code-font-family);
+}
+
+.schedule #schedule-time-label {
+  display: block;
+  margin-top: var(--spacing-xs);
+  font-weight: 600;
+}
+
+.schedule .timezone {
+  font-weight: 400;
+  color: var(--color-font-grey);
+  margin-left: var(--spacing-xs);
+}
+
+.schedule #schedule-time {
+  width: 100%;
+  margin-top: var(--spacing-xs);
+  padding: 0.4em 0.6em;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--layer-elevated);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.schedule .status-text {
+  margin: 0;
+  min-height: 1.2em;
+  font-style: italic;
+  font-size: var(--body-size-xs, 0.85rem);
+  color: var(--color-font-grey);
+}
+
+.schedule .status-text[data-kind='warning'] {
+  color: var(--red-900);
+  font-style: normal;
+}
+
+.schedule .status-text[data-kind='success'] {
+  color: var(--green-900);
+  font-style: normal;
+}
+
+.schedule .button-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0;
+}
+
+.schedule #missing-context p {
+  margin: 0;
+  color: var(--color-font-grey);
+}
