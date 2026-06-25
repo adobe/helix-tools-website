@@ -71,9 +71,15 @@ async function clearSnapshotScheduledPublish(org, site, snapshotId) {
   } catch {
     return { ok: false, error: 'Could not parse snapshot manifest.', resp: getRes };
   }
-  if (manifest?.metadata) delete manifest.metadata.scheduledPublish;
+  const updated = {
+    title: manifest.title,
+    description: manifest.description,
+    metadata: { ...manifest.metadata },
+    locked: manifest.locked,
+  };
+  delete updated.metadata.scheduledPublish;
   const postRes = await executeAdminRequest(
-    () => scheduleAdmin.snapshot({ org, site }).update(`/${name}`, JSON.stringify(manifest)),
+    () => scheduleAdmin.snapshot({ org, site }).update(`/${name}`, JSON.stringify(updated)),
     { org, site },
   );
   if (!postRes) return { ok: false, error: 'Sign-in required to continue.', resp: null };
