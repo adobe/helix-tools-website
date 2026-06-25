@@ -31,14 +31,9 @@ const DEPS = [
   { pkg: 'diff', out: 'diff/diff.js' },
   { pkg: 'yaml', out: 'yaml/yaml.js' },
 
-  // Prism core + language components as separate bundles.
-  // Language component files reference Prism as a bare global (no require/import),
-  // so esbuild leaves that reference intact — same as how the CDN scripts worked.
-  { pkg: 'prismjs', out: 'prismjs/prismjs.js' },
-  { pkg: 'prismjs/components/prism-json.js', out: 'prismjs/prism-json.js' },
-  { pkg: 'prismjs/components/prism-markup.js', out: 'prismjs/prism-markup.js' },
-  { pkg: 'prismjs/components/prism-markup-templating.js', out: 'prismjs/prism-markup-templating.js' },
-  { pkg: 'prismjs/components/prism-handlebars.js', out: 'prismjs/prism-handlebars.js' },
+  // CodeMirror 6: bundle the editor utility module so all `@codemirror/*`
+  // packages share a single runtime instance (which CodeMirror requires).
+  { pkg: './utils/codemirror/codemirror.js', out: 'codemirror/codemirror.js' },
 
   // Chart.js must be listed before its plugins so the output file exists when
   // the plugins are loaded. Plugins declare chart.js as external so all bundles

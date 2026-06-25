@@ -554,120 +554,78 @@ body.json2html-simulator main .workspace > .default-content-wrapper {
 .editor-wrapper {
   flex: 1 1 auto;
   position: relative;
-  overflow: auto;
+  overflow: hidden;
   min-height: 0;
   min-width: 0; /* Prevent content from affecting flex size */
 }
 
-/* Line numbers gutter - positioned absolutely on the left, synced to textarea scroll via JS */
-body.json2html-simulator .line-numbers {
+/* CodeMirror host — fills its panel; the editor instance handles its own
+   scrolling, line numbers, gutters, and lint markers. */
+.code-editor-host {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 36px;
-  height: 100%;
-  padding: var(--spacing-300) var(--spacing-75) var(--spacing-300) var(--spacing-50);
-  background: light-dark(var(--gray-200), var(--gray-900));
-  border-right: var(--border-s) solid var(--color-border);
-  font-family: var(--code-font-family);
-  font-size: var(--detail-size-m);
-  line-height: var(--line-height-l);
-  color: light-dark(var(--gray-500), var(--gray-600));
-  text-align: right;
-  user-select: none;
-  overflow: hidden; /* scroll position synced via JS */
-  white-space: pre;
-  box-sizing: border-box;
-  z-index: 2;
-  pointer-events: none;
-}
-
-/* Shared styles for textarea and highlight overlay */
-.code-editor,
-.code-highlight {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: var(--spacing-300) var(--spacing-300) var(--spacing-300) calc(36px + var(--spacing-200));
-  border: none;
-  border-radius: 0;
-  box-sizing: border-box;
-  font-family: var(--code-font-family);
-  font-size: var(--detail-size-m);
-  line-height: var(--line-height-l);
-  letter-spacing: normal;
-  white-space: pre;
-  tab-size: 2;
-}
-
-/* Error line highlight — semi-transparent band behind the error line, positioned via JS */
-body.json2html-simulator .error-line-highlight {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 0;
-  background: light-dark(rgb(220 50 50 / 10%), rgb(255 80 80 / 14%));
-  pointer-events: none;
-  z-index: 1;
-  display: none;
-}
-
-/* Textarea - transparent text, visible caret, on top */
-.code-editor {
-  background: transparent;
-  color: transparent;
-  caret-color: var(--color-text);
-  z-index: 1;
-  resize: none;
-  outline: none;
-  overflow: auto;
-  -webkit-text-fill-color: transparent;
-}
-
-.code-editor:focus,
-.code-editor:active {
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-}
-
-.code-editor::placeholder {
-  color: var(--color-font-grey);
-  -webkit-text-fill-color: var(--color-font-grey);
-}
-
-/* Highlight overlay - visible code, behind textarea */
-.code-highlight {
-  z-index: 0;
+  inset: 0;
   background: light-dark(var(--gray-100), var(--gray-800));
-  color: var(--color-text);
-  pointer-events: none;
-  overflow: auto;
-  scrollbar-width: none; /* Firefox */
 }
 
-.code-highlight::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Edge */
+/* CodeMirror sets up the editor with classes like cm-editor / cm-content;
+   these are framework conventions, not project-style class names. */
+/* stylelint-disable selector-class-pattern */
+.code-editor-host .cm-editor {
+  height: 100%;
+  font-family: var(--code-font-family);
+  font-size: var(--detail-size-m);
+  line-height: var(--line-height-l);
+  background: light-dark(var(--gray-100), var(--gray-800));
 }
 
-/* stylelint-disable-next-line no-descending-specificity */
-.code-highlight code {
-  display: block;
-  margin: 0;
-  padding: 0;
-  border: none;
+.code-editor-host .cm-scroller {
   font-family: inherit;
-  font-size: inherit;
-  line-height: inherit;
-  letter-spacing: inherit;
-  white-space: inherit;
-  overflow-wrap: inherit;
-  tab-size: inherit;
-  background: transparent;
-  color: inherit;
 }
+
+.code-editor-host .cm-gutters {
+  background: light-dark(var(--gray-200), var(--gray-900));
+  color: light-dark(var(--gray-500), var(--gray-600));
+  border-right: var(--border-s) solid var(--color-border);
+}
+
+.code-editor-host .cm-activeLineGutter,
+.code-editor-host .cm-activeLine {
+  background: light-dark(rgb(0 0 0 / 4%), rgb(255 255 255 / 4%));
+}
+
+.code-editor-host .cm-cursor {
+  border-left-color: var(--color-text);
+}
+
+.code-editor-host .cm-foldPlaceholder {
+  background: light-dark(var(--gray-200), var(--gray-700));
+  color: var(--color-text);
+  border: var(--border-s) solid var(--color-border);
+  padding: 0 6px;
+}
+
+.code-editor-host .cm-tooltip {
+  background: var(--layer-elevated);
+  color: var(--color-text);
+  border: var(--border-s) solid var(--color-border);
+}
+
+.code-editor-host .cm-diagnostic-error {
+  border-left: 3px solid light-dark(#c00, #ff7b72);
+}
+
+.code-editor-host .cm-diagnostic-warning {
+  border-left: 3px solid light-dark(#c80, #ffd866);
+}
+
+.code-editor-host .cm-lintRange-error {
+  background: light-dark(rgb(220 50 50 / 18%), rgb(255 80 80 / 22%));
+}
+
+.code-editor-host .cm-lintRange-warning {
+  background: light-dark(rgb(200 150 0 / 18%), rgb(255 200 50 / 22%));
+}
+/* stylelint-enable selector-class-pattern */
 
 .editor-status {
   display: flex;
@@ -927,46 +885,10 @@ body.json2html-simulator main .resizer-horizontal {
   background: var(--layer-elevated);
 }
 
-.source-code {
-  margin: 0;
-  padding: var(--spacing-300);
-  padding-left: calc(36px + var(--spacing-300));
-  width: 100%;
-  height: 100%;
-  overflow: auto;
-  font-family: var(--code-font-family);
-  font-size: var(--detail-size-m);
-  line-height: var(--line-height-l);
-  background: light-dark(var(--gray-100), var(--gray-800));
-  color: var(--color-text);
-  white-space: pre;
-  border-radius: 0; /* Override global pre styling */
-  box-sizing: border-box;
-}
-
-/* Override scrollbar styling to match source-code background */
-.source-code::-webkit-scrollbar {
-  background: light-dark(var(--gray-100), var(--gray-800)); /* Set scrollbar container background */
-}
-
-.source-code::-webkit-scrollbar-track {
-  background: light-dark(var(--gray-100), var(--gray-800));
-}
-
-.source-code::-webkit-scrollbar-thumb {
-  background-color: light-dark(var(--gray-500), var(--gray-500));
-  border: 8px solid light-dark(var(--gray-100), var(--gray-800)); /* Match source-code background instead of layer-depth */
-  border-radius: 12px;
-}
-
-.source-code::-webkit-scrollbar-thumb:hover {
-  background-color: light-dark(var(--gray-600), var(--gray-400));
-}
-
-.source-code code.language-html {
-  font-size: inherit;
-  color: var(--color-text);
-  background-color: transparent;
+/* Source-view CodeMirror viewer fills the preview area. */
+.source-editor-host {
+  position: absolute;
+  inset: 0;
 }
 
 /* stylelint-disable-next-line no-descending-specificity */
@@ -1500,34 +1422,6 @@ body.json2html-simulator .hidden {
   clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
-}
-
-/* ========================================
-   HTML VALIDATION — SOURCE ERROR HIGHLIGHTS
-   ======================================== */
-
-body.json2html-simulator .source-error-highlights {
-  position: absolute;
-  inset: 0;
-  left: 36px;
-  pointer-events: none;
-  z-index: 1;
-  overflow: hidden;
-}
-
-body.json2html-simulator .source-highlight {
-  position: absolute;
-  left: 0;
-  right: 0;
-  pointer-events: none;
-}
-
-body.json2html-simulator .source-highlight-error {
-  background: light-dark(rgb(220 50 50 / 10%), rgb(255 80 80 / 14%));
-}
-
-body.json2html-simulator .source-highlight-warning {
-  background: light-dark(rgb(200 150 0 / 10%), rgb(255 200 50 / 12%));
 }
 
 /* ========================================
