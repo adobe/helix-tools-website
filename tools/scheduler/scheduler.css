@@ -16,7 +16,7 @@
 @media (width >= 600px) {
   .scheduler #site-form .config-field {
     grid-template-columns: 1fr 1fr;
-    gap: var(--spacing-m);
+    gap: var(--spacing-l);
   }
 }
 
