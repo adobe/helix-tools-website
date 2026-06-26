@@ -140,6 +140,24 @@ export function createUserRow(user = {}, defaultRole = 'admin') {
   emailField.append(emailInput);
 
   const pills = createRolePills(user.roles && user.roles.length ? user.roles : [defaultRole]);
+  pills.setAttribute('aria-hidden', 'true');
+
+  // collapse the role pills behind a toggle that summarizes the current roles
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'bot-info-roles-toggle';
+  toggle.setAttribute('aria-expanded', 'false');
+  const updateLabel = () => {
+    const selected = [...pills.querySelectorAll('input:checked')].map((c) => c.value);
+    toggle.textContent = selected.length ? selected.join(', ') : 'Set roles…';
+  };
+  updateLabel();
+  pills.addEventListener('change', updateLabel);
+  toggle.addEventListener('click', () => {
+    const expanded = pills.getAttribute('aria-hidden') === 'false';
+    pills.setAttribute('aria-hidden', String(expanded));
+    toggle.setAttribute('aria-expanded', String(!expanded));
+  });
 
   const removeBtn = document.createElement('button');
   removeBtn.type = 'button';
@@ -149,7 +167,7 @@ export function createUserRow(user = {}, defaultRole = 'admin') {
   removeBtn.textContent = '✕';
   removeBtn.addEventListener('click', () => row.remove());
 
-  row.append(emailField, pills, removeBtn);
+  row.append(emailField, toggle, removeBtn, pills);
   return row;
 }
 
