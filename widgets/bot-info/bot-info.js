@@ -41,6 +41,12 @@ function captureToken() {
   };
 }
 
+/** Drop the stored setup token and key id once setup is complete. */
+function clearStoredToken() {
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(TOKEN_ID_KEY);
+}
+
 /** Admin client that authenticates every request with the setup token. */
 function tokenClient(token) {
   return token
@@ -410,8 +416,10 @@ export default async function decorate(widget) {
       logMessage(consoleBlock, 'info', ['setup', 'Saving configuration…']);
       try {
         const summary = await submitConfig(api, widget, config, ctx, consoleBlock);
-        // revoke the one-time setup key now that the config is saved
+        // revoke the one-time setup key now that the config is saved, then
+        // drop the stored credentials
         await deleteApiKey(api, ctx, tokenId, consoleBlock);
+        clearStoredToken();
         logMessage(consoleBlock, 'success', ['setup', 'Setup complete']);
         showConfirmation(widget, ctx, summary);
       } catch (error) {
