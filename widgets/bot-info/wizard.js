@@ -121,9 +121,10 @@ function createRolePills(selectedRoles = []) {
  * user id, when present, is stashed on the row so the diff can target it.
  *
  * @param {{email?: string, id?: string, roles?: string[]}} user
+ * @param {string} [defaultRole] role pre-selected when the user has none
  * @returns {HTMLElement}
  */
-export function createUserRow(user = {}) {
+export function createUserRow(user = {}, defaultRole = 'author') {
   const row = document.createElement('div');
   row.className = 'bot-info-user-row';
   if (user.id) row.dataset.userId = user.id;
@@ -138,7 +139,7 @@ export function createUserRow(user = {}) {
   emailInput.value = user.email || '';
   emailField.append(emailInput);
 
-  const pills = createRolePills(user.roles && user.roles.length ? user.roles : ['admin']);
+  const pills = createRolePills(user.roles && user.roles.length ? user.roles : [defaultRole]);
 
   const removeBtn = document.createElement('button');
   removeBtn.type = 'button';

@@ -11,6 +11,8 @@ import {
 } from './wizard.js';
 
 const EMPTY_ACCESS = { admin: { role: {} } };
+// Namespaced so it can't collide with other tools' session storage on the origin.
+const TOKEN_KEY = 'bot-info-setup-token';
 
 /**
  * Pull the one-time token out of the URL fragment (if present), stash it in
@@ -24,9 +26,9 @@ function captureToken() {
     const url = new URL(window.location.href);
     url.hash = hashParams.toString();
     window.history.replaceState(null, '', url);
-    sessionStorage.setItem('token', token);
+    sessionStorage.setItem(TOKEN_KEY, token);
   }
-  return sessionStorage.getItem('token');
+  return sessionStorage.getItem(TOKEN_KEY);
 }
 
 /** Admin client that authenticates every request with the setup token. */
@@ -115,11 +117,14 @@ function renderForm(widget, config, { user, url, newOrg }) {
     : [{ email: user, roles: ['admin'] }].filter((u) => u.email);
   seededSiteUsers.forEach((u) => siteList.append(createUserRow(u)));
 
-  // wire up "add user/administrator" buttons
+  // wire up "add user/administrator" buttons. New org users default to the
+  // least-privileged 'author' role; new site rows default to 'admin'.
   widget.querySelectorAll('.bot-info-add-user').forEach((btn) => {
-    const list = btn.dataset.scope === 'org' ? orgList : siteList;
+    const isOrg = btn.dataset.scope === 'org';
+    const list = isOrg ? orgList : siteList;
+    const defaultRole = isOrg ? 'author' : 'admin';
     btn.addEventListener('click', () => {
-      const row = createUserRow();
+      const row = createUserRow({}, defaultRole);
       list.append(row);
       row.querySelector('.bot-info-email').focus();
     });
@@ -235,6 +240,7 @@ function populateSummary(widget, { org, site }, summary) {
   if (contentSource) {
     const link = document.createElement('a');
     link.target = '_blank';
+    link.rel = 'noopener noreferrer';
     link.href = editUrl;
     link.textContent = editUrl;
     contentSource.textContent = '';
