@@ -75,9 +75,10 @@ describe('bot-info:wizard.js', () => {
       assert.equal(buildContentSource('https://x.example.com', 'byom', '.html').suffix, '.html');
     });
 
-    it('ignores the suffix for non-suffix kinds', () => {
+    it('never sets a suffix for DA, SharePoint or Google Drive', () => {
       assert.equal(buildContentSource('https://content.da.live/o/s', 'da', '.html').suffix, undefined);
       assert.equal(buildContentSource('https://x.sharepoint.com', 'onedrive', '.html').suffix, undefined);
+      assert.equal(buildContentSource('https://drive.google.com/drive/folders/x', 'google', '.html').suffix, undefined);
     });
 
     it('omits the suffix when none is provided', () => {

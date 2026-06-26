@@ -155,7 +155,8 @@
 .bot-info-email,
 .bot-info-da-url,
 .bot-info-content-url,
-.bot-info-content-type {
+.bot-info-content-type,
+.bot-info-content-suffix {
   width: 100%;
   padding: 8px 10px;
   border: 1px solid var(--color-border);
@@ -163,6 +164,10 @@
   background-color: var(--color-background);
   color: var(--color-text);
   font-size: inherit;
+}
+
+.bot-info-content-suffix {
+  max-width: 8em;
 }
 
 .bot-info-da-url[readonly] {

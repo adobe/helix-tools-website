@@ -162,6 +162,14 @@ function renderForm(widget, config, {
   // suffix only applies to suffix-capable kinds (AEM Authoring, BYOM)
   const updateSuffix = () => setHidden(suffixField, !kindSupportsSuffix(typeSelect.value));
 
+  // reset the suffix to each kind's default when the type changes: BYOM brings
+  // its own markup (no default), AEM Authoring defaults to .html
+  const applySuffixDefault = () => {
+    const kind = typeSelect.value;
+    if (kind === 'byom') suffixInput.value = '';
+    else if (kind === 'aem' && !suffixInput.value) suffixInput.value = '.html';
+  };
+
   const setAdvanced = (on) => {
     setHidden(advanced, !on);
     setHidden(daDefault, on);
@@ -183,11 +191,15 @@ function renderForm(widget, config, {
   updateSuffix();
 
   advancedCheck.addEventListener('change', () => setAdvanced(advancedCheck.checked));
-  typeSelect.addEventListener('change', updateSuffix);
+  typeSelect.addEventListener('change', () => {
+    applySuffixDefault();
+    updateSuffix();
+  });
   // keep the type in sync as the user edits the URL
   urlInput.addEventListener('change', () => {
     const kind = detectContentSourceKind(urlInput.value.trim());
     if (kind !== 'da') typeSelect.value = kind;
+    applySuffixDefault();
     updateSuffix();
   });
 }
