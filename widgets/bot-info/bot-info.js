@@ -233,8 +233,25 @@ async function submitConfig(api, widget, config, { org, site, newOrg }, consoleB
   };
 }
 
+/**
+ * Point the "create your content" link at the DA editor for DA sources,
+ * otherwise straight at the content source URL.
+ */
+function setCreateContentLink(widget, org, site, kind, contentUrl) {
+  const editUrl = kind === 'da' ? `https://da.live/#/${org}/${site}` : contentUrl;
+  const contentSource = widget.querySelector('.bot-info-content-source');
+  if (!contentSource) return;
+  const link = document.createElement('a');
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.href = editUrl;
+  link.textContent = editUrl;
+  contentSource.textContent = '';
+  contentSource.append(link);
+}
+
 /** Render the "what we did" list from the saved changes. */
-function populateSummary(widget, { org, site }, summary) {
+function renderDidList(widget, { org, site }, summary) {
   const did = widget.querySelector('.bot-info-did');
   did.textContent = '';
 
@@ -263,26 +280,36 @@ function populateSummary(widget, { org, site }, summary) {
     addUsers(`Configured ${n} organization user${n === 1 ? '' : 's'}`, summary.orgUsers);
   }
   const sn = summary.siteUsers.length;
-  addUsers(`Configured ${sn} site administrator${sn === 1 ? '' : 's'}`, summary.siteUsers);
+  addUsers(`Configured ${sn} site user${sn === 1 ? '' : 's'}`, summary.siteUsers);
   const kind = CONTENT_SOURCE_KINDS.find((k) => k.value === summary.contentKind);
   addItem(`Set the content source to ${summary.contentUrl}${kind ? ` (${kind.label})` : ''}.`);
   addItem('Started AEM Code Sync for your GitHub repository.');
+}
 
-  // point the "create your content" link at the DA editor for DA sources,
-  // otherwise straight at the content source URL the user provided.
-  const editUrl = summary.contentKind === 'da'
-    ? `https://da.live/#/${org}/${site}`
-    : summary.contentUrl;
-  const contentSource = widget.querySelector('.bot-info-content-source');
-  if (contentSource) {
-    const link = document.createElement('a');
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    link.href = editUrl;
-    link.textContent = editUrl;
-    contentSource.textContent = '';
-    contentSource.append(link);
+/**
+ * Reveal the confirmation screen. With a `summary` it reflects the saved
+ * changes; without one (e.g. the user skipped setup after a load error) it
+ * shows an adapted screen with just the next-steps and DA defaults.
+ */
+function showConfirmation(widget, ctx, summary) {
+  const { org, site } = ctx;
+  const saved = !!summary;
+
+  setHidden(widget.querySelector('.bot-info-welcome-saved'), !saved);
+  setHidden(widget.querySelector('.bot-info-welcome-unsaved'), saved);
+  setHidden(widget.querySelector('.bot-info-did-section'), !saved);
+
+  if (saved) {
+    renderDidList(widget, ctx, summary);
+    setCreateContentLink(widget, org, site, summary.contentKind, summary.contentUrl);
+  } else {
+    setCreateContentLink(widget, org, site, 'da', `https://content.da.live/${org}/${site}`);
   }
+
+  setHidden(widget.querySelector('.bot-info-loading'), true);
+  setHidden(widget.querySelector('.bot-info-wizard'), true);
+  setHidden(widget.querySelector('.bot-info-alert'), true);
+  setHidden(widget.querySelector('.bot-info-success'), false);
 }
 
 export default async function decorate(widget) {
@@ -320,6 +347,11 @@ export default async function decorate(widget) {
 
     populateStaticFields(widget, ctx);
 
+    // let the user skip to the next-steps screen if config can't be loaded
+    widget.querySelector('.bot-info-continue')?.addEventListener('click', () => {
+      showConfirmation(widget, ctx, null);
+    });
+
     const api = tokenClient(token);
     logMessage(consoleBlock, 'info', ['setup', `Loading configuration for ${ctx.org}/${ctx.site}…`]);
     const config = await loadConfig(api, ctx, consoleBlock);
@@ -337,10 +369,8 @@ export default async function decorate(widget) {
       logMessage(consoleBlock, 'info', ['setup', 'Saving configuration…']);
       try {
         const summary = await submitConfig(api, widget, config, ctx, consoleBlock);
-        populateSummary(widget, ctx, summary);
         logMessage(consoleBlock, 'success', ['setup', 'Setup complete']);
-        setHidden(form, true);
-        setHidden(success, false);
+        showConfirmation(widget, ctx, summary);
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error(error);

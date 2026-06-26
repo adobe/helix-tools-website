@@ -61,11 +61,13 @@
 <div class="bot-info-success" aria-hidden="true">
     <p class="bot-info-welcome">
         <strong>Your site is ready.</strong><br>
-        We've saved the setup for <span class="bot-info-org">{{org}}</span> / <span class="bot-info-site">{{site}}</span>.<br>
+        <span class="bot-info-welcome-saved">We've saved the setup for <span class="bot-info-org">{{org}}</span> / <span class="bot-info-site">{{site}}</span>.</span><span class="bot-info-welcome-unsaved" aria-hidden="true">AEM is set up for <span class="bot-info-org">{{org}}</span> / <span class="bot-info-site">{{site}}</span>.</span><br>
         If you have any feedback, please let us know, either on Slack, Teams or <a target="_blank" rel="noopener noreferrer" href="https://discord.com/invite/aem-live">Discord</a>.<br>
     </p>
-    <h2>What we did:</h2>
-    <ul class="bot-info-did"></ul>
+    <div class="bot-info-did-section">
+        <h2>What we did:</h2>
+        <ul class="bot-info-did"></ul>
+    </div>
 
     <h2>What's next:</h2>
 
@@ -78,8 +80,9 @@
 </div>
 
 <div class="bot-info-alert" aria-hidden="true">
-    Something went wrong. Please share this page URL and a console screenshot with the Adobe Experience Manager team.<br>
-    We made recent changes to the setup process, and are interested in any feedback and reports of failures.
+    <p>Something went wrong while loading your configuration. Please share this page URL and a console screenshot with the Adobe Experience Manager team.<br>
+    We made recent changes to the setup process, and are interested in any feedback and reports of failures.</p>
+    <button type="button" class="button bot-info-continue">Continue to your site →</button>
 </div>
 
 <div class="console" aria-hidden="true"></div>
