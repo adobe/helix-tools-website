@@ -1,5 +1,6 @@
-import { toClassName } from '../../scripts/aem.js';
+import { toClassName, loadCSS } from '../../scripts/aem.js';
 import admin from '../../scripts/helix-admin.js';
+import decorateConsole, { logResponse, logMessage } from '../../blocks/console/console.js';
 import { parseUsersFromAccessConfig, buildAccessConfig } from '../../tools/user-admin/utils.js';
 import {
   CONTENT_SOURCE_KINDS,
@@ -38,6 +39,15 @@ function tokenClient(token) {
     : admin;
 }
 
+/** Await an admin response and log the request/result to the console block. */
+async function logged(consoleBlock, promise) {
+  const res = await promise;
+  if (res && consoleBlock) {
+    logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
+  }
+  return res;
+}
+
 /** Resolve an admin response, throwing a readable error on failure. */
 async function must(promise, label) {
   const res = await promise;
@@ -74,11 +84,11 @@ function populateStaticFields(widget, { org, site }) {
 }
 
 /** Load org users (new orgs only), site access, and site config in parallel. */
-async function loadConfig(api, { org, site, newOrg }) {
+async function loadConfig(api, { org, site, newOrg }, consoleBlock) {
   const [orgRes, accessRes, siteRes] = await Promise.all([
-    newOrg ? api.config({ org }).read() : Promise.resolve(null),
-    api.config({ org, site }).select('access.json').read(),
-    api.config({ org, site }).read(),
+    newOrg ? logged(consoleBlock, api.config({ org }).read()) : Promise.resolve(null),
+    logged(consoleBlock, api.config({ org, site }).select('access.json').read()),
+    logged(consoleBlock, api.config({ org, site }).read()),
   ]);
 
   if (newOrg && orgRes && !orgRes.ok && orgRes.status !== 404) {
@@ -149,7 +159,7 @@ function renderForm(widget, config, { user, url, newOrg }) {
  * Persist all gathered changes back to the admin API. Returns a summary of what
  * was saved so the confirmation screen can reflect the actual changes.
  */
-async function submitConfig(api, widget, config, { org, site, newOrg }) {
+async function submitConfig(api, widget, config, { org, site, newOrg }, consoleBlock) {
   let orgUsers = null;
   if (newOrg) {
     const orgList = widget.querySelector('.bot-info-user-list[data-scope="org"]');
@@ -161,15 +171,15 @@ async function submitConfig(api, widget, config, { org, site, newOrg }) {
     // run sequentially so a failure stops the rest with a clear error
     await toRemove.reduce(async (prev, u) => {
       await prev;
-      await must(api.config({ org }).select(`users/${u.id}.json`).remove(), `Removing ${u.email}`);
+      await must(logged(consoleBlock, api.config({ org }).select(`users/${u.id}.json`).remove()), `Removing ${u.email}`);
     }, Promise.resolve());
     await toUpdate.reduce(async (prev, u) => {
       await prev;
-      await must(api.config({ org }).select(`users/${u.id}.json`).update(JSON.stringify(u)), `Updating ${u.email}`);
+      await must(logged(consoleBlock, api.config({ org }).select(`users/${u.id}.json`).update(JSON.stringify(u))), `Updating ${u.email}`);
     }, Promise.resolve());
     await toAdd.reduce(async (prev, u) => {
       await prev;
-      await must(api.config({ org }).select('users.json').update(JSON.stringify(u)), `Adding ${u.email}`);
+      await must(logged(consoleBlock, api.config({ org }).select('users.json').update(JSON.stringify(u))), `Adding ${u.email}`);
     }, Promise.resolve());
   }
 
@@ -177,7 +187,7 @@ async function submitConfig(api, widget, config, { org, site, newOrg }) {
   const siteUsers = collectUsers(siteList);
   const access = buildAccessConfig(config.access, siteUsers);
   await must(
-    api.config({ org, site }).select('access.json').update(JSON.stringify(access)),
+    logged(consoleBlock, api.config({ org, site }).select('access.json').update(JSON.stringify(access))),
     'Saving site administrators',
   );
 
@@ -187,7 +197,7 @@ async function submitConfig(api, widget, config, { org, site, newOrg }) {
   const source = buildContentSource(contentUrl, kind);
   const siteConfig = { ...config.siteConfig, content: { ...config.siteConfig.content, source } };
   await must(
-    api.config({ org, site }).update(JSON.stringify(siteConfig)),
+    logged(consoleBlock, api.config({ org, site }).update(JSON.stringify(siteConfig))),
     'Saving content source',
   );
 
@@ -255,9 +265,15 @@ export default async function decorate(widget) {
   const alert = widget.querySelector('.bot-info-alert');
   const errorEl = widget.querySelector('.bot-info-error');
 
+  // build the request log console (mirrors the other admin tools)
+  const consoleBlock = widget.querySelector('.console');
+  loadCSS(`${window.hlx.codeBasePath}/blocks/console/console.css`);
+  decorateConsole(consoleBlock);
+
   const fail = (error) => {
     // eslint-disable-next-line no-console
     console.error(error);
+    if (consoleBlock) logMessage(consoleBlock, 'error', ['setup', error.message]);
     setHidden(loading, true);
     setHidden(form, true);
     setHidden(success, true);
@@ -278,7 +294,8 @@ export default async function decorate(widget) {
     populateStaticFields(widget, ctx);
 
     const api = tokenClient(token);
-    const config = await loadConfig(api, ctx);
+    logMessage(consoleBlock, 'info', ['setup', `Loading configuration for ${ctx.org}/${ctx.site}…`]);
+    const config = await loadConfig(api, ctx, consoleBlock);
     renderForm(widget, config, ctx);
 
     setHidden(loading, true);
@@ -290,14 +307,17 @@ export default async function decorate(widget) {
       setHidden(errorEl, true);
       submitBtn.disabled = true;
       submitBtn.textContent = 'Saving…';
+      logMessage(consoleBlock, 'info', ['setup', 'Saving configuration…']);
       try {
-        const summary = await submitConfig(api, widget, config, ctx);
+        const summary = await submitConfig(api, widget, config, ctx, consoleBlock);
         populateSummary(widget, ctx, summary);
+        logMessage(consoleBlock, 'success', ['setup', 'Setup complete']);
         setHidden(form, true);
         setHidden(success, false);
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error(error);
+        logMessage(consoleBlock, 'error', ['setup', error.message]);
         errorEl.textContent = error.message;
         setHidden(errorEl, false);
         submitBtn.disabled = false;
