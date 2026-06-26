@@ -234,8 +234,11 @@ function populateSummary(widget, { org, site }, summary) {
   addItem(`Set the content source to ${summary.contentUrl}${kind ? ` (${kind.label})` : ''}.`);
   addItem('Started AEM Code Sync for your GitHub repository.');
 
-  // point the "create your content" link at the DA editor for this site
-  const editUrl = `https://da.live/#/${org}/${site}`;
+  // point the "create your content" link at the DA editor for DA sources,
+  // otherwise straight at the content source URL the user provided.
+  const editUrl = summary.contentKind === 'da'
+    ? `https://da.live/#/${org}/${site}`
+    : summary.contentUrl;
   const contentSource = widget.querySelector('.bot-info-content-source');
   if (contentSource) {
     const link = document.createElement('a');
