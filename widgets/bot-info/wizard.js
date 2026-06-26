@@ -25,11 +25,6 @@ export const CONTENT_SOURCE_KINDS = [
   },
 ];
 
-/** Whether a content-source kind takes a path suffix (e.g. AEM, BYOM). */
-export function kindSupportsSuffix(kind) {
-  return !!CONTENT_SOURCE_KINDS.find((k) => k.value === kind)?.suffix;
-}
-
 /**
  * Guess the UI content-source kind from a content URL. Mirrors the detection in
  * site-admin's `buildSiteConfig`/`getContentSourceType`.

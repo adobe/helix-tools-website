@@ -4,7 +4,6 @@ import decorateConsole, { logResponse, logMessage } from '../../blocks/console/c
 import { parseUsersFromAccessConfig, buildAccessConfig } from '../../tools/user-admin/utils.js';
 import {
   CONTENT_SOURCE_KINDS,
-  kindSupportsSuffix,
   detectContentSourceKind,
   buildContentSource,
   diffOrgUsers,
@@ -159,8 +158,9 @@ function renderForm(widget, config, {
   const suffixField = widget.querySelector('.bot-info-suffix-field');
   const suffixInput = widget.querySelector('.bot-info-content-suffix');
 
-  // suffix only applies to suffix-capable kinds (AEM Authoring, BYOM)
-  const updateSuffix = () => setHidden(suffixField, !kindSupportsSuffix(typeSelect.value));
+  // only BYOM exposes the suffix field; AEM Authoring keeps it hidden but
+  // still submits its .html default (see applySuffixDefault)
+  const updateSuffix = () => setHidden(suffixField, typeSelect.value !== 'byom');
 
   // reset the suffix to each kind's default when the type changes: BYOM brings
   // its own markup (no default), AEM Authoring defaults to .html
