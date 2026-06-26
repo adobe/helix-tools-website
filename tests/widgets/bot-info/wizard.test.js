@@ -69,6 +69,20 @@ describe('bot-info:wizard.js', () => {
     it('defaults to markup for an unknown kind', () => {
       assert.equal(buildContentSource('https://x.com', 'bogus').type, 'markup');
     });
+
+    it('adds a suffix for suffix-capable kinds (aem, byom)', () => {
+      assert.equal(buildContentSource('https://x.adobeaemcloud.com', 'aem', '.html').suffix, '.html');
+      assert.equal(buildContentSource('https://x.example.com', 'byom', '.html').suffix, '.html');
+    });
+
+    it('ignores the suffix for non-suffix kinds', () => {
+      assert.equal(buildContentSource('https://content.da.live/o/s', 'da', '.html').suffix, undefined);
+      assert.equal(buildContentSource('https://x.sharepoint.com', 'onedrive', '.html').suffix, undefined);
+    });
+
+    it('omits the suffix when none is provided', () => {
+      assert.equal(buildContentSource('https://x.adobeaemcloud.com', 'aem').suffix, undefined);
+    });
   });
 
   describe('diffOrgUsers', () => {

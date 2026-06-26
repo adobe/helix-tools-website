@@ -4,6 +4,7 @@ import decorateConsole, { logResponse, logMessage } from '../../blocks/console/c
 import { parseUsersFromAccessConfig, buildAccessConfig } from '../../tools/user-admin/utils.js';
 import {
   CONTENT_SOURCE_KINDS,
+  kindSupportsSuffix,
   detectContentSourceKind,
   buildContentSource,
   diffOrgUsers,
@@ -155,6 +156,11 @@ function renderForm(widget, config, {
   const advanced = widget.querySelector('.bot-info-advanced');
   const daDefault = widget.querySelector('.bot-info-da-default');
   const urlInput = widget.querySelector('.bot-info-content-url');
+  const suffixField = widget.querySelector('.bot-info-suffix-field');
+  const suffixInput = widget.querySelector('.bot-info-content-suffix');
+
+  // suffix only applies to suffix-capable kinds (AEM Authoring, BYOM)
+  const updateSuffix = () => setHidden(suffixField, !kindSupportsSuffix(typeSelect.value));
 
   const setAdvanced = (on) => {
     setHidden(advanced, !on);
@@ -170,13 +176,19 @@ function renderForm(widget, config, {
     typeSelect.value = loadedKind;
     urlInput.value = loadedUrl;
   }
+  if (config.siteConfig.content?.source?.suffix) {
+    suffixInput.value = config.siteConfig.content.source.suffix;
+  }
   setAdvanced(advancedCheck.checked);
+  updateSuffix();
 
   advancedCheck.addEventListener('change', () => setAdvanced(advancedCheck.checked));
+  typeSelect.addEventListener('change', updateSuffix);
   // keep the type in sync as the user edits the URL
   urlInput.addEventListener('change', () => {
     const kind = detectContentSourceKind(urlInput.value.trim());
     if (kind !== 'da') typeSelect.value = kind;
+    updateSuffix();
   });
 }
 
@@ -221,7 +233,8 @@ async function submitConfig(api, widget, config, { org, site, newOrg }, consoleB
   const contentUrl = useDifferent
     ? widget.querySelector('.bot-info-content-url').value.trim()
     : `https://content.da.live/${org}/${site}`;
-  const source = buildContentSource(contentUrl, kind);
+  const suffix = widget.querySelector('.bot-info-content-suffix').value.trim();
+  const source = buildContentSource(contentUrl, kind, suffix);
   const siteConfig = { ...config.siteConfig, content: { ...config.siteConfig.content, source } };
   await must(
     logged(consoleBlock, api.config({ org, site }).update(JSON.stringify(siteConfig))),

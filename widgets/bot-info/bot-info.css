@@ -183,6 +183,10 @@
   margin-top: 12px;
 }
 
+.bot-info-suffix-field[aria-hidden="true"] {
+  display: none;
+}
+
 .bot-info-roles {
   grid-column: 1 / -1;
   display: flex;

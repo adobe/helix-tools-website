@@ -12,13 +12,23 @@ export const ROLES = ['admin', 'author', 'publish', 'develop', 'basic_author', '
 
 // UI-facing content-source kinds. `configType` is what the admin API stores in
 // `content.source.type`; the granular DA/AEM/BYOM kinds all map to `markup`.
+// `suffix: true` marks kinds whose markup is addressed with a path suffix.
 export const CONTENT_SOURCE_KINDS = [
   { value: 'da', label: 'Document Authoring (DA)', configType: 'markup' },
   { value: 'onedrive', label: 'SharePoint', configType: 'onedrive' },
   { value: 'google', label: 'Google Drive', configType: 'google' },
-  { value: 'aem', label: 'AEM', configType: 'markup' },
-  { value: 'byom', label: 'Other (bring your own markup)', configType: 'markup' },
+  {
+    value: 'aem', label: 'AEM Authoring', configType: 'markup', suffix: true,
+  },
+  {
+    value: 'byom', label: 'Other (bring your own markup)', configType: 'markup', suffix: true,
+  },
 ];
+
+/** Whether a content-source kind takes a path suffix (e.g. AEM, BYOM). */
+export function kindSupportsSuffix(kind) {
+  return !!CONTENT_SOURCE_KINDS.find((k) => k.value === kind)?.suffix;
+}
 
 /**
  * Guess the UI content-source kind from a content URL. Mirrors the detection in
@@ -43,9 +53,10 @@ export function detectContentSourceKind(url) {
  *
  * @param {string} url
  * @param {string} kind one of {@link CONTENT_SOURCE_KINDS} values
- * @returns {{type: string, url: string, id?: string}}
+ * @param {string} [suffix] path suffix, applied only to suffix-capable kinds
+ * @returns {{type: string, url: string, id?: string, suffix?: string}}
  */
-export function buildContentSource(url, kind) {
+export function buildContentSource(url, kind, suffix) {
   const entry = CONTENT_SOURCE_KINDS.find((k) => k.value === kind);
   const type = entry ? entry.configType : 'markup';
   const source = { type, url };
@@ -56,6 +67,7 @@ export function buildContentSource(url, kind) {
       // leave id unset for an unparseable URL
     }
   }
+  if (entry?.suffix && suffix) source.suffix = suffix;
   return source;
 }
 
