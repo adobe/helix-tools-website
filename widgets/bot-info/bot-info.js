@@ -12,24 +12,33 @@ import {
 } from './wizard.js';
 
 const EMPTY_ACCESS = { admin: { role: {} } };
-// Namespaced so it can't collide with other tools' session storage on the origin.
+// Namespaced so they can't collide with other tools' session storage on the origin.
 const TOKEN_KEY = 'bot-info-setup-token';
+const TOKEN_ID_KEY = 'bot-info-setup-token-id';
 
 /**
- * Pull the one-time token out of the URL fragment (if present), stash it in
- * session storage, and scrub it from the visible URL. Returns the active token.
+ * Pull the one-time token and its api-key id out of the URL fragment (if
+ * present), stash them in session storage, and scrub them from the visible URL.
+ *
+ * @returns {{token: string|null, tokenId: string|null}}
  */
 function captureToken() {
   const hashParams = new URLSearchParams(window.location.hash.substring(1));
   const token = hashParams.get('token');
-  if (token) {
+  const tokenId = hashParams.get('token_id');
+  if (token || tokenId) {
     hashParams.delete('token');
+    hashParams.delete('token_id');
     const url = new URL(window.location.href);
     url.hash = hashParams.toString();
     window.history.replaceState(null, '', url);
-    sessionStorage.setItem(TOKEN_KEY, token);
+    if (token) sessionStorage.setItem(TOKEN_KEY, token);
+    if (tokenId) sessionStorage.setItem(TOKEN_ID_KEY, tokenId);
   }
-  return sessionStorage.getItem(TOKEN_KEY);
+  return {
+    token: sessionStorage.getItem(TOKEN_KEY),
+    tokenId: sessionStorage.getItem(TOKEN_ID_KEY),
+  };
 }
 
 /** Admin client that authenticates every request with the setup token. */
@@ -252,6 +261,20 @@ async function submitConfig(api, widget, config, { org, site, newOrg }, consoleB
 }
 
 /**
+ * Revoke the one-time setup api key once the config has been saved. The key
+ * lives at org level for new orgs, otherwise at site level. Best-effort: a
+ * failure is logged but does not fail the setup (the config is already saved).
+ */
+async function deleteApiKey(api, { org, site, newOrg }, tokenId, consoleBlock) {
+  if (!tokenId) return;
+  const node = newOrg ? api.config({ org }) : api.config({ org, site });
+  const res = await logged(consoleBlock, node.select(`apiKeys/${tokenId}.json`).remove());
+  if (!res?.ok) {
+    logMessage(consoleBlock, 'warning', ['setup', `Could not remove setup API key: ${res?.error || res?.status || 'network error'}`]);
+  }
+}
+
+/**
  * Point the "create your content" link at the DA editor for DA sources,
  * otherwise straight at the content source URL.
  */
@@ -353,7 +376,7 @@ export default async function decorate(widget) {
   };
 
   try {
-    const token = captureToken();
+    const { token, tokenId } = captureToken();
     const params = new URLSearchParams(window.location.search);
     const ctx = {
       org: toClassName(params.get('org')),
@@ -387,6 +410,8 @@ export default async function decorate(widget) {
       logMessage(consoleBlock, 'info', ['setup', 'Saving configuration…']);
       try {
         const summary = await submitConfig(api, widget, config, ctx, consoleBlock);
+        // revoke the one-time setup key now that the config is saved
+        await deleteApiKey(api, ctx, tokenId, consoleBlock);
         logMessage(consoleBlock, 'success', ['setup', 'Setup complete']);
         showConfirmation(widget, ctx, summary);
       } catch (error) {
