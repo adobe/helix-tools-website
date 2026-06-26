@@ -83,28 +83,28 @@ function populateStaticFields(widget, { org, site }) {
   }
 }
 
-/** Load org users (new orgs only), site access, and site config in parallel. */
+/**
+ * Load the site config and, for new orgs, the org users. The site access config
+ * is part of the site config response (`access`), so it's not fetched separately.
+ */
 async function loadConfig(api, { org, site, newOrg }, consoleBlock) {
-  const [orgRes, accessRes, siteRes] = await Promise.all([
+  const [orgRes, siteRes] = await Promise.all([
     newOrg ? logged(consoleBlock, api.config({ org }).read()) : Promise.resolve(null),
-    logged(consoleBlock, api.config({ org, site }).select('access.json').read()),
     logged(consoleBlock, api.config({ org, site }).read()),
   ]);
 
   if (newOrg && orgRes && !orgRes.ok && orgRes.status !== 404) {
     throw new Error(`Loading org users failed: ${orgRes.error || orgRes.status}`);
   }
-  if (!accessRes.ok && accessRes.status !== 404) {
-    throw new Error(`Loading site access failed: ${accessRes.error || accessRes.status}`);
-  }
   if (!siteRes.ok && siteRes.status !== 404) {
     throw new Error(`Loading site config failed: ${siteRes.error || siteRes.status}`);
   }
 
+  const siteConfig = siteRes.ok ? await siteRes.json() : {};
   return {
     orgUsers: orgRes?.ok ? (await orgRes.json()).users || [] : [],
-    access: accessRes.ok ? await accessRes.json() : EMPTY_ACCESS,
-    siteConfig: siteRes.ok ? await siteRes.json() : {},
+    access: siteConfig.access || EMPTY_ACCESS,
+    siteConfig,
   };
 }
 
