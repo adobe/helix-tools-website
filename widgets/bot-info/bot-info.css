@@ -86,6 +86,12 @@
   color: light-dark(var(--blue-900), var(--cyan-500));
 }
 
+.bot-info-org,
+.bot-info-site {
+  font-weight: bold;
+  color: light-dark(var(--blue-900), var(--blue-500));
+}
+
 /* wizard */
 .bot-info-loading {
   padding: 20px 0;
