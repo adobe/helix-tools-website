@@ -195,12 +195,15 @@ function renderForm(widget, config, {
     applySuffixDefault();
     updateSuffix();
   });
-  // keep the type in sync as the user edits the URL
+  // auto-select the type only when the URL is a definite provider match —
+  // never override the user's choice with the BYOM ("Other") fallback
   urlInput.addEventListener('change', () => {
     const kind = detectContentSourceKind(urlInput.value.trim());
-    if (kind !== 'da') typeSelect.value = kind;
-    applySuffixDefault();
-    updateSuffix();
+    if (kind !== 'da' && kind !== 'byom') {
+      typeSelect.value = kind;
+      applySuffixDefault();
+      updateSuffix();
+    }
   });
 }
 
