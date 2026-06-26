@@ -153,12 +153,12 @@ function renderForm(widget, config, {
 
   const advancedCheck = widget.querySelector('.bot-info-advanced-check');
   const advanced = widget.querySelector('.bot-info-advanced');
-  const daField = widget.querySelector('.bot-info-da-field');
+  const daDefault = widget.querySelector('.bot-info-da-default');
   const urlInput = widget.querySelector('.bot-info-content-url');
 
   const setAdvanced = (on) => {
     setHidden(advanced, !on);
-    setHidden(daField, on);
+    setHidden(daDefault, on);
     urlInput.required = on;
   };
 
