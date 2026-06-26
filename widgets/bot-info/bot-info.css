@@ -67,6 +67,10 @@
   margin-top: 12px;
 }
 
+.bot-info .console {
+  margin-top: 40px;
+}
+
 .bot-info-success[aria-hidden="true"],
 .bot-info-alert[aria-hidden="true"] {
   display: none;
