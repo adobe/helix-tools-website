@@ -124,7 +124,7 @@ function createRolePills(selectedRoles = []) {
  * @param {string} [defaultRole] role pre-selected when the user has none
  * @returns {HTMLElement}
  */
-export function createUserRow(user = {}, defaultRole = 'author') {
+export function createUserRow(user = {}, defaultRole = 'admin') {
   const row = document.createElement('div');
   row.className = 'bot-info-user-row';
   if (user.id) row.dataset.userId = user.id;

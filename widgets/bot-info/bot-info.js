@@ -117,14 +117,11 @@ function renderForm(widget, config, { user, url, newOrg }) {
     : [{ email: user, roles: ['admin'] }].filter((u) => u.email);
   seededSiteUsers.forEach((u) => siteList.append(createUserRow(u)));
 
-  // wire up "add user/administrator" buttons. New org users default to the
-  // least-privileged 'author' role; new site rows default to 'admin'.
+  // wire up "add user/administrator" buttons
   widget.querySelectorAll('.bot-info-add-user').forEach((btn) => {
-    const isOrg = btn.dataset.scope === 'org';
-    const list = isOrg ? orgList : siteList;
-    const defaultRole = isOrg ? 'author' : 'admin';
+    const list = btn.dataset.scope === 'org' ? orgList : siteList;
     btn.addEventListener('click', () => {
-      const row = createUserRow({}, defaultRole);
+      const row = createUserRow();
       list.append(row);
       row.querySelector('.bot-info-email').focus();
     });
