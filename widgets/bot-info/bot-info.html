@@ -28,15 +28,27 @@
 
     <section class="bot-info-step">
         <h2>Content source</h2>
-        <p>Where the content for your site is authored.</p>
-        <div class="bot-info-field">
-            <label for="bot-info-content-url">Content source URL</label>
-            <input type="url" id="bot-info-content-url" class="bot-info-content-url" required
-                placeholder="DA, SharePoint or Google Drive URL">
+        <p>Your content is authored in
+            <a href="https://da.live" target="_blank" rel="noopener noreferrer">Document Authoring (DA)</a>.</p>
+        <div class="bot-info-field bot-info-da-field">
+            <label for="bot-info-da-url">Content source URL</label>
+            <input type="text" id="bot-info-da-url" class="bot-info-da-url" readonly>
         </div>
-        <div class="bot-info-field">
-            <label for="bot-info-content-type">Content source type</label>
-            <select id="bot-info-content-type" class="bot-info-content-type"></select>
+
+        <label class="bot-info-advanced-toggle">
+            <input type="checkbox" class="bot-info-advanced-check"> Use a different content source
+        </label>
+
+        <div class="bot-info-advanced" aria-hidden="true">
+            <div class="bot-info-field">
+                <label for="bot-info-content-type">Content source type</label>
+                <select id="bot-info-content-type" class="bot-info-content-type"></select>
+            </div>
+            <div class="bot-info-field">
+                <label for="bot-info-content-url">Content source URL</label>
+                <input type="url" id="bot-info-content-url" class="bot-info-content-url"
+                    placeholder="SharePoint, Google Drive or AEM URL">
+            </div>
         </div>
     </section>
 

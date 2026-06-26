@@ -142,6 +142,7 @@
 }
 
 .bot-info-email,
+.bot-info-da-url,
 .bot-info-content-url,
 .bot-info-content-type {
   width: 100%;
@@ -151,6 +152,24 @@
   background-color: var(--color-background);
   color: var(--color-text);
   font-size: inherit;
+}
+
+.bot-info-da-url[readonly] {
+  background-color: var(--layer-pasteboard);
+  color: var(--color-font-grey);
+  cursor: default;
+}
+
+.bot-info-advanced-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  cursor: pointer;
+}
+
+.bot-info-advanced {
+  margin-top: 12px;
 }
 
 .bot-info-roles {
@@ -245,6 +264,7 @@
 }
 
 @media (width >= 600px) {
+  .bot-info-da-url,
   .bot-info-content-url,
   .bot-info-content-type {
     max-width: 480px;

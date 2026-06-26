@@ -109,7 +109,9 @@ async function loadConfig(api, { org, site, newOrg }, consoleBlock) {
 }
 
 /** Render the editable user/content fields into the wizard form. */
-function renderForm(widget, config, { user, url, newOrg }) {
+function renderForm(widget, config, {
+  org, site, user, url, newOrg,
+}) {
   const orgList = widget.querySelector('.bot-info-user-list[data-scope="org"]');
   const siteList = widget.querySelector('.bot-info-user-list[data-scope="site"]');
 
@@ -137,21 +139,44 @@ function renderForm(widget, config, { user, url, newOrg }) {
     });
   });
 
-  // content source
+  // content source — DA is the default with a fixed, read-only URL; the
+  // "use a different content source" checkbox reveals the non-DA options.
+  widget.querySelector('.bot-info-da-url').value = `https://content.da.live/${org}/${site}`;
+
   const typeSelect = widget.querySelector('.bot-info-content-type');
-  CONTENT_SOURCE_KINDS.forEach(({ value, label }) => {
+  CONTENT_SOURCE_KINDS.filter((k) => k.value !== 'da').forEach(({ value, label }) => {
     const opt = document.createElement('option');
     opt.value = value;
     opt.textContent = label;
     typeSelect.append(opt);
   });
-  const contentUrl = config.siteConfig.content?.source?.url || url || '';
+
+  const advancedCheck = widget.querySelector('.bot-info-advanced-check');
+  const advanced = widget.querySelector('.bot-info-advanced');
+  const daField = widget.querySelector('.bot-info-da-field');
   const urlInput = widget.querySelector('.bot-info-content-url');
-  urlInput.value = contentUrl;
-  typeSelect.value = detectContentSourceKind(contentUrl);
+
+  const setAdvanced = (on) => {
+    setHidden(advanced, !on);
+    setHidden(daField, on);
+    urlInput.required = on;
+  };
+
+  // prefill from the existing content source, opening "advanced" for non-DA
+  const loadedUrl = config.siteConfig.content?.source?.url || url || '';
+  const loadedKind = detectContentSourceKind(loadedUrl);
+  if (loadedUrl && loadedKind !== 'da') {
+    advancedCheck.checked = true;
+    typeSelect.value = loadedKind;
+    urlInput.value = loadedUrl;
+  }
+  setAdvanced(advancedCheck.checked);
+
+  advancedCheck.addEventListener('change', () => setAdvanced(advancedCheck.checked));
   // keep the type in sync as the user edits the URL
   urlInput.addEventListener('change', () => {
-    typeSelect.value = detectContentSourceKind(urlInput.value.trim());
+    const kind = detectContentSourceKind(urlInput.value.trim());
+    if (kind !== 'da') typeSelect.value = kind;
   });
 }
 
@@ -191,9 +216,11 @@ async function submitConfig(api, widget, config, { org, site, newOrg }, consoleB
     'Saving site administrators',
   );
 
-  const urlInput = widget.querySelector('.bot-info-content-url');
-  const kind = widget.querySelector('.bot-info-content-type').value;
-  const contentUrl = urlInput.value.trim();
+  const useDifferent = widget.querySelector('.bot-info-advanced-check').checked;
+  const kind = useDifferent ? widget.querySelector('.bot-info-content-type').value : 'da';
+  const contentUrl = useDifferent
+    ? widget.querySelector('.bot-info-content-url').value.trim()
+    : `https://content.da.live/${org}/${site}`;
   const source = buildContentSource(contentUrl, kind);
   const siteConfig = { ...config.siteConfig, content: { ...config.siteConfig.content, source } };
   await must(
