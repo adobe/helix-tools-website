@@ -98,21 +98,56 @@ export function diffOrgUsers(original = [], current = []) {
 /* DOM builders (not unit-tested)                                     */
 /* ------------------------------------------------------------------ */
 
+function createRolePill(role, checked) {
+  const label = document.createElement('label');
+  label.className = 'bot-info-role-pill';
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.value = role;
+  checkbox.checked = checked;
+  const span = document.createElement('span');
+  span.textContent = role;
+  label.append(checkbox, span);
+  return label;
+}
+
+/**
+ * Build the role pills for a user. The primary `admin` pill is always visible;
+ * the remaining roles stay tucked behind a `…` link unless one of them is
+ * already selected.
+ *
+ * @param {string[]} selectedRoles
+ * @returns {HTMLElement}
+ */
 function createRolePills(selectedRoles = []) {
+  const [primary, ...others] = ROLES;
   const container = document.createElement('div');
   container.className = 'bot-info-roles';
-  ROLES.forEach((role) => {
-    const label = document.createElement('label');
-    label.className = 'bot-info-role-pill';
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.value = role;
-    checkbox.checked = selectedRoles.includes(role);
-    const span = document.createElement('span');
-    span.textContent = role;
-    label.append(checkbox, span);
-    container.append(label);
+
+  container.append(createRolePill(primary, selectedRoles.includes(primary)));
+
+  const rest = document.createElement('div');
+  rest.className = 'bot-info-roles-rest';
+  others.forEach((role) => rest.append(createRolePill(role, selectedRoles.includes(role))));
+  // reveal the rest up-front if any of those roles is already selected
+  const expanded = others.some((role) => selectedRoles.includes(role));
+  rest.setAttribute('aria-hidden', String(!expanded));
+  container.append(rest);
+
+  const more = document.createElement('button');
+  more.type = 'button';
+  more.className = 'bot-info-roles-more';
+  more.setAttribute('aria-expanded', String(expanded));
+  more.title = 'Show more roles';
+  more.textContent = expanded ? '‹' : '…';
+  more.addEventListener('click', () => {
+    const isExpanded = rest.getAttribute('aria-hidden') === 'false';
+    rest.setAttribute('aria-hidden', String(isExpanded));
+    more.setAttribute('aria-expanded', String(!isExpanded));
+    more.textContent = isExpanded ? '…' : '‹';
   });
+  container.append(more);
+
   return container;
 }
 
@@ -140,24 +175,6 @@ export function createUserRow(user = {}, defaultRole = 'admin') {
   emailField.append(emailInput);
 
   const pills = createRolePills(user.roles && user.roles.length ? user.roles : [defaultRole]);
-  pills.setAttribute('aria-hidden', 'true');
-
-  // collapse the role pills behind a toggle that summarizes the current roles
-  const toggle = document.createElement('button');
-  toggle.type = 'button';
-  toggle.className = 'bot-info-roles-toggle';
-  toggle.setAttribute('aria-expanded', 'false');
-  const updateLabel = () => {
-    const selected = [...pills.querySelectorAll('input:checked')].map((c) => c.value);
-    toggle.textContent = selected.length ? selected.join(', ') : 'Set roles…';
-  };
-  updateLabel();
-  pills.addEventListener('change', updateLabel);
-  toggle.addEventListener('click', () => {
-    const expanded = pills.getAttribute('aria-hidden') === 'false';
-    pills.setAttribute('aria-hidden', String(expanded));
-    toggle.setAttribute('aria-expanded', String(!expanded));
-  });
 
   const removeBtn = document.createElement('button');
   removeBtn.type = 'button';
@@ -167,7 +184,7 @@ export function createUserRow(user = {}, defaultRole = 'admin') {
   removeBtn.textContent = '✕';
   removeBtn.addEventListener('click', () => row.remove());
 
-  row.append(emailField, toggle, removeBtn, pills);
+  row.append(emailField, removeBtn, pills);
   return row;
 }
 

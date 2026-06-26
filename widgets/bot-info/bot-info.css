@@ -122,42 +122,13 @@
 
 .bot-info-user-row {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 8px 12px;
   padding: 12px;
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background-color: var(--layer-elevated);
-}
-
-.bot-info-roles-toggle {
-  align-self: center;
-  max-width: 12em;
-  padding: 6px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  background-color: var(--color-background);
-  color: var(--color-text);
-  font-size: 0.85em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: pointer;
-}
-
-.bot-info-roles-toggle::after {
-  content: " ▾";
-  color: var(--color-font-grey);
-}
-
-.bot-info-roles-toggle:hover,
-.bot-info-roles-toggle[aria-expanded="true"] {
-  border-color: light-dark(var(--blue-900), var(--blue-500));
-}
-
-.bot-info-roles-toggle[aria-expanded="true"]::after {
-  content: " ▴";
 }
 
 .bot-info-field {
@@ -186,11 +157,33 @@
   grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
 }
 
-.bot-info-roles[aria-hidden="true"] {
+/* lets the hidden pills participate in the parent's flow when revealed */
+.bot-info-roles-rest {
+  display: contents;
+}
+
+.bot-info-roles-rest[aria-hidden="true"] {
   display: none;
+}
+
+.bot-info-roles-more {
+  padding: 2px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background-color: var(--color-background);
+  color: var(--color-font-grey);
+  font-size: 0.85em;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.bot-info-roles-more:hover {
+  border-color: light-dark(var(--blue-900), var(--blue-500));
+  color: var(--color-text);
 }
 
 .bot-info-role-pill {
