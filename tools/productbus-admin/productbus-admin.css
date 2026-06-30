@@ -1,0 +1,836 @@
+/* ProductBus Admin Styles */
+
+/* Override AEM section styles to preserve grid layout */
+.productbus-admin main > .section {
+  margin: 0;
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.productbus-admin main > .section > div {
+  margin: 0;
+  padding: 0;
+}
+
+/* App Layout — mobile first: single column */
+.productbus-admin #app-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-l);
+  min-height: 600px;
+}
+
+/* Sidebar — mobile first: fixed drawer, hidden off-canvas until .open */
+.productbus-admin #sidebar {
+  position: fixed;
+  left: -280px;
+  top: 0;
+  bottom: 0;
+  width: 260px;
+  z-index: 1000;
+  padding: var(--spacing-m);
+  border: none;
+  border-right: 1px solid var(--color-border);
+  border-radius: 0;
+  background: var(--layer-elevated);
+  box-shadow: 2px 0 8px rgb(0 0 0 / 10%);
+  transition: left 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-m);
+  overflow-y: auto;
+}
+
+.productbus-admin #sidebar.open {
+  left: 0;
+}
+
+.productbus-admin .sidebar-connect {
+  padding-bottom: var(--spacing-m);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.productbus-admin .sidebar-connect h2 {
+  margin: 0 0 var(--spacing-m) 0;
+  font-size: var(--heading-size-s);
+  color: var(--color-text);
+}
+
+.productbus-admin .sidebar-connect form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+.productbus-admin .sidebar-connect .connect-btn {
+  width: 100%;
+  justify-content: center;
+  margin-top: var(--spacing-xs);
+}
+
+.productbus-admin .sidebar-nav {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.productbus-admin .sidebar-nav a {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+  padding: var(--spacing-s) var(--spacing-m);
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--color-text);
+  transition: background-color 0.2s ease;
+}
+
+.productbus-admin .sidebar-nav a:hover {
+  background: light-dark(var(--gray-100), var(--gray-700));
+}
+
+.productbus-admin .sidebar-nav a.active {
+  background: var(--blue-100);
+  color: var(--blue-700);
+  font-weight: 600;
+}
+
+.productbus-admin .sidebar-footer {
+  padding-top: var(--spacing-m);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+.productbus-admin .sidebar-email {
+  font-size: var(--body-size-s);
+  color: var(--color-font-grey);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.productbus-admin .sidebar-footer .button {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Main Content */
+.productbus-admin #main-content {
+  min-height: 400px;
+  min-width: 0;
+  width: 100%;
+}
+
+.productbus-admin .page-header {
+  margin-bottom: var(--spacing-l);
+}
+
+.productbus-admin .page-header h1 {
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: var(--heading-size-l);
+}
+
+.productbus-admin .page-header p {
+  margin: 0;
+  color: var(--color-font-grey);
+}
+
+/* Loading/Error States */
+.productbus-admin .loading,
+.productbus-admin .error {
+  padding: var(--spacing-xl);
+  text-align: center;
+  color: var(--color-font-grey);
+  font-style: italic;
+}
+
+.productbus-admin .error {
+  color: var(--red-600);
+}
+
+/* Login Page */
+.productbus-admin .login-wrap {
+  max-width: 500px;
+  margin: var(--spacing-xxl) auto;
+  padding: var(--spacing-xl);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--layer-elevated);
+  box-shadow: var(--shadow-default);
+}
+
+.productbus-admin .login-wrap h1 {
+  margin: 0 0 var(--spacing-s) 0;
+  text-align: center;
+}
+
+.productbus-admin .login-wrap .subtitle {
+  text-align: center;
+  color: var(--color-font-grey);
+  margin: 0 0 var(--spacing-l) 0;
+}
+
+.productbus-admin .login-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-m);
+}
+
+/* Forms */
+.productbus-admin .form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.productbus-admin .form-field label {
+  font-weight: 600;
+  color: var(--color-text);
+  font-size: var(--body-size-s);
+}
+
+.productbus-admin .form-field input,
+.productbus-admin .form-field textarea,
+.productbus-admin .form-field select {
+  padding: var(--spacing-s) var(--spacing-m);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: var(--body-size-m);
+  background: var(--layer-elevated);
+  color: var(--color-text);
+  font-family: inherit;
+}
+
+.productbus-admin .form-field input:focus,
+.productbus-admin .form-field textarea:focus,
+.productbus-admin .form-field select:focus {
+  outline: none;
+  border-color: var(--blue-500);
+  box-shadow: 0 0 0 2px var(--blue-100);
+}
+
+.productbus-admin .form-field input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.productbus-admin .form-field input.input-error,
+.productbus-admin .form-field input.input-error:focus {
+  border-color: var(--red-600);
+  box-shadow: 0 0 0 2px light-dark(var(--red-100), rgb(239 68 68 / 25%));
+}
+
+.productbus-admin .form-field input[type="checkbox"] {
+  width: auto;
+  margin-right: var(--spacing-xs);
+}
+
+.productbus-admin .form-field .field-hint {
+  font-size: var(--body-size-s);
+  color: var(--color-font-grey);
+  margin: 0;
+}
+
+.productbus-admin .button-group {
+  display: flex;
+  gap: var(--spacing-s);
+  margin-top: var(--spacing-m);
+}
+
+.productbus-admin .button-group .button {
+  flex: 1;
+}
+
+/* Data Table */
+.productbus-admin .data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--spacing-m);
+}
+
+.productbus-admin .data-table th,
+.productbus-admin .data-table td {
+  padding: var(--spacing-s) var(--spacing-m);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.productbus-admin .data-table th {
+  background: var(--layer-elevated);
+  font-weight: 600;
+  color: var(--color-text);
+  font-size: var(--body-size-s);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.productbus-admin .data-table tr:hover {
+  background: light-dark(var(--gray-50), var(--gray-800));
+}
+
+.productbus-admin .data-table code {
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+}
+
+.productbus-admin .data-table .actions {
+  display: flex;
+  gap: var(--spacing-xs);
+  justify-content: flex-end;
+}
+
+.productbus-admin .data-table .btn-icon {
+  background: none;
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--color-text);
+  font-size: var(--body-size-xs);
+  transition: all 0.15s;
+}
+
+.productbus-admin .data-table .btn-icon:hover {
+  background: light-dark(var(--gray-200), var(--gray-700));
+}
+
+.productbus-admin .data-table .btn-icon.danger {
+  color: var(--red-700);
+  border-color: var(--red-700);
+}
+
+.productbus-admin .data-table .btn-icon.danger:hover {
+  background: var(--red-700);
+  color: white;
+}
+
+/* Page Actions — mobile first: stacked */
+.productbus-admin .page-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin: 0 var(--spacing-l) var(--spacing-l) var(--spacing-m);
+  gap: var(--spacing-m);
+}
+
+.productbus-admin .page-actions .search-input {
+  padding: var(--spacing-s) var(--spacing-m);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  flex: 1;
+  max-width: none;
+  background: var(--layer-elevated);
+  color: var(--color-text);
+}
+
+.productbus-admin .page-actions .search-input:focus {
+  outline: none;
+  border-color: var(--blue-500);
+  box-shadow: 0 0 0 2px var(--blue-100);
+}
+
+/* Modal Styles */
+.productbus-admin dialog.productbus-modal {
+  max-width: 800px;
+  width: 90vw;
+  max-height: 90vh;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 0;
+  box-shadow: var(--shadow-hover);
+  background: var(--layer-elevated);
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+}
+
+.productbus-admin dialog.productbus-modal::backdrop {
+  background: rgb(0 0 0 / 50%);
+}
+
+.productbus-admin dialog.productbus-modal .modal-content {
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+
+.productbus-admin dialog.productbus-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-m) var(--spacing-l);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--layer-elevated);
+  border-radius: 12px 12px 0 0;
+}
+
+.productbus-admin dialog.productbus-modal .modal-header h2 {
+  margin: 0;
+  font-size: var(--heading-size-m);
+  color: var(--color-text);
+}
+
+.productbus-admin dialog.productbus-modal .modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--color-font-grey);
+  cursor: pointer;
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.productbus-admin dialog.productbus-modal .modal-close:hover {
+  background: light-dark(var(--gray-200), var(--gray-700));
+  color: var(--color-text);
+}
+
+.productbus-admin dialog.productbus-modal .modal-body {
+  padding: var(--spacing-l);
+  overflow-y: auto;
+  flex: 1;
+}
+
+.productbus-admin dialog.productbus-modal .modal-footer {
+  display: flex;
+  gap: var(--spacing-s);
+  justify-content: flex-end;
+  padding: var(--spacing-l);
+  border-top: 1px solid var(--color-border);
+}
+
+/* View Switcher (Form/JSON toggle) */
+.productbus-admin .view-switcher {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-m);
+  padding: 4px;
+  background: light-dark(var(--gray-100), var(--gray-800));
+  border-radius: 6px;
+  width: fit-content;
+}
+
+.productbus-admin .view-switcher button {
+  padding: var(--spacing-xs) var(--spacing-m);
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: var(--body-size-s);
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.productbus-admin .view-switcher button.active {
+  background: var(--layer-elevated);
+  box-shadow: var(--shadow-default);
+}
+
+/* JSON Editor */
+.productbus-admin .json-editor {
+  width: 100%;
+  min-height: 300px;
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+  padding: var(--spacing-m);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--layer-elevated);
+  color: var(--color-text);
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.productbus-admin .json-editor:focus {
+  outline: none;
+  border-color: var(--blue-500);
+  box-shadow: 0 0 0 2px var(--blue-100);
+}
+
+/* JSON Display (read-only) */
+.productbus-admin .json-display {
+  background: var(--layer-elevated);
+  padding: var(--spacing-m);
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+  border: 1px solid var(--color-border);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+/* Form View — mobile first: single column */
+.productbus-admin .form-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-m);
+}
+
+.productbus-admin .form-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-m);
+  align-items: flex-end;
+}
+
+.productbus-admin .form-view h3 {
+  margin: var(--spacing-m) 0 0;
+  font-size: var(--body-size-l);
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--spacing-xs);
+}
+
+/* Confirmation Modal */
+.productbus-admin .confirm-message {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--body-size-m);
+  line-height: 1.5;
+}
+
+/* Toast Notifications */
+.productbus-admin .productbus-toast {
+  position: fixed;
+  bottom: var(--spacing-l);
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  padding: var(--spacing-m) var(--spacing-l);
+  border-radius: 8px;
+  box-shadow: var(--shadow-hover);
+  z-index: 10000;
+  opacity: 0;
+  transition: all 0.3s ease;
+  max-width: 500px;
+  pointer-events: none;
+}
+
+.productbus-admin .productbus-toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.productbus-admin .productbus-toast.success {
+  background: var(--green-700);
+  color: white;
+}
+
+.productbus-admin .productbus-toast.error {
+  background: var(--red-800);
+  color: white;
+}
+
+/* Badge */
+.productbus-admin .badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: var(--body-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.productbus-admin .badge.success {
+  background: var(--green-100);
+  color: var(--green-800);
+}
+
+.productbus-admin .badge.info {
+  background: var(--blue-100);
+  color: var(--blue-800);
+}
+
+/* Config Actions */
+.productbus-admin .config-actions {
+  display: flex;
+  gap: var(--spacing-s);
+  justify-content: flex-end;
+  margin-top: var(--spacing-m);
+}
+
+/* Empty State */
+.productbus-admin .empty-state {
+  padding: var(--spacing-xxl);
+  text-align: center;
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.productbus-admin .empty-state h3 {
+  margin: 0 0 var(--spacing-s) 0;
+  color: var(--color-text);
+}
+
+.productbus-admin .empty-state p {
+  margin: 0 0 var(--spacing-l) 0;
+  color: var(--color-font-grey);
+}
+
+/* Danger Button */
+.productbus-admin .button.danger {
+  color: var(--red-700);
+  border-color: var(--red-700);
+}
+
+.productbus-admin .button.danger:hover {
+  background: var(--red-700);
+  color: white;
+  border-color: var(--red-700);
+}
+
+/* Journals View — mobile first: single column */
+.productbus-admin .journals-controls {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-m);
+  align-items: end;
+  margin-bottom: var(--spacing-l);
+}
+
+.productbus-admin .journals-controls .view-switcher {
+  margin-bottom: 0;
+  align-self: end;
+}
+
+.productbus-admin .journals-controls .form-field {
+  margin: 0;
+}
+
+.productbus-admin .journals-actions {
+  display: flex;
+  gap: var(--spacing-s);
+  justify-content: stretch;
+}
+
+.productbus-admin .journals-entry {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--layer-elevated);
+  margin-bottom: var(--spacing-xs);
+  transition: background-color 0.15s ease;
+}
+
+.productbus-admin .journals-entry:hover {
+  background: light-dark(var(--gray-50), var(--gray-800));
+}
+
+.productbus-admin .journals-entry-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-m);
+  padding: var(--spacing-s) var(--spacing-m);
+  cursor: pointer;
+  min-width: 0;
+}
+
+.productbus-admin .journals-entry-ts {
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+  color: var(--color-font-grey);
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.productbus-admin .journals-entry-detail {
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+  color: var(--color-text);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.productbus-admin .journals-entry .journals-copy-btn {
+  flex: 0 0 auto;
+}
+
+.productbus-admin .journals-entry-details {
+  display: none;
+  padding: 0 var(--spacing-m) var(--spacing-m);
+}
+
+.productbus-admin .journals-entry.expanded .journals-entry-details {
+  display: block;
+}
+
+.productbus-admin .journals-entry-details .json-display {
+  margin: 0;
+  max-height: 500px;
+  overflow: auto;
+}
+
+.productbus-admin .journals-status {
+  margin-top: var(--spacing-m);
+  font-size: var(--body-size-s);
+  color: var(--color-font-grey);
+}
+
+/* Service Tokens View — mobile first: single column */
+.productbus-admin .service-token-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-m);
+  max-width: 700px;
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.productbus-admin .service-token-form h2 {
+  margin: var(--spacing-s) 0 0;
+  font-size: var(--body-size-l);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--spacing-xs);
+}
+
+.productbus-admin .permissions-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-xs) var(--spacing-m);
+}
+
+.productbus-admin .permission-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.productbus-admin .permission-item:hover {
+  background: light-dark(var(--gray-50), var(--gray-800));
+}
+
+.productbus-admin .permission-item input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+.productbus-admin .field-hint-inline {
+  font-weight: 400;
+  color: var(--color-font-grey);
+  font-size: var(--body-size-s);
+}
+
+.productbus-admin .token-result {
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-m);
+}
+
+.productbus-admin .token-warning {
+  padding: var(--spacing-m);
+  border: 1px solid light-dark(var(--orange-400, #f59e0b), var(--orange-600, #d97706));
+  background: light-dark(var(--orange-100, #fef3c7), rgb(245 158 11 / 15%));
+  color: light-dark(var(--orange-800, #92400e), var(--orange-200, #fde68a));
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.productbus-admin .token-box {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-s);
+  padding: var(--spacing-m);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--layer-elevated);
+}
+
+.productbus-admin .token-box code {
+  flex: 1;
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+  word-break: break-all;
+  color: var(--color-text);
+}
+
+.productbus-admin .token-meta {
+  font-size: var(--body-size-s);
+  color: var(--color-text);
+}
+
+.productbus-admin .token-permissions {
+  margin: 0;
+  padding-left: var(--spacing-l);
+  font-size: var(--body-size-s);
+}
+
+.productbus-admin .token-permissions code {
+  font-family: var(--code-font-family);
+}
+
+/* Tablet and up */
+@media (width >= 600px) {
+  .productbus-admin #app-container {
+    grid-template-columns: 260px 1fr;
+  }
+
+  .productbus-admin #sidebar {
+    position: sticky;
+    top: var(--spacing-m);
+    left: auto;
+    bottom: auto;
+    width: auto;
+    height: calc(100vh - 5 * var(--spacing-m));
+    max-height: calc(100vh - 5 * var(--spacing-m));
+    z-index: auto;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--layer-elevated);
+    box-shadow: none;
+    transition: none;
+    align-self: start;
+    overflow-y: visible;
+  }
+
+  .productbus-admin .page-actions {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .productbus-admin .page-actions .search-input {
+    max-width: 400px;
+  }
+
+  .productbus-admin .form-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .productbus-admin .journals-controls {
+    grid-template-columns: auto 1fr 1fr auto;
+  }
+
+  .productbus-admin .journals-controls .journals-orderid,
+  .productbus-admin .journals-controls .journals-filter {
+    grid-column: 1 / -1;
+  }
+
+  .productbus-admin .journals-actions {
+    justify-content: flex-end;
+  }
+
+  .productbus-admin .permissions-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
