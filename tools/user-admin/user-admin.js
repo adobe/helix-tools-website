@@ -13,9 +13,7 @@ const site = document.getElementById('site');
 const org = document.getElementById('org');
 const consoleBlock = document.querySelector('.console');
 const usersContainer = document.getElementById('users-container');
-const accessConfig = {
-  type: 'org', users: [], originalSiteAccess: {}, requireAuth: 'auto',
-};
+const accessConfig = { type: 'org', users: [], originalSiteAccess: {} };
 
 const ROLES = ['admin', 'author', 'publish', 'develop', 'basic_author', 'basic_publish', 'config', 'config_admin'];
 
@@ -92,9 +90,9 @@ async function getSiteAccessConfig() {
   return result.ok ? result.json() : null;
 }
 
-async function updateSiteAccess(requireAuth = accessConfig.requireAuth) {
+async function updateSiteAccess() {
   const { originalSiteAccess, users } = accessConfig;
-  const access = buildAccessConfig(originalSiteAccess, users, requireAuth);
+  const access = buildAccessConfig(originalSiteAccess, users);
   const result = await executeAdminRequest(
     async () => {
       const res = await admin.config({ org: org.value, site: site.value })
@@ -755,58 +753,6 @@ function createUserCard(user) {
   return card;
 }
 
-function displayConfigSection(container) {
-  const section = document.createElement('div');
-  section.className = 'config-section';
-
-  const label = document.createElement('label');
-  label.htmlFor = 'require-auth-select';
-  label.textContent = 'Require Auth';
-
-  const select = document.createElement('select');
-  select.id = 'require-auth-select';
-  select.name = 'requireAuth';
-  [['auto', 'Auto'], ['true', 'True'], ['false', 'False']].forEach(([val, text]) => {
-    const opt = document.createElement('option');
-    opt.value = val;
-    opt.textContent = text;
-    if (val === accessConfig.requireAuth) opt.selected = true;
-    select.appendChild(opt);
-  });
-
-  const errorSpan = document.createElement('span');
-  errorSpan.className = 'config-error';
-  errorSpan.hidden = true;
-
-  const saveBtn = document.createElement('button');
-  saveBtn.type = 'button';
-  saveBtn.className = 'button config-save-btn';
-  saveBtn.textContent = 'Save';
-
-  saveBtn.addEventListener('click', async () => {
-    const { value } = select;
-    errorSpan.hidden = true;
-    saveBtn.disabled = true;
-    saveBtn.textContent = 'Saving…';
-    const success = await updateSiteAccess(value);
-    if (success) accessConfig.requireAuth = value;
-    saveBtn.disabled = false;
-    saveBtn.textContent = 'Save';
-    if (success) {
-      showToast('Config saved');
-    } else {
-      errorSpan.textContent = 'Failed to save config';
-      errorSpan.hidden = false;
-    }
-  });
-
-  section.appendChild(label);
-  section.appendChild(select);
-  section.appendChild(saveBtn);
-  section.appendChild(errorSpan);
-  container.appendChild(section);
-}
-
 function displayUsers(users) {
   usersContainer.innerHTML = '';
 
@@ -882,10 +828,6 @@ function displayUsers(users) {
   });
 
   usersContainer.appendChild(grid);
-
-  if (accessConfig.type === 'site') {
-    displayConfigSection(usersContainer);
-  }
 }
 
 adminForm.addEventListener('submit', async (e) => {
@@ -901,7 +843,6 @@ adminForm.addEventListener('submit', async (e) => {
     }
 
     accessConfig.originalSiteAccess = config;
-    accessConfig.requireAuth = config.admin?.requireAuth ?? 'auto';
     accessConfig.users = parseUsersFromAccessConfig(config);
     displayUsers(accessConfig.users);
   } else {

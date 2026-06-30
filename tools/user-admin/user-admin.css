@@ -531,38 +531,3 @@ dialog.user-admin-modal.confirm-dialog {
     transform: translateY(50%);
   }
 }
-
-/* Config Section (requireAuth row) */
-.user-admin #users-container .config-section {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-m);
-  padding: var(--spacing-s) var(--horizontal-spacing);
-  border-top: 1px solid var(--color-border);
-  margin-top: var(--spacing-m);
-  flex-wrap: wrap;
-}
-
-.user-admin #users-container .config-section label {
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.user-admin #users-container .config-section select {
-  width: 7rem;
-  padding: var(--spacing-xs) var(--spacing-s);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-background);
-  color: var(--color-text);
-}
-
-.user-admin #users-container .config-section .config-save-btn {
-  font-size: var(--body-size-s);
-}
-
-.user-admin #users-container .config-section .config-error {
-  color: var(--red-600);
-  font-size: var(--body-size-s);
-  width: 100%;
-}
