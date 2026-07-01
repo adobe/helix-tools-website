@@ -4,7 +4,7 @@ import {
 } from 'node:test';
 import assert from 'node:assert/strict';
 import admin from '../../scripts/aem-admin.js';
-import { runSharedBehaviorTests } from './admin-shared-behaviors.js';
+import runSharedBehaviorTests from './admin-shared-behaviors.js';
 
 // ─── Shared behavioral contract ──────────────────────────────────────────────
 describe('aem-admin.js', () => {

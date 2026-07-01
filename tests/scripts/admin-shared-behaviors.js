@@ -11,7 +11,7 @@ const realFetch = global.fetch;
  * Call this inside a describe() block in each client's test file.
  * Registers its own beforeEach/afterEach fetch spy at the call-site scope.
  */
-export function runSharedBehaviorTests(admin) {
+export default function runSharedBehaviorTests(admin) {
   let calls;
   let respond;
 
