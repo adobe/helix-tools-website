@@ -178,6 +178,7 @@ function createAdmin(defaults = {}) {
   function psi(coords) { return bindOperation(opBase('psi', coords), ['get']); }
   function snapshot(coords) { return bindOperation(opBase('snapshot', coords), ['get', 'update', 'remove']); }
   function sidekick(coords) { return bindOperation(opBase('sidekick', coords), ['get']); }
+  function medialog(coords) { return bindOperation(opBase('medialog', coords), ['get']); }
 
   /**
    * Return well-known admin URL suggestions for the given coords, suitable
@@ -233,6 +234,7 @@ function createAdmin(defaults = {}) {
     psi,
     snapshot,
     sidekick,
+    medialog,
     raw,
     suggestions,
     coordsFromURL,

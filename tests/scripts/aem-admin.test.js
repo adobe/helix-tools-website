@@ -191,6 +191,27 @@ describe('aem-admin.js — H6 URL contract', () => {
     });
   });
 
+  describe('admin.medialog(coords) URLs', () => {
+    it('.get("") GETs /{org}/sites/{site}/medialog', async () => {
+      await admin.medialog({ org: 'adobe', site: 'x' }).get('');
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/medialog');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('does not expose .update or .remove', () => {
+      const ml = admin.medialog({ org: 'adobe', site: 'x' });
+      assert.equal(ml.update, undefined);
+      assert.equal(ml.remove, undefined);
+    });
+
+    it('exposes .url equal to the base operation URL', () => {
+      assert.equal(
+        admin.medialog({ org: 'adobe', site: 'x' }).url,
+        'https://api.aem.live/adobe/sites/x/medialog',
+      );
+    });
+  });
+
   describe('admin.raw() H6 URLs', () => {
     it('/path resolves against https://api.aem.live', async () => {
       await admin.raw('GET', '/adobe/sites/x/status');
