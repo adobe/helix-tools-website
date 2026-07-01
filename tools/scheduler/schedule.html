@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Schedule Publish</title>
+  <meta name="description" content="Schedule a page for publishing from the AEM Sidekick">
+  <meta name="lab" content="true">
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/scheduler/schedule.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/scheduler/schedule.css" />
+</head>
+<body class="schedule appear">
+  <main>
+    <section id="schedule-card">
+      <h2>Schedule publish</h2>
+
+      <div id="missing-context" hidden>
+        <p>Open this from the AEM Sidekick to schedule the current page.</p>
+      </div>
+
+      <div id="schedule-form-wrap">
+        <p class="target-path">
+          <span class="label">Page</span>
+          <span id="target-path-value" class="value"></span>
+        </p>
+        <p class="target-site">
+          <span class="label">Site</span>
+          <span id="target-site-value" class="value"></span>
+        </p>
+
+        <label for="schedule-time" id="schedule-time-label">
+          Publish at
+          <span class="timezone" id="schedule-timezone"></span>
+        </label>
+        <input
+          type="datetime-local"
+          id="schedule-time"
+          name="schedule-time"
+          autocomplete="off"
+          required
+        />
+
+        <p class="status-text" id="status-text" aria-live="polite"></p>
+
+        <p class="button-wrapper">
+          <button type="button" id="schedule-btn" class="button" disabled>Schedule</button>
+        </p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

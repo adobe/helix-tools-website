@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scheduler</title>
+  <meta name="description" content="Manage scheduled publishes for pages and snapshots">
+  <meta name="lab" content="true">
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/scheduler/scheduler.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/scheduler/scheduler.css" />
+</head>
+<body class="scheduler appear">
+  <header></header>
+  <main>
+    <!-- TITLE -->
+    <div>
+      <h1>Scheduler</h1>
+      <p>View and manage scheduled publishes for pages and snapshots.</p>
+    </div>
+
+    <!-- SITE FORM -->
+    <div>
+      <form id="site-form">
+        <section class="form-field config-field">
+          <div class="form-field org-field">
+            <label for="org">Organization</label>
+            <input name="org" id="org" list="org-list" autocomplete="off" required />
+            <datalist id="org-list"></datalist>
+          </div>
+          <div class="form-field site-field">
+            <label for="site">Site</label>
+            <input name="site" id="site" list="site-list" autocomplete="off" disabled />
+            <datalist id="site-list"></datalist>
+          </div>
+        </section>
+        <p class="button-wrapper">
+          <button type="submit" id="load-schedule" class="button">Load schedule</button>
+          <button type="reset" id="reset" class="button outline">Reset</button>
+        </p>
+      </form>
+    </div>
+
+    <!-- STATUS / ALERT -->
+    <div id="status-container" aria-hidden="true">
+      <div id="status-card">
+        <p class="status-text" role="status" aria-live="polite"></p>
+        <p class="button-wrapper">
+          <button type="button" id="refresh" class="button outline" hidden>Refresh schedule</button>
+        </p>
+      </div>
+    </div>
+
+    <!-- SCHEDULE LIST -->
+    <div id="schedule-container" aria-hidden="true">
+      <h2>Scheduled items</h2>
+      <div id="schedule-list" role="table" aria-label="Scheduled items">
+        <div class="schedule-row schedule-header" role="row">
+          <span role="columnheader">Type</span>
+          <span role="columnheader">Item</span>
+          <span role="columnheader">Publishes on</span>
+          <span role="columnheader">Requested by</span>
+          <span role="columnheader">Actions</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONSOLE -->
+    <div>
+      <div class="console"></div>
+    </div>
+  </main>
+  <footer></footer>
+
+  <!-- CONFIRM DIALOG -->
+  <dialog id="confirm-dialog" class="confirm-dialog">
+    <form method="dialog">
+      <h3 id="confirm-title">Delete scheduled item?</h3>
+      <p id="confirm-message"></p>
+      <div class="confirm-actions">
+        <button type="submit" value="cancel" class="button outline">Cancel</button>
+        <button type="submit" value="confirm" class="button" id="confirm-ok">Delete</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>
