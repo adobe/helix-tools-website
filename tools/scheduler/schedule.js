@@ -1,16 +1,10 @@
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import * as api from './utils.js';
 
 // The Sidekick popover cannot drive the tools-site profile login flow, so Admin
-// calls go directly through helix-admin and rely on Sidekick token injection
-// (same pattern as page-status/orphaned-pages-popover.js).
-const scheduleAdmin = admin.withRequestInit({
-  mode: 'cors',
-  cache: 'no-cache',
-  credentials: 'same-origin',
-  redirect: 'follow',
-  referrerPolicy: 'no-referrer',
-});
+// calls go directly through the admin client and rely on Sidekick token
+// injection (same pattern as page-status/orphaned-pages-popover.js).
+let scheduleAdmin;
 
 // Previews the page so it can be scheduled. Returns the shared { ok, error,
 // resp } envelope.
@@ -124,10 +118,23 @@ function initContext() {
   timezoneLabel.textContent = `(${Intl.DateTimeFormat().resolvedOptions().timeZone})`;
 }
 
-timeInput.addEventListener('input', () => {
-  scheduleBtn.disabled = !timeInput.value;
-  setStatus('');
-});
-scheduleBtn.addEventListener('click', handleSchedule);
+async function init() {
+  const admin = await getAdminClient();
+  scheduleAdmin = admin.withRequestInit({
+    mode: 'cors',
+    cache: 'no-cache',
+    credentials: 'same-origin',
+    redirect: 'follow',
+    referrerPolicy: 'no-referrer',
+  });
 
-initContext();
+  timeInput.addEventListener('input', () => {
+    scheduleBtn.disabled = !timeInput.value;
+    setStatus('');
+  });
+  scheduleBtn.addEventListener('click', handleSchedule);
+
+  initContext();
+}
+
+init();

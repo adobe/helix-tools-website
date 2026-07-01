@@ -2,19 +2,11 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest } from '../../utils/admin-request.js';
 import * as api from './utils.js';
 
-// The tools-site shell can drive the profile login/retry flow, so Admin calls
-// go through executeAdminRequest. `same-origin` credentials match page-status.
-const scheduleAdmin = admin.withRequestInit({
-  mode: 'cors',
-  cache: 'no-cache',
-  credentials: 'same-origin',
-  redirect: 'follow',
-  referrerPolicy: 'no-referrer',
-});
+let scheduleAdmin;
 
 const siteForm = document.getElementById('site-form');
 const orgInput = document.getElementById('org');
@@ -317,9 +309,22 @@ function handleReset() {
   clearStatus();
 }
 
-initConfigField();
-siteForm.addEventListener('submit', handleSubmit);
-resetBtn.addEventListener('click', handleReset);
-refreshBtn.addEventListener('click', loadSiteState);
+async function init() {
+  const admin = await getAdminClient();
+  // The tools-site shell can drive the profile login/retry flow, so Admin calls
+  // go through executeAdminRequest. `same-origin` credentials match page-status.
+  scheduleAdmin = admin.withRequestInit({
+    mode: 'cors',
+    cache: 'no-cache',
+    credentials: 'same-origin',
+    redirect: 'follow',
+    referrerPolicy: 'no-referrer',
+  });
 
-registerToolReady();
+  await initConfigField();
+  siteForm.addEventListener('submit', handleSubmit);
+  resetBtn.addEventListener('click', handleReset);
+  refreshBtn.addEventListener('click', loadSiteState);
+}
+
+registerToolReady(init());
