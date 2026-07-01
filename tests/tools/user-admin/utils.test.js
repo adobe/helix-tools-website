@@ -109,6 +109,17 @@ describe('user-admin:utils.js', () => {
       assert.deepEqual(result.admin.role, { author: ['a@b.com'] });
     });
 
+    it('always sets admin.requireAuth to auto', () => {
+      const result = buildAccessConfig({}, []);
+      assert.equal(result.admin.requireAuth, 'auto');
+    });
+
+    it('overwrites an existing admin.requireAuth value with auto', () => {
+      const original = { admin: { role: {}, requireAuth: 'true' } };
+      const result = buildAccessConfig(original, []);
+      assert.equal(result.admin.requireAuth, 'auto');
+    });
+
     it('is the inverse of parseUsersFromAccessConfig', () => {
       const original = {
         admin: {

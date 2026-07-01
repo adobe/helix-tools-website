@@ -91,7 +91,8 @@ async function getSiteAccessConfig() {
 }
 
 async function updateSiteAccess() {
-  const access = buildAccessConfig(accessConfig.originalSiteAccess, accessConfig.users);
+  const { originalSiteAccess, users } = accessConfig;
+  const access = buildAccessConfig(originalSiteAccess, users);
   const result = await executeAdminRequest(
     async () => {
       const res = await admin.config({ org: org.value, site: site.value })

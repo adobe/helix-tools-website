@@ -30,7 +30,7 @@ export function parseUsersFromAccessConfig(config) {
  * @returns {object} Updated access config ready to POST back
  */
 export function buildAccessConfig(originalAccess, users) {
-  const access = { ...originalAccess, admin: { ...originalAccess?.admin, role: {} } };
+  const access = { ...originalAccess, admin: { ...originalAccess?.admin, role: {}, requireAuth: 'auto' } };
   users.forEach((user) => {
     user.roles.forEach((role) => {
       if (!access.admin.role[role]) access.admin.role[role] = [user.email];
