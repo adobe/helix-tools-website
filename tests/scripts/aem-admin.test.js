@@ -57,6 +57,15 @@ describe('aem-admin.js — H6 URL contract', () => {
       assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/config/robots.txt');
     });
 
+    it('select from org root descends into /{org}/config/ — not equivalent to config({org, site})', async () => {
+      // Unlike H5 (where /config/{org} is a fixed prefix), H6's config.json IS
+      // the org root's leaf, so descending from it does not reach the same
+      // path as config({org, site}).url — this is a real scheme difference,
+      // not something callers should rely on.
+      await admin.config({ org: 'adobe' }).select('sites/x/config.json').read();
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/config/sites/x/config.json');
+    });
+
     it('.read() at the site root hits /{org}/sites/{site}/config.json', async () => {
       await admin.config({ org: 'adobe', site: 'x' }).read();
       assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/config.json');
@@ -132,6 +141,25 @@ describe('aem-admin.js — H6 URL contract', () => {
         'https://api.aem.live/adobe/sites/x/live',
       );
     });
+
+    it('.get/.update/.remove hit /{org}/sites/{site}/live/{path}', async () => {
+      await admin.live({ org: 'adobe', site: 'x' }).get('/en/index');
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/live/en/index');
+    });
+  });
+
+  describe('admin.code(coords) URLs', () => {
+    it('.url is /{org}/sites/{site}/code', () => {
+      assert.equal(
+        admin.code({ org: 'adobe', site: 'x' }).url,
+        'https://api.aem.live/adobe/sites/x/code',
+      );
+    });
+
+    it('.get/.update/.remove hit /{org}/sites/{site}/code/{path}', async () => {
+      await admin.code({ org: 'adobe', site: 'x' }).get('/scripts/scripts.js');
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/code/scripts/scripts.js');
+    });
   });
 
   describe('admin.psi(coords) URLs', () => {
@@ -141,6 +169,19 @@ describe('aem-admin.js — H6 URL contract', () => {
         'https://api.aem.live/adobe/sites/x/psi',
       );
     });
+
+    it('.get() GETs the psi endpoint', async () => {
+      await admin.psi({ org: 'adobe', site: 'x' }).get('');
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/psi');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('.get("", { params }) appends query params', async () => {
+      await admin.psi({ org: 'adobe', site: 'x' })
+        .get('', { params: { url: 'https://main--x--adobe.aem.live/' } });
+      const u = new URL(calls[0].url);
+      assert.equal(u.searchParams.get('url'), 'https://main--x--adobe.aem.live/');
+    });
   });
 
   describe('admin.log(coords) URLs', () => {
@@ -149,6 +190,18 @@ describe('aem-admin.js — H6 URL contract', () => {
         admin.log({ org: 'adobe', site: 'x' }).url,
         'https://api.aem.live/adobe/sites/x/log',
       );
+    });
+
+    it('.get(path) GETs logs', async () => {
+      await admin.log({ org: 'adobe', site: 'x' }).get('');
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/log');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('.update(path) POSTs a log update', async () => {
+      await admin.log({ org: 'adobe', site: 'x' }).update('');
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/log');
+      assert.equal(calls[0].init.method, 'POST');
     });
   });
 
@@ -180,6 +233,31 @@ describe('aem-admin.js — H6 URL contract', () => {
         'https://api.aem.live/adobe/sites/x/snapshot',
       );
     });
+
+    it('.get("") GETs the snapshot list', async () => {
+      await admin.snapshot({ org: 'adobe', site: 'x' }).get('');
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/snapshot');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('.get("name") GETs the named snapshot manifest', async () => {
+      await admin.snapshot({ org: 'adobe', site: 'x' }).get('my-snapshot');
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/snapshot/my-snapshot');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('.update("name", body) POSTs to the snapshot endpoint', async () => {
+      await admin.snapshot({ org: 'adobe', site: 'x' }).update('my-snapshot', '{"review":"approved"}');
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/snapshot/my-snapshot');
+      assert.equal(calls[0].init.method, 'POST');
+      assert.equal(calls[0].init.body, '{"review":"approved"}');
+    });
+
+    it('.remove("name/*") DELETEs snapshot paths', async () => {
+      await admin.snapshot({ org: 'adobe', site: 'x' }).remove('my-snapshot/*');
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/snapshot/my-snapshot/*');
+      assert.equal(calls[0].init.method, 'DELETE');
+    });
   });
 
   describe('admin.sidekick(coords) URLs', () => {
@@ -188,6 +266,18 @@ describe('aem-admin.js — H6 URL contract', () => {
         admin.sidekick({ org: 'adobe', site: 'x' }).url,
         'https://api.aem.live/adobe/sites/x/sidekick',
       );
+    });
+
+    it('.get("config.json") GETs the sidekick config', async () => {
+      await admin.sidekick({ org: 'adobe', site: 'x' }).get('config.json');
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/sidekick/config.json');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('does not expose .update or .remove', () => {
+      const s = admin.sidekick({ org: 'adobe', site: 'x' });
+      assert.equal(s.update, undefined);
+      assert.equal(s.remove, undefined);
     });
   });
 

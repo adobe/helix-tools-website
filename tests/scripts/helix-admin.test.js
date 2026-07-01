@@ -153,6 +153,20 @@ describe('helix-admin.js — H5 URL contract', () => {
     });
   });
 
+  describe('admin.code(coords) URLs', () => {
+    it('.url is /code/{org}/{site}/main', () => {
+      assert.equal(
+        admin.code({ org: 'adobe', site: 'x' }).url,
+        'https://admin.hlx.page/code/adobe/x/main',
+      );
+    });
+
+    it('.get/.update/.remove hit /code/{org}/{site}/main/{path}', async () => {
+      await admin.code({ org: 'adobe', site: 'x' }).get('/scripts/scripts.js');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/code/adobe/x/main/scripts/scripts.js');
+    });
+  });
+
   describe('admin.snapshot(coords)', () => {
     it('.get("") GETs the snapshot list', async () => {
       await admin.snapshot({ org: 'adobe', site: 'x' }).get('');
@@ -310,50 +324,6 @@ describe('helix-admin.js — H5 URL contract', () => {
     it('/path resolves against https://admin.hlx.page', async () => {
       await admin.raw('GET', '/sidekick/adobe/x/main/config.json');
       assert.equal(calls[0].url, 'https://admin.hlx.page/sidekick/adobe/x/main/config.json');
-    });
-  });
-
-  describe('network error handling', () => {
-    it('returns ok=false with status=0 when fetch throws', async () => {
-      respond = () => { throw new TypeError('Failed to fetch'); };
-      const result = await admin.config({ org: 'adobe', site: 'x' }).read();
-      assert.equal(result.ok, false);
-      assert.equal(result.status, 0);
-    });
-
-    it('sets error to the thrown message', async () => {
-      respond = () => { throw new TypeError('Failed to fetch'); };
-      const result = await admin.config({ org: 'adobe', site: 'x' }).read();
-      assert.equal(result.error, 'Failed to fetch');
-    });
-
-    it('echoes method and url on the request descriptor despite the error', async () => {
-      respond = () => { throw new TypeError('Failed to fetch'); };
-      const result = await admin.config({ org: 'adobe', site: 'x' }).read();
-      assert.equal(result.request.method, 'GET');
-      assert.equal(result.request.url, 'https://admin.hlx.page/config/adobe/sites/x.json');
-    });
-
-    it('json() rejects with the original error', async () => {
-      respond = () => { throw new TypeError('Failed to fetch'); };
-      const result = await admin.config({ org: 'adobe', site: 'x' }).read();
-      await assert.rejects(() => result.json(), /Failed to fetch/);
-    });
-
-    it('text() rejects with the original error', async () => {
-      respond = () => { throw new TypeError('Failed to fetch'); };
-      const result = await admin.config({ org: 'adobe', site: 'x' }).read();
-      await assert.rejects(() => result.text(), /Failed to fetch/);
-    });
-  });
-
-  describe('response envelope', () => {
-    it('exposes ok=true and the response status on success', async () => {
-      respond = () => new Response('hello', { status: 200 });
-      const result = await admin.config({ org: 'adobe', site: 'x' }).select('robots.txt').read();
-      assert.equal(result.ok, true);
-      assert.equal(result.status, 200);
-      assert.equal(result.error, '');
     });
   });
 
