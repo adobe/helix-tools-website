@@ -22,9 +22,9 @@ function filterPaths(hrefs) {
 }
 
 function formatError(result) {
-  if (result.error) return result.error;
   if (result.status === 401) return 'Please make sure you are logged in.';
   if (result.status === 403) return 'Please make sure your user has the correct permissions.';
+  if (result.error) return result.error;
   return `Error: ${result.status}`;
 }
 
