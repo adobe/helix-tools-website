@@ -1,38 +1,92 @@
-<div class="bot-info-success">
+<div class="bot-info-loading">Loading your site configuration…</div>
+
+<form class="bot-info-wizard" aria-hidden="true">
     <p class="bot-info-welcome">
         <strong>Welcome to Adobe Experience Manager.</strong><br>
-        We made recent changes to the setup process for Adobe Experience Manager.<br>
-        If you have any feedback, please let us know, either on Slack, Teams or <a target="_blank" href="https://discord.com/invite/aem-live">Discord</a>.<br>
-    </p>
-    <h2>What we did:</h2>
-    <ul>
-        <li>Set up AEM for <span class="bot-info-org">{{org}}</span> / <span class="bot-info-site">{{site}}</span>.</li>
-        <li>Made <span class="bot-info-user">{{user}}</span><sup>*</sup> an admin.</li>
-        <li>Started AEM Code Sync for selected GitHub repositories.</li>
-    </ul>
-    <p class="bot-info-admin-note"><sup>*</sup>We are using the primary email address set in the GitHub account that just installed AEM Code Sync as the default admin. 
-        If this is not the account you want to use as the default admin, feel free to change it in the <a target="_blank" class="bot-info-user-admin" href="https://labs.aem.live/tools/user-admin/index.html">User Admin Tool</a>.
+        AEM Code Sync is now connected to your GitHub repository for
+        <span class="bot-info-org">{{org}}</span> / <span class="bot-info-site">{{site}}</span>.<br>
+        Let's finish setting up your site.
     </p>
 
-    <p class="bot-info-admin-note bot-info-no-user" aria-hidden="true">We were not able to determine the user that installed AEM Code Sync.
-        Please set the default admin in the <a target="_blank" class="bot-info-user-admin" href="https://labs.aem.live/tools/user-admin/index.html">User Admin Tool</a>.</p>
-    </p>
+    <section class="bot-info-step bot-info-org-users" aria-hidden="true">
+        <h2>Organization users</h2>
+        <p>These users have access across the <span class="bot-info-org">{{org}}</span> organization.
+            Review the list and add or remove users as needed.
+            <a href="https://www.aem.live/docs/authentication-setup-authoring#admin-roles" target="_blank" rel="noopener noreferrer">Learn about admin roles</a>.</p>
+        <div class="bot-info-user-list" data-scope="org"></div>
+        <button type="button" class="button outline bot-info-add-user" data-scope="org">+ Add user</button>
+    </section>
 
+    <section class="bot-info-step">
+        <h2>Site users</h2>
+        <p>These users have access to <span class="bot-info-site">{{site}}</span>.
+            Review the list and add or remove users as needed.
+            <a href="https://www.aem.live/docs/authentication-setup-authoring#admin-roles" target="_blank" rel="noopener noreferrer">Learn about admin roles</a>.</p>
+        <div class="bot-info-user-list" data-scope="site"></div>
+        <button type="button" class="button outline bot-info-add-user" data-scope="site">+ Add user</button>
+    </section>
+
+    <section class="bot-info-step">
+        <h2>Content source</h2>
+        <div class="bot-info-da-default">
+            <p>Your content is authored in
+                <a href="https://da.live" target="_blank" rel="noopener noreferrer">Document Authoring (DA)</a>.</p>
+            <div class="bot-info-field">
+                <label for="bot-info-da-url">Content source URL</label>
+                <input type="text" id="bot-info-da-url" class="bot-info-da-url" readonly>
+            </div>
+        </div>
+
+        <label class="bot-info-advanced-toggle">
+            <input type="checkbox" class="bot-info-advanced-check"> Use a different content source
+        </label>
+
+        <div class="bot-info-advanced" aria-hidden="true">
+            <div class="bot-info-field">
+                <label for="bot-info-content-type">Content source type</label>
+                <select id="bot-info-content-type" class="bot-info-content-type"></select>
+            </div>
+            <div class="bot-info-field">
+                <label for="bot-info-content-url">Content source URL</label>
+                <input type="url" id="bot-info-content-url" class="bot-info-content-url"
+                    placeholder="SharePoint, Google Drive or AEM URL">
+            </div>
+            <div class="bot-info-field bot-info-suffix-field" aria-hidden="true">
+                <label for="bot-info-content-suffix">Suffix</label>
+                <input type="text" id="bot-info-content-suffix" class="bot-info-content-suffix" value=".html">
+            </div>
+        </div>
+    </section>
+
+    <div class="bot-info-error" aria-hidden="true"></div>
+    <button type="submit" class="button bot-info-submit">Finish setup</button>
+</form>
+
+<div class="bot-info-success" aria-hidden="true">
+    <p class="bot-info-welcome">
+        <strong>Your site is ready.</strong><br>
+        <span class="bot-info-welcome-saved">We've saved the setup for <span class="bot-info-org">{{org}}</span> / <span class="bot-info-site">{{site}}</span>.</span><span class="bot-info-welcome-unsaved" aria-hidden="true">AEM is set up for <span class="bot-info-org">{{org}}</span> / <span class="bot-info-site">{{site}}</span>.</span><br>
+        If you have any feedback, please let us know, either on Slack, Teams or <a target="_blank" rel="noopener noreferrer" href="https://discord.com/invite/aem-live">Discord</a>.<br>
+    </p>
+    <div class="bot-info-did-section">
+        <h2>What we did:</h2>
+        <ul class="bot-info-did"></ul>
+    </div>
 
     <h2>What's next:</h2>
-    
+
     <h3>Create your content:</h3>
     <span class="bot-info-content-source">https://da.live/start?org=aemtutorial&site=mysite</span>
 
     <h3>Check your site:</h3>
-    <p>Preview: <a target="_blank" class="bot-info-preview" href="https://main--mysite--aemtutorial.aem.page/">https://main--mysite--aemtutorial.aem.page/</a></p>
-    <p>Live: <a target="_blank" class="bot-info-live" href="https://main--mysite--aemtutorial.aem.live/">https://main--mysite--aemtutorial.aem.live/</a></p>
-
-    <h3>Add users:</h3>
-    <p>Use the admin tool: <a target="_blank" class="bot-info-user-admin" href="https://labs.aem.live/tools/user-admin/index.html">https://labs.aem.live/tools/user-admin/index.html</a></p>
+    <p>Preview: <a target="_blank" rel="noopener noreferrer" class="bot-info-preview" href="https://main--mysite--aemtutorial.aem.page/">https://main--mysite--aemtutorial.aem.page/</a></p>
+    <p>Live: <a target="_blank" rel="noopener noreferrer" class="bot-info-live" href="https://main--mysite--aemtutorial.aem.live/">https://main--mysite--aemtutorial.aem.live/</a></p>
 </div>
 
 <div class="bot-info-alert" aria-hidden="true">
-    Something went wrong. Please share this page URL and a console screenshot with the Adobe Experience Manager team.<br>
-    We made recent changes to the setup process, and are interested in any feedback and reports of failures.
+    <p>We couldn't load your configuration. You can still continue to your site below.<br>
+    If this keeps happening, please share this page URL and a screenshot with the Adobe Experience Manager team — we're actively improving the setup process and appreciate any reports.</p>
+    <button type="button" class="button bot-info-continue">Continue to your site →</button>
 </div>
+
+<div class="console" aria-hidden="true"></div>
