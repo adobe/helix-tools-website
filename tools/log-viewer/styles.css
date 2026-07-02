@@ -329,3 +329,25 @@ button.disabled {
   background-color: var(--color-background);
   color: var(--color-button-disabled-text);
 }
+
+/* Admin-detail JSON viewer inside the log-viewer modal. CodeMirror needs an
+   explicit height to behave as a scrollable region inside the modal. */
+.log-viewer-detail {
+  height: 60vh;
+  min-height: 240px;
+  border: var(--border-s, 1px) solid var(--color-border);
+  border-radius: var(--rounding-s, 4px);
+  overflow: hidden;
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+}
+
+/* stylelint-disable selector-class-pattern -- CodeMirror class names are camelCase */
+.log-viewer-detail .cm-editor {
+  height: 100%;
+}
+
+.log-viewer-detail .cm-scroller {
+  font-family: inherit;
+}
+/* stylelint-enable selector-class-pattern */

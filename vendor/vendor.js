@@ -31,14 +31,11 @@ const DEPS = [
   { pkg: 'diff', out: 'diff/diff.js' },
   { pkg: 'yaml', out: 'yaml/yaml.js' },
 
-  // Prism core + language components as separate bundles.
-  // Language component files reference Prism as a bare global (no require/import),
-  // so esbuild leaves that reference intact — same as how the CDN scripts worked.
-  { pkg: 'prismjs', out: 'prismjs/prismjs.js' },
-  { pkg: 'prismjs/components/prism-json.js', out: 'prismjs/prism-json.js' },
-  { pkg: 'prismjs/components/prism-markup.js', out: 'prismjs/prism-markup.js' },
-  { pkg: 'prismjs/components/prism-markup-templating.js', out: 'prismjs/prism-markup-templating.js' },
-  { pkg: 'prismjs/components/prism-handlebars.js', out: 'prismjs/prism-handlebars.js' },
+  // CodeMirror 6: bundle the editor utility module so all `@codemirror/*`
+  // packages share a single runtime instance (which CodeMirror requires).
+  // The source entry lives next to its build output; the cleanup step below
+  // knows to preserve any DEPS entrypoint that sits under `vendor/`.
+  { pkg: './vendor/codemirror/index.js', out: 'codemirror/codemirror.js' },
 
   // Chart.js must be listed before its plugins so the output file exists when
   // the plugins are loaded. Plugins declare chart.js as external so all bundles
@@ -58,9 +55,29 @@ const vendorDir = join(root, 'vendor');
 
 await mkdir(vendorDir, { recursive: true });
 
+// DEPS entrypoints that live under vendor/ (e.g. the CodeMirror wrapper module
+// whose source and build output share a directory). We must not blow these
+// away when cleaning previously-vendored subdirs.
+const preserveSources = new Set(
+  DEPS
+    .filter(({ pkg }) => pkg.startsWith('./vendor/'))
+    .map(({ pkg }) => join(root, pkg.slice(2))),
+);
+
+// Clean each subdir under vendor/ file-by-file so preserved source entrypoints
+// survive. rm with `force: true` treats a missing target as success, which
+// avoids racing with concurrent cleanups.
 const existing = await readdir(vendorDir, { withFileTypes: true });
 await Promise.all(
-  existing.filter((e) => e.isDirectory()).map((e) => rm(join(vendorDir, e.name), { recursive: true })),
+  existing.filter((e) => e.isDirectory()).map(async (e) => {
+    const dirPath = join(vendorDir, e.name);
+    const entries = await readdir(dirPath);
+    await Promise.all(entries.map(async (name) => {
+      const filePath = join(dirPath, name);
+      if (preserveSources.has(filePath)) return;
+      await rm(filePath, { recursive: true, force: true });
+    }));
+  }),
 );
 
 await Promise.all(DEPS.map(async ({ pkg, out, external = [] }) => {
