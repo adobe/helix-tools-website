@@ -880,6 +880,7 @@ async function init() {
     doc: '',
     language: 'html',
     readOnly: true,
+    labelledBy: 'preview-label',
   });
 
   validateJson();

@@ -33,7 +33,9 @@ const DEPS = [
 
   // CodeMirror 6: bundle the editor utility module so all `@codemirror/*`
   // packages share a single runtime instance (which CodeMirror requires).
-  { pkg: './utils/codemirror/codemirror.js', out: 'codemirror/codemirror.js' },
+  // The source entry lives next to its build output; the cleanup step below
+  // knows to preserve any DEPS entrypoint that sits under `vendor/`.
+  { pkg: './vendor/codemirror/index.js', out: 'codemirror/codemirror.js' },
 
   // Chart.js must be listed before its plugins so the output file exists when
   // the plugins are loaded. Plugins declare chart.js as external so all bundles
@@ -53,9 +55,29 @@ const vendorDir = join(root, 'vendor');
 
 await mkdir(vendorDir, { recursive: true });
 
+// DEPS entrypoints that live under vendor/ (e.g. the CodeMirror wrapper module
+// whose source and build output share a directory). We must not blow these
+// away when cleaning previously-vendored subdirs.
+const preserveSources = new Set(
+  DEPS
+    .filter(({ pkg }) => pkg.startsWith('./vendor/'))
+    .map(({ pkg }) => join(root, pkg.slice(2))),
+);
+
+// Clean each subdir under vendor/ file-by-file so preserved source entrypoints
+// survive. rm with `force: true` treats a missing target as success, which
+// avoids racing with concurrent cleanups.
 const existing = await readdir(vendorDir, { withFileTypes: true });
 await Promise.all(
-  existing.filter((e) => e.isDirectory()).map((e) => rm(join(vendorDir, e.name), { recursive: true })),
+  existing.filter((e) => e.isDirectory()).map(async (e) => {
+    const dirPath = join(vendorDir, e.name);
+    const entries = await readdir(dirPath);
+    await Promise.all(entries.map(async (name) => {
+      const filePath = join(dirPath, name);
+      if (preserveSources.has(filePath)) return;
+      await rm(filePath, { recursive: true, force: true });
+    }));
+  }),
 );
 
 await Promise.all(DEPS.map(async ({ pkg, out, external = [] }) => {

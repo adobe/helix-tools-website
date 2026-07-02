@@ -28,6 +28,13 @@
   align-self: center;
 }
 
+.admin-edit .editor-label {
+  display: block;
+  margin-bottom: 0.5em;
+  color: var(--color-font-grey);
+  font-size: var(--body-size-m);
+}
+
 .admin-edit #editor {
   position: relative;
   height: 66vmin;

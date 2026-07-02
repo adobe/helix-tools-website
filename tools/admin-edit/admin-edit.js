@@ -97,21 +97,20 @@ async function init() {
     }
   });
 
-  // Lazy-load CodeMirror on first focus inside the editor area or when the
-  // admin form is first submitted.
-  editorEl.addEventListener('focusin', ensureEditor, { once: true });
-  adminForm.addEventListener('submit', ensureEditor, { once: true });
-
-  // Clicking the Body label focuses the editor (mirrors the native
-  // <label for="..."> behavior we lose with `aria-labelledby`).
-  editorLabel.addEventListener('click', async () => {
+  // Lazy-load CodeMirror on first interaction. `focusin` on the empty #editor
+  // <div> can never fire before CM mounts (no focusable descendants), so we
+  // trigger from `click` on the host — which fires on any element — and hand
+  // focus to CM's textbox after it mounts so the user's first click lands
+  // where they expect.
+  editorEl.addEventListener('click', async () => {
     try {
       const editor = await ensureEditor();
       editor.view.focus();
     } catch {
       // ensureEditor already surfaced the error via logResponse
     }
-  });
+  }, { once: true });
+  adminForm.addEventListener('submit', ensureEditor, { once: true });
 
   /**
    * Handles body form submission (Save).

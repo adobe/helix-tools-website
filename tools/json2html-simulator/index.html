@@ -116,7 +116,7 @@
             </div>
           </div>
           <div class="editor-wrapper">
-            <div id="json-editor" class="code-editor-host" aria-labelledby="json-label"></div>
+            <div id="json-editor" class="code-editor-host"></div>
           </div>
           <div class="editor-status" id="json-status">
             <span class="status-icon status-ok">✓</span>
@@ -135,7 +135,7 @@
             <span id="template-label" class="editor-label">Mustache Template</span>
           </div>
           <div class="editor-wrapper">
-            <div id="template-editor" class="code-editor-host" aria-labelledby="template-label"></div>
+            <div id="template-editor" class="code-editor-host"></div>
           </div>
           <div class="editor-status" id="template-status">
             <span class="status-icon status-ok">✓</span>
@@ -152,7 +152,7 @@
       <!-- BOTTOM ROW: Preview Panel -->
       <section class="preview-panel">
         <div class="preview-header">
-          <span class="preview-label">HTML Preview</span>
+          <span id="preview-label" class="preview-label">HTML Preview</span>
           <div class="preview-tabs" role="tablist">
             <button type="button" class="preview-tab" role="tab" data-view="rendered" aria-selected="false">
               Rendered
@@ -178,7 +178,7 @@
           </div>
           <!-- Source View -->
           <div class="preview-view active" data-view="source">
-            <div id="source-editor" class="code-editor-host source-editor-host" aria-label="Rendered HTML source"></div>
+            <div id="source-editor" class="code-editor-host source-editor-host"></div>
           </div>
           <div class="validation-details" id="validation-details" aria-live="polite" hidden></div>
         </div>

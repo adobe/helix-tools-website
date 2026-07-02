@@ -1,7 +1,8 @@
 /**
  * Source-only module — this is the esbuild entry point for the CodeMirror
- * bundle (see DEPS in `vendor/vendor.js`). It is built into
- * `vendor/codemirror/codemirror.js`, which is what runtime code should
+ * bundle (see DEPS in `vendor/vendor.js`). It sits next to its output on
+ * purpose: `vendor/vendor.js` reads this file and writes the browser bundle
+ * to `vendor/codemirror/codemirror.js`, which is what runtime code should
  * dynamically import. Do not import this file directly from browser code —
  * the bare `@codemirror/*` specifiers are only resolvable by the bundler.
  *
