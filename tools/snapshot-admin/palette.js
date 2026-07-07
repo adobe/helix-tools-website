@@ -10,10 +10,21 @@ const params = new URLSearchParams(window.location.search);
 const referrer = new URL(params.get('referrer'));
 const OWNER = params.get('owner');
 const REPO = params.get('repo');
-const CUSTOM_REVIEW_HOST = params.get('reviewHost');
-const CUSTOM_LIVE_HOST = params.get('liveHost');
 const SNAPSHOT = 'default';
 const PATHNAME = referrer.pathname;
+
+const ALLOWED_HOST_SUFFIXES = ['.aem.reviews', '.aem.live', '.aem.page'];
+
+function isTrustedHost(host) {
+  if (!host) return false;
+  const normalized = host.toLowerCase().trim();
+  return ALLOWED_HOST_SUFFIXES.some(
+    (suffix) => normalized === suffix.slice(1) || normalized.endsWith(suffix),
+  );
+}
+
+const CUSTOM_REVIEW_HOST = isTrustedHost(params.get('reviewHost')) ? params.get('reviewHost') : null;
+const CUSTOM_LIVE_HOST = isTrustedHost(params.get('liveHost')) ? params.get('liveHost') : null;
 
 const ADD = document.getElementById('add-page');
 const REMOVE = document.getElementById('remove-page');
@@ -32,7 +43,7 @@ const PAGE_STATUS_WRAPPER = document.getElementById('page-status-wrapper');
 async function init() {
   const state = referrer.hostname.includes('reviews') ? 'review' : 'page';
 
-  REVIEWS_LINK.href = (CUSTOM_REVIEW_HOST && !CUSTOM_REVIEW_HOST.endsWith('.aem.reviews')) ? `https://${CUSTOM_REVIEW_HOST}${PATHNAME}` : `https://${SNAPSHOT}--main--${REPO}--${OWNER}.aem.reviews${PATHNAME}`;
+  REVIEWS_LINK.href = CUSTOM_REVIEW_HOST ? `https://${CUSTOM_REVIEW_HOST}${PATHNAME}` : `https://${SNAPSHOT}--main--${REPO}--${OWNER}.aem.reviews${PATHNAME}`;
   ADMIN_LINK.href = `/tools/snapshot-admin/index.html?snapshot=https://main--${REPO}--${OWNER}.aem.page/.snapshots/${SNAPSHOT}/.manifest.json`;
 
   if (state === 'page') {
