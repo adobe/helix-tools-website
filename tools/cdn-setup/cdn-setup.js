@@ -2,7 +2,7 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { getErrorMessage } from './utils.js';
 
@@ -19,6 +19,7 @@ const site = document.getElementById('site');
 const org = document.getElementById('org');
 const host = document.getElementById('host');
 
+let admin;
 let originalConfig;
 let validationPassed = false;
 
@@ -333,6 +334,7 @@ async function saveConfig() {
 }
 
 async function init() {
+  admin = await getAdminClient();
   await initConfigField();
 
   // Update URL params when org or site changes

@@ -1,4 +1,4 @@
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import {
   fetchSnapshotManifest,
   fetchStatus,
@@ -175,6 +175,7 @@ async function onSnapshotChange() {
 }
 
 async function loadSnapshots() {
+  const admin = await getAdminClient();
   try {
     const result = await admin.snapshot({ org: OWNER, site: REPO }).get();
 

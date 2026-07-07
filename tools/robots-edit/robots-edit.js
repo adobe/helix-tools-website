@@ -1,8 +1,10 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
+
+let admin;
 
 const adminForm = document.getElementById('admin-form');
 const bodyForm = document.getElementById('body-form');
@@ -17,6 +19,7 @@ function logResult(result) {
 }
 
 async function init() {
+  admin = await getAdminClient();
   await initConfigField();
 
   bodyForm.addEventListener('submit', async (e) => {
