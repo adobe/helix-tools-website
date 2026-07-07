@@ -1,5 +1,5 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import { decorateIcons } from '../../scripts/aem.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
@@ -389,14 +389,8 @@ function displayResources(resources, live, preview) {
 }
 
 // data fetching
-const jobAdmin = admin.withRequestInit({ mode: 'cors' });
-const statusAdmin = admin.withRequestInit({
-  mode: 'cors',
-  cache: 'no-cache',
-  credentials: 'same-origin',
-  redirect: 'follow',
-  referrerPolicy: 'no-referrer',
-});
+let jobAdmin;
+let statusAdmin;
 
 /**
  * Submits a status job for the given org/site/path.
@@ -536,6 +530,15 @@ async function runFromParams(search) {
 }
 
 async function init() {
+  const admin = await getAdminClient();
+  jobAdmin = admin.withRequestInit({ mode: 'cors' });
+  statusAdmin = admin.withRequestInit({
+    mode: 'cors',
+    cache: 'no-cache',
+    credentials: 'same-origin',
+    redirect: 'follow',
+    referrerPolicy: 'no-referrer',
+  });
   await initConfigField();
 
   FORM.addEventListener('reset', () => {

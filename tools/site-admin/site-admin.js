@@ -2,7 +2,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { VIEW_STORAGE_KEY } from './helpers/constants.js';
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import {
   loadIcon,
@@ -14,6 +14,8 @@ import {
 } from './helpers/utils.js';
 import { openAddSiteModal } from './helpers/modals.js';
 import createSiteCard from './helpers/site-card.js';
+
+let admin;
 
 const org = document.getElementById('org');
 const site = document.getElementById('site');
@@ -314,6 +316,7 @@ window.addEventListener('sites-refresh', (e) => {
 });
 
 const initSiteAdmin = async () => {
+  admin = await getAdminClient();
   const neededIcons = [
     'code', 'document', 'edit', 'copy', 'external', 'trash', 'key',
     'check', 'more-vertical', 'shield', 'lock', 'activity',

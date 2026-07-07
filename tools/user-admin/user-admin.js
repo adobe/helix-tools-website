@@ -2,11 +2,13 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { loadIcon, icon, showToast } from '../../utils/card-ui/card-ui.js';
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { parseUsersFromAccessConfig, buildAccessConfig } from './utils.js';
 
 const VIEW_STORAGE_KEY = 'user-admin-view';
+
+let admin;
 
 const adminForm = document.getElementById('admin-form');
 const site = document.getElementById('site');
@@ -859,6 +861,7 @@ adminForm.addEventListener('submit', async (e) => {
 });
 
 async function init() {
+  admin = await getAdminClient();
   // Load required icons
   const neededIcons = ['user', 'edit', 'grid', 'list', 'trash'];
   await Promise.all(neededIcons.map(loadIcon));

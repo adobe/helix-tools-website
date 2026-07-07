@@ -1,6 +1,7 @@
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 
 export async function addToSnapshot(owner, repo, snapshot, paths) {
+  const admin = await getAdminClient();
   return admin.snapshot({ org: owner, site: repo }).update(
     `${snapshot}/*`,
     JSON.stringify({ paths }),
@@ -8,10 +9,12 @@ export async function addToSnapshot(owner, repo, snapshot, paths) {
 }
 
 export async function deleteFromSnapshot(owner, repo, snapshot, path) {
+  const admin = await getAdminClient();
   return admin.snapshot({ org: owner, site: repo }).remove(`${snapshot}${path}`);
 }
 
 export async function fetchSnapshotManifest(owner, repo, snapshot) {
+  const admin = await getAdminClient();
   const result = await admin.snapshot({ org: owner, site: repo }).get(snapshot);
   if (!result.ok) return null;
   const { manifest } = await result.json();
@@ -19,6 +22,7 @@ export async function fetchSnapshotManifest(owner, repo, snapshot) {
 }
 
 export async function fetchStatus(owner, repo, snapshot, path) {
+  const admin = await getAdminClient();
   const statusAdmin = admin.status({ org: owner, site: repo });
   const status = {};
   const snapshotResult = await statusAdmin.get(`.snapshots/${snapshot}${path}`);
@@ -29,6 +33,7 @@ export async function fetchStatus(owner, repo, snapshot, path) {
 }
 
 export async function updateReviewStatus(owner, repo, snapshot, status) {
+  const admin = await getAdminClient();
   return admin.snapshot({ org: owner, site: repo })
     .update(snapshot, null, { params: { review: status } });
 }

@@ -2,7 +2,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { logResponse, logMessage } from '../../blocks/console/console.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { createModal } from '../../blocks/modal/modal.js';
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import {
   setNestedValue,
@@ -11,6 +11,8 @@ import {
   cleanSidekickHostProperties,
 } from './utils.js';
 import escapeHtml from '../../utils/html.js';
+
+let admin;
 
 let currentConfig = {};
 // eslint-disable-next-line no-unused-vars
@@ -1079,6 +1081,7 @@ function toggleInheritedProperties() {
  * Initializes the config editor
  */
 async function init() {
+  admin = await getAdminClient();
   // Initialize config field (handles URL params, localStorage, sidekick auto-population)
   await initConfigField();
 

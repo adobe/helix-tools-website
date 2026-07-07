@@ -1,5 +1,5 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest } from '../../utils/admin-request.js';
 import { initConfigField } from '../../utils/config/config.js';
 import escapeHtml from '../../utils/html.js';
@@ -8,6 +8,7 @@ import { fetchHosts } from './utils.js';
 
 // Lazy-load Dark Alley converter module
 const CONVERTERS_URL = 'https://main--da-nx--adobe.aem.live/nx/utils/converters.js';
+let admin;
 let mdToDocDom;
 
 async function loadConverter() {
@@ -69,7 +70,7 @@ function showError(message) {
   updateDisplayState('error');
 }
 
-const jobAdmin = admin.withRequestInit({ mode: 'cors' });
+let jobAdmin;
 
 /**
  * Fetches job details from an existing job ID.
@@ -832,6 +833,8 @@ async function loadSinglePageDiff(path) {
  * Main initialization function.
  */
 async function init() {
+  admin = await getAdminClient();
+  jobAdmin = admin.withRequestInit({ mode: 'cors' });
   // Get params from URL
   const params = new URLSearchParams(window.location.search);
   currentOrg = params.get('org');
