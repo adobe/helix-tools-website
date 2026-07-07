@@ -5,7 +5,7 @@ import {
   fetchStatus,
   updateReviewStatus,
 } from './snapshot-utils.js';
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 
 const params = new URLSearchParams(window.location.search);
 const referrer = new URL(params.get('referrer'));
@@ -36,6 +36,7 @@ async function init() {
   const state = referrer.hostname.includes('reviews') ? 'review' : 'page';
 
   try {
+    const admin = await getAdminClient();
     const result = await admin.sidekick({ org: OWNER, site: REPO }).get('config.json');
     if (result.ok) {
       const json = await result.json();
