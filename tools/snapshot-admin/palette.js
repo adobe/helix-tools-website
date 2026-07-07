@@ -5,6 +5,7 @@ import {
   fetchStatus,
   updateReviewStatus,
 } from './snapshot-utils.js';
+import admin from '../../scripts/helix-admin.js';
 
 const params = new URLSearchParams(window.location.search);
 const referrer = new URL(params.get('referrer'));
@@ -13,18 +14,9 @@ const REPO = params.get('repo');
 const SNAPSHOT = 'default';
 const PATHNAME = referrer.pathname;
 
-const ALLOWED_HOST_SUFFIXES = ['.aem.reviews', '.aem.live', '.aem.page'];
-
-function isTrustedHost(host) {
-  if (!host) return false;
-  const normalized = host.toLowerCase().trim();
-  return ALLOWED_HOST_SUFFIXES.some(
-    (suffix) => normalized === suffix.slice(1) || normalized.endsWith(suffix),
-  );
-}
-
-const CUSTOM_REVIEW_HOST = isTrustedHost(params.get('reviewHost')) ? params.get('reviewHost') : null;
-const CUSTOM_LIVE_HOST = isTrustedHost(params.get('liveHost')) ? params.get('liveHost') : null;
+// Populated from the sidekick config in init() — not taken from URL params.
+let customReviewHost = null;
+let customLiveHost = null;
 
 const ADD = document.getElementById('add-page');
 const REMOVE = document.getElementById('remove-page');
@@ -43,7 +35,16 @@ const PAGE_STATUS_WRAPPER = document.getElementById('page-status-wrapper');
 async function init() {
   const state = referrer.hostname.includes('reviews') ? 'review' : 'page';
 
-  REVIEWS_LINK.href = CUSTOM_REVIEW_HOST ? `https://${CUSTOM_REVIEW_HOST}${PATHNAME}` : `https://${SNAPSHOT}--main--${REPO}--${OWNER}.aem.reviews${PATHNAME}`;
+  try {
+    const result = await admin.sidekick({ org: OWNER, site: REPO }).get('config.json');
+    if (result.ok) {
+      const json = await result.json();
+      customReviewHost = json.reviewHost || null;
+      customLiveHost = json.liveHost || null;
+    }
+  } catch { /* use defaults */ }
+
+  REVIEWS_LINK.href = customReviewHost ? `https://${customReviewHost}${PATHNAME}` : `https://${SNAPSHOT}--main--${REPO}--${OWNER}.aem.reviews${PATHNAME}`;
   ADMIN_LINK.href = `/tools/snapshot-admin/index.html?snapshot=https://main--${REPO}--${OWNER}.aem.page/.snapshots/${SNAPSHOT}/.manifest.json`;
 
   if (state === 'page') {
@@ -153,7 +154,7 @@ REVIEW_REJECT.addEventListener('click', async () => {
 REVIEW_APPROVE.addEventListener('click', async () => {
   SPINNER.setAttribute('aria-hidden', 'false');
   await updateReviewStatus(OWNER, REPO, SNAPSHOT, 'approve');
-  window.parent.location.href = CUSTOM_LIVE_HOST ? `https://${CUSTOM_LIVE_HOST}${PATHNAME}` : `https://main--${REPO}--${OWNER}.aem.live${PATHNAME}`;
+  window.parent.location.href = customLiveHost ? `https://${customLiveHost}${PATHNAME}` : `https://main--${REPO}--${OWNER}.aem.live${PATHNAME}`;
 });
 
 init();
