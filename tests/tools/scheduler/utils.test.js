@@ -6,6 +6,8 @@ import {
   deletePageSchedule,
   deleteSnapshotSchedule,
   fetchSchedule,
+  isPageHost,
+  parseSidekickParams,
 } from '../../../tools/scheduler/utils.js';
 
 describe('scheduler:utils.js', () => {
@@ -55,6 +57,57 @@ describe('scheduler:utils.js', () => {
         ensureViewNonce('o', 's', writeIntent),
         /forbidden/,
       );
+    });
+  });
+
+  describe('isPageHost', () => {
+    it('matches the default preview/live/review hosts', () => {
+      assert.equal(isPageHost('main--site--org.aem.page'), true);
+      assert.equal(isPageHost('main--site--org.aem.live'), true);
+      assert.equal(isPageHost('default--main--site--org.aem.reviews'), true);
+    });
+
+    it('rejects anything else, including authoring surfaces and a custom prod domain', () => {
+      assert.equal(isPageHost('org-my.sharepoint.com'), false);
+      assert.equal(isPageHost('docs.google.com'), false);
+      assert.equal(isPageHost('www.example.com'), false);
+    });
+  });
+
+  describe('parseSidekickParams', () => {
+    it('derives path directly from a preview/live referrer', () => {
+      const search = '?owner=org&repo=site&referrer=https%3A%2F%2Fmain--site--org.aem.page%2Ffoo%2Fbar';
+      const result = parseSidekickParams(search);
+      assert.deepEqual(result, {
+        org: 'org',
+        site: 'site',
+        path: '/foo/bar',
+        referrer: 'https://main--site--org.aem.page/foo/bar',
+        isProject: true,
+      });
+    });
+
+    it('leaves path empty for an authoring-surface referrer (e.g. SharePoint)', () => {
+      const referrer = 'https://org-my.sharepoint.com/:w:/r/personal/foo/Documents/page.docx';
+      const search = `?owner=org&repo=site&referrer=${encodeURIComponent(referrer)}`;
+      const result = parseSidekickParams(search);
+      assert.equal(result.path, '');
+      assert.equal(result.isProject, false);
+      assert.equal(result.referrer, referrer);
+    });
+
+    it('leaves path empty for a custom prod domain referrer (resolved via Admin instead)', () => {
+      const search = '?owner=org&repo=site&referrer=https%3A%2F%2Fwww.example.com%2Ffoo';
+      const result = parseSidekickParams(search);
+      assert.equal(result.path, '');
+      assert.equal(result.isProject, false);
+    });
+
+    it('handles a missing or unparsable referrer', () => {
+      assert.deepEqual(parseSidekickParams('?owner=org&repo=site'), {
+        org: 'org', site: 'site', path: '', referrer: '', isProject: false,
+      });
+      assert.equal(parseSidekickParams('?referrer=not-a-url').path, '');
     });
   });
 
