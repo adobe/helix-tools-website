@@ -1,4 +1,4 @@
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import {
   fetchSnapshotManifest,
   fetchStatus,
@@ -11,9 +11,11 @@ const params = new URLSearchParams(window.location.search);
 const referrer = new URL(params.get('referrer'));
 const OWNER = params.get('owner');
 const REPO = params.get('repo');
-const CUSTOM_REVIEW_HOST = params.get('reviewHost');
-const CUSTOM_LIVE_HOST = params.get('liveHost');
 const PATHNAME = referrer.pathname;
+
+// Populated from the sidekick config in init() — not taken from URL params.
+let customReviewHost = null;
+let customLiveHost = null;
 
 // UI Elements
 const SNAPSHOT_SELECT = document.getElementById('snapshot-select');
@@ -54,8 +56,8 @@ async function updateSnapshotUI() {
   const state = referrer.hostname.includes('reviews') ? 'review' : 'page';
 
   // Update links
-  REVIEWS_LINK.href = (CUSTOM_REVIEW_HOST && !CUSTOM_REVIEW_HOST.endsWith('.aem.reviews'))
-    ? `https://${CUSTOM_REVIEW_HOST}${PATHNAME}`
+  REVIEWS_LINK.href = customReviewHost
+    ? `https://${customReviewHost}${PATHNAME}`
     : `https://${currentSnapshot}--main--${REPO}--${OWNER}.aem.reviews${PATHNAME}`;
 
   ADMIN_LINK.href = `/tools/snapshot-admin/snapshot-details.html?snapshot=https://main--${REPO}--${OWNER}.aem.page/.snapshots/${currentSnapshot}/.manifest.json`;
@@ -174,7 +176,7 @@ async function onSnapshotChange() {
   await updateSnapshotUI();
 }
 
-async function loadSnapshots() {
+async function loadSnapshots(admin) {
   try {
     const result = await admin.snapshot({ org: OWNER, site: REPO }).get();
 
@@ -257,15 +259,24 @@ REVIEW_APPROVE.addEventListener('click', async () => {
   if (!currentSnapshot) return;
   SPINNER.setAttribute('aria-hidden', 'false');
   await updateReviewStatus(OWNER, REPO, currentSnapshot, 'approve');
-  window.parent.location.href = CUSTOM_LIVE_HOST
-    ? `https://${CUSTOM_LIVE_HOST}${PATHNAME}`
+  window.parent.location.href = customLiveHost
+    ? `https://${customLiveHost}${PATHNAME}`
     : `https://main--${REPO}--${OWNER}.aem.live${PATHNAME}`;
 });
 
 // Initialize
 async function init() {
   SPINNER.setAttribute('aria-hidden', 'false');
-  await loadSnapshots();
+  const admin = await getAdminClient();
+  try {
+    const result = await admin.sidekick({ org: OWNER, site: REPO }).get('config.json');
+    if (result.ok) {
+      const json = await result.json();
+      customReviewHost = json.reviewHost || null;
+      customLiveHost = json.liveHost || null;
+    }
+  } catch { /* use defaults */ }
+  await loadSnapshots(admin);
   SPINNER.setAttribute('aria-hidden', 'true');
 }
 

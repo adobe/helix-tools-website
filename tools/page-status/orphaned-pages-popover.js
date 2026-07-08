@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 
 const RUN_REPORT_BUTTON = document.getElementById('run-report');
 const ORPHANED_PAGES_LIST = document.getElementById('orphaned-pages-list');
@@ -10,17 +10,11 @@ const params = new URLSearchParams(window.location.search);
 const ORG = params.get('owner');
 const SITE = params.get('repo');
 const ORPHANED_PAGES_ACTIONS = document.getElementById('orphaned-pages-actions');
+let admin;
+let statusAdmin;
+let jobAdmin;
 let JOB_DETAILS = null;
 let LIVE_HOST = null;
-
-const statusAdmin = admin.withRequestInit({
-  mode: 'cors',
-  cache: 'no-cache',
-  credentials: 'same-origin',
-  redirect: 'follow',
-  referrerPolicy: 'no-referrer',
-});
-const jobAdmin = admin.withRequestInit({ mode: 'cors' });
 
 // data fetching
 /**
@@ -140,6 +134,15 @@ function pollJob(jobName) {
 }
 
 async function init() {
+  admin = await getAdminClient();
+  statusAdmin = admin.withRequestInit({
+    mode: 'cors',
+    cache: 'no-cache',
+    credentials: 'same-origin',
+    redirect: 'follow',
+    referrerPolicy: 'no-referrer',
+  });
+  jobAdmin = admin.withRequestInit({ mode: 'cors' });
   if (window.self === window.top) {
     document.body.classList.add('standalone');
   }

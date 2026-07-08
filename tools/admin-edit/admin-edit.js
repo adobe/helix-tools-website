@@ -1,7 +1,9 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { logResponse } from '../../blocks/console/console.js';
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
+
+let admin;
 
 const adminForm = document.getElementById('admin-form');
 const adminURL = document.getElementById('admin-url');
@@ -83,6 +85,7 @@ function updateAdminURLSuggestions({ org, site }) {
 }
 
 async function init() {
+  admin = await getAdminClient();
   adminURL.value = localStorage.getItem('admin-url') || admin.status({ org: 'adobe', site: 'aem-boilerplate' }).url;
 
   updateAdminURLSuggestions(admin.coordsFromURL(adminURL.value));

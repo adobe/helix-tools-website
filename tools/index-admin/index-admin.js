@@ -1,10 +1,12 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { toClassName } from '../../scripts/aem.js';
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { logResponse } from '../../blocks/console/console.js';
 import deriveReindexPaths from './utils.js';
+
+let admin;
 
 const adminForm = document.getElementById('admin-form');
 const site = document.getElementById('site');
@@ -423,6 +425,7 @@ function populateIndexes(indexes) {
 }
 
 async function init() {
+  admin = await getAdminClient();
   await initConfigField();
 
   addIndexButton.addEventListener('click', () => {

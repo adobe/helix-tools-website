@@ -1,6 +1,6 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import {
   toDateTimeLocal, calculatePastDate,
@@ -17,6 +17,8 @@ function loadCreateEditor() {
 }
 
 // field ids
+let admin;
+
 const FIELDS = ['date-from', 'date-to'];
 
 // tool elements
@@ -316,7 +318,7 @@ function buildLog(data, live, preview) {
     'ip',
     'duration',
   ];
-  const formattedData = new RewrittenData(data, live, preview, onAdminClick);
+  const formattedData = new RewrittenData(data, live, preview, onAdminClick, admin);
   formattedData.rewrite(cols);
 
   cols.forEach((col) => {
@@ -392,6 +394,7 @@ function writeTimeParams(timeframe) {
  * @returns {Promise<>} Object containing all log entries and/or an error.
  */
 async function fetchAllLogs(org, site, timeframe) {
+  const adminClient = await getAdminClient();
   const logs = [];
   const timeParams = Object.fromEntries(new URLSearchParams(writeTimeParams(timeframe)));
   let nextToken;
@@ -403,7 +406,7 @@ async function fetchAllLogs(org, site, timeframe) {
     firstPage = false;
     // eslint-disable-next-line no-await-in-loop
     const res = await executeAdminRequest(
-      () => admin.log({ org, site }).get('', { params }),
+      () => adminClient.log({ org, site }).get('', { params }),
       { org, site, policy },
     );
     if (!res) return { logs, error: { status: 401 } };
@@ -518,6 +521,7 @@ function getCellText(cell) {
  * Registers event listeners to handle form interactions, table updates, and UI behavior.
  */
 async function registerListeners() {
+  admin = await getAdminClient();
   // await initConfigField();
 
   // enable timeframe dropdown

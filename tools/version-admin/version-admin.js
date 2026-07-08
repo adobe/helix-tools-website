@@ -2,8 +2,10 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { diffJson } from '../../vendor/diff/diff.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { initConfigField } from '../../utils/config/config.js';
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
+
+let admin;
 
 const adminForm = document.getElementById('admin-form');
 const typeSelect = document.getElementById('type');
@@ -406,6 +408,7 @@ adminForm.addEventListener('submit', async (e) => {
 
 // Initialize
 async function init() {
+  admin = await getAdminClient();
   // Initialize config field utility (handles org/site autofill from params/storage/sidekick)
   await initConfigField();
 
