@@ -46,9 +46,15 @@ this entry to `/{org}/sites/{site}/sidekick.json` under `plugins`:
 
 `passConfig` injects `owner`, `repo`, `ref`, etc. as query parameters and
 `passReferrer` injects the current page URL — the popover uses
-`owner`/`repo` as `org`/`site` and the referrer's pathname as the page
-path. The site must already be enabled for scheduling for the popover to
-schedule successfully.
+`owner`/`repo` as `org`/`site`. For the page path, Sidekick's `referrer` is
+just `window.location.href` of the tab the plugin was opened from. On the
+default `.aem.page`/`.aem.live`/`.aem.reviews` hosts that's the page itself,
+so its URL pathname is the resource path. On any other host — SharePoint,
+Google Docs, etc. — the tab isn't guaranteed to be the
+page, so the popover instead resolves the path via the Admin API's
+`GET /status/{org}/{site}/{ref}?editUrl={referrer}` (`webPath` on the
+response), the same mechanism Sidekick itself uses while editing. The site must already
+be enabled for scheduling for the popover to schedule successfully.
 
 ## Authentication
 

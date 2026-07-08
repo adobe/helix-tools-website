@@ -28,7 +28,33 @@ async function writeIntent(org, site, entry) {
   };
 }
 
+// Resolves the resource path behind an authoring-surface referrer (SharePoint,
+// Google Docs, the admin.hlx.page editor, etc) by asking the Admin API to
+// reverse-map the source document URL via its `editUrl` status lookup — the
+// same mechanism Sidekick itself uses while editing, since the referrer URL
+// there has no relation to the page's web path.
+async function resolvePagePath(org, site, editUrl) {
+  const res = await scheduleAdmin.status({ org, site }).get('', { params: { editUrl } });
+  if (!res.ok) {
+    return { path: '', error: res.error || 'Could not resolve the page being edited.', resp: res };
+  }
+  let json;
+  try {
+    json = await res.json();
+  } catch {
+    return { path: '', error: 'Could not parse status response.', resp: res };
+  }
+  const path = json?.webPath || '';
+  return {
+    path,
+    error: path ? '' : 'Could not resolve the page being edited.',
+    resp: res,
+  };
+}
+
 const missingContext = document.getElementById('missing-context');
+const missingContextMessage = missingContext.querySelector('p');
+const defaultMissingContextMessage = missingContextMessage.textContent;
 const formWrap = document.getElementById('schedule-form-wrap');
 const pathValue = document.getElementById('target-path-value');
 const siteValue = document.getElementById('target-site-value');
@@ -37,7 +63,11 @@ const timezoneLabel = document.getElementById('schedule-timezone');
 const statusText = document.getElementById('status-text');
 const scheduleBtn = document.getElementById('schedule-btn');
 
-const { org, site, path } = api.parseSidekickParams(window.location.search);
+const sidekickParams = api.parseSidekickParams(window.location.search);
+const {
+  org, site, referrer, isProject,
+} = sidekickParams;
+let { path } = sidekickParams;
 
 function setStatus(message, kind = 'info') {
   statusText.textContent = message || '';
@@ -133,6 +163,20 @@ async function init() {
     setStatus('');
   });
   scheduleBtn.addEventListener('click', handleSchedule);
+
+  // Referrers from an authoring surface (SharePoint, Google Docs, etc)
+  // carry the source document's URL, not the page's web path.
+  // resolve it via the Admin API instead of guessing.
+  if (!path && !isProject && org && site && referrer) {
+    setStatus('Resolving page…');
+    const resolved = await resolvePagePath(org, site, referrer);
+    if (resolved.path) {
+      path = resolved.path;
+    } else {
+      missingContextMessage.textContent = resolved.error || defaultMissingContextMessage;
+    }
+    setStatus('');
+  }
 
   initContext();
 }

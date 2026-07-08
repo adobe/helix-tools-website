@@ -139,21 +139,34 @@ export function isAtLeastFiveMinAhead(localDatetimeValue) {
   return selected.getTime() - Date.now() >= 5 * 60 * 1000;
 }
 
+// Default EDS hosts where the referrer *is* the page, so its URL pathname is
+// the resource's web path. Anything else — SharePoint, Google Docs, etc.
+// — is treated as edit mode, where Sidekick's `referrer` is
+// the source document's URL instead (see resolvePagePath in schedule.js)
+const PAGE_HOST_SUFFIXES = ['.aem.page', '.aem.live', '.aem.reviews'];
+
+export function isPageHost(hostname) {
+  return PAGE_HOST_SUFFIXES.some((suffix) => hostname.endsWith(suffix));
+}
+
 export function parseSidekickParams(searchString) {
   const params = new URLSearchParams(searchString);
   const org = params.get('owner') || '';
   const site = params.get('repo') || '';
   const referrer = params.get('referrer') || '';
   let path = '';
+  let isProject = false;
   if (referrer) {
     try {
-      path = new URL(referrer).pathname;
+      const referrerUrl = new URL(referrer);
+      isProject = isPageHost(referrerUrl.hostname);
+      if (isProject) path = referrerUrl.pathname;
     } catch {
       path = '';
     }
   }
   return {
-    org, site, path, referrer,
+    org, site, path, referrer, isProject,
   };
 }
 
