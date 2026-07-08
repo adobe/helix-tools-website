@@ -140,12 +140,9 @@ export function isAtLeastFiveMinAhead(localDatetimeValue) {
 }
 
 // Default EDS hosts where the referrer *is* the page, so its URL pathname is
-// the resource's web path. Anything else — SharePoint, Google Docs, a custom
-// prod domain, etc. — is treated as edit mode, where Sidekick's `referrer` is
-// the source document's URL instead (see resolvePagePath in schedule.js).
-// Deliberately not sourced from URL params (host/previewHost/liveHost/
-// reviewHost): those are attacker-controllable, the same class of issue
-// fixed for snapshot-admin's reviewHost/liveHost handling.
+// the resource's web path. Anything else — SharePoint, Google Docs, etc.
+// — is treated as edit mode, where Sidekick's `referrer` is
+// the source document's URL instead (see resolvePagePath in schedule.js)
 const PAGE_HOST_SUFFIXES = ['.aem.page', '.aem.live', '.aem.reviews'];
 
 export function isPageHost(hostname) {
