@@ -16,13 +16,15 @@ const EMPTY_ACCESS = { admin: { role: {} } };
 const TOKEN_KEY = 'bot-info-setup-token';
 const TOKEN_ID_KEY = 'bot-info-setup-token-id';
 
-// Example content source URLs shown per selected type.
+// Example content source URLs shown per editable type (AEM has a fixed URL).
 const CONTENT_URL_PLACEHOLDERS = {
   onedrive: 'https://example.sharepoint.com/sites/website',
   google: 'https://drive.google.com/drive/folders/FOLDER_ID',
-  aem: 'https://author-p12345-e67890.adobeaemcloud.com',
   byom: 'https://your-markup-host.example.com',
 };
+
+/** Fixed content source URL for AEM sources. */
+const aemContentUrl = (org, site) => `https://api.aem.live/${org}/sites/${site}/source`;
 
 /**
  * Pull the one-time token and its api-key id out of the URL fragment (if
@@ -190,6 +192,14 @@ function renderForm(widget, config, {
     urlInput.placeholder = CONTENT_URL_PLACEHOLDERS[typeSelect.value] || '';
   };
 
+  // AEM sources use a fixed, non-editable URL derived from the org/site
+  const updateUrlField = () => {
+    const isAem = typeSelect.value === 'aem';
+    urlInput.readOnly = isAem;
+    if (isAem) urlInput.value = aemContentUrl(org, site);
+    else if (urlInput.value === aemContentUrl(org, site)) urlInput.value = '';
+  };
+
   // reset the suffix to each kind's default when the type changes: BYOM brings
   // its own markup (no default), AEM Authoring defaults to .html
   const applySuffixDefault = () => {
@@ -218,12 +228,14 @@ function renderForm(widget, config, {
   setAdvanced(advancedCheck.checked);
   updateSuffix();
   updatePlaceholder();
+  updateUrlField();
 
   advancedCheck.addEventListener('change', () => setAdvanced(advancedCheck.checked));
   typeSelect.addEventListener('change', () => {
     applySuffixDefault();
     updateSuffix();
     updatePlaceholder();
+    updateUrlField();
   });
 }
 

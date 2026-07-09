@@ -25,7 +25,8 @@ describe('bot-info:wizard.js', () => {
       assert.equal(detectContentSourceKind('https://content.da.live/org/site'), 'da');
     });
 
-    it('detects AEM cloud', () => {
+    it('detects AEM (api.aem.live and legacy adobeaemcloud)', () => {
+      assert.equal(detectContentSourceKind('https://api.aem.live/org/sites/site/source'), 'aem');
       assert.equal(detectContentSourceKind('https://author-p123.adobeaemcloud.com/'), 'aem');
     });
 

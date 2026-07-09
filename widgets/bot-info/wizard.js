@@ -18,7 +18,7 @@ export const CONTENT_SOURCE_KINDS = [
   { value: 'onedrive', label: 'SharePoint', configType: 'onedrive' },
   { value: 'google', label: 'Google Drive', configType: 'google' },
   {
-    value: 'aem', label: 'AEM Authoring', configType: 'markup', suffix: true,
+    value: 'aem', label: 'AEM', configType: 'markup', suffix: true,
   },
   {
     value: 'byom', label: 'Other (bring your own markup)', configType: 'markup', suffix: true,
@@ -37,7 +37,7 @@ export function detectContentSourceKind(url) {
   if (url.startsWith('https://drive.google.com/drive')) return 'google';
   if (url.includes('sharepoint.com/')) return 'onedrive';
   if (url.startsWith('https://content.da.live')) return 'da';
-  if (url.includes('adobeaemcloud')) return 'aem';
+  if (url.startsWith('https://api.aem.live/') || url.includes('adobeaemcloud')) return 'aem';
   return 'byom';
 }
 

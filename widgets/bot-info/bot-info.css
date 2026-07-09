@@ -170,7 +170,8 @@
   max-width: 8em;
 }
 
-.bot-info-da-url[readonly] {
+.bot-info-da-url[readonly],
+.bot-info-content-url[readonly] {
   background-color: var(--layer-pasteboard);
   color: var(--color-font-grey);
   cursor: default;
