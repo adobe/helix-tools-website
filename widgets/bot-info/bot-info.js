@@ -16,6 +16,14 @@ const EMPTY_ACCESS = { admin: { role: {} } };
 const TOKEN_KEY = 'bot-info-setup-token';
 const TOKEN_ID_KEY = 'bot-info-setup-token-id';
 
+// Example content source URLs shown per selected type.
+const CONTENT_URL_PLACEHOLDERS = {
+  onedrive: 'https://example.sharepoint.com/sites/website',
+  google: 'https://drive.google.com/drive/folders/FOLDER_ID',
+  aem: 'https://author-p12345-e67890.adobeaemcloud.com',
+  byom: 'https://your-markup-host.example.com',
+};
+
 /**
  * Pull the one-time token and its api-key id out of the URL fragment (if
  * present), stash them in session storage, and scrub them from the visible URL.
@@ -177,6 +185,11 @@ function renderForm(widget, config, {
   // still submits its .html default (see applySuffixDefault)
   const updateSuffix = () => setHidden(suffixField, typeSelect.value !== 'byom');
 
+  // hint the expected URL format for the selected content source type
+  const updatePlaceholder = () => {
+    urlInput.placeholder = CONTENT_URL_PLACEHOLDERS[typeSelect.value] || '';
+  };
+
   // reset the suffix to each kind's default when the type changes: BYOM brings
   // its own markup (no default), AEM Authoring defaults to .html
   const applySuffixDefault = () => {
@@ -204,11 +217,13 @@ function renderForm(widget, config, {
   }
   setAdvanced(advancedCheck.checked);
   updateSuffix();
+  updatePlaceholder();
 
   advancedCheck.addEventListener('change', () => setAdvanced(advancedCheck.checked));
   typeSelect.addEventListener('change', () => {
     applySuffixDefault();
     updateSuffix();
+    updatePlaceholder();
   });
 }
 
