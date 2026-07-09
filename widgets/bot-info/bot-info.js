@@ -255,9 +255,11 @@ async function submitConfig(api, widget, config, { org, site, newOrg }, consoleB
     : `https://content.da.live/${org}/${site}`;
   const suffix = widget.querySelector('.bot-info-content-suffix').value.trim();
   const source = buildContentSource(contentUrl, kind, suffix);
-  const siteConfig = { ...config.siteConfig, content: { ...config.siteConfig.content, source } };
+  // update only the content sub-config; POSTing the whole site config would
+  // overwrite the access.json we just wrote with the stale copy read on load
+  const content = { ...config.siteConfig.content, source };
   await must(
-    logged(consoleBlock, api.config({ org, site }).update(JSON.stringify(siteConfig))),
+    logged(consoleBlock, api.config({ org, site }).select('content.json').update(JSON.stringify(content))),
     'Saving content source',
   );
 
