@@ -71,19 +71,19 @@ describe('bot-info:wizard.js', () => {
       assert.equal(buildContentSource('https://x.com', 'bogus').type, 'markup');
     });
 
-    it('adds a suffix for suffix-capable kinds (aem, byom)', () => {
-      assert.equal(buildContentSource('https://x.adobeaemcloud.com', 'aem', '.html').suffix, '.html');
+    it('adds a suffix only for BYOM', () => {
       assert.equal(buildContentSource('https://x.example.com', 'byom', '.html').suffix, '.html');
     });
 
-    it('never sets a suffix for DA, SharePoint or Google Drive', () => {
+    it('never sets a suffix for DA, SharePoint, Google Drive or AEM', () => {
       assert.equal(buildContentSource('https://content.da.live/o/s', 'da', '.html').suffix, undefined);
       assert.equal(buildContentSource('https://x.sharepoint.com', 'onedrive', '.html').suffix, undefined);
       assert.equal(buildContentSource('https://drive.google.com/drive/folders/x', 'google', '.html').suffix, undefined);
+      assert.equal(buildContentSource('https://api.aem.live/o/sites/s/source', 'aem', '.html').suffix, undefined);
     });
 
     it('omits the suffix when none is provided', () => {
-      assert.equal(buildContentSource('https://x.adobeaemcloud.com', 'aem').suffix, undefined);
+      assert.equal(buildContentSource('https://x.example.com', 'byom').suffix, undefined);
     });
   });
 

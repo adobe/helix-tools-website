@@ -183,8 +183,7 @@ function renderForm(widget, config, {
   const suffixField = widget.querySelector('.bot-info-suffix-field');
   const suffixInput = widget.querySelector('.bot-info-content-suffix');
 
-  // only BYOM exposes the suffix field; AEM Authoring keeps it hidden but
-  // still submits its .html default (see applySuffixDefault)
+  // only BYOM takes a suffix; every other type (incl. AEM) has none
   const updateSuffix = () => setHidden(suffixField, typeSelect.value !== 'byom');
 
   // hint the expected URL format for the selected content source type
@@ -200,12 +199,9 @@ function renderForm(widget, config, {
     else if (urlInput.value === aemContentUrl(org, site)) urlInput.value = '';
   };
 
-  // reset the suffix to each kind's default when the type changes: BYOM brings
-  // its own markup (no default), AEM Authoring defaults to .html
+  // BYOM brings its own markup, so start its suffix empty for the user to fill
   const applySuffixDefault = () => {
-    const kind = typeSelect.value;
-    if (kind === 'byom') suffixInput.value = '';
-    else if (kind === 'aem' && !suffixInput.value) suffixInput.value = '.html';
+    if (typeSelect.value === 'byom') suffixInput.value = '';
   };
 
   const setAdvanced = (on) => {
