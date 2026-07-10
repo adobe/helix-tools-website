@@ -350,4 +350,15 @@ button.disabled {
 .log-viewer-detail .cm-scroller {
   font-family: inherit;
 }
+
+.log-viewer-detail .cm-gutters {
+  background-color: var(--layer-depth);
+  color: light-dark(#999, #8b949e);
+  border-right: 1px solid var(--color-border);
+}
+
+.log-viewer-detail .cm-activeLineGutter,
+.log-viewer-detail .cm-activeLine {
+  background-color: light-dark(#0000000a, #ffffff0a);
+}
 /* stylelint-enable selector-class-pattern */
