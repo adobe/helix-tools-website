@@ -101,20 +101,9 @@ async function init() {
     }
   });
 
-  // Lazy-load CodeMirror on first focus. #editor has `tabindex="0"` so it's
-  // keyboard-reachable pre-mount; `focus` (not `focusin`, which never fires on
-  // a plain div without tabindex) triggers the load. Mounting is async, so
-  // guard the hand-off to CM's textbox on the div still being focused —
-  // otherwise a user who tabs past before the bundle loads gets their focus
-  // yanked back once it resolves.
-  editorEl.addEventListener('focus', async () => {
-    try {
-      const editor = await ensureEditor();
-      if (document.activeElement === editorEl) editor.view.focus();
-    } catch {
-      // ensureEditor already surfaced the error via logResponse
-    }
-  }, { once: true });
+  // Kicks off the CodeMirror bundle load in parallel with the first Fetch
+  // request, so it's likely already resolved by the time the response comes
+  // back and the admin-form submit handler below calls ensureEditor().
   adminForm.addEventListener('submit', ensureEditor, { once: true });
 
   /**
