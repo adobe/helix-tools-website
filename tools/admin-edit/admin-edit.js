@@ -100,15 +100,16 @@ async function init() {
     }
   });
 
-  // Lazy-load CodeMirror on first interaction. `focusin` on the empty #editor
-  // <div> can never fire before CM mounts (no focusable descendants), so we
-  // trigger from `click` on the host — which fires on any element — and hand
-  // focus to CM's textbox after it mounts so the user's first click lands
-  // where they expect.
-  editorEl.addEventListener('click', async () => {
+  // Lazy-load CodeMirror on first focus. #editor has `tabindex="0"` so it's
+  // keyboard-reachable pre-mount; `focus` (not `focusin`, which never fires on
+  // a plain div without tabindex) triggers the load. Mounting is async, so
+  // guard the hand-off to CM's textbox on the div still being focused —
+  // otherwise a user who tabs past before the bundle loads gets their focus
+  // yanked back once it resolves.
+  editorEl.addEventListener('focus', async () => {
     try {
       const editor = await ensureEditor();
-      editor.view.focus();
+      if (document.activeElement === editorEl) editor.view.focus();
     } catch {
       // ensureEditor already surfaced the error via logResponse
     }
