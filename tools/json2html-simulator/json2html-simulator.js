@@ -861,6 +861,7 @@ async function init() {
     doc: DEFAULT_JSON,
     language: 'json',
     labelledBy: 'json-label',
+    describedBy: 'json-hint',
     onChange: () => {
       validateJson();
       scheduleRender();
@@ -872,6 +873,7 @@ async function init() {
     doc: DEFAULT_TEMPLATE,
     language: 'html',
     labelledBy: 'template-label',
+    describedBy: 'template-hint',
     onChange: scheduleRender,
   });
 

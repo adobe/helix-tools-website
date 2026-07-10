@@ -35,6 +35,12 @@
   font-size: var(--body-size-m);
 }
 
+.admin-edit .editor-hint {
+  margin: 0.5em 0 0;
+  color: var(--color-font-grey);
+  font-size: var(--body-size-s);
+}
+
 .admin-edit #editor {
   position: relative;
   height: 66vmin;

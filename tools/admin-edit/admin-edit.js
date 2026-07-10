@@ -58,6 +58,7 @@ function ensureEditor() {
         language: currentLanguage(),
         onChange: updateSaveState,
         labelledBy: editorLabel.id,
+        describedBy: 'editor-hint',
       }))
       .catch((err) => {
         editorPromise = null;

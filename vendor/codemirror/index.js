@@ -88,6 +88,8 @@ function lineRange(state, line) {
  * @param {string} [options.labelledBy] - id of an element labelling the editor;
  *   forwarded as `aria-labelledby` to CodeMirror's inner `.cm-content` (the
  *   element that actually carries `role="textbox"`).
+ * @param {string} [options.describedBy] - id of an element describing the
+ *   editor (e.g. the Escape-to-exit hint); forwarded as `aria-describedby`.
  * @returns {{
  *   view: EditorView,
  *   getValue: () => string,
@@ -100,13 +102,23 @@ function lineRange(state, line) {
  * }}
  */
 export default function createEditor({
-  parent, doc = '', language = 'json', readOnly = false, onChange, labelledBy,
+  parent, doc = '', language = 'json', readOnly = false, onChange, labelledBy, describedBy,
 }) {
   const langCompartment = new Compartment();
 
+  // `indentWithTab` makes Tab indent instead of moving focus, which is a
+  // keyboard trap unless there's a documented way out (WCAG 2.1.2). Read-only
+  // instances are excluded from tab order entirely (see EditorView.editable
+  // below) so the trap can't occur there; editable instances get an Escape
+  // binding that blurs the editor, matching the convention used by GitHub's
+  // own CodeMirror-based editor.
+  const tabKeymap = readOnly
+    ? [indentWithTab]
+    : [{ key: 'Escape', run: (view) => { view.contentDOM.blur(); return true; } }, indentWithTab];
+
   const extensions = [
     basicSetup,
-    keymap.of([indentWithTab]),
+    keymap.of(tabKeymap),
     langCompartment.of(languageExtensions(language)),
     syntaxHighlighting(tokenHighlight),
     lintGutter(),
@@ -116,8 +128,11 @@ export default function createEditor({
       if (u.docChanged && onChange) onChange(u.state.doc.toString());
     }),
   ];
-  if (labelledBy) {
-    extensions.push(EditorView.contentAttributes.of({ 'aria-labelledby': labelledBy }));
+  const contentAttrs = {};
+  if (labelledBy) contentAttrs['aria-labelledby'] = labelledBy;
+  if (describedBy) contentAttrs['aria-describedby'] = describedBy;
+  if (Object.keys(contentAttrs).length) {
+    extensions.push(EditorView.contentAttributes.of(contentAttrs));
   }
 
   const view = new EditorView({

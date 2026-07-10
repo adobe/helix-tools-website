@@ -546,6 +546,13 @@ body.json2html-simulator main .workspace > .default-content-wrapper {
   letter-spacing: 0.5px;
 }
 
+.editor-hint {
+  margin: 0;
+  padding: var(--spacing-100) var(--spacing-300) 0;
+  color: var(--color-font-grey);
+  font-size: var(--body-size-xs);
+}
+
 .editor-actions {
   display: flex;
   gap: var(--spacing-100);
