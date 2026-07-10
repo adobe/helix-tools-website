@@ -292,6 +292,16 @@ html[data-theme='dark'] .cache .code-actions a.code-button span.icon {
 .cache .code-viewer .cm-activeLine {
   background-color: light-dark(#0000000a, #ffffff0a);
 }
+
+/* CodeMirror's default selection background is a light-theme-only color with
+   no dark-mode awareness, making selected text unreadable in dark mode. */
+.cache .code-viewer .cm-selectionBackground {
+  background-color: light-dark(#d9d9d9, rgb(255 255 255 / 18%));
+}
+
+.cache .code-viewer .cm-focused .cm-selectionBackground {
+  background-color: light-dark(#d7d4f0, rgb(255 255 255 / 24%));
+}
 /* stylelint-enable selector-class-pattern */
 
 .cache .json-tree .json-tree-line {
