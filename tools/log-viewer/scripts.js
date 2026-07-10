@@ -2,11 +2,19 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
-import { loadPrism, highlight } from '../../utils/prism/prism.js';
 import {
   toDateTimeLocal, calculatePastDate,
 } from './utils.js';
 import { RewrittenData } from './rewrite.js';
+
+let createEditorPromise;
+function loadCreateEditor() {
+  if (!createEditorPromise) {
+    createEditorPromise = import('../../vendor/codemirror/codemirror.js')
+      .then((m) => m.default);
+  }
+  return createEditorPromise;
+}
 
 // field ids
 let admin;
@@ -256,15 +264,24 @@ async function onAdminClick(requestFn, button) {
     const res = await executeAdminRequest(requestFn, { org, site });
     if (!res || !res.ok) throw new Error(`Failed to fetch details: ${res?.status}`);
     const json = await res.json();
-    const pre = document.createElement('pre');
-    const code = document.createElement('code');
-    code.className = 'language-js';
-    code.textContent = JSON.stringify(json, null, 2);
-    pre.append(code);
-    const { showModal } = await createModal([pre]);
+    const host = document.createElement('div');
+    host.className = 'log-viewer-detail';
+
+    // Build the modal and lazy-load CodeMirror concurrently so we can mount
+    // the editor before showing the modal — avoids a flash of empty modal
+    // chrome on cold cache.
+    const [{ showModal }, createEditor] = await Promise.all([
+      createModal([host]),
+      loadCreateEditor(),
+    ]);
+
+    createEditor({
+      parent: host,
+      doc: JSON.stringify(json, null, 2),
+      language: 'json',
+      readOnly: true,
+    });
     showModal();
-    await loadPrism();
-    highlight(document.querySelector('.modal'));
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Could not create modal:', error);

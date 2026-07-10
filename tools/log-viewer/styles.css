@@ -329,3 +329,46 @@ button.disabled {
   background-color: var(--color-background);
   color: var(--color-button-disabled-text);
 }
+
+/* Admin-detail JSON viewer inside the log-viewer modal. Caps at 60vh with a
+   scrollbar for long responses but shrinks to fit shorter ones. */
+.log-viewer-detail {
+  max-height: 60vh;
+  min-height: 240px;
+  border: var(--border-s, 1px) solid var(--color-border);
+  border-radius: var(--rounding-s, 4px);
+  overflow: auto;
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+}
+
+/* stylelint-disable selector-class-pattern -- CodeMirror class names are camelCase */
+.log-viewer-detail .cm-editor {
+  height: 100%;
+}
+
+.log-viewer-detail .cm-scroller {
+  font-family: inherit;
+}
+
+.log-viewer-detail .cm-gutters {
+  background-color: var(--layer-depth);
+  color: light-dark(#999, #8b949e);
+  border-right: 1px solid var(--color-border);
+}
+
+.log-viewer-detail .cm-activeLineGutter,
+.log-viewer-detail .cm-activeLine {
+  background-color: light-dark(#0000000a, #ffffff0a);
+}
+
+/* CodeMirror's default selection background is a light-theme-only color with
+   no dark-mode awareness, making selected text unreadable in dark mode. */
+.log-viewer-detail .cm-selectionBackground {
+  background-color: light-dark(var(--gray-300), var(--transparent-white-300));
+}
+
+.log-viewer-detail .cm-focused .cm-selectionBackground {
+  background-color: light-dark(var(--gray-400), var(--transparent-white-400));
+}
+/* stylelint-enable selector-class-pattern */

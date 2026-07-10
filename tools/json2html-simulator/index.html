@@ -110,34 +110,15 @@
         <!-- JSON Editor -->
         <div class="editor-panel json-panel">
           <div class="editor-header">
-            <span class="editor-label">JSON Data</span>
+            <span id="json-label" class="editor-label">JSON Data</span>
             <div class="editor-actions">
               <button type="button" class="button small outline" id="format-json">Format</button>
             </div>
           </div>
           <div class="editor-wrapper">
-            <div class="line-numbers" id="json-line-numbers" aria-hidden="true"></div>
-            <textarea 
-              id="json-input" 
-              class="code-editor" 
-              spellcheck="false" 
-              placeholder="Enter your JSON data here..."
-            >{
-  "title": "Welcome to JSON2HTML",
-  "description": "This simulator helps you experiment with Mustache templates.",
-  "features": [
-    { "name": "Live Preview", "enabled": true },
-    { "name": "Syntax Highlighting", "enabled": true },
-    { "name": "Error Detection", "enabled": true }
-  ],
-  "author": {
-    "name": "AEM Developer",
-    "role": "Content Engineer"
-  }
-}</textarea>
-            <pre class="code-highlight" id="json-highlight" aria-hidden="true"><code class="language-json"></code></pre>
-            <div class="error-line-highlight" id="json-error-highlight" aria-hidden="true"></div>
+            <div id="json-editor" class="code-editor-host"></div>
           </div>
+          <p id="json-hint" class="editor-hint">Press Escape then Tab to move focus out of the editor.</p>
           <div class="editor-status" id="json-status">
             <span class="status-icon status-ok">✓</span>
             <span class="status-text">Valid JSON</span>
@@ -152,48 +133,12 @@
         <!-- Template Editor -->
         <div class="editor-panel template-panel">
           <div class="editor-header">
-            <span class="editor-label">Mustache Template</span>
+            <span id="template-label" class="editor-label">Mustache Template</span>
           </div>
           <div class="editor-wrapper">
-            <div class="line-numbers" id="template-line-numbers" aria-hidden="true"></div>
-            <textarea 
-              id="template-input" 
-              class="code-editor" 
-              spellcheck="false" 
-              placeholder="Enter your Mustache template here..."
-            ><!DOCTYPE html>
-<html lang="en">
-  <head>
-    <title>{{title}}</title>
-  </head>
-  <body>
-    <header></header>
-    <main>
-      <div>
-        <h1>{{title}}</h1>
-        <p>{{description}}</p>
-      </div>
-      <div>
-        <h2>Features</h2>
-        <ul>
-          {{#features}}
-          <li>
-            {{name}}{{#enabled}} ✓{{/enabled}}
-          </li>
-          {{/features}}
-        </ul>
-      </div>
-      <div>
-        <p>Created by <strong>{{author.name}}</strong></p>
-        <p>{{author.role}}</p>
-      </div>
-    </main>
-    <footer></footer>
-  </body>
-</html></textarea>
-            <pre class="code-highlight" id="template-highlight" aria-hidden="true"><code class="language-html"></code></pre>
-            <div class="error-line-highlight" id="template-error-highlight" aria-hidden="true"></div>
+            <div id="template-editor" class="code-editor-host"></div>
           </div>
+          <p id="template-hint" class="editor-hint">Press Escape then Tab to move focus out of the editor.</p>
           <div class="editor-status" id="template-status">
             <span class="status-icon status-ok">✓</span>
             <span class="status-text">Template ready</span>
@@ -209,7 +154,7 @@
       <!-- BOTTOM ROW: Preview Panel -->
       <section class="preview-panel">
         <div class="preview-header">
-          <span class="preview-label">HTML Preview</span>
+          <span id="preview-label" class="preview-label">HTML Preview</span>
           <div class="preview-tabs" role="tablist">
             <button type="button" class="preview-tab" role="tab" data-view="rendered" aria-selected="false">
               Rendered
@@ -235,9 +180,7 @@
           </div>
           <!-- Source View -->
           <div class="preview-view active" data-view="source">
-            <div class="line-numbers" id="source-line-numbers" aria-hidden="true"></div>
-            <div id="source-error-highlights" class="source-error-highlights" aria-hidden="true"></div>
-            <pre id="source-output" class="source-code"><code class="language-html"></code></pre>
+            <div id="source-editor" class="code-editor-host source-editor-host"></div>
           </div>
           <div class="validation-details" id="validation-details" aria-live="polite" hidden></div>
         </div>
