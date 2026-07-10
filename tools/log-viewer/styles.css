@@ -365,10 +365,10 @@ button.disabled {
 /* CodeMirror's default selection background is a light-theme-only color with
    no dark-mode awareness, making selected text unreadable in dark mode. */
 .log-viewer-detail .cm-selectionBackground {
-  background-color: light-dark(#d9d9d9, rgb(255 255 255 / 18%));
+  background-color: light-dark(var(--gray-300), var(--transparent-white-300));
 }
 
 .log-viewer-detail .cm-focused .cm-selectionBackground {
-  background-color: light-dark(#d7d4f0, rgb(255 255 255 / 24%));
+  background-color: light-dark(var(--gray-400), var(--transparent-white-400));
 }
 /* stylelint-enable selector-class-pattern */

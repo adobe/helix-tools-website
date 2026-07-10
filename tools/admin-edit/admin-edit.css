@@ -70,6 +70,16 @@
   background-color: light-dark(#0000000a, #ffffff0a);
 }
 
+/* CodeMirror's default selection background is a light-theme-only color with
+   no dark-mode awareness, making selected text unreadable in dark mode. */
+.admin-edit #editor .cm-selectionBackground {
+  background-color: light-dark(var(--gray-300), var(--transparent-white-300));
+}
+
+.admin-edit #editor .cm-focused .cm-selectionBackground {
+  background-color: light-dark(var(--gray-400), var(--transparent-white-400));
+}
+
 .admin-edit #editor .cm-cursor {
   border-left-color: var(--color-text);
 }

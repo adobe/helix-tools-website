@@ -593,6 +593,16 @@ body.json2html-simulator main .workspace > .default-content-wrapper {
   background: light-dark(rgb(0 0 0 / 4%), rgb(255 255 255 / 4%));
 }
 
+/* CodeMirror's default selection background is a light-theme-only color with
+   no dark-mode awareness, making selected text unreadable in dark mode. */
+.code-editor-host .cm-selectionBackground {
+  background: light-dark(var(--gray-300), var(--transparent-white-300));
+}
+
+.code-editor-host .cm-focused .cm-selectionBackground {
+  background: light-dark(var(--gray-400), var(--transparent-white-400));
+}
+
 .code-editor-host .cm-cursor {
   border-left-color: var(--color-text);
 }
