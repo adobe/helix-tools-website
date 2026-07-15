@@ -27,6 +27,56 @@ export function labelURLParts(url, prefix, solo = false) {
   }
 }
 
+export function isThumbnailUrl(labelText) {
+  return labelText.startsWith('http://')
+    || labelText.startsWith('https://')
+    || labelText.startsWith('android-app://');
+}
+
+export function is404CheckpointActive(location = typeof window !== 'undefined' ? window.location : null) {
+  if (!location?.href) return false;
+  return new URL(location.href).searchParams.getAll('checkpoint').includes('404');
+}
+
+export function getOgImageUrl(labelText) {
+  const u = new URL('https://www.aem.live/tools/rum/_ogimage');
+  u.searchParams.set('proxyurl', labelText);
+  return u.href;
+}
+
+export function getFaviconUrl(labelText) {
+  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(labelText)}&sz=256`;
+}
+
+export function appendThumbnail(container, labelText, { favicon = false, ImageCtor = Image } = {}) {
+  const ogUrl = getOgImageUrl(labelText);
+  const probe = new ImageCtor();
+  probe.onload = () => {
+    const img = document.createElement('img');
+    img.loading = 'lazy';
+    img.src = ogUrl;
+    img.title = labelText;
+    img.alt = '';
+    container.prepend(img);
+  };
+  probe.onerror = () => {
+    if (!favicon) return;
+    const favUrl = getFaviconUrl(labelText);
+    const favProbe = new ImageCtor();
+    favProbe.onload = () => {
+      const img = document.createElement('img');
+      img.loading = 'lazy';
+      img.src = favUrl;
+      img.title = labelText;
+      img.alt = '';
+      img.classList.add('favicon');
+      container.prepend(img);
+    };
+    favProbe.src = favUrl;
+  };
+  probe.src = ogUrl;
+}
+
 /**
  * A custom HTML element to display a list of facets with links.
  * <link-facet facet="userAgent" drilldown="share.html" mode="all">
@@ -34,10 +84,24 @@ export function labelURLParts(url, prefix, solo = false) {
  * </link-facet>
  */
 export default class LinkFacet extends ListFacet {
+  createValueSpan(entry, prefix, solo = false) {
+    const valuespan = super.createValueSpan(entry, prefix, solo);
+    this.maybeLoadThumbnail(valuespan, entry.value);
+    return valuespan;
+  }
+
+  maybeLoadThumbnail(container, labelText) {
+    if (this.getAttribute('thumbnail') !== 'true') return;
+    if (is404CheckpointActive()) return;
+    if (!isThumbnailUrl(labelText)) return;
+    appendThumbnail(container, labelText, {
+      favicon: this.getAttribute('favicon') === 'true',
+    });
+  }
+
   // eslint-disable-next-line class-methods-use-this
   createLabelHTML(labelText, prefix, solo = false) {
     const thumbnailAtt = this.getAttribute('thumbnail') === 'true';
-    const faviconAtt = this.getAttribute('favicon') === 'true';
     const isCensored = labelText.includes('...')
       || labelText.includes('<number>') || labelText.includes('%3Cnumber%3E')
       || labelText.includes('<hex>') || labelText.includes('%3Chex%3E')
@@ -46,22 +110,11 @@ export default class LinkFacet extends ListFacet {
     if (isCensored) {
       return labelURLParts(labelText, prefix, solo);
     }
-    if (thumbnailAtt && labelText.startsWith('https://')) {
-      const u = new URL('https://www.aem.live/tools/rum/_ogimage');
-      u.searchParams.set('proxyurl', labelText);
-      return `
-      <img loading="lazy" src="${u.href}" title="${escapeHTML(labelText)}" alt="thumbnail image for ${escapeHTML(labelText)}" onerror="this.classList.add('broken')">
-      <a href="${escapeHTML(labelText)}" target="_new">${labelURLParts(labelText, prefix, solo)}</a>`;
-    }
-    if (thumbnailAtt && (labelText.startsWith('http://') || labelText.startsWith('https://') || labelText.startsWith('android-app://'))) {
-      const u = new URL('https://www.aem.live/tools/rum/_ogimage');
-      u.searchParams.set('proxyurl', labelText);
-      return `
-      <img loading="lazy" src="${u.href}" title="${escapeHTML(labelText)}" alt="thumbnail image for ${escapeHTML(labelText)}" onerror="${faviconAtt ? `this.src='https://www.google.com/s2/favicons?domain=${encodeURIComponent(labelText)}&sz=256';this.classList.add('favicon');` : 'this.classList.add(\'broken\');'}">
-      <a href="${escapeHTML(labelText)}" target="_new">${labelURLParts(labelText, prefix, solo)}</a>`;
+    if (thumbnailAtt && isThumbnailUrl(labelText)) {
+      return `<a href="${escapeHTML(labelText)}" target="_new">${labelURLParts(labelText, prefix, solo)}</a>`;
     }
     if (labelText.startsWith('https://') || labelText.startsWith('http://')) {
-      return `<a href="${escapeHTML(labelText)}" target="_new">${escapeHTML(labelText)}</a>`;
+      return `<a href="${escapeHTML(labelText)}" target="_new">${labelURLParts(labelText, prefix, solo)}</a>`;
     }
     if (labelText.startsWith('referrer:')) {
       return `<a href="${escapeHTML(labelText.replace('referrer:', 'https://'))}" target="_new">${escapeHTML(labelText.replace('referrer:', ''))}</a>`;
