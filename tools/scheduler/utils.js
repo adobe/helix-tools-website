@@ -1,0 +1,217 @@
+const WORKER = 'https://helix-snapshot-scheduler-prod.adobeaem.workers.dev';
+
+// Normalizes an id/path to leading-slash form with each segment URL-encoded,
+// so paths containing spaces or reserved characters produce a valid URL.
+function encodeIdPath(id) {
+  const trimmed = id.startsWith('/') ? id.slice(1) : id;
+  return `/${trimmed.split('/').map(encodeURIComponent).join('/')}`;
+}
+
+async function readError(resp, fallback) {
+  const xError = resp.headers.get('x-error');
+  if (xError) return xError;
+  try {
+    const text = await resp.text();
+    if (text) return text;
+  } catch {
+    // ignore
+  }
+  return fallback;
+}
+
+export async function checkRegistration(org, site) {
+  const resp = await fetch(`${WORKER}/register/${org}/${site}`);
+  if (resp.status === 200) return { registered: true, resp };
+  if (resp.status === 404) return { registered: false, resp };
+  return { error: await readError(resp, 'Could not check scheduler registration.'), resp };
+}
+
+export function normalizeEntries(payload, org, site) {
+  const key = `${org}--${site}`;
+  const items = payload?.[key] || {};
+  return Object.entries(items)
+    .map(([id, item]) => ({
+      id,
+      type: item?.type || 'unknown',
+      scheduledPublish: item?.scheduledPublish,
+      approved: item?.approved,
+      userId: item?.userId,
+    }))
+    .sort((a, b) => new Date(a.scheduledPublish) - new Date(b.scheduledPublish));
+}
+
+export async function fetchSchedule(org, site, nonce) {
+  const url = `${WORKER}/schedule/${org}/${site}?nonce=${encodeURIComponent(nonce)}`;
+  const resp = await fetch(url);
+  if (!resp.ok) {
+    return { error: await readError(resp, 'Could not load scheduled items.'), resp };
+  }
+  let json;
+  try {
+    json = await resp.json();
+  } catch {
+    return { error: 'Could not parse scheduler response.', resp };
+  }
+  return { entries: normalizeEntries(json, org, site), resp };
+}
+
+export async function deletePageSchedule(org, site, path, nonce) {
+  const idPath = encodeIdPath(path);
+  const url = `${WORKER}/schedule/page/${org}/${site}${idPath}?nonce=${encodeURIComponent(nonce)}`;
+  const resp = await fetch(url, { method: 'DELETE' });
+  if (resp.ok) return { ok: true, resp };
+  return { ok: false, error: await readError(resp, 'Failed to delete scheduled page.'), resp };
+}
+
+export async function deleteSnapshotSchedule(org, site, snapshotId, nonce) {
+  const idPath = encodeIdPath(snapshotId);
+  const url = `${WORKER}/schedule/snapshot/${org}/${site}${idPath}?nonce=${encodeURIComponent(nonce)}`;
+  const resp = await fetch(url, { method: 'DELETE' });
+  if (resp.ok) return { ok: true, resp };
+  return { ok: false, error: await readError(resp, 'Failed to delete scheduled snapshot.'), resp };
+}
+
+export async function schedulePage({
+  org, site, path, scheduledPublish, nonce,
+}) {
+  const resp = await fetch(`${WORKER}/schedule/page/${org}/${site}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ path, scheduledPublish, nonce }),
+  });
+  if (resp.ok) return { ok: true, resp };
+  return { ok: false, error: await readError(resp, 'Failed to schedule publish.'), resp };
+}
+
+export function formatDate(iso) {
+  if (!iso) return 'No schedule date';
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return iso;
+  return parsed.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  });
+}
+
+export function formatDuration(iso) {
+  if (!iso) return '';
+  const target = new Date(iso);
+  if (Number.isNaN(target.getTime())) return '';
+  const diff = target.getTime() - Date.now();
+  if (diff <= 0) return 'due now';
+
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) {
+    const remH = hours % 24;
+    return remH > 0 ? `in ${days}d ${remH}h` : `in ${days}d`;
+  }
+  if (hours > 0) {
+    const remM = minutes % 60;
+    return remM > 0 ? `in ${hours}h ${remM}m` : `in ${hours}h`;
+  }
+  if (minutes > 0) return `in ${minutes}m`;
+  return `in ${seconds}s`;
+}
+
+export function buildPageUrl(org, site, path) {
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `https://main--${site}--${org}.aem.page${cleanPath}`;
+}
+
+export function buildSnapshotUrl(org, site, snapshotId) {
+  const name = snapshotId.startsWith('/') ? snapshotId.slice(1) : snapshotId;
+  const manifest = `https://main--${site}--${org}.aem.page/.snapshots/${name}/.manifest.json`;
+  return `/tools/snapshot-admin/snapshot-details.html?snapshot=${encodeURIComponent(manifest)}`;
+}
+
+export function isAtLeastFiveMinAhead(localDatetimeValue) {
+  if (!localDatetimeValue) return false;
+  const selected = new Date(localDatetimeValue);
+  if (Number.isNaN(selected.getTime())) return false;
+  return selected.getTime() - Date.now() >= 5 * 60 * 1000;
+}
+
+// Default EDS hosts where the referrer *is* the page, so its URL pathname is
+// the resource's web path. Anything else — SharePoint, Google Docs, etc.
+// — is treated as edit mode, where Sidekick's `referrer` is
+// the source document's URL instead (see resolvePagePath in schedule.js)
+const PAGE_HOST_SUFFIXES = ['.aem.page', '.aem.live', '.aem.reviews'];
+
+export function isPageHost(hostname) {
+  return PAGE_HOST_SUFFIXES.some((suffix) => hostname.endsWith(suffix));
+}
+
+export function parseSidekickParams(searchString) {
+  const params = new URLSearchParams(searchString);
+  const org = params.get('owner') || '';
+  const site = params.get('repo') || '';
+  const referrer = params.get('referrer') || '';
+  let path = '';
+  let isProject = false;
+  if (referrer) {
+    try {
+      const referrerUrl = new URL(referrer);
+      isProject = isPageHost(referrerUrl.hostname);
+      if (isProject) path = referrerUrl.pathname;
+    } catch {
+      path = '';
+    }
+  }
+  return {
+    org, site, path, referrer, isProject,
+  };
+}
+
+export function generateNonce() {
+  return crypto.randomUUID();
+}
+
+const VIEW_NONCE_TTL_MS = 25 * 60 * 1000;
+let viewNonceCache = null; // { key: 'org/site', nonce, writtenAt }
+
+// eslint-disable-next-line no-underscore-dangle
+export function __resetViewNonceForTests() {
+  viewNonceCache = null;
+}
+
+/**
+ * Returns a cached view-intent nonce for the org/site, writing a fresh one via
+ * the supplied `writeIntent` callback when the cache is empty or stale. The
+ * Admin `log` write lives in the caller (scheduler.js) so it can pick the auth
+ * context; this helper only owns the nonce lifecycle and TTL caching.
+ *
+ * @param {string} org
+ * @param {string} site
+ * @param {(entry: object) => Promise<{ok: boolean, error?: string}>} writeIntent
+ * @returns {Promise<string>}
+ */
+export async function ensureViewNonce(org, site, writeIntent) {
+  const key = `${org}/${site}`;
+  if (
+    viewNonceCache
+    && viewNonceCache.key === key
+    && Date.now() - viewNonceCache.writtenAt < VIEW_NONCE_TTL_MS
+  ) {
+    return viewNonceCache.nonce;
+  }
+  const nonce = generateNonce();
+  const result = await writeIntent({ route: 'view-schedule-intent', nonce });
+  if (!result.ok) {
+    viewNonceCache = null;
+    throw new Error(result.error || 'Could not record view intent.');
+  }
+  viewNonceCache = { key, nonce, writtenAt: Date.now() };
+  return nonce;
+}
+
+export function invalidateViewNonceCache() {
+  viewNonceCache = null;
+}

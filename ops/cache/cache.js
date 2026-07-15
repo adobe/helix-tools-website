@@ -1,5 +1,4 @@
 import { sampleRUM } from '../../scripts/aem.js';
-import { loadPrismLibrary } from '../../utils/prism/prism.js';
 import { registerToolReady } from '../../scripts/scripts.js';
 import escapeHtml from '../../utils/html.js';
 
@@ -24,11 +23,27 @@ if (localStorage.getItem('cache-debug-key')) {
   }
 }
 
-let prismLoaded = false;
-async function loadPrism() {
-  if (prismLoaded) return;
-  prismLoaded = true;
-  await loadPrismLibrary(['json']);
+let createEditorPromise;
+function loadCreateEditor() {
+  if (!createEditorPromise) {
+    createEditorPromise = import('../../vendor/codemirror/codemirror.js')
+      .then((m) => m.default);
+  }
+  return createEditorPromise;
+}
+
+/**
+ * Map our internal language tokens onto the CodeMirror utility's supported
+ * languages. The cache-debug tool calls `showCodeModal('log', ...)` for
+ * non-JSON responses and `showCodeModal('json', ...)` for the rare case where
+ * the JSON parse fails (the tree viewer covers the normal JSON case). Anything
+ * unrecognised (e.g. `'log'`) falls through to `'plain'` so we don't apply the
+ * JSON parse linter to non-JSON content and flood the gutter with false errors.
+ */
+function toEditorLanguage(language) {
+  if (language === 'json') return 'json';
+  if (language === 'html') return 'html';
+  return 'plain';
 }
 
 const ENV_HEADERS = {
@@ -245,7 +260,6 @@ const showCodeModal = async (language, title, text) => {
       </div>
     `;
   } else {
-    await loadPrism();
     content = /* html */`
       <div class="code-panel">
         <div class="code-actions">
@@ -256,7 +270,7 @@ const showCodeModal = async (language, title, text) => {
             <span class="icon"></span>
           </a>
         </div>
-        <pre><code class="language-${language}">${escapeHtml(text)}</code></pre>
+        <div class="code-viewer"></div>
       </div>
     `;
   }
@@ -271,8 +285,14 @@ const showCodeModal = async (language, title, text) => {
     tree.appendChild(renderJsonNode(data, 0));
     container.appendChild(tree);
   } else {
-    // eslint-disable-next-line no-undef
-    Prism.highlightElement(modal.querySelector('code'));
+    const host = modal.querySelector('.code-viewer');
+    const createEditor = await loadCreateEditor();
+    createEditor({
+      parent: host,
+      doc: text,
+      language: toEditorLanguage(language),
+      readOnly: true,
+    });
   }
 
   const copyBtn = modal.querySelector('.code-actions .copy');

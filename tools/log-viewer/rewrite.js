@@ -1,6 +1,5 @@
 /* eslint-disable class-methods-use-this */
 import { toUTCDate } from './utils.js';
-import admin from '../../scripts/helix-admin.js';
 
 /**
  * Transforms raw log data values into display-ready DOM nodes.
@@ -11,12 +10,14 @@ export class RewrittenData {
    * @param {string} live - Live hostname.
    * @param {string} preview - Preview hostname.
    * @param {Function} onAdminClick - Called with (requestFn, button) on admin button click.
+   * @param {object} adminClient - Active admin API client.
    */
-  constructor(data, live, preview, onAdminClick = async () => {}) {
+  constructor(data, live, preview, onAdminClick = async () => {}, adminClient = null) {
     this.data = data;
     this.live = live;
     this.preview = preview;
     this.onAdminClick = onAdminClick;
+    this.admin = adminClient;
   }
 
   timestamp(value) {
@@ -63,7 +64,7 @@ export class RewrittenData {
     }
     if (type === 'config') {
       return writeAdminDetails(
-        () => admin.config({ org: data.org, site: data.site }).read(),
+        () => this.admin.config({ org: data.org, site: data.site }).read(),
         value,
       );
     }
@@ -92,7 +93,9 @@ export class RewrittenData {
         }
         if (segment) {
           fragment.append(writeAdminDetails(
-            () => admin.index({ org: data.owner, site: data.repo, ref: data.ref }).get(segment),
+            () => this.admin
+              .index({ org: data.owner, site: data.repo, ref: data.ref })
+              .get(segment),
             segment,
           ));
         } else {
@@ -103,7 +106,7 @@ export class RewrittenData {
     }
     if (type === 'job' || type.includes('-job')) {
       return writeAdminDetails(
-        () => admin.job({ org: data.org, site: data.site, ref: data.ref }).get(`${value}/details`),
+        () => this.admin.job({ org: data.org, site: data.site, ref: data.ref }).get(`${value}/details`),
         value,
       );
     }
@@ -111,7 +114,7 @@ export class RewrittenData {
       const { job: jobId } = data;
       if (jobId) {
         return writeAdminDetails(
-          () => admin.job({ org: data.org, site: data.site, ref: data.ref }).get(`${jobId}/details`),
+          () => this.admin.job({ org: data.org, site: data.site, ref: data.ref }).get(`${jobId}/details`),
           jobId,
         );
       }
@@ -138,7 +141,7 @@ export class RewrittenData {
     }
     if (type === 'status') {
       return writeAdminDetails(
-        () => admin.status({ org: data.owner, site: data.repo, ref: data.ref }).get(value),
+        () => this.admin.status({ org: data.owner, site: data.repo, ref: data.ref }).get(value),
         value,
       );
     }

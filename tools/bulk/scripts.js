@@ -1,5 +1,5 @@
 import { analyzeUrls } from './utils.js';
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 
 const log = document.getElementById('logger');
@@ -186,6 +186,7 @@ const showSanitizationWarning = (changes) => {
 
 document.getElementById('urls-form').addEventListener('submit', async (e) => {
   e.preventDefault();
+  const admin = await getAdminClient();
   let counter = 0;
 
   const rawUrls = document.getElementById('urls').value

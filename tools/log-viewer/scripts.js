@@ -1,14 +1,24 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
-import { loadPrism, highlight } from '../../utils/prism/prism.js';
 import {
   toDateTimeLocal, calculatePastDate,
 } from './utils.js';
 import { RewrittenData } from './rewrite.js';
 
+let createEditorPromise;
+function loadCreateEditor() {
+  if (!createEditorPromise) {
+    createEditorPromise = import('../../vendor/codemirror/codemirror.js')
+      .then((m) => m.default);
+  }
+  return createEditorPromise;
+}
+
 // field ids
+let admin;
+
 const FIELDS = ['date-from', 'date-to'];
 
 // tool elements
@@ -254,15 +264,24 @@ async function onAdminClick(requestFn, button) {
     const res = await executeAdminRequest(requestFn, { org, site });
     if (!res || !res.ok) throw new Error(`Failed to fetch details: ${res?.status}`);
     const json = await res.json();
-    const pre = document.createElement('pre');
-    const code = document.createElement('code');
-    code.className = 'language-js';
-    code.textContent = JSON.stringify(json, null, 2);
-    pre.append(code);
-    const { showModal } = await createModal([pre]);
+    const host = document.createElement('div');
+    host.className = 'log-viewer-detail';
+
+    // Build the modal and lazy-load CodeMirror concurrently so we can mount
+    // the editor before showing the modal — avoids a flash of empty modal
+    // chrome on cold cache.
+    const [{ showModal }, createEditor] = await Promise.all([
+      createModal([host]),
+      loadCreateEditor(),
+    ]);
+
+    createEditor({
+      parent: host,
+      doc: JSON.stringify(json, null, 2),
+      language: 'json',
+      readOnly: true,
+    });
     showModal();
-    await loadPrism();
-    highlight(document.querySelector('.modal'));
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Could not create modal:', error);
@@ -299,7 +318,7 @@ function buildLog(data, live, preview) {
     'ip',
     'duration',
   ];
-  const formattedData = new RewrittenData(data, live, preview, onAdminClick);
+  const formattedData = new RewrittenData(data, live, preview, onAdminClick, admin);
   formattedData.rewrite(cols);
 
   cols.forEach((col) => {
@@ -375,6 +394,7 @@ function writeTimeParams(timeframe) {
  * @returns {Promise<>} Object containing all log entries and/or an error.
  */
 async function fetchAllLogs(org, site, timeframe) {
+  const adminClient = await getAdminClient();
   const logs = [];
   const timeParams = Object.fromEntries(new URLSearchParams(writeTimeParams(timeframe)));
   let nextToken;
@@ -386,7 +406,7 @@ async function fetchAllLogs(org, site, timeframe) {
     firstPage = false;
     // eslint-disable-next-line no-await-in-loop
     const res = await executeAdminRequest(
-      () => admin.log({ org, site }).get('', { params }),
+      () => adminClient.log({ org, site }).get('', { params }),
       { org, site, policy },
     );
     if (!res) return { logs, error: { status: 401 } };
@@ -501,6 +521,7 @@ function getCellText(cell) {
  * Registers event listeners to handle form interactions, table updates, and UI behavior.
  */
 async function registerListeners() {
+  admin = await getAdminClient();
   // await initConfigField();
 
   // enable timeframe dropdown

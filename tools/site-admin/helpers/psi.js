@@ -1,4 +1,4 @@
-import admin from '../../../scripts/helix-admin.js';
+import getAdminClient from '../../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../../utils/admin-request.js';
 import {
   getPsiScores,
@@ -40,6 +40,7 @@ export const renderPsiScores = (card, siteName, orgValue) => {
 };
 
 export const runPsiForCard = async (card, siteName, orgValue) => {
+  const admin = await getAdminClient();
   const psiContainer = card.querySelector('.psi-scores');
   if (!psiContainer) return;
 

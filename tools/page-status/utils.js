@@ -1,4 +1,4 @@
-import admin from '../../scripts/helix-admin.js';
+import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest } from '../../utils/admin-request.js';
 
 /**
@@ -9,6 +9,7 @@ import { executeAdminRequest } from '../../utils/admin-request.js';
  * @returns {Promise<{live: string, preview: string}|null>}
  */
 export async function fetchHosts(org, site) {
+  const admin = await getAdminClient();
   const res = await executeAdminRequest(
     () => admin.status({ org, site }).get(),
     { org, site },
