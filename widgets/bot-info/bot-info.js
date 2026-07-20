@@ -299,7 +299,8 @@ async function submitConfig(api, widget, config, { org, site, newOrg }, consoleB
 async function deleteApiKey(api, { org, site, newOrg }, tokenId, consoleBlock) {
   if (!tokenId) return;
   const node = newOrg ? api.config({ org }) : api.config({ org, site });
-  const res = await logged(consoleBlock, node.select(`apiKeys/${tokenId}.json`).remove());
+  const safeTokenId = tokenId.replace(/\//g, '_').replace(/\+/g, '-');
+  const res = await logged(consoleBlock, node.select(`apiKeys/${safeTokenId}.json`).remove());
   if (!res?.ok) {
     logMessage(consoleBlock, 'warning', ['setup', `Could not remove setup API key: ${res?.error || res?.status || 'network error'}`]);
   }
