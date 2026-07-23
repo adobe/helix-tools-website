@@ -995,7 +995,7 @@ async function checkPurge(cdnConfig, sharedPurgeSnapshot = null) {
 
   try {
     // Build purge test request based on CDN type
-    const purgeUrl = 'https://helix-pages.anywhere.run/helix-services/byocdn-push-invalidation/v1';
+    const purgeUrl = 'https://admin.hlx.page/hook/byocdn-push-invalidation/';
 
     // Prepare form data based on CDN type
     const formData = new URLSearchParams();
