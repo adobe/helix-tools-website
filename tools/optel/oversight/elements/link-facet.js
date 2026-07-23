@@ -114,7 +114,7 @@ export default class LinkFacet extends ListFacet {
       return `<a href="${escapeHTML(labelText)}" target="_new">${labelURLParts(labelText, prefix, solo)}</a>`;
     }
     if (labelText.startsWith('https://') || labelText.startsWith('http://')) {
-      return `<a href="${escapeHTML(labelText)}" target="_new">${labelURLParts(labelText, prefix, solo)}</a>`;
+      return `<a href="${escapeHTML(labelText)}" target="_new">${escapeHTML(labelText)}</a>`;
     }
     if (labelText.startsWith('referrer:')) {
       return `<a href="${escapeHTML(labelText.replace('referrer:', 'https://'))}" target="_new">${escapeHTML(labelText.replace('referrer:', ''))}</a>`;
