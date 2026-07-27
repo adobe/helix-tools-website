@@ -1,0 +1,12 @@
+{
+  "apiBaseUrl": "https://asset-sourcing-stage-va6.csc.adobe.com",
+  "tenantSlug": "adobe-tools",
+  "uploadHostSuffixes": [
+    ".adobeaemcloud.com",
+    ".blob.core.windows.net"
+  ],
+  "branding": {
+    "title": "AEM Assets Upload Portal",
+    "logoSrc": "/icons/adobe.svg"
+  }
+}

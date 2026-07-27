@@ -1,0 +1,484 @@
+.asset-sourcing-portal main {
+  max-width: 1200px;
+}
+
+.asset-sourcing-portal main > .section > div {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+.asset-sourcing-portal [hidden] {
+  display: none !important;
+}
+
+.asset-sourcing-portal .asp-portal-shell {
+  width: min(100% - 2rem, 480px);
+  min-height: calc(100dvh - 10rem);
+  margin: 0 auto;
+  padding: var(--spacing-l) 0;
+}
+
+.asset-sourcing-portal main > .asp-portal-shell {
+  margin: 0 auto;
+}
+
+.asset-sourcing-portal .asp-portal-shell.asp-portal-wide {
+  width: min(100% - 2rem, 1100px);
+}
+
+.asset-sourcing-portal .asp-portal-header {
+  margin-bottom: var(--spacing-m);
+}
+
+.asset-sourcing-portal .asp-portal-brand,
+.asset-sourcing-portal .portal-hero-brand {
+  display: flex;
+  gap: var(--spacing-s);
+  align-items: center;
+  padding: var(--spacing-m);
+  border-radius: var(--rounding-xl);
+  background: var(--layer-elevated);
+  box-shadow: var(--shadow-default);
+}
+
+.asset-sourcing-portal .asp-portal-logo img,
+.asset-sourcing-portal .portal-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.asset-sourcing-portal .asp-portal-title h1,
+.asset-sourcing-portal .portal-title {
+  margin: 0;
+  font-size: var(--heading-size-m);
+}
+
+.asset-sourcing-portal .asp-portal-banner:empty,
+.asset-sourcing-portal .asp-portal-footer:empty {
+  display: none;
+}
+
+.asset-sourcing-portal .card {
+  border-radius: var(--rounding-xl);
+  padding: var(--spacing-l);
+  background: var(--layer-elevated);
+  box-shadow: var(--shadow-default);
+}
+
+.asset-sourcing-portal .login-lead,
+.asset-sourcing-portal .panel-sub,
+.asset-sourcing-portal .field-hint,
+.asset-sourcing-portal .status {
+  color: var(--gray-700);
+}
+
+.asset-sourcing-portal .login-lead {
+  margin-top: 0;
+}
+
+.asset-sourcing-portal label {
+  display: block;
+  margin: var(--spacing-s) 0 var(--spacing-xs);
+  font-weight: 600;
+}
+
+.asset-sourcing-portal input,
+.asset-sourcing-portal select {
+  width: 100%;
+  border: var(--border-s) solid var(--gray-400);
+  border-radius: var(--rounding-m);
+  padding: 0.65rem 0.75rem;
+  background: var(--layer-elevated);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.asset-sourcing-portal input:focus,
+.asset-sourcing-portal select:focus {
+  border-color: var(--blue-900);
+  outline: 2px solid var(--blue-300);
+  outline-offset: 1px;
+}
+
+.asset-sourcing-portal button {
+  margin-top: var(--spacing-m);
+  border: 0;
+  border-radius: var(--rounding-m);
+  padding: 0.65rem 1.2rem;
+  background: var(--blue-900);
+  color: white;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.asset-sourcing-portal button:hover {
+  background: var(--blue-1000);
+}
+
+.asset-sourcing-portal button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.asset-sourcing-portal button.secondary {
+  border: var(--border-s) solid var(--gray-400);
+  background: transparent;
+  color: var(--color-text);
+}
+
+.asset-sourcing-portal button.secondary:hover {
+  background: var(--gray-100);
+}
+
+.asset-sourcing-portal .portal-message {
+  border-radius: var(--rounding-m);
+  padding: var(--spacing-s);
+  font-size: var(--body-size-s);
+}
+
+.asset-sourcing-portal .portal-message.error,
+.asset-sourcing-portal .file-row-rejected {
+  border: var(--border-s) solid var(--red-500);
+  background: var(--red-100);
+  color: var(--red-1000);
+}
+
+.asset-sourcing-portal .portal-message.notice {
+  border: var(--border-s) solid var(--yellow-600);
+  background: var(--yellow-100);
+  color: var(--yellow-1000);
+}
+
+.asset-sourcing-portal .portal-message.locked {
+  border: var(--border-s) solid var(--orange-600);
+  background: var(--orange-100);
+  color: var(--orange-1000);
+}
+
+.asset-sourcing-portal .portal-hero {
+  margin-bottom: var(--spacing-m);
+}
+
+.asset-sourcing-portal .portal-banner {
+  width: 100%;
+  max-height: 220px;
+  border-radius: var(--rounding-xl) var(--rounding-xl) 0 0;
+  object-fit: cover;
+}
+
+.asset-sourcing-portal .portal-banner-placeholder {
+  height: 120px;
+  border-radius: var(--rounding-xl) var(--rounding-xl) 0 0;
+  background: linear-gradient(135deg, var(--blue-900), var(--blue-1100));
+}
+
+.asset-sourcing-portal .portal-banner + .portal-hero-brand,
+.asset-sourcing-portal .portal-banner-placeholder + .portal-hero-brand {
+  border-radius: 0 0 var(--rounding-xl) var(--rounding-xl);
+}
+
+.asset-sourcing-portal .upload-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-m);
+}
+
+.asset-sourcing-portal .account-menu {
+  position: relative;
+}
+
+.asset-sourcing-portal .account-menu-trigger {
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  border: var(--border-s) solid var(--gray-400);
+  padding: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 1.25rem;
+}
+
+.asset-sourcing-portal .account-menu-dropdown {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + var(--spacing-xs));
+  right: 0;
+  min-width: 14rem;
+  border: var(--border-s) solid var(--gray-300);
+  border-radius: var(--rounding-l);
+  padding: var(--spacing-xs);
+  background: var(--layer-elevated);
+  box-shadow: var(--shadow-hover);
+}
+
+.asset-sourcing-portal .account-menu-header {
+  margin: 0;
+  border-bottom: var(--border-s) solid var(--gray-200);
+  padding: var(--spacing-s);
+  font-size: var(--body-size-s);
+}
+
+.asset-sourcing-portal .account-menu-item {
+  width: 100%;
+  margin: 0;
+  padding: var(--spacing-s);
+  background: transparent;
+  color: var(--color-text);
+  text-align: left;
+}
+
+.asset-sourcing-portal .account-menu-item:hover {
+  background: var(--gray-100);
+}
+
+.asset-sourcing-portal .batch-list {
+  display: grid;
+  gap: var(--spacing-m);
+}
+
+.asset-sourcing-portal .batch-label {
+  margin-bottom: var(--spacing-m);
+  color: var(--gray-700);
+  font-size: var(--body-size-s);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.asset-sourcing-portal .batch-row {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(280px, 1.1fr);
+  gap: var(--spacing-l);
+}
+
+.asset-sourcing-portal .panel-heading {
+  margin: 0 0 var(--spacing-xs);
+}
+
+.asset-sourcing-portal .panel-sub,
+.asset-sourcing-portal .field-hint,
+.asset-sourcing-portal .status {
+  margin: var(--spacing-xs) 0;
+  font-size: var(--body-size-s);
+}
+
+.asset-sourcing-portal .metadata-form.locked {
+  opacity: 0.75;
+}
+
+.asset-sourcing-portal .metadata-dimension-note {
+  margin-top: var(--spacing-m);
+  border-top: var(--border-s) solid var(--gray-300);
+  padding-top: var(--spacing-s);
+  font-size: var(--body-size-s);
+}
+
+.asset-sourcing-portal .asp-prepopulated {
+  margin-top: var(--spacing-m);
+  font-size: var(--body-size-s);
+}
+
+.asset-sourcing-portal .asp-prepopulated dl {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) 2fr;
+  gap: var(--spacing-xs);
+}
+
+.asset-sourcing-portal .asp-prepopulated dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.asset-sourcing-portal .drop-zone {
+  display: flex;
+  min-height: 230px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--gray-400);
+  border-radius: var(--rounding-l);
+  padding: var(--spacing-l);
+  background: var(--gray-50);
+  text-align: center;
+  cursor: pointer;
+}
+
+.asset-sourcing-portal .drop-zone:hover,
+.asset-sourcing-portal .drop-zone:focus-visible,
+.asset-sourcing-portal .drop-zone.drag-over {
+  border-color: var(--blue-900);
+  background: var(--blue-100);
+  outline: none;
+}
+
+.asset-sourcing-portal .drop-zone.disabled {
+  opacity: 0.55;
+  border-color: var(--gray-300);
+  background: var(--gray-100);
+  cursor: not-allowed;
+}
+
+.asset-sourcing-portal .drop-zone-icon {
+  color: var(--blue-900);
+  font-size: 2rem;
+}
+
+.asset-sourcing-portal .drop-zone-title {
+  margin: var(--spacing-xs) 0;
+  font-weight: 700;
+}
+
+.asset-sourcing-portal .drop-zone-hint {
+  max-width: 26rem;
+  margin: 0;
+  color: var(--gray-700);
+  font-size: var(--body-size-s);
+}
+
+.asset-sourcing-portal .drop-zone-folder-btn {
+  margin-top: var(--spacing-s);
+}
+
+.asset-sourcing-portal .file-list {
+  margin: var(--spacing-m) 0 0;
+  padding: 0;
+}
+
+.asset-sourcing-portal .file-row {
+  margin-top: var(--spacing-s);
+  border: var(--border-s) solid var(--gray-300);
+  border-radius: var(--rounding-m);
+  padding: var(--spacing-s);
+  list-style: none;
+}
+
+.asset-sourcing-portal .file-row-skipped {
+  border-color: var(--yellow-600);
+  background: var(--yellow-100);
+}
+
+.asset-sourcing-portal .file-row-main {
+  display: flex;
+  gap: var(--spacing-s);
+  justify-content: space-between;
+}
+
+.asset-sourcing-portal .file-name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.asset-sourcing-portal .file-source {
+  flex: 1;
+  color: var(--gray-700);
+  font-size: var(--body-size-xs);
+  overflow-wrap: anywhere;
+}
+
+.asset-sourcing-portal .file-size {
+  flex-shrink: 0;
+  color: var(--gray-700);
+  font-size: var(--body-size-s);
+}
+
+.asset-sourcing-portal .progress {
+  display: block;
+  width: 100%;
+  height: 6px;
+  margin-top: var(--spacing-xs);
+  border-radius: 3px;
+  border: 0;
+  background: var(--gray-200);
+  color: var(--blue-900);
+  overflow: hidden;
+}
+
+.asset-sourcing-portal .progress::-webkit-progress-bar {
+  background: var(--gray-200);
+}
+
+.asset-sourcing-portal .progress::-webkit-progress-value {
+  background: var(--blue-900);
+}
+
+.asset-sourcing-portal .progress::-moz-progress-bar {
+  background: var(--blue-900);
+}
+
+.asset-sourcing-portal .add-batch-btn {
+  width: 100%;
+  margin-top: var(--spacing-m);
+  border: 2px dashed var(--blue-900);
+  background: transparent;
+  color: var(--blue-900);
+}
+
+.asset-sourcing-portal .confirmation-panel {
+  max-width: 36rem;
+  margin: 0 auto;
+}
+
+.asset-sourcing-portal .confirmation-stats {
+  line-height: 1.8;
+}
+
+.asset-sourcing-portal .confirmation-hero {
+  padding: var(--spacing-l);
+  border-radius: var(--rounding-xl);
+  background: var(--blue-100);
+}
+
+.asset-sourcing-portal dialog.asp-key-dialog {
+  width: min(100% - 2rem, 32rem);
+  border: 0;
+  border-radius: var(--rounding-xl);
+  padding: var(--spacing-l);
+  color: var(--color-text);
+}
+
+.asset-sourcing-portal dialog.asp-key-dialog::backdrop {
+  background: var(--transparent-black-600);
+}
+
+.asset-sourcing-portal dialog.asp-key-dialog > div {
+  max-height: calc(100dvh - 4rem);
+  padding: 0;
+  overflow-y: auto;
+}
+
+.asset-sourcing-portal .modal-actions,
+.asset-sourcing-portal .key-reveal {
+  display: flex;
+  gap: var(--spacing-s);
+  align-items: center;
+}
+
+.asset-sourcing-portal .modal-actions {
+  justify-content: flex-end;
+}
+
+.asset-sourcing-portal .key-reveal {
+  border: var(--border-s) solid var(--gray-300);
+  border-radius: var(--rounding-m);
+  padding: var(--spacing-s);
+  background: var(--gray-100);
+}
+
+.asset-sourcing-portal .key-reveal code {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+@media (width < 768px) {
+  .asset-sourcing-portal .batch-row {
+    grid-template-columns: 1fr;
+  }
+
+  .asset-sourcing-portal .file-row-main {
+    flex-direction: column;
+  }
+}

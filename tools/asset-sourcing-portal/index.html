@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'none'; script-src 'nonce-aem' 'strict-dynamic'; style-src 'self'; img-src 'self' blob: data: https:; font-src 'self'; connect-src 'self' https://asset-sourcing-stage-va6.csc.adobe.com https://rum.hlx.page https://*.adobeaemcloud.com https://*.blob.core.windows.net; object-src 'none'; base-uri 'none'; frame-src 'none'; frame-ancestors 'none'; form-action 'none'; manifest-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="no-referrer">
+  <meta name="lab" content="true">
+  <title>Asset Sourcing Portal | AEM Tools</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <script nonce="aem" src="/tools/asset-sourcing-portal/asset-sourcing-portal.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css">
+  <link rel="stylesheet" href="/tools/asset-sourcing-portal/asset-sourcing-portal.css">
+</head>
+<body class="asset-sourcing-portal">
+  <header></header>
+  <main>
+    <div id="asp-portal-shell" class="asp-portal-shell">
+      <section id="asp-portal-header" class="asp-portal-header" aria-label="Asset Sourcing Portal">
+        <div id="asp-portal-brand" class="asp-portal-brand">
+          <div id="asp-portal-logo" class="asp-portal-logo">
+            <img src="/icons/adobe.svg" alt="">
+          </div>
+          <div id="asp-portal-title" class="asp-portal-title">
+            <h1>AEM Assets Upload Portal</h1>
+          </div>
+        </div>
+        <div id="asp-portal-banner" class="asp-portal-banner"></div>
+      </section>
+
+      <section id="asp-portal-main" class="asp-portal-main">
+        <div id="asp-portal-signin" class="asp-portal-signin card">
+          <p class="login-lead">Sign in with your account name and API key.</p>
+          <p id="asp-login-message" class="portal-message" role="alert" hidden></p>
+          <form id="asp-login-form">
+            <label for="account">Account name</label>
+            <input id="account" name="account" type="text" maxlength="200" autocomplete="username" required>
+            <label for="key">API key</label>
+            <input id="key" name="key" type="password" maxlength="500" autocomplete="off" required>
+            <button id="asp-login-button" type="submit">Continue to upload</button>
+          </form>
+        </div>
+        <div id="asp-upload-view" hidden></div>
+        <div id="asp-confirmation-view" hidden></div>
+      </section>
+
+      <div id="asp-modal-root"></div>
+      <div id="asp-portal-footer" class="asp-portal-footer"></div>
+    </div>
+  </main>
+  <footer></footer>
+</body>
+</html>
