@@ -113,17 +113,16 @@ export function validateContentSelection({ advanced, url }) {
 }
 
 /**
- * Validate the collected users for the Users step: at least one site user, and
- * at least one org user when setting up a new org.
+ * Validate the collected users for the Users step. Site users are optional —
+ * site access can be inherited from the org — but a new org must have at least
+ * one org user.
  *
- * @param {{email: string}[]} siteUsers
  * @param {{email: string}[]} orgUsers
  * @param {boolean} newOrg
  * @returns {string|null} an error message, or null when valid
  */
-export function usersError(siteUsers, orgUsers, newOrg) {
+export function usersError(orgUsers, newOrg) {
   if (newOrg && orgUsers.length === 0) return 'Add at least one organization user before saving.';
-  if (siteUsers.length === 0) return 'Add at least one site user.';
   return null;
 }
 

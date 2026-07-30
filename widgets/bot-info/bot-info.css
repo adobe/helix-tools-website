@@ -433,7 +433,8 @@
   margin-top: 12px;
 }
 
-.bot-info-error {
+.bot-info-error,
+.bot-info-users-error {
   margin-top: 16px;
   padding: 10px;
   border: 1px solid light-dark(var(--red-900), var(--red-500));

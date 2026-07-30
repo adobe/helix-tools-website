@@ -79,11 +79,12 @@
         <h2 id="bot-info-users-heading" class="bot-info-visually-hidden">Users</h2>
         <section class="bot-info-step bot-info-org-users" aria-hidden="true">
             <h2>Organization users</h2>
-            <p>These users have access across the <span class="bot-info-org">{{org}}</span> organization.
+            <p>These users have access to the <span class="bot-info-org">{{org}}</span> organization, including all sites.
                 Review the list and add or remove users as needed.
                 <a href="https://www.aem.live/docs/authentication-setup-authoring#admin-roles" target="_blank" rel="noopener noreferrer">Learn about admin roles</a>.</p>
             <div class="bot-info-user-list" data-scope="org"></div>
             <button type="button" class="button outline bot-info-add-user" data-scope="org">+ Add user</button>
+            <div class="bot-info-users-error" role="alert" aria-hidden="true"></div>
         </section>
 
         <section class="bot-info-step">

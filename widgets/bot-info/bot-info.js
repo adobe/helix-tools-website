@@ -493,6 +493,8 @@ export default async function decorate(widget) {
   const form = widget.querySelector('.bot-info-wizard');
   const alert = widget.querySelector('.bot-info-alert');
   const errorEl = widget.querySelector('.bot-info-error');
+  // the Users step shows its error in its own slot (below the org section)
+  const usersErrorEl = widget.querySelector('.bot-info-users-error');
 
   // build the request log console (mirrors the other admin tools)
   const consoleBlock = widget.querySelector('.console');
@@ -570,8 +572,7 @@ export default async function decorate(widget) {
       }
       if (step === 'users') {
         const orgList = widget.querySelector('.bot-info-user-list[data-scope="org"]');
-        const siteList = widget.querySelector('.bot-info-user-list[data-scope="site"]');
-        return usersError(collectUsers(siteList), collectUsers(orgList), ctx.newOrg);
+        return usersError(collectUsers(orgList), ctx.newOrg);
       }
       return null;
     };
@@ -604,6 +605,13 @@ export default async function decorate(widget) {
       }
     };
 
+    // the users error sits in its own slot; every other step uses the main one
+    const errorFor = (step) => (step === 'users' ? usersErrorEl : errorEl);
+    const clearErrors = () => {
+      setHidden(errorEl, true);
+      setHidden(usersErrorEl, true);
+    };
+
     // navigate to a target step; moving forward validates every step passed
     // through and stops on the first invalid one so mandatory steps can't be
     // skipped (going back is always allowed)
@@ -611,13 +619,14 @@ export default async function decorate(widget) {
       for (let i = current; i < target; i += 1) {
         const error = validateStep(steps[i]);
         if (error) {
-          errorEl.textContent = error;
-          setHidden(errorEl, false);
+          const el = errorFor(steps[i]);
+          el.textContent = error;
+          setHidden(el, false);
           goToStep(i);
           return;
         }
       }
-      setHidden(errorEl, true);
+      clearErrors();
       goToStep(target);
     };
     const goNext = () => goTo(current + 1);

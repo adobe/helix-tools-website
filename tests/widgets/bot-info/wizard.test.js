@@ -170,23 +170,19 @@ describe('bot-info:wizard.js', () => {
   describe('usersError', () => {
     const someUsers = [{ email: 'a@b.com' }];
 
-    it('requires at least one site user', () => {
-      assert.equal(usersError([], someUsers, false), 'Add at least one site user.');
-    });
-
     it('requires at least one org user for a new org', () => {
       assert.equal(
-        usersError(someUsers, [], true),
+        usersError([], true),
         'Add at least one organization user before saving.',
       );
     });
 
-    it('does not require org users for an existing org', () => {
-      assert.equal(usersError(someUsers, [], false), null);
+    it('allows no users for an existing org (site access can be inherited)', () => {
+      assert.equal(usersError([], false), null);
     });
 
-    it('passes when the required users are present', () => {
-      assert.equal(usersError(someUsers, someUsers, true), null);
+    it('passes when a new org has an org user', () => {
+      assert.equal(usersError(someUsers, true), null);
     });
   });
 });
