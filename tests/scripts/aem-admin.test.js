@@ -220,9 +220,9 @@ describe('aem-admin.js — H6 URL contract', () => {
   });
 
   describe('admin.job(coords) URLs', () => {
-    it('.get("topic/name") hits /{org}/sites/{site}/job/topic/name', async () => {
+    it('.get("topic/name") hits /{org}/sites/{site}/jobs/topic/name', async () => {
       await admin.job({ org: 'adobe', site: 'x' }).get('index/job-123');
-      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/job/index/job-123');
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/jobs/index/job-123');
     });
   });
 

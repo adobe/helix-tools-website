@@ -1,10 +1,9 @@
-import { analyzeUrls } from './utils.js';
-import getAdminClient from '../../scripts/admin-compat.js';
+import { analyzeUrls, extractOrgSite } from './utils.js';
+import { isHelix6, getAdminClientForSite } from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 
 const log = document.getElementById('logger');
 const adminVersion = new URLSearchParams(window.location.search).get('hlx-admin-version');
-const adminVersionParams = adminVersion ? { 'hlx-admin-version': adminVersion } : undefined;
 
 const append = (string, status = 'unknown') => {
   const p = document.createElement('p');
@@ -186,7 +185,6 @@ const showSanitizationWarning = (changes) => {
 
 document.getElementById('urls-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const admin = await getAdminClient();
   let counter = 0;
 
   const rawUrls = document.getElementById('urls').value
@@ -228,6 +226,15 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
     append('No valid URLs after sanitization');
     return false;
   }
+
+  // All URLs in a run target the same site; detect the backend from the first
+  // one and pick the matching admin client (H5 admin.hlx.page or H6 api.aem.live).
+  const firstCoords = extractOrgSite(urlsToUse[0]);
+  const isH6 = await isHelix6(firstCoords);
+  const admin = await getAdminClientForSite(firstCoords);
+  const adminVersionParams = adminVersion
+    ? { [isH6 ? 'aem-api-version' : 'hlx-admin-version']: adminVersion }
+    : undefined;
 
   const operation = document.getElementById('operation').dataset.value;
   const slow = document.getElementById('slow').checked;
@@ -282,9 +289,12 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
       const bulkText = `$1/${total} URL(s) bulk ${VERB[operation]}ed on ${owner}/${repo} ${forceUpdate ? '(force update)' : ''}`;
       const bulkLog = append(bulkText.replace('$1', 0));
       const paths = urlsToUse.map((url) => new URL(url).pathname);
+      // H6 requires forceAsync to run bulk jobs past the small synchronous limit.
+      const bulkBody = { paths, forceUpdate };
+      if (isH6) bulkBody.forceAsync = true;
       const bulkResp = await executeAdminRequest(
         () => admin[operation]({ org: owner, site: repo, ref: branch })
-          .update('/*', JSON.stringify({ paths, forceUpdate }), { params: adminVersionParams }),
+          .update('/*', JSON.stringify(bulkBody), { params: adminVersionParams }),
         { org: owner, site: repo, policy: AuthMode.PREFLIGHT_AND_RETRY },
       );
       if (!bulkResp) {
@@ -296,11 +306,14 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
       } else {
         const { job } = await bulkResp.json();
         const { name } = job;
+        // H6 job topics differ from the operation (e.g. live -> live-publish);
+        // trust the topic echoed by the start response. H5 uses the VERB map.
+        const jobTopic = isH6 ? (job.topic || VERB[operation]) : VERB[operation];
         const jobStatusPoll = window.setInterval(async () => {
           try {
             const jobResp = await executeAdminRequest(
               () => admin.job({ org: owner, site: repo, ref: branch })
-                .get(`${VERB[operation]}/${name}/details`),
+                .get(`${jobTopic}/${name}/details`),
               { org: owner, site: repo, policy: AuthMode.NONE },
             );
             const jobStatus = await jobResp.json();
@@ -313,7 +326,8 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
             } = jobStatus;
             if (state === 'stopped') {
               window.clearInterval(jobStatusPoll);
-              resources.forEach((res) => append(`${res.path} (${res.status})`, res.status));
+              // H5 resources carry `path`; H6 carries `resourcePath`.
+              resources.forEach((res) => append(`${res.resourcePath || res.path} (${res.status})`, res.status));
               bulkLog.textContent = bulkText.replace('$1', processed);
               const duration = (new Date(stopTime).valueOf()
                 - new Date(startTime).valueOf()) / 1000;

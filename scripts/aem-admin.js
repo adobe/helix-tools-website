@@ -174,7 +174,8 @@ function createAdmin(defaults = {}) {
   function log(coords) { return bindOperation(opBase('log', coords), ['get', 'update']); }
   function index(coords) { return bindOperation(opBase('index', coords), ['get', 'update', 'remove']); }
   function sitemap(coords) { return bindOperation(opBase('sitemap', coords), ['update']); }
-  function job(coords) { return bindOperation(opBase('job', coords), ['get', 'remove']); }
+  // H6 serves jobs under the plural `jobs` segment: /{org}/sites/{site}/jobs
+  function job(coords) { return bindOperation(opBase('jobs', coords), ['get', 'remove']); }
   function psi(coords) { return bindOperation(opBase('psi', coords), ['get']); }
   function snapshot(coords) { return bindOperation(opBase('snapshot', coords), ['get', 'update', 'remove']); }
   function sidekick(coords) { return bindOperation(opBase('sidekick', coords), ['get']); }
