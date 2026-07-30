@@ -36,10 +36,13 @@ export default async function getAdminClient() {
  * sidekick config, present even on unauthenticated (401) responses. The
  * `use-h6-api` localStorage override forces H6 without a network call.
  *
+ * Not exported — {@link getAdminClientForSite} is the public entry point for
+ * per-site selection.
+ *
  * @param {{org: string, site: string, ref?: string}} coords
  * @returns {Promise<boolean>}
  */
-export async function isHelix6({ org, site, ref = 'main' }) {
+async function isHelix6({ org, site, ref = 'main' }) {
   if (window.localStorage.getItem(H6_FLAG) !== null) return true;
   if (!org || !site) return false;
   const key = `${org}/${site}/${ref}`;

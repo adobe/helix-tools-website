@@ -1,4 +1,5 @@
 const ADMIN_BASE = 'https://admin.hlx.page';
+const VERSION_PARAM_KEY = 'hlx-admin-version';
 
 const CONTENT_TYPES = {
   json: 'application/json',
@@ -48,7 +49,9 @@ function deriveContentType(url) {
  * purpose resources are arity-overloaded callables (no arg → GET, arg → POST);
  * multi-operation resources are objects with named methods.
  *
- * @param {RequestInit} [defaults] merged into every request's init
+ * @param {RequestInit & {params?: Record<string, string>}} [defaults]
+ *   `params` is merged under every call's own `opts.params` (call-site wins
+ *   on key collisions); everything else is merged into every request's init.
  */
 /**
  * Parse org and site coords from an admin API URL. Handles both config URLs
@@ -78,16 +81,19 @@ function coordsFromURL(url) {
 }
 
 function createAdmin(defaults = {}) {
+  const { params: defaultParams, ...initDefaults } = defaults;
+
   async function request({
     method, url, body, contentType, params,
   }) {
+    const mergedParams = { ...defaultParams, ...params };
     let finalUrl = url;
-    if (params) {
+    if (Object.keys(mergedParams).length) {
       const qs = new URLSearchParams();
-      Object.entries(params).forEach(([k, v]) => qs.set(k, v));
+      Object.entries(mergedParams).forEach(([k, v]) => qs.set(k, v));
       finalUrl = `${url}${url.includes('?') ? '&' : '?'}${qs.toString()}`;
     }
-    const init = { method, ...defaults };
+    const init = { method, ...initDefaults };
     if (body !== undefined && body !== null) {
       init.body = body;
       if (contentType) {
@@ -205,7 +211,7 @@ function createAdmin(defaults = {}) {
    * override via `opts.contentType`.
    *
    * @param {string} baseUrl
-   * @param {Array<'get'|'update'|'remove'>} caps
+   * @param {Array<'get'|'update'|'remove'|'bulk'>} caps
    * @returns object with the requested caps as methods, plus `.url` always set to `baseUrl`
    */
   function bindOperation(baseUrl, caps) {
@@ -224,6 +230,7 @@ function createAdmin(defaults = {}) {
         return request(init);
       },
       remove: (path, opts) => request({ method: 'DELETE', url: join(path), params: opts?.params }),
+      bulk: (payload, opts) => all.update('/*', JSON.stringify(payload), opts),
     };
     return { ...Object.fromEntries(caps.map((c) => [c, all[c]])), url: baseUrl };
   }
@@ -264,8 +271,8 @@ function createAdmin(defaults = {}) {
   }
 
   function status(coords) { return bindOperation(opBase('status', coords), ['get', 'update']); }
-  function preview(coords) { return bindOperation(opBase('preview', coords), ['get', 'update', 'remove']); }
-  function live(coords) { return bindOperation(opBase('live', coords), ['get', 'update', 'remove']); }
+  function preview(coords) { return bindOperation(opBase('preview', coords), ['get', 'update', 'remove', 'bulk']); }
+  function live(coords) { return bindOperation(opBase('live', coords), ['get', 'update', 'remove', 'bulk']); }
   function code(coords) { return bindOperation(opBase('code', coords), ['get', 'update', 'remove']); }
   function log(coords) { return bindOperation(opBase('log', coords), ['get', 'update']); }
   function index(coords) { return bindOperation(opBase('index', coords), ['get', 'update', 'remove']); }
@@ -286,6 +293,16 @@ function createAdmin(defaults = {}) {
     return createAdmin({ ...defaults, ...extra });
   }
 
+  /**
+   * Derive a client that pins every request to the given admin API version.
+   * Non-mutating, like `withRequestInit` — the original client is unaffected.
+   *
+   * @param {string} [version]
+   */
+  function pinVersion(version) {
+    return withRequestInit({ params: version ? { [VERSION_PARAM_KEY]: version } : undefined });
+  }
+
   return {
     config,
     status,
@@ -304,6 +321,7 @@ function createAdmin(defaults = {}) {
     suggestions,
     coordsFromURL,
     withRequestInit,
+    pinVersion,
   };
 }
 

@@ -1,5 +1,5 @@
 import { analyzeUrls, extractOrgSite } from './utils.js';
-import { isHelix6, getAdminClientForSite } from '../../scripts/admin-compat.js';
+import { getAdminClientForSite } from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 
 const log = document.getElementById('logger');
@@ -230,11 +230,8 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
   // All URLs in a run target the same site; detect the backend from the first
   // one and pick the matching admin client (H5 admin.hlx.page or H6 api.aem.live).
   const firstCoords = extractOrgSite(urlsToUse[0]);
-  const isH6 = await isHelix6(firstCoords);
-  const admin = await getAdminClientForSite(firstCoords);
-  const adminVersionParams = adminVersion
-    ? { [isH6 ? 'aem-api-version' : 'hlx-admin-version']: adminVersion }
-    : undefined;
+  let admin = await getAdminClientForSite(firstCoords);
+  if (adminVersion) admin = admin.pinVersion(adminVersion);
 
   const operation = document.getElementById('operation').dataset.value;
   const slow = document.getElementById('slow').checked;
@@ -252,8 +249,8 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
     const resource = admin[endpoint]({ org: owner, site: repo, ref: branch });
     return executeAdminRequest(
       () => (method === 'DELETE'
-        ? resource.remove(pathname, { params: adminVersionParams })
-        : resource.update(pathname, null, { params: adminVersionParams })),
+        ? resource.remove(pathname)
+        : resource.update(pathname, null)),
       { org: owner, site: repo, policy },
     );
   };
@@ -289,12 +286,9 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
       const bulkText = `$1/${total} URL(s) bulk ${VERB[operation]}ed on ${owner}/${repo} ${forceUpdate ? '(force update)' : ''}`;
       const bulkLog = append(bulkText.replace('$1', 0));
       const paths = urlsToUse.map((url) => new URL(url).pathname);
-      // H6 requires forceAsync to run bulk jobs past the small synchronous limit.
-      const bulkBody = { paths, forceUpdate };
-      if (isH6) bulkBody.forceAsync = true;
       const bulkResp = await executeAdminRequest(
         () => admin[operation]({ org: owner, site: repo, ref: branch })
-          .update('/*', JSON.stringify(bulkBody), { params: adminVersionParams }),
+          .bulk({ paths, forceUpdate }),
         { org: owner, site: repo, policy: AuthMode.PREFLIGHT_AND_RETRY },
       );
       if (!bulkResp) {
@@ -307,8 +301,8 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
         const { job } = await bulkResp.json();
         const { name } = job;
         // H6 job topics differ from the operation (e.g. live -> live-publish);
-        // trust the topic echoed by the start response. H5 uses the VERB map.
-        const jobTopic = isH6 ? (job.topic || VERB[operation]) : VERB[operation];
+        // job.topic is echoed by H6's start response and absent on H5.
+        const jobTopic = job.topic || VERB[operation];
         const jobStatusPoll = window.setInterval(async () => {
           try {
             const jobResp = await executeAdminRequest(

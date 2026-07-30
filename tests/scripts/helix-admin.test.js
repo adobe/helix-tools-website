@@ -320,6 +320,54 @@ describe('helix-admin.js — H5 URL contract', () => {
     });
   });
 
+  describe('admin.pinVersion(version)', () => {
+    it('pins every subsequent request under hlx-admin-version', async () => {
+      const pinned = admin.pinVersion('1.2.3');
+      await pinned.status({ org: 'adobe', site: 'x' }).get('/en/index');
+      assert.equal(new URL(calls[0].url).searchParams.get('hlx-admin-version'), '1.2.3');
+    });
+
+    it('does not affect calls through the unpinned client', async () => {
+      admin.pinVersion('1.2.3');
+      await admin.status({ org: 'adobe', site: 'x' }).get('/en/index');
+      assert.equal(new URL(calls[0].url).searchParams.get('hlx-admin-version'), null);
+    });
+
+    it('with no version, behaves like the unpinned client', async () => {
+      const pinned = admin.pinVersion(undefined);
+      await pinned.status({ org: 'adobe', site: 'x' }).get('/en/index');
+      assert.equal(new URL(calls[0].url).searchParams.get('hlx-admin-version'), null);
+    });
+
+    it('per-call params still apply alongside the pinned version', async () => {
+      const pinned = admin.pinVersion('1.2.3');
+      await pinned.status({ org: 'adobe', site: 'x' }).get('/en/index', { params: { editUrl: 'auto' } });
+      const u = new URL(calls[0].url);
+      assert.equal(u.searchParams.get('hlx-admin-version'), '1.2.3');
+      assert.equal(u.searchParams.get('editUrl'), 'auto');
+    });
+  });
+
+  describe('admin.preview/live(coords).bulk(payload, opts)', () => {
+    it('POSTs to /preview/{org}/{site}/main/* without forceAsync', async () => {
+      await admin.preview({ org: 'adobe', site: 'x' }).bulk({ paths: ['/a'], forceUpdate: false });
+      assert.equal(calls[0].url, 'https://admin.hlx.page/preview/adobe/x/main/*');
+      assert.equal(calls[0].init.method, 'POST');
+      assert.deepEqual(JSON.parse(calls[0].init.body), { paths: ['/a'], forceUpdate: false });
+    });
+
+    it('live(coords).bulk hits /live/{org}/{site}/main/*', async () => {
+      await admin.live({ org: 'adobe', site: 'x' }).bulk({ paths: ['/a'], forceUpdate: true });
+      assert.equal(calls[0].url, 'https://admin.hlx.page/live/adobe/x/main/*');
+    });
+
+    it('a pinned client includes the version on bulk requests too', async () => {
+      const pinned = admin.pinVersion('1.2.3');
+      await pinned.preview({ org: 'adobe', site: 'x' }).bulk({ paths: ['/a'] });
+      assert.equal(new URL(calls[0].url).searchParams.get('hlx-admin-version'), '1.2.3');
+    });
+  });
+
   describe('admin.raw() H5 URLs', () => {
     it('/path resolves against https://admin.hlx.page', async () => {
       await admin.raw('GET', '/sidekick/adobe/x/main/config.json');
