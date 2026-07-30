@@ -99,6 +99,34 @@ export function diffOrgUsers(original = [], current = []) {
   return { toAdd, toRemove, toUpdate };
 }
 
+/**
+ * Validate the content-source selection for the Content step. Only the
+ * "different content source" (advanced) path needs a URL; the DA default is
+ * always valid.
+ *
+ * @param {{advanced: boolean, url: string}} selection
+ * @returns {string|null} an error message, or null when valid
+ */
+export function validateContentSelection({ advanced, url }) {
+  if (advanced && !url.trim()) return 'Enter a content source URL.';
+  return null;
+}
+
+/**
+ * Validate the collected users for the Users step: at least one site user, and
+ * at least one org user when setting up a new org.
+ *
+ * @param {{email: string}[]} siteUsers
+ * @param {{email: string}[]} orgUsers
+ * @param {boolean} newOrg
+ * @returns {string|null} an error message, or null when valid
+ */
+export function usersError(siteUsers, orgUsers, newOrg) {
+  if (newOrg && orgUsers.length === 0) return 'Add at least one organization user before saving.';
+  if (siteUsers.length === 0) return 'Add at least one site user.';
+  return null;
+}
+
 /* ------------------------------------------------------------------ */
 /* DOM builders (not unit-tested)                                     */
 /* ------------------------------------------------------------------ */

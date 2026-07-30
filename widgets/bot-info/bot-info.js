@@ -9,6 +9,8 @@ import {
   diffOrgUsers,
   createUserRow,
   collectUsers,
+  validateContentSelection,
+  usersError,
 } from './wizard.js';
 
 const EMPTY_ACCESS = { admin: { role: {} } };
@@ -105,6 +107,11 @@ function populateStaticFields(widget, { org, site }) {
   if (liveLink) {
     liveLink.href = `https://main--${site}--${org}.aem.live/`;
     liveLink.textContent = liveLink.href;
+  }
+  const repoLink = widget.querySelector('.bot-info-repo');
+  if (repoLink) {
+    repoLink.href = `https://github.com/${org}/${site}`;
+    repoLink.textContent = repoLink.href;
   }
 }
 
@@ -236,6 +243,23 @@ function renderForm(widget, config, {
 }
 
 /**
+ * Read the current content-source selection from the form. DA is the default
+ * with a fixed URL; the advanced options override it. Shared by the review step
+ * and the save so both reflect the same live form state.
+ *
+ * @returns {{kind: string, contentUrl: string, suffix: string}}
+ */
+function readContentSelection(widget, org, site) {
+  const useDifferent = widget.querySelector('.bot-info-advanced-check').checked;
+  const kind = useDifferent ? widget.querySelector('.bot-info-content-type').value : 'da';
+  const contentUrl = useDifferent
+    ? widget.querySelector('.bot-info-content-url').value.trim()
+    : `https://content.da.live/${org}/${site}`;
+  const suffix = widget.querySelector('.bot-info-content-suffix').value.trim();
+  return { kind, contentUrl, suffix };
+}
+
+/**
  * Persist all gathered changes back to the admin API. Returns a summary of what
  * was saved so the confirmation screen can reflect the actual changes.
  */
@@ -271,12 +295,7 @@ async function submitConfig(api, widget, config, { org, site, newOrg }, consoleB
     'Saving site administrators',
   );
 
-  const useDifferent = widget.querySelector('.bot-info-advanced-check').checked;
-  const kind = useDifferent ? widget.querySelector('.bot-info-content-type').value : 'da';
-  const contentUrl = useDifferent
-    ? widget.querySelector('.bot-info-content-url').value.trim()
-    : `https://content.da.live/${org}/${site}`;
-  const suffix = widget.querySelector('.bot-info-content-suffix').value.trim();
+  const { kind, contentUrl, suffix } = readContentSelection(widget, org, site);
   const source = buildContentSource(contentUrl, kind, suffix);
   // update only the content sub-config; POSTing the whole site config would
   // overwrite the access.json we just wrote with the stale copy read on load
@@ -360,9 +379,82 @@ function renderDidList(widget, { org, site }, summary) {
 }
 
 /**
- * Reveal the confirmation screen. With a `summary` it reflects the saved
+ * Render the read-only summary of the selected config on the Finish step. Each
+ * item's title mirrors the step it summarises and links back to that step (the
+ * click is wired via delegation in `decorate`).
+ */
+function renderReview(widget, { org, site, newOrg }) {
+  const review = widget.querySelector('.bot-info-review');
+  review.textContent = '';
+
+  const addItem = (label, stepIndex) => {
+    const li = document.createElement('li');
+    const title = document.createElement('button');
+    title.type = 'button';
+    title.className = 'bot-info-review-link';
+    title.dataset.stepIndex = String(stepIndex);
+    title.textContent = label;
+    li.append(title);
+    review.append(li);
+    return li;
+  };
+
+  const addLink = (li, url) => {
+    const link = document.createElement('a');
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.href = url;
+    link.textContent = url;
+    li.append(link);
+  };
+
+  const addUsers = (li, label, users) => {
+    const sublabel = document.createElement('div');
+    sublabel.className = 'bot-info-review-sublabel';
+    sublabel.textContent = `${label} (${users.length})`;
+    li.append(sublabel);
+    const sub = document.createElement('ul');
+    sub.className = 'bot-info-user-summary';
+    users.forEach((u) => {
+      const item = document.createElement('li');
+      item.textContent = u.roles.length ? `${u.email} — ${u.roles.join(', ')}` : u.email;
+      sub.append(item);
+    });
+    li.append(sub);
+  };
+
+  // 1. Code — the GitHub repo (fixed for this org/site)
+  const codeLi = addItem('Code', 0);
+  const codeType = document.createElement('div');
+  codeType.textContent = 'GitHub';
+  codeLi.append(codeType);
+  addLink(codeLi, `https://github.com/${org}/${site}`);
+
+  // 2. Content — type on its own line, then the URL
+  const { kind, contentUrl } = readContentSelection(widget, org, site);
+  const entry = CONTENT_SOURCE_KINDS.find((k) => k.value === kind);
+  const contentLi = addItem('Content', 1);
+  if (entry) {
+    const type = document.createElement('div');
+    type.textContent = entry.label;
+    contentLi.append(type);
+  }
+  addLink(contentLi, contentUrl);
+
+  // 3. Users — organization (new org only) and site users
+  const usersLi = addItem('Users', 2);
+  if (newOrg) {
+    const orgUsers = collectUsers(widget.querySelector('.bot-info-user-list[data-scope="org"]'));
+    addUsers(usersLi, 'Organization', orgUsers);
+  }
+  const siteUsers = collectUsers(widget.querySelector('.bot-info-user-list[data-scope="site"]'));
+  addUsers(usersLi, 'Site', siteUsers);
+}
+
+/**
+ * Reveal the confirmation ("done") panel. With a `summary` it reflects the saved
  * changes; without one (e.g. the user skipped setup after a load error) it
- * shows an adapted screen with just the next-steps and DA defaults.
+ * shows an adapted view with just the next-steps and DA defaults.
  */
 function showConfirmation(widget, ctx, summary) {
   const { org, site } = ctx;
@@ -379,16 +471,26 @@ function showConfirmation(widget, ctx, summary) {
     setCreateContentLink(widget, org, site, 'da', `https://content.da.live/${org}/${site}`);
   }
 
+  // setup is done, so the step hash is no longer meaningful — drop it
+  const url = new URL(window.location.href);
+  url.hash = '';
+  window.history.replaceState(null, '', url);
+
   setHidden(widget.querySelector('.bot-info-loading'), true);
-  setHidden(widget.querySelector('.bot-info-wizard'), true);
   setHidden(widget.querySelector('.bot-info-alert'), true);
-  setHidden(widget.querySelector('.bot-info-success'), false);
+  // reveal the wizard form (it may never have shown on the load-failure path)
+  // and collapse it to only the terminal "done" panel
+  setHidden(widget.querySelector('.bot-info-wizard'), false);
+  setHidden(widget.querySelector('.bot-info-steps'), true);
+  setHidden(widget.querySelector('.bot-info-nav'), true);
+  widget.querySelectorAll('.bot-info-panel').forEach((panel) => {
+    setHidden(panel, panel.dataset.step !== 'done');
+  });
 }
 
 export default async function decorate(widget) {
   const loading = widget.querySelector('.bot-info-loading');
   const form = widget.querySelector('.bot-info-wizard');
-  const success = widget.querySelector('.bot-info-success');
   const alert = widget.querySelector('.bot-info-alert');
   const errorEl = widget.querySelector('.bot-info-error');
 
@@ -403,7 +505,6 @@ export default async function decorate(widget) {
     if (consoleBlock) logMessage(consoleBlock, 'error', ['setup', error.message]);
     setHidden(loading, true);
     setHidden(form, true);
-    setHidden(success, true);
     setHidden(alert, false);
   };
 
@@ -420,8 +521,21 @@ export default async function decorate(widget) {
 
     populateStaticFields(widget, ctx);
 
+    // Warn before leaving mid-wizard: the setup token is one-time, so navigating
+    // away without clicking "Finish setup" can strand the site configuration.
+    // Most browsers show their own generic prompt and ignore this text, but
+    // set it for the older browsers that still honour a custom message.
+    const leaveMessage = 'Leaving this page without finishing the setup wizard can result in an incomplete configuration. Are you sure?';
+    const warnBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = leaveMessage;
+      return leaveMessage;
+    };
+    const stopWarning = () => window.removeEventListener('beforeunload', warnBeforeUnload);
+
     // let the user skip to the next-steps screen if config can't be loaded
     widget.querySelector('.bot-info-continue')?.addEventListener('click', () => {
+      stopWarning();
       showConfirmation(widget, ctx, null);
     });
 
@@ -430,14 +544,123 @@ export default async function decorate(widget) {
     const config = await loadConfig(api, ctx, consoleBlock);
     renderForm(widget, config, ctx);
 
+    // step state machine — one panel visible at a time, driven by Back/Next
+    const steps = ['code', 'content', 'users', 'finish'];
+    const panels = [...widget.querySelectorAll('.bot-info-panel')];
+    const stepItems = [...widget.querySelectorAll('.bot-info-steps-item')];
+    const backBtn = widget.querySelector('.bot-info-back');
+    const nextBtn = widget.querySelector('.bot-info-next');
+    const submitBtn = widget.querySelector('.bot-info-submit');
+    let current = 0;
+
+    // reflect the active step in the URL hash (#1, #2, …) so it can be linked to
+    const setStepHash = (index) => {
+      const url = new URL(window.location.href);
+      url.hash = String(index + 1);
+      window.history.replaceState(null, '', url);
+    };
+
+    // per-step validation, reusing the wizard's pure validators
+    const validateStep = (step) => {
+      if (step === 'content') {
+        return validateContentSelection({
+          advanced: widget.querySelector('.bot-info-advanced-check').checked,
+          url: widget.querySelector('.bot-info-content-url').value,
+        });
+      }
+      if (step === 'users') {
+        const orgList = widget.querySelector('.bot-info-user-list[data-scope="org"]');
+        const siteList = widget.querySelector('.bot-info-user-list[data-scope="site"]');
+        return usersError(collectUsers(siteList), collectUsers(orgList), ctx.newOrg);
+      }
+      return null;
+    };
+
+    const goToStep = (index) => {
+      current = index;
+      const step = steps[index];
+      setStepHash(index);
+      panels.forEach((panel) => setHidden(panel, panel.dataset.step !== step));
+      stepItems.forEach((item, i) => {
+        item.classList.toggle('is-active', i === index);
+        // the first step (Code) has no action, so it always reads as complete
+        item.classList.toggle('is-complete', i < index || i === 0);
+        if (i === index) item.setAttribute('aria-current', 'step');
+        else item.removeAttribute('aria-current');
+        const status = item.querySelector('.bot-info-steps-status');
+        let statusText = '';
+        if (i < index) statusText = 'completed';
+        else if (i === index) statusText = 'current step';
+        status.textContent = statusText;
+      });
+      setHidden(backBtn, index === 0);
+      setHidden(nextBtn, step === 'finish');
+      setHidden(submitBtn, step !== 'finish');
+      if (step === 'finish') {
+        renderReview(widget, ctx);
+        // keep Save disabled until the content source and users are provided
+        // (guards the deep-link path that can jump straight to Finish)
+        submitBtn.disabled = !!(validateStep('content') || validateStep('users'));
+      }
+    };
+
+    // navigate to a target step; moving forward validates every step passed
+    // through and stops on the first invalid one so mandatory steps can't be
+    // skipped (going back is always allowed)
+    const goTo = (target) => {
+      for (let i = current; i < target; i += 1) {
+        const error = validateStep(steps[i]);
+        if (error) {
+          errorEl.textContent = error;
+          setHidden(errorEl, false);
+          goToStep(i);
+          return;
+        }
+      }
+      setHidden(errorEl, true);
+      goToStep(target);
+    };
+    const goNext = () => goTo(current + 1);
+    nextBtn.addEventListener('click', goNext);
+    backBtn.addEventListener('click', () => goTo(current - 1));
+
+    // clicking a step in the progress bar jumps to it
+    stepItems.forEach((item, i) => {
+      item.querySelector('.bot-info-steps-btn').addEventListener('click', () => goTo(i));
+    });
+
+    // summary titles link back to their step (delegated: the list re-renders)
+    widget.querySelector('.bot-info-review').addEventListener('click', (e) => {
+      const link = e.target.closest('.bot-info-review-link');
+      if (link) goTo(Number(link.dataset.stepIndex));
+    });
+
+    // unchecking "use a different content source" makes the step valid again
+    // (DA default), so drop any pending content-source error
+    widget.querySelector('.bot-info-advanced-check').addEventListener('change', (e) => {
+      if (!e.target.checked) setHidden(errorEl, true);
+    });
+
     setHidden(loading, true);
     setHidden(form, false);
+    // honour a #<n> hash (1-based) so a specific step can be linked to
+    const linkedStep = parseInt(window.location.hash.substring(1), 10);
+    const startIndex = Number.isNaN(linkedStep)
+      ? 0
+      : Math.min(Math.max(linkedStep - 1, 0), steps.length - 1);
+    goToStep(startIndex);
+    window.addEventListener('beforeunload', warnBeforeUnload);
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const submitBtn = widget.querySelector('.bot-info-submit');
+      // Enter in a field on an earlier step must advance, not save
+      if (steps[current] !== 'finish') {
+        goNext();
+        return;
+      }
       setHidden(errorEl, true);
       submitBtn.disabled = true;
+      backBtn.disabled = true;
       submitBtn.textContent = 'Saving…';
       logMessage(consoleBlock, 'info', ['setup', 'Saving configuration…']);
       try {
@@ -446,6 +669,7 @@ export default async function decorate(widget) {
         // drop the stored credentials
         await deleteApiKey(api, ctx, tokenId, consoleBlock);
         clearStoredToken();
+        stopWarning();
         logMessage(consoleBlock, 'success', ['setup', 'Setup complete']);
         showConfirmation(widget, ctx, summary);
       } catch (error) {
@@ -455,7 +679,8 @@ export default async function decorate(widget) {
         errorEl.textContent = error.message;
         setHidden(errorEl, false);
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Finish setup';
+        backBtn.disabled = false;
+        submitBtn.textContent = 'Save';
       }
     });
   } catch (error) {

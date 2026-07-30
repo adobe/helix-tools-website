@@ -1,9 +1,13 @@
-.bot-info-success {
-    border-radius: 10px;
-}
-
-.bot-info-success sup {
-  line-height: 0;
+.bot-info-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .bot-info-did {
@@ -71,17 +75,11 @@
   margin-top: 40px;
 }
 
-.bot-info-success[aria-hidden="true"],
-.bot-info-alert[aria-hidden="true"] {
-  display: none;
-}
-
 [aria-hidden="true"] {
   display: none;
 }
 
-.bot-info-alert[aria-hidden="false"],
-.bot-info-success[aria-hidden="false"] {
+.bot-info-alert[aria-hidden="false"] {
   display: block;
 }
 
@@ -100,7 +98,6 @@
 .bot-info-org,
 .bot-info-site {
   font-weight: bold;
-  color: light-dark(var(--blue-900), var(--blue-500));
 }
 
 /* wizard */
@@ -109,10 +106,169 @@
   color: var(--color-font-grey);
 }
 
-.bot-info-step {
+/* stepper / progress indicator */
+.bot-info-steps {
+  display: flex;
+  list-style: none;
+  margin: 20px 0 8px;
+  padding: 0;
+}
+
+.bot-info-steps-item {
+  position: relative;
+  flex: 1;
+  text-align: center;
+  font-size: 0.85em;
+  color: var(--color-font-grey);
+}
+
+.bot-info-steps-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.bot-info-steps-btn:hover .bot-info-steps-label {
+  text-decoration: underline;
+}
+
+/* keep the focus ring on the circle rather than the full-width button */
+.bot-info-steps-btn:focus {
+  outline: none;
+}
+
+/* connector line joining an item to the previous one; inset by the badge
+   radius (14px) on each side so it sits between the circles, not under them */
+.bot-info-steps-item::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: calc(-50% + 14px);
+  width: calc(100% - 28px);
+  height: 2px;
+  background-color: var(--color-border);
+}
+
+.bot-info-steps-item:first-child::before {
+  display: none;
+}
+
+.bot-info-steps-item.is-active::before,
+.bot-info-steps-item.is-complete::before {
+  background-color: light-dark(var(--green-900), var(--green-500));
+}
+
+.bot-info-steps-num {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--color-border);
+  border-radius: 50%;
+  background-color: var(--color-background);
+  font-weight: var(--weight-bold);
+  line-height: 1;
+}
+
+.bot-info-steps-item.is-active {
+  color: var(--color-text);
+  font-weight: var(--weight-bold);
+}
+
+.bot-info-steps-item.is-active .bot-info-steps-num {
+  border-color: var(--color-text);
+  color: var(--color-text);
+}
+
+.bot-info-steps-item.is-complete .bot-info-steps-num {
+  border-color: light-dark(var(--green-900), var(--green-500));
+  background-color: light-dark(var(--green-900), var(--green-500));
+  color: light-dark(var(--green-100), var(--green-1200));
+}
+
+.bot-info-steps-btn:focus-visible .bot-info-steps-num {
+  outline: 2px solid light-dark(var(--blue-900), var(--blue-500));
+  outline-offset: 2px;
+}
+
+.bot-info-panel {
+  margin-top: 20px;
+}
+
+/* numbered summary list on the Finish step */
+.bot-info-review {
+  margin: 16px 0;
+  padding-left: 1.6em;
+}
+
+.bot-info-review > li {
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.bot-info-review > li::marker {
+  color: var(--color-font-grey);
+  font-weight: var(--weight-bold);
+}
+
+/* summary title: behaves like the step links above but stays black; block-level
+   so the value below it starts on its own line */
+.bot-info-review-link {
+  display: block;
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: var(--weight-bold);
+  color: inherit;
+  cursor: pointer;
+}
+
+.bot-info-review-link:hover {
+  text-decoration: underline;
+}
+
+.bot-info-review-sublabel {
+  margin-top: 6px;
+  font-weight: var(--weight-medium);
+}
+
+.bot-info-review a {
+  color: light-dark(var(--blue-900), var(--cyan-500));
+  word-break: break-all;
+}
+
+/* navigation footer */
+.bot-info-nav {
+  display: flex;
+  gap: 12px;
   margin-top: 24px;
-  padding-top: 8px;
+  padding-top: 16px;
   border-top: 1px solid var(--color-border);
+}
+
+/* the flex `display` above out-specifies the generic [aria-hidden] rule, so
+   restore hiding for these containers (e.g. on the confirmation screen) */
+.bot-info-steps[aria-hidden="true"],
+.bot-info-nav[aria-hidden="true"] {
+  display: none;
+}
+
+.bot-info-next,
+.bot-info-submit {
+  margin-left: auto;
 }
 
 .bot-info-step h2 {
@@ -122,6 +278,13 @@
 .bot-info-step > p {
   margin-top: 0;
   color: var(--color-font-grey);
+}
+
+/* divider between the org and site sections, only when both are shown */
+.bot-info-org-users:not([aria-hidden="true"]) + .bot-info-step {
+  margin-top: 24px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
 }
 
 .bot-info-user-list {
@@ -278,10 +441,6 @@
   background-color: light-dark(var(--red-100), var(--red-1200));
   color: light-dark(var(--red-900), var(--red-500));
   font-weight: bold;
-}
-
-.bot-info-submit {
-  margin-top: 24px;
 }
 
 @media (width >= 600px) {
