@@ -8,6 +8,7 @@ import {
 
 const config = {
   apiBaseUrl: 'https://api.example.com',
+  imsOrgId: 'customer/one@AdobeOrg',
   uploadHostSuffixes: ['.adobeaemcloud.com'],
 };
 
@@ -27,7 +28,10 @@ describe('portal API client', () => {
       }), { status: 200, headers: { 'content-type': 'application/json' } });
     });
     await api.createSession('account', 'secret-key');
-    assert.equal(request.url, 'https://api.example.com/api/upload/v1/session');
+    assert.equal(
+      request.url,
+      'https://api.example.com/api/upload/v1/session/customer%2Fone%40AdobeOrg',
+    );
     assert.match(request.options.headers.Authorization, /^Basic /);
     assert.equal(api.getSessionToken(), 'memory-only-token');
     assert.equal(window.sessionStorage.getItem('asp_auth'), null);
@@ -44,6 +48,26 @@ describe('portal API client', () => {
       ForceRotateRequiredError,
     );
     assert.equal(api.getSessionToken(), '');
+  });
+
+  it('uses the configured organization for public branding and key rotation', async () => {
+    const requests = [];
+    const api = new PortalApi(config, async (url) => {
+      requests.push(url);
+      if (url.includes('/portal-branding/login/')) {
+        return new Response('{}', { status: 200 });
+      }
+      return new Response(JSON.stringify({ apiKey: 'replacement-key' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    await api.getLoginBranding();
+    await api.rotateKey('shared-account', 'current-key');
+    assert.deepEqual(requests, [
+      'https://api.example.com/api/upload/v1/portal-branding/login/customer%2Fone%40AdobeOrg',
+      'https://api.example.com/api/upload/v1/account/rotate-key/customer%2Fone%40AdobeOrg',
+    ]);
   });
 
   it('fails closed and clears a rejected session', async () => {
@@ -78,6 +102,7 @@ describe('portal API client', () => {
   it('allows loopback HTTP uploads only on the configured local API origin', () => {
     const api = new PortalApi({
       apiBaseUrl: 'http://localhost:3000',
+      imsOrgId: 'customer@AdobeOrg',
       uploadHostSuffixes: ['.adobeaemcloud.com'],
     }, unusedFetch);
     assert.equal(

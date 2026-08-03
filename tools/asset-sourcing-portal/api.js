@@ -54,6 +54,7 @@ export class PortalApi {
   constructor(config, fetchImpl = window.fetch.bind(window)) {
     this.apiBase = `${config.apiBaseUrl}/api/upload/v1`;
     this.apiOrigin = new URL(config.apiBaseUrl).origin;
+    this.encodedImsOrgId = encodeURIComponent(config.imsOrgId);
     this.uploadHostSuffixes = config.uploadHostSuffixes;
     this.fetchImpl = fetchImpl;
     this.sessionToken = '';
@@ -82,9 +83,12 @@ export class PortalApi {
   }
 
   async getLoginBranding() {
-    const response = await this.fetchImpl(`${this.apiBase}/portal-branding/login`, {
-      headers: { Accept: 'application/json' },
-    });
+    const response = await this.fetchImpl(
+      `${this.apiBase}/portal-branding/login/${this.encodedImsOrgId}`,
+      {
+        headers: { Accept: 'application/json' },
+      },
+    );
     if (!response.ok) return {};
     const branding = await response.json();
     return branding && typeof branding === 'object' && !Array.isArray(branding)
@@ -92,7 +96,7 @@ export class PortalApi {
   }
 
   async createSession(accountName, apiKey) {
-    const response = await this.fetchImpl(`${this.apiBase}/session`, {
+    const response = await this.fetchImpl(`${this.apiBase}/session/${this.encodedImsOrgId}`, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -119,15 +123,18 @@ export class PortalApi {
   }
 
   async rotateKey(accountName, currentApiKey, graceHours = 0) {
-    const response = await this.fetchImpl(`${this.apiBase}/account/rotate-key`, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        Authorization: basicAuthorization(accountName, currentApiKey),
-        'Content-Type': 'application/json',
+    const response = await this.fetchImpl(
+      `${this.apiBase}/account/rotate-key/${this.encodedImsOrgId}`,
+      {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          Authorization: basicAuthorization(accountName, currentApiKey),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ graceHours }),
       },
-      body: JSON.stringify({ graceHours }),
-    });
+    );
     if (!response.ok) {
       const details = await errorDetails(response, 'Key rotation failed.');
       throw new Error(details.message);

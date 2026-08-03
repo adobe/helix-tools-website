@@ -24,6 +24,11 @@ exact-origin CORS configuration.
    - `apiBaseUrl`: the dedicated Asset Sourcing API base URL, without
      `/api/upload/v1`. It must use HTTPS. `http://localhost`, `127.0.0.1`, and
      `[::1]` are accepted only for local development.
+   - `imsOrgId`: **required** Adobe IMS organization ID for this customer
+     deployment (for example, `0123456789ABCDEF@AdobeOrg`). This public,
+     code-owned setting binds login and API-key rotation to one tenant; it is
+     not inferred from the account name. The portal disables sign-in and shows
+     a configuration error while the checked-in empty value is unchanged.
    - `tenantSlug`: a public deployment label. It is not a credential or an
      authorization boundary.
    - `uploadHostSuffixes`: only the HTTPS host suffixes the API may return for
@@ -38,8 +43,9 @@ exact-origin CORS configuration.
 5. Configure customer-facing header and footer content through the existing EDS
    content source. No Drive-authored navigation was added or changed by this tool.
 
-Do not put API keys, session tokens, Adobe IMS credentials, AEM credentials, intake
-paths, or other secrets in `portal-config.json` or any EDS source file.
+The IMS organization ID is a public routing identifier, not an IMS credential. Do not
+put API keys, session tokens, Adobe IMS credentials, AEM credentials, intake paths,
+or other secrets in `portal-config.json` or any EDS source file.
 
 ## Content Security Policy
 

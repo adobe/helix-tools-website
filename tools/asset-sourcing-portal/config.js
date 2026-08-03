@@ -44,6 +44,14 @@ function optionalString(value, field, maxLength = 120) {
   return value.trim() || undefined;
 }
 
+function requiredString(value, field, maxLength = 200) {
+  const result = optionalString(value, field, maxLength);
+  if (!result) {
+    throw new Error(`portal-config.json must define ${field} for this customer deployment.`);
+  }
+  return result;
+}
+
 function validateHostSuffixes(value) {
   if (value === undefined) return ['.adobeaemcloud.com', '.blob.core.windows.net'];
   if (!Array.isArray(value) || value.length === 0 || value.length > 10) {
@@ -62,6 +70,7 @@ function validateHostSuffixes(value) {
  * @param {unknown} value
  * @returns {{
  *   apiBaseUrl: string,
+ *   imsOrgId: string,
  *   tenantSlug?: string,
  *   uploadHostSuffixes: string[],
  *   branding: { title: string, logoSrc: string }
@@ -88,6 +97,7 @@ export function validatePortalConfig(value) {
 
   return {
     apiBaseUrl: validateApiBaseUrl(input.apiBaseUrl),
+    imsOrgId: requiredString(input.imsOrgId, 'imsOrgId'),
     tenantSlug,
     uploadHostSuffixes: validateHostSuffixes(input.uploadHostSuffixes),
     branding: { title, logoSrc: logoUrl.pathname },

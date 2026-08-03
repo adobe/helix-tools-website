@@ -42,6 +42,7 @@ describe('portal static shell', () => {
     ]);
     const config = JSON.parse(configSource);
     assert.match(html, new RegExp(new URL(config.apiBaseUrl).origin));
+    assert.equal(config.imsOrgId, '');
   });
 
   it('does not add unsafe DOM parsing or session-token persistence', async () => {

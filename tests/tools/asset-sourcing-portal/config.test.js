@@ -19,21 +19,35 @@ describe('portal configuration', () => {
   it('validates customer-controlled public fields', () => {
     const config = validatePortalConfig({
       apiBaseUrl: 'https://api.example.com',
+      imsOrgId: 'customer-one@AdobeOrg',
       tenantSlug: 'customer-one',
       uploadHostSuffixes: ['.adobeaemcloud.com'],
       branding: { title: '<Customer>', logoSrc: '/icons/adobe.svg' },
     });
     assert.equal(config.branding.title, '<Customer>');
+    assert.equal(config.imsOrgId, 'customer-one@AdobeOrg');
     assert.deepEqual(config.uploadHostSuffixes, ['.adobeaemcloud.com']);
+  });
+
+  it('fails closed without a customer IMS organization ID', () => {
+    assert.throws(() => validatePortalConfig({
+      apiBaseUrl: 'https://api.example.com',
+    }), /must define imsOrgId for this customer deployment/);
+    assert.throws(() => validatePortalConfig({
+      apiBaseUrl: 'https://api.example.com',
+      imsOrgId: '   ',
+    }), /must define imsOrgId for this customer deployment/);
   });
 
   it('rejects cross-origin logos and malformed upload suffixes', () => {
     assert.throws(() => validatePortalConfig({
       apiBaseUrl: 'https://api.example.com',
+      imsOrgId: 'customer@AdobeOrg',
       branding: { logoSrc: 'https://evil.example/logo.svg' },
     }), /same-origin/);
     assert.throws(() => validatePortalConfig({
       apiBaseUrl: 'https://api.example.com',
+      imsOrgId: 'customer@AdobeOrg',
       uploadHostSuffixes: ['*'],
     }), /DNS suffix/);
   });
