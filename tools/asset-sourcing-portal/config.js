@@ -44,16 +44,24 @@ function optionalString(value, field, maxLength = 120) {
   return value.trim() || undefined;
 }
 
-function resolveImsOrgId(configuredValue, pageUrl) {
-  const configuredImsOrgId = optionalString(configuredValue, 'imsOrgId', 200);
-  if (configuredImsOrgId) return configuredImsOrgId;
+function validateOrg(value) {
+  const org = optionalString(value, 'org', 200);
+  if (!org) return undefined;
+  if (org.includes('@')) {
+    throw new Error('org must be a short organization identifier without a suffix.');
+  }
+  return org;
+}
 
-  const urlImsOrgId = new URL(pageUrl).searchParams.get('imsOrgId');
-  if (urlImsOrgId?.trim()) return urlImsOrgId.trim();
+function resolveOrg(configuredValue, pageUrl) {
+  const configuredOrg = validateOrg(configuredValue);
+  if (configuredOrg) return configuredOrg;
+
+  const urlOrg = validateOrg(new URL(pageUrl).searchParams.get('org') ?? undefined);
+  if (urlOrg) return urlOrg;
 
   throw new Error(
-    'Configure imsOrgId for this customer deployment or use an organization-specific '
-      + 'login URL ending with ?imsOrgId=<URL-encoded IMS org ID>.',
+    'Configure org for this customer deployment or use a login URL with ?org=<organization ID>.',
   );
 }
 
@@ -76,7 +84,7 @@ function validateHostSuffixes(value) {
  * @param {string} pageUrl
  * @returns {{
  *   apiBaseUrl: string,
- *   imsOrgId: string,
+ *   org: string,
  *   tenantSlug?: string,
  *   uploadHostSuffixes: string[],
  *   branding: { title: string, logoSrc: string }
@@ -103,7 +111,7 @@ export function validatePortalConfig(value, pageUrl = window.location.href) {
 
   return {
     apiBaseUrl: validateApiBaseUrl(input.apiBaseUrl),
-    imsOrgId: resolveImsOrgId(input.imsOrgId, pageUrl),
+    org: resolveOrg(input.org, pageUrl),
     tenantSlug,
     uploadHostSuffixes: validateHostSuffixes(input.uploadHostSuffixes),
     branding: { title, logoSrc: logoUrl.pathname },

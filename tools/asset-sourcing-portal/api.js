@@ -54,7 +54,7 @@ export class PortalApi {
   constructor(config, fetchImpl = window.fetch.bind(window)) {
     this.apiBase = `${config.apiBaseUrl}/api/upload/v1`;
     this.apiOrigin = new URL(config.apiBaseUrl).origin;
-    this.encodedImsOrgId = encodeURIComponent(config.imsOrgId);
+    this.encodedOrg = encodeURIComponent(config.org);
     this.uploadHostSuffixes = config.uploadHostSuffixes;
     this.fetchImpl = fetchImpl;
     this.sessionToken = '';
@@ -82,9 +82,14 @@ export class PortalApi {
     }
   }
 
+  tenantUrl(path) {
+    const separator = path.includes('?') ? '&' : '?';
+    return `${this.apiBase}${path}${separator}org=${this.encodedOrg}`;
+  }
+
   async getLoginBranding() {
     const response = await this.fetchImpl(
-      `${this.apiBase}/portal-branding/login/${this.encodedImsOrgId}`,
+      this.tenantUrl('/portal-branding/login'),
       {
         headers: { Accept: 'application/json' },
       },
@@ -96,7 +101,7 @@ export class PortalApi {
   }
 
   async createSession(accountName, apiKey) {
-    const response = await this.fetchImpl(`${this.apiBase}/session/${this.encodedImsOrgId}`, {
+    const response = await this.fetchImpl(this.tenantUrl('/session'), {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -124,7 +129,7 @@ export class PortalApi {
 
   async rotateKey(accountName, currentApiKey, graceHours = 0) {
     const response = await this.fetchImpl(
-      `${this.apiBase}/account/rotate-key/${this.encodedImsOrgId}`,
+      this.tenantUrl('/account/rotate-key'),
       {
         method: 'POST',
         headers: {
@@ -148,7 +153,7 @@ export class PortalApi {
 
   async sessionRequest(path, options = {}) {
     this.assertSession();
-    const response = await this.fetchImpl(`${this.apiBase}${path}`, {
+    const response = await this.fetchImpl(this.tenantUrl(path), {
       ...options,
       headers: {
         Accept: 'application/json',

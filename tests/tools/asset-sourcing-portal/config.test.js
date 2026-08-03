@@ -19,43 +19,50 @@ describe('portal configuration', () => {
   it('validates customer-controlled public fields', () => {
     const config = validatePortalConfig({
       apiBaseUrl: 'https://api.example.com',
-      imsOrgId: 'customer-one@AdobeOrg',
+      org: 'customer-one',
       tenantSlug: 'customer-one',
       uploadHostSuffixes: ['.adobeaemcloud.com'],
       branding: { title: '<Customer>', logoSrc: '/icons/adobe.svg' },
-    }, 'https://portal.example.com/?imsOrgId=ignored%40AdobeOrg');
+    }, 'https://portal.example.com/?org=ignored');
     assert.equal(config.branding.title, '<Customer>');
-    assert.equal(config.imsOrgId, 'customer-one@AdobeOrg');
+    assert.equal(config.org, 'customer-one');
     assert.deepEqual(config.uploadHostSuffixes, ['.adobeaemcloud.com']);
   });
 
   it('uses the organization-specific login URL when no fork default is configured', () => {
     const config = validatePortalConfig({
       apiBaseUrl: 'https://api.example.com',
-      imsOrgId: '',
-    }, 'https://portal.example.com/index.html?imsOrgId=customer%2Fone%40AdobeOrg');
-    assert.equal(config.imsOrgId, 'customer/one@AdobeOrg');
+      org: '',
+    }, 'https://portal.example.com/index.html?org=customer%2Fone');
+    assert.equal(config.org, 'customer/one');
   });
 
   it('fails closed without a configured or URL organization ID', () => {
     assert.throws(() => validatePortalConfig({
       apiBaseUrl: 'https://api.example.com',
-    }, 'https://portal.example.com/index.html'), /organization-specific login URL/);
+    }, 'https://portal.example.com/index.html'), /login URL with \?org=/);
     assert.throws(() => validatePortalConfig({
       apiBaseUrl: 'https://api.example.com',
-      imsOrgId: '   ',
-    }, 'https://portal.example.com/index.html?imsOrgId='), /organization-specific login URL/);
+      org: '   ',
+    }, 'https://portal.example.com/index.html?org='), /login URL with \?org=/);
+  });
+
+  it('rejects internal organization suffixes', () => {
+    assert.throws(() => validatePortalConfig({
+      apiBaseUrl: 'https://api.example.com',
+      org: 'customer@internal',
+    }), /without a suffix/);
   });
 
   it('rejects cross-origin logos and malformed upload suffixes', () => {
     assert.throws(() => validatePortalConfig({
       apiBaseUrl: 'https://api.example.com',
-      imsOrgId: 'customer@AdobeOrg',
+      org: 'customer',
       branding: { logoSrc: 'https://evil.example/logo.svg' },
     }), /same-origin/);
     assert.throws(() => validatePortalConfig({
       apiBaseUrl: 'https://api.example.com',
-      imsOrgId: 'customer@AdobeOrg',
+      org: 'customer',
       uploadHostSuffixes: ['*'],
     }), /DNS suffix/);
   });

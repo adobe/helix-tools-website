@@ -1,6 +1,6 @@
 {
   "apiBaseUrl": "https://asset-sourcing-stage-va6.csc.adobe.com",
-  "imsOrgId": "",
+  "org": "",
   "tenantSlug": "adobe-tools",
   "uploadHostSuffixes": [
     ".adobeaemcloud.com",

@@ -8,7 +8,7 @@ import {
 
 const config = {
   apiBaseUrl: 'https://api.example.com',
-  imsOrgId: 'customer/one@AdobeOrg',
+  org: 'customer/one',
   uploadHostSuffixes: ['.adobeaemcloud.com'],
 };
 
@@ -30,7 +30,7 @@ describe('portal API client', () => {
     await api.createSession('account', 'secret-key');
     assert.equal(
       request.url,
-      'https://api.example.com/api/upload/v1/session/customer%2Fone%40AdobeOrg',
+      'https://api.example.com/api/upload/v1/session?org=customer%2Fone',
     );
     assert.match(request.options.headers.Authorization, /^Basic /);
     assert.equal(api.getSessionToken(), 'memory-only-token');
@@ -54,7 +54,7 @@ describe('portal API client', () => {
     const requests = [];
     const api = new PortalApi(config, async (url) => {
       requests.push(url);
-      if (url.includes('/portal-branding/login/')) {
+      if (url.includes('/portal-branding/login?')) {
         return new Response('{}', { status: 200 });
       }
       return new Response(JSON.stringify({ apiKey: 'replacement-key' }), {
@@ -65,8 +65,8 @@ describe('portal API client', () => {
     await api.getLoginBranding();
     await api.rotateKey('shared-account', 'current-key');
     assert.deepEqual(requests, [
-      'https://api.example.com/api/upload/v1/portal-branding/login/customer%2Fone%40AdobeOrg',
-      'https://api.example.com/api/upload/v1/account/rotate-key/customer%2Fone%40AdobeOrg',
+      'https://api.example.com/api/upload/v1/portal-branding/login?org=customer%2Fone',
+      'https://api.example.com/api/upload/v1/account/rotate-key?org=customer%2Fone',
     ]);
   });
 
@@ -81,6 +81,23 @@ describe('portal API client', () => {
       SessionExpiredError,
     );
     assert.equal(api.getSessionToken(), '');
+  });
+
+  it('includes org on authenticated session requests', async () => {
+    let requestUrl;
+    const api = new PortalApi(config, async (url) => {
+      requestUrl = url;
+      return new Response(JSON.stringify({ status: 'done' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    api.setSession({ sessionToken: 'token', expiresAt: Date.now() + 10000 });
+    await api.getBatchVerification('batch/one');
+    assert.equal(
+      requestUrl,
+      'https://api.example.com/api/upload/v1/batches/batch%2Fone/verification?org=customer%2Fone',
+    );
   });
 
   it('allows only configured HTTPS direct-upload destinations', () => {
@@ -102,7 +119,7 @@ describe('portal API client', () => {
   it('allows loopback HTTP uploads only on the configured local API origin', () => {
     const api = new PortalApi({
       apiBaseUrl: 'http://localhost:3000',
-      imsOrgId: 'customer@AdobeOrg',
+      org: 'customer',
       uploadHostSuffixes: ['.adobeaemcloud.com'],
     }, unusedFetch);
     assert.equal(

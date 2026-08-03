@@ -24,9 +24,9 @@ exact-origin CORS configuration.
    - `apiBaseUrl`: the dedicated Asset Sourcing API base URL, without
      `/api/upload/v1`. It must use HTTPS. `http://localhost`, `127.0.0.1`, and
      `[::1]` are accepted only for local development.
-   - `imsOrgId`: optional authoritative Adobe IMS organization ID for a
-     single-customer fork (for example, `0123456789ABCDEF@AdobeOrg`). When
-     configured, the portal always uses this value and ignores any organization
+   - `org`: optional authoritative short organization ID for a single-customer
+     fork (for example, `0123456789ABCDEF`). Do not include an internal suffix.
+     When configured, the portal always uses this value and ignores `org`
      supplied in the page URL.
    - `tenantSlug`: a public deployment label. It is not a credential or an
      authorization boundary.
@@ -42,18 +42,18 @@ exact-origin CORS configuration.
 5. Configure customer-facing header and footer content through the existing EDS
    content source. No Drive-authored navigation was added or changed by this tool.
 
-The checked-in empty `imsOrgId` supports a shared deployment. Its public login URLs
-must end with the URL-encoded organization ID in the `imsOrgId` query parameter:
+The checked-in empty `org` supports a shared deployment. Its public login URLs
+must include the URL-encoded short organization ID in the `org` query parameter:
 
 ```text
-https://example.com/tools/asset-sourcing-portal/index.html?imsOrgId=0123456789ABCDEF%40AdobeOrg
+https://example.com/tools/asset-sourcing-portal/index.html?org=0123456789ABCDEF
 ```
 
 When neither the fork configuration nor the URL supplies an organization, the portal
 fails closed, disables sign-in, and shows a configuration error. The account name is
 never used to infer tenancy.
 
-The IMS organization ID is a public routing identifier, not an IMS credential. Do not
+The short organization ID is a public routing identifier, not an IMS credential. Do not
 put API keys, session tokens, Adobe IMS credentials, AEM credentials, intake paths,
 or other secrets in `portal-config.json` or any EDS source file.
 
