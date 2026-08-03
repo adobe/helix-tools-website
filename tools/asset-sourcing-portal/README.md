@@ -24,11 +24,10 @@ exact-origin CORS configuration.
    - `apiBaseUrl`: the dedicated Asset Sourcing API base URL, without
      `/api/upload/v1`. It must use HTTPS. `http://localhost`, `127.0.0.1`, and
      `[::1]` are accepted only for local development.
-   - `imsOrgId`: **required** Adobe IMS organization ID for this customer
-     deployment (for example, `0123456789ABCDEF@AdobeOrg`). This public,
-     code-owned setting binds login and API-key rotation to one tenant; it is
-     not inferred from the account name. The portal disables sign-in and shows
-     a configuration error while the checked-in empty value is unchanged.
+   - `imsOrgId`: optional authoritative Adobe IMS organization ID for a
+     single-customer fork (for example, `0123456789ABCDEF@AdobeOrg`). When
+     configured, the portal always uses this value and ignores any organization
+     supplied in the page URL.
    - `tenantSlug`: a public deployment label. It is not a credential or an
      authorization boundary.
    - `uploadHostSuffixes`: only the HTTPS host suffixes the API may return for
@@ -42,6 +41,17 @@ exact-origin CORS configuration.
    where needed) in the backend's exact-origin CORS configuration.
 5. Configure customer-facing header and footer content through the existing EDS
    content source. No Drive-authored navigation was added or changed by this tool.
+
+The checked-in empty `imsOrgId` supports a shared deployment. Its public login URLs
+must end with the URL-encoded organization ID in the `imsOrgId` query parameter:
+
+```text
+https://example.com/tools/asset-sourcing-portal/index.html?imsOrgId=0123456789ABCDEF%40AdobeOrg
+```
+
+When neither the fork configuration nor the URL supplies an organization, the portal
+fails closed, disables sign-in, and shows a configuration error. The account name is
+never used to infer tenancy.
 
 The IMS organization ID is a public routing identifier, not an IMS credential. Do not
 put API keys, session tokens, Adobe IMS credentials, AEM credentials, intake paths,

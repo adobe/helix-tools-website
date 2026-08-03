@@ -23,20 +23,28 @@ describe('portal configuration', () => {
       tenantSlug: 'customer-one',
       uploadHostSuffixes: ['.adobeaemcloud.com'],
       branding: { title: '<Customer>', logoSrc: '/icons/adobe.svg' },
-    });
+    }, 'https://portal.example.com/?imsOrgId=ignored%40AdobeOrg');
     assert.equal(config.branding.title, '<Customer>');
     assert.equal(config.imsOrgId, 'customer-one@AdobeOrg');
     assert.deepEqual(config.uploadHostSuffixes, ['.adobeaemcloud.com']);
   });
 
-  it('fails closed without a customer IMS organization ID', () => {
+  it('uses the organization-specific login URL when no fork default is configured', () => {
+    const config = validatePortalConfig({
+      apiBaseUrl: 'https://api.example.com',
+      imsOrgId: '',
+    }, 'https://portal.example.com/index.html?imsOrgId=customer%2Fone%40AdobeOrg');
+    assert.equal(config.imsOrgId, 'customer/one@AdobeOrg');
+  });
+
+  it('fails closed without a configured or URL organization ID', () => {
     assert.throws(() => validatePortalConfig({
       apiBaseUrl: 'https://api.example.com',
-    }), /must define imsOrgId for this customer deployment/);
+    }, 'https://portal.example.com/index.html'), /organization-specific login URL/);
     assert.throws(() => validatePortalConfig({
       apiBaseUrl: 'https://api.example.com',
       imsOrgId: '   ',
-    }), /must define imsOrgId for this customer deployment/);
+    }, 'https://portal.example.com/index.html?imsOrgId='), /organization-specific login URL/);
   });
 
   it('rejects cross-origin logos and malformed upload suffixes', () => {

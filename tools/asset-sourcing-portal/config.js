@@ -44,12 +44,17 @@ function optionalString(value, field, maxLength = 120) {
   return value.trim() || undefined;
 }
 
-function requiredString(value, field, maxLength = 200) {
-  const result = optionalString(value, field, maxLength);
-  if (!result) {
-    throw new Error(`portal-config.json must define ${field} for this customer deployment.`);
-  }
-  return result;
+function resolveImsOrgId(configuredValue, pageUrl) {
+  const configuredImsOrgId = optionalString(configuredValue, 'imsOrgId', 200);
+  if (configuredImsOrgId) return configuredImsOrgId;
+
+  const urlImsOrgId = new URL(pageUrl).searchParams.get('imsOrgId');
+  if (urlImsOrgId?.trim()) return urlImsOrgId.trim();
+
+  throw new Error(
+    'Configure imsOrgId for this customer deployment or use an organization-specific '
+      + 'login URL ending with ?imsOrgId=<URL-encoded IMS org ID>.',
+  );
 }
 
 function validateHostSuffixes(value) {
@@ -68,6 +73,7 @@ function validateHostSuffixes(value) {
 /**
  * Validates public runtime configuration loaded from the repository.
  * @param {unknown} value
+ * @param {string} pageUrl
  * @returns {{
  *   apiBaseUrl: string,
  *   imsOrgId: string,
@@ -76,7 +82,7 @@ function validateHostSuffixes(value) {
  *   branding: { title: string, logoSrc: string }
  * }}
  */
-export function validatePortalConfig(value) {
+export function validatePortalConfig(value, pageUrl = window.location.href) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('portal-config.json must contain an object.');
   }
@@ -97,7 +103,7 @@ export function validatePortalConfig(value) {
 
   return {
     apiBaseUrl: validateApiBaseUrl(input.apiBaseUrl),
-    imsOrgId: requiredString(input.imsOrgId, 'imsOrgId'),
+    imsOrgId: resolveImsOrgId(input.imsOrgId, pageUrl),
     tenantSlug,
     uploadHostSuffixes: validateHostSuffixes(input.uploadHostSuffixes),
     branding: { title, logoSrc: logoUrl.pathname },
