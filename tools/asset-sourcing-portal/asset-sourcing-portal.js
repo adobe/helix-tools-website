@@ -1,9 +1,10 @@
 /* eslint-disable no-use-before-define */
 import { registerToolReady } from '../../scripts/scripts.js';
 import {
-  ForceRotateRequiredError,
+  ForcePasswordRotationRequiredError,
   LoginLockedError,
   PortalApi,
+  PortalApiError,
   SessionExpiredError,
 } from './api.js';
 import { loadPortalConfig } from './config.js';
@@ -19,11 +20,22 @@ import {
   flattenPathCollisions,
   resolveUploadRelativePath,
   stripValidRelativePath,
-  uploadPathPolicyHint,
   validateImageDimensions,
   validateUploadPath,
   vendorUploadPathEnabled,
 } from './policies.js';
+import {
+  applyDocumentLocale,
+  CatalogLoader,
+  LOCALE_DEFINITIONS,
+  localizeError,
+  normalizePortalLocalization,
+  persistLocale,
+  replaceUrlLocale,
+  resolveInitialLocale,
+  resolveMetadataLabel,
+  resolveVendorLocale,
+} from './localization.js';
 
 const CONCURRENCY = 3;
 const POLL_INTERVAL_MS = 4000;
@@ -36,10 +48,16 @@ const elements = {
   loginBanner: document.getElementById('asp-portal-banner'),
   loginView: document.getElementById('asp-portal-signin'),
   loginForm: document.getElementById('asp-login-form'),
-  accountInput: document.getElementById('account'),
-  keyInput: document.getElementById('key'),
+  usernameLabel: document.getElementById('asp-username-label'),
+  usernameInput: document.getElementById('username'),
+  passwordLabel: document.getElementById('asp-password-label'),
+  passwordInput: document.getElementById('password'),
   loginButton: document.getElementById('asp-login-button'),
   loginMessage: document.getElementById('asp-login-message'),
+  loginLead: document.querySelector('.login-lead'),
+  languageLabel: document.getElementById('asp-language-label'),
+  languageSelect: document.getElementById('asp-language'),
+  languageMessage: document.getElementById('asp-language-message'),
   uploadView: document.getElementById('asp-upload-view'),
   confirmationView: document.getElementById('asp-confirmation-view'),
   modalRoot: document.getElementById('asp-modal-root'),
@@ -48,6 +66,10 @@ const elements = {
 const state = {
   config: null,
   api: null,
+  catalogLoader: null,
+  i18n: null,
+  localeSource: 'default',
+  localeLoading: false,
   session: null,
   groups: [],
   jobs: [],
@@ -56,10 +78,28 @@ const state = {
   sessionTimer: 0,
   verificationTimer: 0,
   bannerObjectUrls: [],
+  confirmationSummary: null,
+  loginBrandingTitle: '',
 };
 
 function safeString(value, fallback = '', maxLength = 500) {
   return typeof value === 'string' ? value.slice(0, maxLength) : fallback;
+}
+
+function t(key, values) {
+  return state.i18n?.t(key, values) || '';
+}
+
+function technicalElement(tag, className, text) {
+  return createElement(tag, {
+    className: `${className} technical-value`,
+    text,
+    attrs: { dir: 'ltr' },
+  });
+}
+
+function isolateTechnicalValue(value) {
+  return `\u2066${value}\u2069`;
 }
 
 function normalizeMetadataSchema(value) {
@@ -70,7 +110,14 @@ function normalizeMetadataSchema(value) {
       && field.id.length > 0 && field.id.length <= 200
   )).map((field) => ({
     id: field.id,
-    label: safeString(field.label, field.id, 200),
+    label: safeString(field.label, '', 200),
+    labelByLocale: field.labelByLocale && typeof field.labelByLocale === 'object'
+      && !Array.isArray(field.labelByLocale)
+      ? Object.fromEntries(Object.entries(field.labelByLocale)
+        .filter(([locale, label]) => (
+          typeof locale === 'string' && typeof label === 'string'
+        ))
+        .slice(0, 20)) : undefined,
     required: field.required === true,
     type: field.type === 'date' ? 'date' : 'text',
     options: Array.isArray(field.options)
@@ -95,14 +142,14 @@ function normalizeMetadataSchema(value) {
 }
 
 function normalizeSession(session) {
-  const account = session.account && typeof session.account === 'object' ? session.account : {};
   const vendor = session.vendor && typeof session.vendor === 'object' ? session.vendor : {};
-  const accountName = safeString(account.name || vendor.name, 'your organization', 200);
   const limits = session.limits && typeof session.limits === 'object' ? session.limits : {};
   return {
-    accountName,
+    username: safeString(session.username, '', 200),
+    vendorName: safeString(vendor.name, t('upload.organizationFallback'), 200),
     expiresAt: session.expiresAt,
     metadataSchema: normalizeMetadataSchema(session.metadataSchema),
+    portalLocalization: normalizePortalLocalization(session.portalLocalization),
     fileExtensions: session.fileExtensions && typeof session.fileExtensions === 'object'
       ? session.fileExtensions : undefined,
     uploadPathPolicy: session.uploadPathPolicy && typeof session.uploadPathPolicy === 'object'
@@ -140,6 +187,95 @@ function showView(view) {
   elements.uploadView.hidden = view !== 'upload';
   elements.confirmationView.hidden = view !== 'confirmation';
   elements.shell.classList.toggle('asp-portal-wide', view !== 'login');
+  if (state.i18n) document.title = t(`app.title.${view}`);
+}
+
+function updateLanguageSelector() {
+  const supportedLocales = state.session
+    ? state.session.portalLocalization.supportedLocales
+    : LOCALE_DEFINITIONS.map(({ locale }) => locale);
+  const selected = state.i18n.locale;
+  replaceContent(elements.languageSelect);
+  LOCALE_DEFINITIONS.filter(({ locale }) => supportedLocales.includes(locale))
+    .forEach(({ locale, nativeName }) => {
+      const option = createElement('option', {
+        text: nativeName,
+        attrs: { value: locale, lang: locale, dir: locale === 'ar' ? 'rtl' : 'ltr' },
+      });
+      option.selected = locale === selected;
+      elements.languageSelect.append(option);
+    });
+  elements.languageSelect.value = selected;
+  elements.languageSelect.disabled = state.localeLoading;
+}
+
+function updateStaticTranslations() {
+  applyDocumentLocale(state.i18n);
+  document.title = t(`app.title.${state.view}`);
+  elements.languageLabel.textContent = t('app.language.label');
+  elements.loginLead.textContent = t('login.lead');
+  elements.usernameLabel.textContent = t('login.form.username.label');
+  elements.usernameInput.placeholder = t('login.form.username.placeholder');
+  elements.usernameInput.dir = 'ltr';
+  elements.passwordLabel.textContent = t('login.form.password.label');
+  elements.passwordInput.placeholder = t('login.form.password.placeholder');
+  elements.passwordInput.dir = 'ltr';
+  elements.loginButton.textContent = t('login.continue');
+  elements.title.textContent = state.loginBrandingTitle
+    || state.config?.branding.title || t('app.title.login');
+  updateLanguageSelector();
+}
+
+function captureFocus() {
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement) || !active.id) return undefined;
+  return {
+    id: active.id,
+    start: 'selectionStart' in active ? active.selectionStart : undefined,
+    end: 'selectionEnd' in active ? active.selectionEnd : undefined,
+  };
+}
+
+function restoreFocus(focus) {
+  if (!focus) return;
+  const target = document.getElementById(focus.id);
+  if (!(target instanceof HTMLElement)) return;
+  target.focus();
+  if ('setSelectionRange' in target
+    && Number.isInteger(focus.start) && Number.isInteger(focus.end)) {
+    target.setSelectionRange(focus.start, focus.end);
+  }
+}
+
+function rerenderCurrentView(focus) {
+  updateStaticTranslations();
+  if (state.view === 'upload') renderUpload();
+  else if (state.view === 'confirmation' && state.confirmationSummary) {
+    showConfirmation(state.confirmationSummary);
+  }
+  restoreFocus(focus);
+}
+
+async function changeLocale(locale, source = 'user') {
+  if (state.localeLoading) return;
+  let requested = locale;
+  if (state.session) {
+    requested = resolveVendorLocale(locale, source, state.session.portalLocalization);
+  }
+  const focus = captureFocus();
+  state.localeLoading = true;
+  elements.languageSelect.disabled = true;
+  try {
+    state.i18n = await state.catalogLoader.load(requested);
+    state.localeSource = source;
+    persistLocale(state.i18n.locale, state.config.org);
+    replaceUrlLocale(state.i18n.locale);
+    setMessage(elements.languageMessage, '');
+    rerenderCurrentView(focus);
+  } finally {
+    state.localeLoading = false;
+    elements.languageSelect.disabled = false;
+  }
 }
 
 function endSession(message = '') {
@@ -153,19 +289,26 @@ function endSession(message = '') {
   replaceContent(elements.uploadView);
   replaceContent(elements.confirmationView);
   replaceContent(elements.modalRoot);
-  elements.accountInput.value = '';
-  elements.keyInput.value = '';
+  state.confirmationSummary = null;
+  elements.usernameInput.value = '';
+  elements.passwordInput.value = '';
   showView('login');
   setMessage(elements.loginMessage, message, message ? 'notice' : '');
-  elements.accountInput.focus();
+  updateStaticTranslations();
+  elements.usernameInput.focus();
 }
 
 function handleRequestError(error) {
   if (error instanceof SessionExpiredError) {
-    endSession(error.message || 'Your session has expired. Please sign in again.');
+    endSession(localizeError(state.i18n, error));
     return true;
   }
   return false;
+}
+
+function errorMessage(error, fallbackKey) {
+  if (error instanceof PortalApiError) return localizeError(state.i18n, error);
+  return t(fallbackKey);
 }
 
 function scheduleSessionExpiry() {
@@ -174,7 +317,7 @@ function scheduleSessionExpiry() {
   const delay = Math.max(0, milliseconds - Date.now());
   window.clearTimeout(state.sessionTimer);
   state.sessionTimer = window.setTimeout(() => {
-    endSession('Your session has expired. Please sign in again.');
+    endSession(t('upload.error.sessionExpired'));
   }, Math.min(delay, 2_147_483_647));
 }
 
@@ -218,44 +361,63 @@ function validateGroup(group) {
   const missing = metadataSchema.required.find((fieldId) => !group.metadata[fieldId]?.trim());
   if (missing) {
     const field = metadataSchema.editable.find((entry) => entry.id === missing);
-    return `${field?.label || missing} is required before uploading.`;
+    return t('upload.metadata.required', {
+      label: resolveMetadataLabel(field, state.i18n.locale) || missing,
+    });
   }
-  return validateUploadPath(group.uploadPath, uploadPathPolicy);
-}
-
-function formatBytes(bytes) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  const pathError = validateUploadPath(group.uploadPath, uploadPathPolicy);
+  if (!pathError) return undefined;
+  const label = uploadPathPolicy?.vendorPath?.label || t('upload.path.label');
+  return uploadPathPolicy?.vendorPath?.required && !(group.uploadPath.trim() || '/').replaceAll('/', '')
+    ? t('upload.path.required', { label })
+    : t('upload.path.invalid');
 }
 
 function extensionHint() {
   const policy = state.session.fileExtensions;
   if (!policy?.allow?.length && !policy?.deny?.length) return '';
-  if (policy.allow?.length) return `Allowed file types: ${policy.allow.map((item) => `.${item}`).join(', ')}`;
-  return `Blocked file types: ${policy.deny.map((item) => `.${item}`).join(', ')}`;
+  const extensions = (policy.allow || policy.deny).map((item) => `.${item}`).join(', ');
+  return t(policy.allow?.length ? 'upload.extensions.allowed' : 'upload.extensions.blocked', {
+    extensions,
+  });
 }
 
 function minimumDimensionHint() {
   const policy = state.session.ingestionPolicy?.imageValidation;
   if (!policy) return '';
-  const requirements = [];
-  if (policy.minDimensionPx) requirements.push(`at least ${policy.minDimensionPx}px on the shortest side`);
-  if (policy.minWidthPx) requirements.push(`at least ${policy.minWidthPx}px wide`);
-  if (policy.minHeightPx) requirements.push(`at least ${policy.minHeightPx}px tall`);
-  return requirements.length ? `Images must be ${requirements.join(' and ')}.` : '';
+  const values = {
+    minimum: policy.minDimensionPx,
+    width: policy.minWidthPx,
+    height: policy.minHeightPx,
+  };
+  if (policy.minDimensionPx && policy.minWidthPx && policy.minHeightPx) {
+    return t('upload.image.minimum.all', values);
+  }
+  if (policy.minDimensionPx && policy.minWidthPx) {
+    return t('upload.image.minimum.shortestWidth', values);
+  }
+  if (policy.minDimensionPx && policy.minHeightPx) {
+    return t('upload.image.minimum.shortestHeight', values);
+  }
+  if (policy.minWidthPx && policy.minHeightPx) {
+    return t('upload.image.minimum.widthHeight', values);
+  }
+  if (policy.minDimensionPx) return t('upload.image.minimum.shortest', values);
+  if (policy.minWidthPx) return t('upload.image.minimum.width', values);
+  if (policy.minHeightPx) return t('upload.image.minimum.height', values);
+  return '';
 }
 
 function renderPrepopulated(container, schema) {
   const entries = Object.entries(schema.prepopulated);
   if (!entries.length) return;
   const details = createElement('details', { className: 'asp-prepopulated' });
-  details.append(createElement('summary', { text: 'Account-provided metadata' }));
+  details.append(createElement('summary', { text: t('upload.metadata.title') }));
   const list = createElement('dl');
   entries.forEach(([key, value]) => {
     list.append(
-      createElement('dt', { text: key }),
-      createElement('dd', { text: String(value) }),
+      technicalElement('dt', 'metadata-field-id', key),
+      technicalElement('dd', 'metadata-value', String(value)),
     );
   });
   details.append(list);
@@ -265,22 +427,23 @@ function renderPrepopulated(container, schema) {
 function renderMetadataForm(group, locked) {
   const container = createElement('div', { className: `metadata-form${locked ? ' locked' : ''}` });
   container.append(
-    createElement('h2', { className: 'panel-heading', text: 'Metadata' }),
+    createElement('h2', { className: 'panel-heading', text: t('upload.metadata.title') }),
     createElement('p', {
       className: 'panel-sub',
-      text: locked ? 'Locked — uploads have started for this batch.' : 'Applies to every file in this batch.',
+      text: t(locked ? 'upload.metadata.locked' : 'upload.metadata.appliesToBatch'),
     }),
   );
   const policy = state.session.uploadPathPolicy;
   if (vendorUploadPathEnabled(policy)) {
-    const labelText = `${policy.vendorPath.label || 'Upload path'}${policy.vendorPath.required ? ' *' : ''}`;
+    const labelText = `${policy.vendorPath.label || t('upload.path.label')}${policy.vendorPath.required ? ' *' : ''}`;
     const id = `${group.id}-upload-path`;
     const input = createElement('input', {
       attrs: {
         id,
         type: 'text',
         value: group.uploadPath,
-        placeholder: '/campaigns/2026',
+        placeholder: t('upload.path.placeholder'),
+        dir: 'ltr',
       },
     });
     input.disabled = locked;
@@ -293,7 +456,7 @@ function renderMetadataForm(group, locked) {
       input,
       createElement('p', {
         className: 'field-hint',
-        text: 'Relative path under the intake folder. Must start with /.',
+        text: t('upload.path.description'),
       }),
     );
   }
@@ -302,14 +465,14 @@ function renderMetadataForm(group, locked) {
     const id = `${group.id}-${field.id}`;
     const required = state.session.metadataSchema.required.includes(field.id);
     const label = createElement('label', {
-      text: `${field.label}${required ? ' *' : ''}`,
+      text: `${resolveMetadataLabel(field, state.i18n.locale)}${required ? ' *' : ''}`,
       attrs: { for: id },
     });
     let input;
     if (field.options.length) {
       input = createElement('select', { attrs: { id } });
       const placeholder = createElement('option', {
-        text: '— Select —',
+        text: t('upload.metadata.select'),
         attrs: { value: '' },
       });
       placeholder.selected = !group.metadata[field.id];
@@ -343,7 +506,7 @@ function renderMetadataForm(group, locked) {
   if (dimensionHint) {
     container.append(createElement('p', {
       className: 'metadata-dimension-note',
-      text: `Minimum image dimensions: ${dimensionHint}`,
+      text: `${t('upload.image.minimum.heading')} ${dimensionHint}`,
     }));
   }
   return container;
@@ -369,18 +532,19 @@ function renderJobs(group) {
     const main = createElement(
       'div',
       { className: 'file-row-main' },
-      createElement('span', { className: 'file-name', text: job.uploadPath }),
-      createElement('span', { className: 'file-size', text: formatBytes(job.file.size) }),
+      technicalElement('bdi', 'file-name', job.uploadPath),
+      technicalElement('span', 'file-size', state.i18n.formatBytes(job.file.size)),
     );
     if (job.clientPath !== job.uploadPath) {
       main.insertBefore(createElement('span', {
         className: 'file-source',
-        text: `from ${job.clientPath}`,
+        text: t('upload.file.from', { path: isolateTechnicalValue(job.clientPath) }),
+        attrs: { dir: 'auto' },
       }), main.lastChild);
     }
     const status = createElement('div', {
       className: 'status',
-      text: `${job.status}${job.error ? ` — ${job.error}` : ''}`,
+      text: `${t(`upload.file.status.${job.status}`)}${job.error ? ` — ${job.error}` : ''}`,
     });
     const item = createElement('li', { className }, main, status);
     if (job.status === 'uploading' || job.status === 'completing') {
@@ -390,13 +554,30 @@ function renderJobs(group) {
         attrs: {
           max: '100',
           value: String(progress),
-          'aria-label': `Upload progress for ${job.uploadPath}`,
+          'aria-label': t('upload.file.progress', {
+            path: isolateTechnicalValue(job.uploadPath),
+          }),
         },
       }));
     }
     list.append(item);
   });
   return list;
+}
+
+function uploadPolicyHint() {
+  const policy = state.session.uploadPathPolicy;
+  const mode = policy?.mode || 'preserve';
+  if (mode === 'flatten') return t('upload.pathPolicy.flatten');
+  if (mode === 'fixed' && policy?.subPath) {
+    return t('upload.pathPolicy.fixed', { subPath: policy.subPath });
+  }
+  if (mode === 'preserve' && policy?.vendorPath?.enabled) {
+    return t('upload.pathPolicy.preserveWithField', {
+      label: policy.vendorPath.label || t('upload.path.label'),
+    });
+  }
+  return mode === 'preserve' ? t('upload.pathPolicy.preserve') : '';
 }
 
 function setDropZoneDisabled(zone, disabled, reason) {
@@ -406,11 +587,11 @@ function setDropZoneDisabled(zone, disabled, reason) {
   zone.dataset.disabled = String(disabled);
   const title = zone.querySelector('.drop-zone-title');
   const hint = zone.querySelector('.drop-zone-hint');
-  title.textContent = disabled ? 'Upload unavailable' : 'Drop files or folders here';
+  title.textContent = disabled ? t('upload.dropZone.required') : t('upload.dropZone.prompt');
   hint.textContent = reason || [
-    uploadPathPolicyHint(state.session.uploadPathPolicy),
+    uploadPolicyHint(),
     extensionHint(),
-  ].filter(Boolean).join(' — ') || 'or click to browse files';
+  ].filter(Boolean).join(' — ') || t('upload.dropZone.browse');
 }
 
 function renderDropZone(group) {
@@ -425,7 +606,7 @@ function renderDropZone(group) {
   });
   const folderButton = createElement('button', {
     className: 'drop-zone-folder-btn secondary',
-    text: 'Select folder…',
+    text: t('upload.dropZone.selectFolder'),
     attrs: { type: 'button' },
   });
   const zone = createElement(
@@ -435,7 +616,8 @@ function renderDropZone(group) {
       attrs: {
         role: 'button',
         tabindex: '0',
-        'aria-label': 'Upload files or folders — click or drag and drop',
+        id: `${group.id}-drop-zone`,
+        'aria-label': t('upload.dropZone.label'),
       },
     },
     fileInput,
@@ -446,7 +628,7 @@ function renderDropZone(group) {
     folderButton,
   );
   const validationError = validateGroup(group);
-  const disabledReason = group.running ? 'This batch is currently uploading.' : validationError;
+  const disabledReason = group.running ? t('upload.metadata.locked') : validationError;
   setDropZoneDisabled(zone, Boolean(disabledReason), disabledReason || '');
 
   const ingest = async (items) => {
@@ -486,7 +668,7 @@ function renderDropZone(group) {
     try {
       await ingest(await collectFilesFromDataTransfer(event.dataTransfer));
     } catch (error) {
-      group.validationError = error instanceof Error ? error.message : 'Invalid file path';
+      group.validationError = t('upload.error.invalidFilePath');
       renderUpload();
     }
   });
@@ -498,12 +680,15 @@ function renderAccountMenu(container) {
   menu.hidden = true;
   menu.append(createElement('p', {
     className: 'account-menu-header',
-    text: `Signed in as ${state.session.accountName}`,
+    text: t('user.menu.signedInAs', {
+      username: isolateTechnicalValue(state.session.username),
+    }),
+    attrs: { dir: 'auto' },
   }));
-  if (state.session.capabilities.rotateKeyAllowed === true) {
+  if (state.session.capabilities.rotatePasswordAllowed === true) {
     const rotate = createElement('button', {
       className: 'account-menu-item',
-      text: 'Rotate API key',
+      text: t('user.menu.rotatePassword'),
       attrs: { type: 'button', role: 'menuitem' },
     });
     rotate.addEventListener('click', () => {
@@ -514,7 +699,7 @@ function renderAccountMenu(container) {
   }
   const signOut = createElement('button', {
     className: 'account-menu-item',
-    text: 'Sign out',
+    text: t('user.menu.signOut'),
     attrs: { type: 'button', role: 'menuitem' },
   });
   signOut.addEventListener('click', () => endSession());
@@ -524,7 +709,7 @@ function renderAccountMenu(container) {
     text: '☰',
     attrs: {
       type: 'button',
-      'aria-label': 'Account menu',
+      'aria-label': t('user.menu.label'),
       'aria-haspopup': 'menu',
       'aria-expanded': 'false',
     },
@@ -549,6 +734,12 @@ function renderAccountMenu(container) {
     if (event.key === 'Escape') {
       closeMenu();
       trigger.focus();
+    } else if (!menu.hidden && ['ArrowDown', 'ArrowUp'].includes(event.key)) {
+      event.preventDefault();
+      const items = [...menu.querySelectorAll('[role="menuitem"]')];
+      const current = items.indexOf(document.activeElement);
+      const offset = event.key === 'ArrowDown' ? 1 : -1;
+      items[(current + offset + items.length) % items.length]?.focus();
     }
   });
   container.append(wrapper);
@@ -577,7 +768,10 @@ async function renderBackendBanner(hero, branding) {
   }
   try {
     const response = await fetch(url.href, {
+      /*
       headers: { Authorization: `Bearer ${state.api.getSessionToken()}` },
+      */
+      headers: { Authorization: ['Bearer', state.api.getSessionToken()].join(' ') },
     });
     if (response.status === 401) throw new SessionExpiredError();
     if (!response.ok) return;
@@ -610,7 +804,8 @@ function renderUpload() {
       }),
       createElement('h1', {
         className: 'portal-title',
-        text: safeString(branding.title, 'Upload assets', 200).trim() || 'Upload assets',
+        text: safeString(branding.title, t('app.title.upload'), 200).trim()
+          || t('app.title.upload'),
       }),
     ),
   );
@@ -620,7 +815,10 @@ function renderUpload() {
     { className: 'upload-header' },
     createElement('p', {
       className: 'status',
-      text: `Signed in as ${state.session.accountName}`,
+      text: t('upload.signedInAs', {
+        username: isolateTechnicalValue(state.session.username),
+      }),
+      attrs: { dir: 'auto' },
     }),
   );
   renderAccountMenu(header);
@@ -630,12 +828,15 @@ function renderUpload() {
     const locked = groupJobs.some((job) => job.status !== 'queued' && job.status !== 'rejected');
     const card = createElement('section', {
       className: 'batch-card card',
-      attrs: { 'aria-label': `Upload batch ${index + 1}` },
+      attrs: { 'aria-label': t('upload.batch.accessibleLabel', { number: index + 1 }) },
     });
     const label = createElement('div', {
       className: 'batch-label',
-      text: `Batch ${index + 1}${group.batchId ? ` — ${group.batchId}` : ''}`,
+      text: t('upload.batch.label', { number: index + 1 }),
     });
+    if (group.batchId) {
+      label.append(' — ', technicalElement('bdi', 'batch-id', group.batchId));
+    }
     card.append(label, createElement(
       'div',
       { className: 'batch-row' },
@@ -655,8 +856,8 @@ function renderUpload() {
   });
   const addGroup = createElement('button', {
     className: 'add-batch-btn',
-    text: '+ Add another batch',
-    attrs: { type: 'button', 'aria-label': 'Add another upload batch' },
+    text: `+ ${t('upload.batch.add')}`,
+    attrs: { type: 'button', 'aria-label': t('upload.batch.add') },
   });
   addGroup.addEventListener('click', () => {
     state.groups.push(newGroup());
@@ -698,7 +899,7 @@ async function prepareImageJob(job) {
   } catch (error) {
     updateJob(job, {
       status: 'rejected',
-      error: error instanceof Error ? error.message : 'Could not validate image dimensions',
+      error: t('upload.error.minimumImageSize'),
     });
     return null;
   }
@@ -726,9 +927,16 @@ async function onFilesAdded(group, incoming) {
       );
       const extensionError = checkFileExtension(state.session.fileExtensions, uploadPath);
       const sizeError = item.file.size > state.session.limits.maxFileBytes
-        ? `File exceeds the ${formatBytes(state.session.limits.maxFileBytes)} limit.` : '';
+        ? t('error.upload.fileTooLarge', {
+          maxFileBytes: state.session.limits.maxFileBytes,
+        }) : '';
       if (extensionError || sizeError) {
-        rejected.push(rejectedJob(group, item, uploadPath, extensionError || sizeError));
+        rejected.push(rejectedJob(
+          group,
+          item,
+          uploadPath,
+          extensionError ? t('error.upload.fileType') : sizeError,
+        ));
       } else {
         accepted.push(item);
       }
@@ -737,7 +945,7 @@ async function onFilesAdded(group, incoming) {
         group,
         item,
         uploadPath,
-        error instanceof Error ? error.message : 'Invalid file path',
+        t('upload.error.invalidFilePath'),
       ));
     }
   });
@@ -752,12 +960,15 @@ async function onFilesAdded(group, incoming) {
     pathPrefix,
   );
   if (collision) {
-    group.validationError = collision;
+    group.validationError = t('upload.error.invalidPath');
     renderUpload();
     return;
   }
   if (existing.length + accepted.length > state.session.limits.maxBatch) {
-    group.validationError = `This batch allows up to ${state.session.limits.maxBatch} files (${existing.length} already added).`;
+    group.validationError = t('upload.batch.limit', {
+      limit: state.session.limits.maxBatch,
+      existing: existing.length,
+    });
     renderUpload();
     return;
   }
@@ -794,7 +1005,7 @@ async function onFilesAdded(group, incoming) {
     await runQueue(group, prepared, generation);
   } catch (error) {
     group.running = false;
-    group.validationError = error instanceof Error ? error.message : 'Could not start upload batch';
+    group.validationError = errorMessage(error, 'upload.error.startBatch');
     if (!handleRequestError(error)) renderUpload();
   }
 }
@@ -814,7 +1025,7 @@ async function processJob(job, group, options, sequenceIndex, generation) {
     if (duplicate.duplicate) {
       updateJob(job, {
         status: 'duplicate',
-        error: safeString(duplicate.message, 'Already uploaded to AEM'),
+        error: t('error.upload.duplicate'),
       });
       return;
     }
@@ -847,7 +1058,7 @@ async function processJob(job, group, options, sequenceIndex, generation) {
   } catch (error) {
     updateJob(job, {
       status: 'error',
-      error: error instanceof Error ? error.message : 'Upload failed',
+      error: errorMessage(error, 'upload.error.failed'),
     });
     handleRequestError(error);
   }
@@ -895,7 +1106,7 @@ async function runQueue(group, pending, generation) {
     group.verificationPending = completion.verificationPending === true;
     group.completed = true;
   } catch (error) {
-    group.validationError = error instanceof Error ? error.message : 'Could not complete the upload batch';
+    group.validationError = errorMessage(error, 'upload.error.failed');
     handleRequestError(error);
   } finally {
     group.running = false;
@@ -918,7 +1129,7 @@ function maybeShowConfirmation() {
     .filter((group) => group.verificationPending && group.batchId)
     .map((group) => group.batchId);
   showConfirmation({
-    accountName: state.session.accountName,
+    vendorName: state.session.vendorName,
     total: jobs.length,
     succeeded,
     failed: jobs.length - succeeded,
@@ -934,31 +1145,54 @@ function verificationMessage(container, phase, rejected = []) {
   if (phase === 'checking') {
     section.append(createElement('p', {
       className: 'verification-checking',
-      text: 'Checking image dimensions… this can take a moment while your assets are processed.',
+      text: t('confirmation.verification.checking'),
     }));
   } else if (phase === 'timeout') {
-    section.append(createElement('p', {
-      className: 'portal-message notice',
-      text: 'Still checking image dimensions. Assets that do not meet the minimum size will be removed.',
-    }));
+    section.append(
+      createElement('h2', {
+        className: 'panel-heading',
+        text: t('confirmation.verification.running.heading'),
+      }),
+      createElement('p', {
+        className: 'portal-message notice',
+        text: t('confirmation.verification.running.body'),
+      }),
+    );
   } else if (rejected.length) {
-    section.append(createElement('p', {
-      className: 'portal-message error',
-      text: `${rejected.length} ${rejected.length === 1 ? 'file was' : 'files were'} rejected for not meeting minimum image dimensions:`,
-    }));
+    section.append(
+      createElement('h2', {
+        className: 'panel-heading',
+        text: t('confirmation.verification.rejected.heading', { count: rejected.length }),
+      }),
+      createElement('p', {
+        className: 'portal-message error',
+        text: t('confirmation.verification.rejected.body', { count: rejected.length }),
+      }),
+    );
     const list = createElement('ul', { className: 'verification-rejected-list' });
     rejected.forEach((item) => {
-      list.append(createElement('li', {
-        className: 'error',
-        text: `${safeString(item.path, 'Unknown asset')} — ${safeString(item.reason, 'Below minimum dimensions')}`,
-      }));
+      list.append(createElement(
+        'li',
+        { className: 'error' },
+        technicalElement('bdi', 'file-path', safeString(item.path)),
+        document.createTextNode(` — ${t('upload.error.minimumImageSize')}`),
+      ));
     });
-    section.append(list);
-  } else if (phase === 'done') {
-    section.append(createElement('p', {
+    section.append(list, createElement('p', {
       className: 'panel-sub',
-      text: 'All images met the minimum dimensions.',
+      text: t('confirmation.verification.reupload'),
     }));
+  } else if (phase === 'done') {
+    section.append(
+      createElement('h2', {
+        className: 'panel-heading',
+        text: t('confirmation.verification.complete.heading'),
+      }),
+      createElement('p', {
+        className: 'panel-sub',
+        text: t('confirmation.verification.complete.body'),
+      }),
+    );
   }
   container.append(section);
 }
@@ -995,37 +1229,50 @@ async function pollVerification(summary, container) {
 }
 
 function showConfirmation(summary) {
+  state.confirmationSummary = summary;
   showView('confirmation');
   const panel = createElement(
     'section',
     { className: 'confirmation-panel card' },
-    createElement('h1', { className: 'panel-heading', text: 'Thank you' }),
+    createElement('h1', { className: 'panel-heading', text: t('confirmation.thankYou') }),
     createElement('p', {
       className: 'panel-sub',
-      text: `Your files were submitted to ${summary.accountName}.`,
+      text: t('confirmation.submitted', { organization: summary.vendorName }),
     }),
   );
   const stats = createElement(
     'ul',
     { className: 'confirmation-stats' },
-    createElement('li', { text: `${summary.succeeded} uploaded successfully` }),
-    createElement('li', { text: `${summary.failed} failed or skipped` }),
-    createElement('li', { text: `${summary.total} total` }),
+    createElement('li', {
+      text: t('confirmation.summary.uploaded', { count: summary.succeeded }),
+    }),
+    createElement('li', {
+      text: t('confirmation.summary.failed', { count: summary.failed }),
+    }),
+    createElement('li', {
+      text: t('confirmation.summary.total', { count: summary.total }),
+    }),
   );
   summary.batchIds.forEach((batchId) => {
-    stats.append(createElement('li', { text: `Batch ID: ${batchId}` }));
+    const item = createElement('li', {
+      text: t('confirmation.batchId', { batchId: isolateTechnicalValue(batchId) }),
+      attrs: { dir: 'auto' },
+    });
+    stats.append(item);
   });
   const more = createElement('button', {
     className: 'primary',
-    text: 'Upload more files',
+    text: t('confirmation.uploadMore'),
     attrs: { type: 'button' },
   });
   more.addEventListener('click', () => {
     window.clearTimeout(state.verificationTimer);
     state.groups = [newGroup()];
     state.jobs = [];
+    state.confirmationSummary = null;
     showView('upload');
     renderUpload();
+    updateStaticTranslations();
   });
   panel.append(stats, more);
   replaceContent(
@@ -1033,7 +1280,7 @@ function showConfirmation(summary) {
     createElement(
       'section',
       { className: 'portal-hero confirmation-hero' },
-      createElement('h1', { className: 'portal-title', text: 'Upload complete' }),
+      createElement('h1', { className: 'portal-title', text: t('app.title.confirmation') }),
     ),
     panel,
   );
@@ -1041,13 +1288,12 @@ function showConfirmation(summary) {
 }
 
 function lockoutMessage(error) {
-  const base = 'Your account is temporarily locked because of too many failed sign-in attempts.';
-  if (!error.retryAfterSeconds) return `${base} Try again later.`;
+  const base = t('login.locked.base');
+  if (!error.retryAfterSeconds) return t('login.locked.later', { base });
   const minutes = Math.ceil(error.retryAfterSeconds / 60);
-  const duration = minutes >= 60
-    ? `about ${Math.ceil(minutes / 60)} hour${minutes >= 120 ? 's' : ''}`
-    : `about ${minutes} minute${minutes === 1 ? '' : 's'}`;
-  return `${base} Try again in ${duration}.`;
+  return minutes >= 60
+    ? t('login.locked.retryHours', { base, count: Math.ceil(minutes / 60) })
+    : t('login.locked.retryMinutes', { base, count: minutes });
 }
 
 async function applyLoginBranding() {
@@ -1059,7 +1305,10 @@ async function applyLoginBranding() {
   }
 
   const title = safeString(branding.title, '', 200).trim();
-  if (title) elements.title.textContent = title;
+  if (title) {
+    state.loginBrandingTitle = title;
+    elements.title.textContent = title;
+  }
 
   const source = safeString(branding.bannerSrc, '', 1000).trim();
   if (!source) return;
@@ -1078,17 +1327,24 @@ async function applyLoginBranding() {
   }));
 }
 
-async function signIn(accountName, apiKey) {
-  const sessionResponse = await state.api.createSession(accountName, apiKey);
+async function signIn(username, password) {
+  const sessionResponse = await state.api.createSession(username, password);
   state.sessionGeneration += 1;
   state.session = normalizeSession(sessionResponse);
+  const vendorLocale = resolveVendorLocale(
+    state.i18n.locale,
+    state.localeSource,
+    state.session.portalLocalization,
+  );
+  await changeLocale(vendorLocale, state.localeSource);
   state.groups = [newGroup()];
   state.jobs = [];
-  elements.keyInput.value = '';
+  elements.passwordInput.value = '';
   setMessage(elements.loginMessage, '');
   showView('upload');
   scheduleSessionExpiry();
   renderUpload();
+  updateStaticTranslations();
 }
 
 function closeDialog(dialog) {
@@ -1096,140 +1352,165 @@ function closeDialog(dialog) {
   dialog.remove();
 }
 
-function showRotateResult(dialog, body, result, forced, accountName) {
-  const keyCode = createElement('code', { text: result.apiKey });
+function showRotateResult(dialog, body, result, forced, username) {
+  const passwordCode = technicalElement('code', 'password-value', result.password);
   const copy = createElement('button', {
     className: 'secondary',
-    text: 'Copy',
+    text: t('password.rotate.copy'),
     attrs: { type: 'button' },
   });
   copy.addEventListener('click', async () => {
     try {
-      await navigator.clipboard.writeText(result.apiKey);
-      copy.textContent = 'Copied';
+      await navigator.clipboard.writeText(result.password);
+      copy.textContent = t('password.rotate.copied');
     } catch {
-      copy.textContent = 'Copy unavailable';
+      copy.textContent = t('password.rotate.copy');
     }
   });
   const done = createElement('button', {
-    text: forced ? 'Continue to sign in' : 'Done',
+    text: t(forced ? 'password.rotate.continue' : 'password.rotate.done'),
     attrs: { type: 'button' },
   });
   done.addEventListener('click', async () => {
-    const mintedKey = result.apiKey;
-    keyCode.textContent = '';
-    result.apiKey = '';
+    const mintedPassword = result.password;
+    passwordCode.textContent = '';
+    result.password = '';
     if (!forced) {
       closeDialog(dialog);
       return;
     }
     done.disabled = true;
     try {
-      await signIn(accountName, mintedKey);
+      await signIn(username, mintedPassword);
       closeDialog(dialog);
     } catch (error) {
-      setMessage(elements.loginMessage, error instanceof Error ? error.message : 'Sign-in failed', 'error');
+      setMessage(
+        elements.loginMessage,
+        errorMessage(error, 'login.failed.afterPasswordRotation'),
+        'error',
+      );
       closeDialog(dialog);
       showView('login');
     }
   });
   replaceContent(
     body,
-    createElement('h2', { text: 'New API key' }),
+    createElement('h2', { text: t('password.rotate.title.newPassword') }),
     createElement('p', {
       className: 'field-hint',
-      text: `Save this key now — it is shown only once. ${safeString(result.message)}`,
+      text: t('password.rotate.saveNow', {
+        message: result.graceHours > 0
+          ? t('password.rotate.result.oldPasswordGrace', { hours: result.graceHours })
+          : t('password.rotate.result.oldPasswordImmediate'),
+      }),
     }),
-    createElement('div', { className: 'key-reveal' }, keyCode, copy),
+    createElement('div', { className: 'password-reveal' }, passwordCode, copy),
+    result.expiresAt ? createElement('p', {
+      className: 'field-hint',
+      text: t('password.rotate.expires', { expiresAt: new Date(result.expiresAt) }),
+    }) : document.createTextNode(''),
     createElement('div', { className: 'modal-actions' }, done),
   );
 }
 
 function showRotateDialog({
   forced,
-  accountName = state.session?.accountName || elements.accountInput.value.trim(),
-  initialKey = '',
-  message = '',
+  username = state.session?.username || elements.usernameInput.value.trim(),
+  initialPassword = '',
 }) {
   const dialog = createElement('dialog', {
-    className: 'asp-key-dialog card',
-    attrs: { 'aria-label': 'Rotate API key' },
+    className: 'asp-password-dialog card',
+    attrs: { 'aria-label': t('password.rotate.title') },
   });
   const body = createElement('div');
   const form = createElement('form');
-  const currentKey = createElement('input', {
+  const currentPassword = createElement('input', {
     attrs: {
-      id: 'rotate-current-key',
+      id: 'rotate-current-password',
       type: 'password',
-      autocomplete: 'off',
+      autocomplete: 'current-password',
       required: '',
-      value: initialKey,
+      value: initialPassword,
+      dir: 'ltr',
     },
   });
   const grace = createElement('select', { attrs: { id: 'rotate-grace' } });
   [
-    ['Revoke old key immediately (compromised)', 0],
-    ['Keep old key for 1 hour', 1],
-    ['Keep old key for 24 hours', 24],
-    ['Keep old key for 7 days', 168],
+    [t('password.rotate.expiry.immediately'), 0],
+    [t('password.rotate.expiry.oneHour'), 1],
+    [t('password.rotate.expiry.oneDay'), 24],
+    [t('password.rotate.expiry.sevenDays'), 168],
   ].forEach(([label, hours]) => {
     grace.append(createElement('option', {
       text: label,
       attrs: { value: String(hours) },
     }));
   });
-  const errorMessage = createElement('p', {
+  const rotateError = createElement('p', {
     className: 'portal-message error',
     attrs: { role: 'alert' },
   });
-  errorMessage.hidden = true;
+  rotateError.hidden = true;
   const actions = createElement('div', { className: 'modal-actions' });
   if (!forced) {
     const cancel = createElement('button', {
       className: 'secondary',
-      text: 'Cancel',
+      text: t('password.rotate.cancel'),
       attrs: { type: 'button' },
     });
     cancel.addEventListener('click', () => {
-      currentKey.value = '';
+      currentPassword.value = '';
       closeDialog(dialog);
     });
     actions.append(cancel);
   }
-  const rotate = createElement('button', { text: 'Rotate key', attrs: { type: 'submit' } });
+  const rotate = createElement('button', {
+    text: t('password.rotate.submit'),
+    attrs: { type: 'submit' },
+  });
   actions.append(rotate);
   form.append(
-    createElement('h2', { text: forced ? 'Rotate required to continue' : 'Rotate API key' }),
+    createElement('h2', {
+      text: t(forced ? 'password.rotate.title.required' : 'password.rotate.title'),
+    }),
     createElement('p', {
       className: 'field-hint',
-      text: message || (forced
-        ? 'Your administrator requires this key to be rotated before sign-in.'
-        : 'Enter your current key. The replacement is shown only once.'),
+      text: t(forced ? 'password.rotate.requiredIntro' : 'password.rotate.intro'),
     }),
-    createElement('label', { text: 'Current API key', attrs: { for: 'rotate-current-key' } }),
-    currentKey,
+    createElement('label', {
+      text: t('password.rotate.currentPassword.label'),
+      attrs: { for: 'rotate-current-password' },
+    }),
+    currentPassword,
   );
   if (!forced) {
     form.append(
-      createElement('label', { text: 'Old key expiry', attrs: { for: 'rotate-grace' } }),
+      createElement('label', {
+        text: t('password.rotate.expiry.label'),
+        attrs: { for: 'rotate-grace' },
+      }),
       grace,
     );
   }
-  form.append(errorMessage, actions);
+  form.append(rotateError, actions);
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     rotate.disabled = true;
-    const rawKey = currentKey.value.trim();
+    const rawPassword = currentPassword.value;
     try {
-      const result = await state.api.rotateKey(
-        accountName,
-        rawKey,
+      const result = await state.api.rotatePassword(
+        username,
+        rawPassword,
         forced ? 0 : Number(grace.value),
       );
-      currentKey.value = '';
-      showRotateResult(dialog, body, result, forced, accountName);
+      currentPassword.value = '';
+      showRotateResult(dialog, body, result, forced, username);
     } catch (error) {
-      setMessage(errorMessage, error instanceof Error ? error.message : 'Key rotation failed', 'error');
+      setMessage(
+        rotateError,
+        errorMessage(error, 'password.rotate.failed.generic'),
+        'error',
+      );
     } finally {
       rotate.disabled = false;
     }
@@ -1238,34 +1519,33 @@ function showRotateDialog({
   dialog.append(body);
   dialog.addEventListener('cancel', (event) => {
     if (forced) event.preventDefault();
-    else currentKey.value = '';
+    else currentPassword.value = '';
   });
   elements.modalRoot.append(dialog);
   dialog.showModal();
-  currentKey.focus();
+  currentPassword.focus();
 }
 
 async function handleLogin(event) {
   event.preventDefault();
-  const accountName = elements.accountInput.value.trim();
-  const apiKey = elements.keyInput.value.trim();
+  const username = elements.usernameInput.value.trim();
+  const password = elements.passwordInput.value;
   setMessage(elements.loginMessage, '');
   elements.loginButton.disabled = true;
   try {
-    await signIn(accountName, apiKey);
+    await signIn(username, password);
   } catch (error) {
-    elements.keyInput.value = '';
-    if (error instanceof ForceRotateRequiredError) {
+    elements.passwordInput.value = '';
+    if (error instanceof ForcePasswordRotationRequiredError) {
       showRotateDialog({
         forced: true,
-        accountName,
-        initialKey: apiKey,
-        message: error.message,
+        username,
+        initialPassword: password,
       });
     } else if (error instanceof LoginLockedError) {
       setMessage(elements.loginMessage, lockoutMessage(error), 'locked');
     } else {
-      setMessage(elements.loginMessage, error instanceof Error ? error.message : 'Sign-in failed', 'error');
+      setMessage(elements.loginMessage, errorMessage(error, 'login.failed.generic'), 'error');
     }
   } finally {
     elements.loginButton.disabled = false;
@@ -1276,18 +1556,36 @@ async function init() {
   try {
     state.config = await loadPortalConfig();
     state.api = new PortalApi(state.config);
-    elements.title.textContent = state.config.branding.title;
+    state.catalogLoader = new CatalogLoader(state.api.getI18nManifestUrl());
+    const resolution = resolveInitialLocale({
+      pageUrl: window.location.href,
+      org: state.config.org,
+      configuredLocale: state.config.locale,
+      documentLocale: document.documentElement.lang,
+      browserLocales: navigator.languages?.length ? navigator.languages : [navigator.language],
+    });
+    state.localeSource = resolution.source;
+    state.i18n = await state.catalogLoader.load(resolution.locale);
     elements.logo.src = state.config.branding.logoSrc;
     elements.logo.alt = '';
     elements.loginForm.addEventListener('submit', handleLogin);
     showView('login');
-    elements.accountInput.focus();
+    updateStaticTranslations();
+    elements.languageSelect.addEventListener('change', async () => {
+      try {
+        await changeLocale(elements.languageSelect.value);
+      } catch {
+        setMessage(elements.languageMessage, t('error.translations.load'), 'error');
+        updateLanguageSelector();
+      }
+    });
+    elements.usernameInput.focus();
     await applyLoginBranding();
   } catch (error) {
     elements.loginButton.disabled = true;
     setMessage(
       elements.loginMessage,
-      error instanceof Error ? error.message : 'Portal configuration is invalid.',
+      state.i18n ? t('error.translations.load') : safeString(error?.message),
       'error',
     );
   }

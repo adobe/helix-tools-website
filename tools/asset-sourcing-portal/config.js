@@ -1,5 +1,8 @@
 const CONFIG_PATH = './portal-config.json';
 const TENANT_SLUG = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+const CONFIGURED_LOCALES = new Set([
+  'en', 'fr', 'de', 'es', 'pt-BR', 'ja', 'ko', 'zh-Hans', 'ar', 'hi',
+]);
 
 function isLocalhost(hostname) {
   return hostname === 'localhost'
@@ -70,12 +73,22 @@ function validateHostSuffixes(value) {
   if (!Array.isArray(value) || value.length === 0 || value.length > 10) {
     throw new Error('uploadHostSuffixes must be a non-empty array.');
   }
+
   return value.map((entry) => {
     if (typeof entry !== 'string' || !/^\.[a-z0-9.-]+$/i.test(entry)) {
       throw new Error('Each uploadHostSuffixes entry must be a DNS suffix beginning with a dot.');
     }
     return entry.toLowerCase();
   });
+}
+
+function validateConfiguredLocale(value) {
+  const locale = optionalString(value, 'locale', 20);
+  if (!locale) return undefined;
+  if (!CONFIGURED_LOCALES.has(locale)) {
+    throw new Error('locale must be a supported portal locale.');
+  }
+  return locale;
 }
 
 /**
@@ -85,6 +98,7 @@ function validateHostSuffixes(value) {
  * @returns {{
  *   apiBaseUrl: string,
  *   org: string,
+ *   locale?: string,
  *   tenantSlug?: string,
  *   uploadHostSuffixes: string[],
  *   branding: { title: string, logoSrc: string }
@@ -112,6 +126,7 @@ export function validatePortalConfig(value, pageUrl = window.location.href) {
   return {
     apiBaseUrl: validateApiBaseUrl(input.apiBaseUrl),
     org: resolveOrg(input.org, pageUrl),
+    locale: validateConfiguredLocale(input.locale),
     tenantSlug,
     uploadHostSuffixes: validateHostSuffixes(input.uploadHostSuffixes),
     branding: { title, logoSrc: logoUrl.pathname },

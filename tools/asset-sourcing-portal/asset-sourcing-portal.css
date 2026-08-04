@@ -55,6 +55,11 @@
   font-size: var(--heading-size-m);
 }
 
+.asset-sourcing-portal .portal-language-selector {
+  min-width: 10rem;
+  margin-inline-start: auto;
+}
+
 .asset-sourcing-portal .asp-portal-banner:empty,
 .asset-sourcing-portal .asp-portal-footer:empty {
   display: none;
@@ -82,6 +87,11 @@
   display: block;
   margin: var(--spacing-s) 0 var(--spacing-xs);
   font-weight: 600;
+}
+
+.asset-sourcing-portal .portal-language-selector label {
+  margin-block: 0 var(--spacing-xs);
+  font-size: var(--body-size-s);
 }
 
 .asset-sourcing-portal input,
@@ -206,7 +216,7 @@
   position: absolute;
   z-index: 20;
   top: calc(100% + var(--spacing-xs));
-  right: 0;
+  inset-inline-end: 0;
   min-width: 14rem;
   border: var(--border-s) solid var(--gray-300);
   border-radius: var(--rounding-l);
@@ -228,7 +238,7 @@
   padding: var(--spacing-s);
   background: transparent;
   color: var(--color-text);
-  text-align: left;
+  text-align: start;
 }
 
 .asset-sourcing-portal .account-menu-item:hover {
@@ -251,7 +261,7 @@
 
 .asset-sourcing-portal .batch-row {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) minmax(280px, 1.1fr);
+  grid-template-columns: 1fr;
   gap: var(--spacing-l);
 }
 
@@ -363,6 +373,7 @@
 
 .asset-sourcing-portal .file-row-main {
   display: flex;
+  flex-direction: column;
   gap: var(--spacing-s);
   justify-content: space-between;
 }
@@ -370,6 +381,16 @@
 .asset-sourcing-portal .file-name {
   font-weight: 700;
   overflow-wrap: anywhere;
+}
+
+.asset-sourcing-portal .technical-value,
+.asset-sourcing-portal .file-path,
+.asset-sourcing-portal .batch-id,
+.asset-sourcing-portal .password-value,
+.asset-sourcing-portal input[type="password"],
+.asset-sourcing-portal input[id$="-upload-path"] {
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 
 .asset-sourcing-portal .file-source {
@@ -432,7 +453,7 @@
   background: var(--blue-100);
 }
 
-.asset-sourcing-portal dialog.asp-key-dialog {
+.asset-sourcing-portal dialog.asp-password-dialog {
   width: min(100% - 2rem, 32rem);
   border: 0;
   border-radius: var(--rounding-xl);
@@ -440,18 +461,18 @@
   color: var(--color-text);
 }
 
-.asset-sourcing-portal dialog.asp-key-dialog::backdrop {
+.asset-sourcing-portal dialog.asp-password-dialog::backdrop {
   background: var(--transparent-black-600);
 }
 
-.asset-sourcing-portal dialog.asp-key-dialog > div {
+.asset-sourcing-portal dialog.asp-password-dialog > div {
   max-height: calc(100dvh - 4rem);
   padding: 0;
   overflow-y: auto;
 }
 
 .asset-sourcing-portal .modal-actions,
-.asset-sourcing-portal .key-reveal {
+.asset-sourcing-portal .password-reveal {
   display: flex;
   gap: var(--spacing-s);
   align-items: center;
@@ -461,24 +482,24 @@
   justify-content: flex-end;
 }
 
-.asset-sourcing-portal .key-reveal {
+.asset-sourcing-portal .password-reveal {
   border: var(--border-s) solid var(--gray-300);
   border-radius: var(--rounding-m);
   padding: var(--spacing-s);
   background: var(--gray-100);
 }
 
-.asset-sourcing-portal .key-reveal code {
+.asset-sourcing-portal .password-reveal code {
   flex: 1;
   overflow-wrap: anywhere;
 }
 
-@media (width < 768px) {
+@media (width >= 900px) {
   .asset-sourcing-portal .batch-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(240px, 1fr) minmax(280px, 1.1fr);
   }
 
   .asset-sourcing-portal .file-row-main {
-    flex-direction: column;
+    flex-direction: row;
   }
 }

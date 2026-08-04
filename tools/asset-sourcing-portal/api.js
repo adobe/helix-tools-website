@@ -1,28 +1,42 @@
 /* eslint-disable max-classes-per-file */
-export class ForceRotateRequiredError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'ForceRotateRequiredError';
+export class ForcePasswordRotationRequiredError extends Error {
+  constructor(response) {
+    super(response.error);
+    this.response = response;
+    this.code = response.code;
+    this.params = response.params;
+    this.name = 'ForcePasswordRotationRequiredError';
   }
 }
 
-export class LoginLockedError extends Error {
-  constructor(message, retryAfterSeconds) {
-    super(message);
+export class PortalApiError extends Error {
+  constructor(response) {
+    super(response.error);
+    this.response = response;
+    this.code = response.code;
+    this.params = response.params;
+    this.name = 'PortalApiError';
+  }
+}
+
+export class LoginLockedError extends PortalApiError {
+  constructor(response, retryAfterSeconds) {
+    super(response);
     this.name = 'LoginLockedError';
     this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
-export class SessionExpiredError extends Error {
-  constructor(message = 'Your session has expired. Please sign in again.') {
-    super(message);
+export class SessionExpiredError extends PortalApiError {
+  constructor(response = { code: 'INVALID_SESSION', error: '' }) {
+    super(response);
     this.name = 'SessionExpiredError';
   }
 }
 
-function basicAuthorization(accountName, apiKey) {
-  const bytes = new TextEncoder().encode(`${accountName}:${apiKey}`);
+function basicAuthorization(username, password) {
+  const normalizedUsername = username.trim().toLowerCase();
+  const bytes = new TextEncoder().encode(`${normalizedUsername}:${password}`);
   let binary = '';
   bytes.forEach((byte) => {
     binary += String.fromCharCode(byte);
@@ -30,18 +44,18 @@ function basicAuthorization(accountName, apiKey) {
   return `Basic ${btoa(binary)}`;
 }
 
-async function errorDetails(response, fallback) {
+async function errorDetails(response, fallbackCode) {
   const text = (await response.text()).slice(0, 500);
   try {
     const payload = JSON.parse(text);
     return {
-      message: typeof payload.error === 'string' ? payload.error : fallback,
-      code: typeof payload.code === 'string' ? payload.code : undefined,
-      retryAfterSeconds: Number.isFinite(payload.retryAfterSeconds)
-        ? payload.retryAfterSeconds : undefined,
+      error: typeof payload.error === 'string' ? payload.error : '',
+      code: typeof payload.code === 'string' ? payload.code : fallbackCode,
+      params: payload.params && typeof payload.params === 'object' && !Array.isArray(payload.params)
+        ? payload.params : undefined,
     };
   } catch {
-    return { message: text || fallback };
+    return { error: '', code: fallbackCode };
   }
 }
 
@@ -59,6 +73,10 @@ export class PortalApi {
     this.fetchImpl = fetchImpl;
     this.sessionToken = '';
     this.sessionExpiresAt = 0;
+  }
+
+  getI18nManifestUrl() {
+    return `${this.apiBase}/i18n/manifest.json`;
   }
 
   clearSession() {
@@ -90,9 +108,7 @@ export class PortalApi {
   async getLoginBranding() {
     const response = await this.fetchImpl(
       this.tenantUrl('/portal-branding/login'),
-      {
-        headers: { Accept: 'application/json' },
-      },
+      { headers: { Accept: 'application/json' } },
     );
     if (!response.ok) return {};
     const branding = await response.json();
@@ -100,53 +116,57 @@ export class PortalApi {
       ? branding : {};
   }
 
-  async createSession(accountName, apiKey) {
+  async createSession(username, password) {
     const response = await this.fetchImpl(this.tenantUrl('/session'), {
       method: 'POST',
       headers: {
         Accept: 'application/json',
-        Authorization: basicAuthorization(accountName, apiKey),
+        Authorization: basicAuthorization(username, password),
       },
     });
     if (!response.ok) {
-      const details = await errorDetails(response, 'Sign-in failed.');
-      if (details.code === 'FORCE_ROTATE_REQUIRED') {
-        throw new ForceRotateRequiredError(details.message);
+      const details = await errorDetails(response, 'SERVICE_UNAVAILABLE');
+      if (details.code === 'FORCE_PASSWORD_ROTATION_REQUIRED') {
+        throw new ForcePasswordRotationRequiredError(details);
       }
       if (details.code === 'LOGIN_LOCKED') {
-        throw new LoginLockedError(details.message, details.retryAfterSeconds);
+        const retryAfterSeconds = Number.isFinite(details.params?.retryAfterSeconds)
+          ? details.params.retryAfterSeconds : undefined;
+        throw new LoginLockedError(details, retryAfterSeconds);
       }
-      throw new Error(details.message);
+      throw new PortalApiError(details);
     }
     const session = await response.json();
     if (!session || typeof session.sessionToken !== 'string'
-      || !Number.isFinite(session.expiresAt) || typeof session.metadataSchema !== 'object') {
-      throw new Error('The service returned an invalid session response.');
+      || !Number.isFinite(session.expiresAt) || typeof session.username !== 'string'
+      || !session.vendor || typeof session.vendor.name !== 'string'
+      || typeof session.metadataSchema !== 'object') {
+      throw new PortalApiError({ code: 'SERVICE_UNAVAILABLE', error: '' });
     }
     this.setSession(session);
     return session;
   }
 
-  async rotateKey(accountName, currentApiKey, graceHours = 0) {
+  async rotatePassword(username, currentPassword, graceHours = 0) {
     const response = await this.fetchImpl(
-      this.tenantUrl('/account/rotate-key'),
+      this.tenantUrl('/account/rotate-password'),
       {
         method: 'POST',
         headers: {
           Accept: 'application/json',
-          Authorization: basicAuthorization(accountName, currentApiKey),
+          Authorization: basicAuthorization(username, currentPassword),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ graceHours }),
       },
     );
     if (!response.ok) {
-      const details = await errorDetails(response, 'Key rotation failed.');
-      throw new Error(details.message);
+      throw new PortalApiError(await errorDetails(response, 'SERVICE_UNAVAILABLE'));
     }
     const result = await response.json();
-    if (!result || typeof result.apiKey !== 'string') {
-      throw new Error('The service returned an invalid key rotation response.');
+    if (!result || typeof result.password !== 'string'
+      || typeof result.passwordId !== 'string') {
+      throw new PortalApiError({ code: 'SERVICE_UNAVAILABLE', error: '' });
     }
     return result;
   }
@@ -157,17 +177,17 @@ export class PortalApi {
       ...options,
       headers: {
         Accept: 'application/json',
-        Authorization: `Bearer ${this.sessionToken}`,
+        Authorization: ['Bearer', this.sessionToken].join(' '),
         ...options.headers,
       },
     });
     if (!response.ok) {
-      const details = await errorDetails(response, 'The request failed.');
+      const details = await errorDetails(response, 'SERVICE_UNAVAILABLE');
       if (response.status === 401) {
         this.clearSession();
-        throw new SessionExpiredError(details.message);
+        throw new SessionExpiredError(details);
       }
-      throw new Error(details.message);
+      throw new PortalApiError(details);
     }
     return response;
   }
@@ -231,7 +251,7 @@ export class PortalApi {
     try {
       url = new URL(value);
     } catch {
-      throw new Error('The service returned an invalid upload URL.');
+      throw new PortalApiError({ code: 'UPLOAD_FAILED', error: '' });
     }
     const hostname = url.hostname.toLowerCase();
     const allowedStorage = this.uploadHostSuffixes.some((suffix) => hostname.endsWith(suffix));
@@ -240,7 +260,7 @@ export class PortalApi {
       && ['localhost', '127.0.0.1', '[::1]'].includes(hostname);
     if ((url.protocol !== 'https:' && !localApiHttp)
       || (url.origin !== this.apiOrigin && !allowedStorage)) {
-      throw new Error('The service returned an unapproved upload destination.');
+      throw new PortalApiError({ code: 'UPLOAD_FAILED', error: '' });
     }
     return url.href;
   }
@@ -259,9 +279,11 @@ export class PortalApi {
       };
       request.onload = () => {
         if (request.status >= 200 && request.status < 300) resolve();
-        else reject(new Error(`Upload storage returned ${request.status}.`));
+        else reject(new PortalApiError({ code: 'UPLOAD_FAILED', error: '' }));
       };
-      request.onerror = () => reject(new Error('A network error interrupted the upload.'));
+      request.onerror = () => reject(
+        new PortalApiError({ code: 'SERVICE_UNAVAILABLE', error: '' }),
+      );
       request.send(chunk);
     });
   }
@@ -269,7 +291,7 @@ export class PortalApi {
   async uploadFileBlocks(file, initiation, onProgress) {
     if (!Array.isArray(initiation.uploadURIs) || !initiation.uploadURIs.length
       || !Number.isFinite(initiation.maxPartSize) || !Number.isFinite(initiation.minPartSize)) {
-      throw new Error('The service returned invalid multipart upload instructions.');
+      throw new PortalApiError({ code: 'UPLOAD_FAILED', error: '' });
     }
     const { uploadURIs, maxPartSize, minPartSize } = initiation;
     if (uploadURIs.length === 1 && file.size <= maxPartSize) {
@@ -285,7 +307,6 @@ export class PortalApi {
       const start = index * partSize;
       if (start >= file.size) break;
       const chunk = file.slice(start, Math.min(start + partSize, file.size));
-      // Multipart PUTs are sequential per file; file-level concurrency is separate.
       const uploadedBeforePart = uploaded;
       // eslint-disable-next-line no-await-in-loop
       await this.putPart(uploadURIs[index], chunk, (partProgress) => {

@@ -21,11 +21,13 @@ describe('portal configuration', () => {
       apiBaseUrl: 'https://api.example.com',
       org: 'customer-one',
       tenantSlug: 'customer-one',
+      locale: 'fr',
       uploadHostSuffixes: ['.adobeaemcloud.com'],
       branding: { title: '<Customer>', logoSrc: '/icons/adobe.svg' },
     }, 'https://portal.example.com/?org=ignored');
     assert.equal(config.branding.title, '<Customer>');
     assert.equal(config.org, 'customer-one');
+    assert.equal(config.locale, 'fr');
     assert.deepEqual(config.uploadHostSuffixes, ['.adobeaemcloud.com']);
   });
 
@@ -52,6 +54,14 @@ describe('portal configuration', () => {
       apiBaseUrl: 'https://api.example.com',
       org: 'customer@internal',
     }), /without a suffix/);
+  });
+
+  it('rejects unsupported configured locales', () => {
+    assert.throws(() => validatePortalConfig({
+      apiBaseUrl: 'https://api.example.com',
+      org: 'customer',
+      locale: 'xx',
+    }), /supported portal locale/);
   });
 
   it('rejects cross-origin logos and malformed upload suffixes', () => {

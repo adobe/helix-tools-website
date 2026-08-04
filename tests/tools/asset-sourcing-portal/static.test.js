@@ -46,9 +46,24 @@ describe('portal static shell', () => {
   });
 
   it('does not add unsafe DOM parsing or session-token persistence', async () => {
-    const source = await readToolFile('asset-sourcing-portal.js');
+    const [source, localization] = await Promise.all([
+      readToolFile('asset-sourcing-portal.js'),
+      readToolFile('localization.js'),
+    ]);
     assert.doesNotMatch(source, /innerHTML|insertAdjacentHTML/);
     assert.doesNotMatch(source, /(?:session|local)Storage\.setItem/);
     assert.doesNotMatch(source, /\.style\./);
+    assert.match(localization, /asp\.locale\./);
+    assert.doesNotMatch(localization, /sessionToken|passwordId|currentPassword/);
+  });
+
+  it('uses backend catalogs without checking translated strings into EDS', async () => {
+    const [source, localization] = await Promise.all([
+      readToolFile('asset-sourcing-portal.js'),
+      readToolFile('localization.js'),
+    ]);
+    assert.match(source, /getI18nManifestUrl/);
+    assert.match(localization, /manifest\.catalogs\[locale\]/);
+    assert.doesNotMatch(localization, /"login\.lead"/);
   });
 });
