@@ -27,13 +27,17 @@ describe('bot-info:wizard.js', () => {
       assert.equal(detectContentSourceKind('https://content.da.live/org/site'), 'da');
     });
 
-    it('detects AEM (api.aem.live and legacy adobeaemcloud)', () => {
+    it('detects AEM (api.aem.live only)', () => {
       assert.equal(detectContentSourceKind('https://api.aem.live/org/sites/site/source'), 'aem');
-      assert.equal(detectContentSourceKind('https://author-p123.adobeaemcloud.com/'), 'aem');
     });
 
-    it('falls back to byom for unknown markup hosts', () => {
+    it('falls back to byom for unknown markup hosts, including adobeaemcloud/franklin.delivery', () => {
       assert.equal(detectContentSourceKind('https://example.com/content'), 'byom');
+      assert.equal(detectContentSourceKind('https://author-p123.adobeaemcloud.com/'), 'byom');
+      assert.equal(
+        detectContentSourceKind('https://author-p130360-e1272151.adobeaemcloud.com/bin/franklin.delivery/adobe-rnd/aem-boilerplate-xwalk/main'),
+        'byom',
+      );
     });
   });
 

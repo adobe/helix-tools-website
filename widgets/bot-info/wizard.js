@@ -24,8 +24,10 @@ export const CONTENT_SOURCE_KINDS = [
 ];
 
 /**
- * Guess the UI content-source kind from a content URL. Mirrors the detection in
- * site-admin's `buildSiteConfig`/`getContentSourceType`.
+ * Guess the UI content-source kind from a content URL. `aem` only matches the
+ * fixed connector format (`https://api.aem.live/...`) — an `adobeaemcloud.com`
+ * URL is an arbitrary markup source (e.g. a franklin.delivery URL), not that
+ * fixed format, so it falls through to `byom`.
  *
  * @param {string} url
  * @returns {'da'|'aem'|'google'|'onedrive'|'byom'}
@@ -35,7 +37,7 @@ export function detectContentSourceKind(url) {
   if (url.startsWith('https://drive.google.com/drive')) return 'google';
   if (url.includes('sharepoint.com/')) return 'onedrive';
   if (url.startsWith('https://content.da.live')) return 'da';
-  if (url.startsWith('https://api.aem.live/') || url.includes('adobeaemcloud')) return 'aem';
+  if (url.startsWith('https://api.aem.live/')) return 'aem';
   return 'byom';
 }
 
