@@ -45,6 +45,13 @@ describe('site-admin:utils.js', () => {
       );
     });
 
+    it('recognizes the api.aem.live connector as AEM (helix 6)', () => {
+      assert.deepEqual(
+        getContentSourceType('https://api.aem.live/org/site/main', 'markup'),
+        { type: 'aem', label: 'AEM' },
+      );
+    });
+
     it('falls back to BYOM for markup type with unrecognized URL', () => {
       assert.deepEqual(
         getContentSourceType('https://example.com/content', 'markup'),

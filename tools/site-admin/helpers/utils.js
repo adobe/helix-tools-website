@@ -46,7 +46,8 @@ export const getContentSourceType = (contentUrl, contentSourceType, isLoading = 
       return { type: 'da', label: 'DA' };
     }
 
-    if (contentUrl?.includes('adobeaemcloud')) {
+    if (contentUrl?.includes('adobeaemcloud')
+      || contentUrl?.startsWith('https://api.aem.live/')) {
       return { type: 'aem', label: 'AEM' };
     }
 
