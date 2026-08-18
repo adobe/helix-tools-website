@@ -1,8 +1,9 @@
 /**
  * Metrics Processing Module - Sequential batch processing of metrics analysis
+ *
+ * Model, token limits, temperature, and the system prompt are owned by the
+ * Bedrock proxy and selected via the `purpose` field on each request.
  */
-
-import { API_CONFIG } from '../config.js';
 
 const BATCH_CONFIG = {
   TOOLS_PER_BATCH: 1,
@@ -76,18 +77,16 @@ DATA INTEGRITY: Use ONLY actual tool results, never estimates.
 Start your analysis.`;
 }
 
-async function processBatch(batch, message, dashboardData, systemPrompt, apiKey, toolHandler) {
+async function processBatch(batch, message, dashboardData, toolHandler) {
   const batchMessage = createBatchMessage(batch, message, dashboardData, batch.id === 1);
   const toolName = batch.tools[0].name;
 
   try {
     const { callAI } = await import('../api/api-factory.js');
     const data = await callAI({
-      max_tokens: API_CONFIG.BATCH_MAX_TOKENS,
+      purpose: 'batch',
       messages: [{ role: 'user', content: batchMessage }],
       tools: batch.tools,
-      system: systemPrompt,
-      temperature: API_CONFIG.BATCH_TEMPERATURE,
     });
 
     if (!data?.content?.length) {
@@ -126,15 +125,13 @@ async function processBatch(batch, message, dashboardData, systemPrompt, apiKey,
       );
 
       const followUpData = await callAI({
-        max_tokens: API_CONFIG.FOLLOWUP_MAX_TOKENS,
+        purpose: 'followup',
         messages: [
           { role: 'user', content: batchMessage },
           { role: 'assistant', content: data.content },
           { role: 'user', content: toolResults },
         ],
         tools: batch.tools,
-        system: systemPrompt,
-        temperature: API_CONFIG.FOLLOWUP_TEMPERATURE,
       });
 
       if (followUpData) {
@@ -156,7 +153,7 @@ async function processBatch(batch, message, dashboardData, systemPrompt, apiKey,
   }
 }
 
-async function performFollowUpAnalysis(analyses, systemPrompt, progressCallback) {
+async function performFollowUpAnalysis(analyses, progressCallback) {
   if (analyses.length === 0) return null;
   const content = `Based on the comprehensive tool execution results from all batches, provide detailed insights analysis:
 
@@ -176,10 +173,8 @@ Provide comprehensive analysis with specific details and actionable insights.`;
   try {
     const { callAIAsync } = await import('../api/api-factory.js');
     const data = await callAIAsync({
-      max_tokens: API_CONFIG.FOLLOWUP_MAX_TOKENS,
+      purpose: 'followup',
       messages: [{ role: 'user', content }],
-      system: systemPrompt,
-      temperature: API_CONFIG.FOLLOWUP_TEMPERATURE,
     }, (progress) => {
       if (progressCallback && progress.status === 'processing') {
         progressCallback(2, 'in-progress', 'Synthesizing comprehensive insights', 88);
@@ -203,8 +198,6 @@ Provide comprehensive analysis with specific details and actionable insights.`;
 export async function processMetricsBatches(
   facetTools,
   dashboardData,
-  systemPrompt,
-  apiKey,
   message,
   toolHandler,
   progressCallback = null,
@@ -228,8 +221,6 @@ export async function processMetricsBatches(
       batch,
       message,
       dashboardData,
-      systemPrompt,
-      apiKey,
       toolHandler,
     );
 
@@ -250,7 +241,7 @@ export async function processMetricsBatches(
   let followUp = null;
   if (successful.length > 0) {
     if (progressCallback) progressCallback(2, 'in-progress', 'Synthesizing comprehensive insights...', 85);
-    followUp = await performFollowUpAnalysis(successful, systemPrompt, progressCallback);
+    followUp = await performFollowUpAnalysis(successful, progressCallback);
     if (progressCallback && followUp) progressCallback(2, 'in-progress', 'Analysis complete', 100);
   }
 

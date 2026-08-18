@@ -1,16 +1,14 @@
 /**
  * Central Configuration - Update when switching environments or models
+ *
+ * Model IDs, token limits, temperatures, and the AI system prompt/template are
+ * owned server-side by the Bedrock proxy (helix-rum-bundler, src/api/bedrock.js)
+ * and selected via the `purpose` field on each request. They are intentionally
+ * NOT configured here so they cannot be overridden from the client.
  */
-
-export const AI_MODELS = {
-  BEDROCK_MODEL_ID: 'us.anthropic.claude-opus-4-6-v1',
-  SYNTHESIS_MODEL_ID: 'us.anthropic.claude-opus-4-6-v1',
-};
 
 export const BEDROCK_CONFIG = {
   PROXY_ENDPOINT: 'https://bundles.aem.page/bedrock',
-  MAX_TOKENS: 4096,
-  TEMPERATURE: 0.7,
 };
 
 export const DA_CONFIG = {
@@ -21,18 +19,8 @@ export const DA_CONFIG = {
   WORKER_URL: 'https://optel-da-upload.adobeaem.workers.dev/',
 };
 
-export const API_CONFIG = {
-  BATCH_MAX_TOKENS: 2048,
-  FOLLOWUP_MAX_TOKENS: 3072,
-  SYNTHESIS_MAX_TOKENS: 7500,
-  BATCH_TEMPERATURE: 0.35,
-  FOLLOWUP_TEMPERATURE: 0.3,
-};
-
 export const PATHS = {
   BLOCK_BASE: '/blocks/ai-optel-report-generator',
-  SYSTEM_PROMPT: 'templates/system-prompt.txt',
-  OVERVIEW_TEMPLATE: 'templates/overview-analysis-template.html',
   REPORT_TEMPLATE: 'templates/report-template.html',
 };
 
