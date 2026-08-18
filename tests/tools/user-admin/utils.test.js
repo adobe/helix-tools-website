@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseUsersFromAccessConfig, buildAccessConfig } from '../../../tools/user-admin/utils.js';
+import { parseUsersFromAccessConfig, buildAccessConfig, getCoveredRoles } from '../../../tools/user-admin/utils.js';
 
 describe('user-admin:utils.js', () => {
   describe('parseUsersFromAccessConfig', () => {
@@ -134,6 +134,49 @@ describe('user-admin:utils.js', () => {
       assert.deepEqual(rebuilt.admin.role.admin, ['a@b.com']);
       assert.ok(rebuilt.admin.role.author.includes('a@b.com'));
       assert.ok(rebuilt.admin.role.author.includes('c@d.com'));
+    });
+  });
+
+  describe('getCoveredRoles', () => {
+    it('returns an empty set for no selection', () => {
+      assert.equal(getCoveredRoles([]).size, 0);
+      assert.equal(getCoveredRoles(undefined).size, 0);
+    });
+
+    it('returns an empty set for a base role', () => {
+      assert.equal(getCoveredRoles(['author']).size, 0);
+      assert.equal(getCoveredRoles(['config']).size, 0);
+    });
+
+    it('marks author as covered when publish is selected', () => {
+      const covered = getCoveredRoles(['publish']);
+      assert.ok(covered.has('author'));
+      assert.ok(!covered.has('publish'));
+    });
+
+    it('marks publish and author as covered when config_admin is selected', () => {
+      const covered = getCoveredRoles(['config_admin']);
+      assert.ok(covered.has('publish'));
+      assert.ok(covered.has('author'));
+      assert.ok(covered.has('config'));
+      assert.ok(!covered.has('config_admin'));
+    });
+
+    it('marks all other roles as covered when admin is selected', () => {
+      const covered = getCoveredRoles(['admin']);
+      ['author', 'publish', 'develop', 'config', 'config_admin'].forEach((role) => {
+        assert.ok(covered.has(role), `${role} should be covered`);
+      });
+      assert.ok(!covered.has('admin'));
+    });
+
+    it('unions coverage across multiple selected roles', () => {
+      const covered = getCoveredRoles(['develop', 'publish']);
+      assert.ok(covered.has('author'));
+    });
+
+    it('ignores unknown roles', () => {
+      assert.equal(getCoveredRoles(['does-not-exist']).size, 0);
     });
   });
 });

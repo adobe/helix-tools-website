@@ -316,6 +316,15 @@ dialog.user-admin-modal .role-option:hover {
   background: var(--color-button-accent-bg);
 }
 
+dialog.user-admin-modal .role-option:has(input[type="checkbox"]:disabled) {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+dialog.user-admin-modal .role-option:has(input[type="checkbox"]:disabled):hover {
+  background: none;
+}
+
 dialog.user-admin-modal .role-option input[type="checkbox"] {
   width: 18px;
   height: 18px;
@@ -515,6 +524,19 @@ dialog.user-admin-modal .role-pill input[type="checkbox"]:checked + span {
   background: var(--blue-100);
   border-color: var(--blue-500);
   color: var(--blue-700);
+}
+
+dialog.user-admin-modal .role-pill:has(input[type="checkbox"]:disabled) {
+  cursor: not-allowed;
+}
+
+dialog.user-admin-modal .role-pill input[type="checkbox"]:disabled + span {
+  opacity: 0.45;
+  border-style: dashed;
+}
+
+dialog.user-admin-modal .role-pill input[type="checkbox"]:disabled + span:hover {
+  border-color: var(--color-border);
 }
 
 dialog.user-admin-modal .add-another-btn {

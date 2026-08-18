@@ -4,7 +4,7 @@ import { logResponse } from '../../blocks/console/console.js';
 import { loadIcon, icon, showToast } from '../../utils/card-ui/card-ui.js';
 import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
-import { parseUsersFromAccessConfig, buildAccessConfig } from './utils.js';
+import { parseUsersFromAccessConfig, buildAccessConfig, getCoveredRoles } from './utils.js';
 
 const VIEW_STORAGE_KEY = 'user-admin-view';
 
@@ -17,7 +17,7 @@ const consoleBlock = document.querySelector('.console');
 const usersContainer = document.getElementById('users-container');
 const accessConfig = { type: 'org', users: [], originalSiteAccess: {} };
 
-const ROLES = ['admin', 'author', 'publish', 'develop', 'basic_author', 'basic_publish', 'config', 'config_admin'];
+const ROLES = ['admin', 'author', 'publish', 'develop', 'config', 'config_admin'];
 
 // Role descriptions from https://www.aem.live/docs/authentication-setup-authoring#admin-roles
 const ROLE_DESCRIPTIONS = {
@@ -25,16 +25,6 @@ const ROLE_DESCRIPTIONS = {
     label: 'Admin',
     description: 'Full access to all permissions',
     permissions: 'All permissions',
-  },
-  basic_author: {
-    label: 'Basic Author',
-    description: 'Basic authoring capabilities without publishing',
-    permissions: 'cache:write, code:read, code:write, code:delete, index:read, index:write, preview:read, preview:write, preview:delete, edit:read, live:read, cron:read, cron:write, snapshot:read, job:read',
-  },
-  basic_publish: {
-    label: 'Basic Publish',
-    description: 'Basic author permissions plus publishing',
-    permissions: 'basic_author + live:write, live:delete',
   },
   author: {
     label: 'Author',
@@ -191,6 +181,25 @@ async function updateSiteUserRoles(user) {
   return updateSiteAccess();
 }
 
+/**
+ * Enforce the role hierarchy within a checkbox container: whenever a more
+ * privileged role is selected, the roles it already includes are unchecked
+ * and disabled so authors cannot assign redundant roles.
+ * @param {Element} container element holding the role checkboxes
+ */
+function applyRoleHierarchy(container) {
+  const checkboxes = [...container.querySelectorAll('input[type="checkbox"]')];
+  const covered = getCoveredRoles(checkboxes.filter((cb) => cb.checked).map((cb) => cb.value));
+  checkboxes.forEach((cb) => {
+    if (covered.has(cb.value)) {
+      cb.checked = false;
+      cb.disabled = true;
+    } else {
+      cb.disabled = false;
+    }
+  });
+}
+
 function createDetailedRoleCheckboxes(selectedRoles = []) {
   const grid = document.createElement('div');
   grid.className = 'roles-grid';
@@ -218,6 +227,8 @@ function createDetailedRoleCheckboxes(selectedRoles = []) {
     label.appendChild(infoSpan);
     grid.appendChild(label);
   });
+  grid.addEventListener('change', () => applyRoleHierarchy(grid));
+  applyRoleHierarchy(grid);
   return grid;
 }
 
@@ -239,6 +250,8 @@ function createCompactRoleCheckboxes(selectedRoles = []) {
     label.appendChild(span);
     container.appendChild(label);
   });
+  container.addEventListener('change', () => applyRoleHierarchy(container));
+  applyRoleHierarchy(container);
   return container;
 }
 
