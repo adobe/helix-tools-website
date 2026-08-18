@@ -33,7 +33,7 @@ export const getContentSourceType = (contentUrl, contentSourceType, isLoading = 
   if (!contentSourceType && !contentUrl) return { type: 'unknown', label: '?' };
 
   const sourceTypeLookup = {
-    google: { type: 'google', label: 'Google Drive' },
+    google: { type: 'google', label: 'GDrive' },
     onedrive: { type: 'sharepoint', label: 'Sharepoint' },
   };
 

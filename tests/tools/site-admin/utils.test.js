@@ -24,7 +24,7 @@ describe('site-admin:utils.js', () => {
     });
 
     it('recognizes google source type', () => {
-      assert.deepEqual(getContentSourceType('', 'google'), { type: 'google', label: 'Google Drive' });
+      assert.deepEqual(getContentSourceType('', 'google'), { type: 'google', label: 'GDrive' });
     });
 
     it('recognizes onedrive source type', () => {
