@@ -1,33 +1,4 @@
 /**
- * Roles are hierarchical: a more privileged role implicitly grants the
- * permissions of the less privileged roles it lists here (transitive closure).
- * See https://www.aem.live/docs/authentication-setup-authoring#admin-roles
- */
-export const ROLE_INCLUDES = {
-  admin: ['author', 'publish', 'develop', 'config', 'config_admin'],
-  config_admin: ['author', 'publish', 'config'],
-  publish: ['author'],
-  develop: ['author'],
-  author: [],
-  config: [],
-};
-
-/**
- * Given a set of selected roles, return the roles that are made obsolete
- * because a more privileged selected role already includes them.
- *
- * @param {string[]} selectedRoles
- * @returns {Set<string>}
- */
-export function getCoveredRoles(selectedRoles) {
-  const covered = new Set();
-  (selectedRoles || []).forEach((role) => {
-    (ROLE_INCLUDES[role] || []).forEach((included) => covered.add(included));
-  });
-  return covered;
-}
-
-/**
  * Convert an access config's role map into a flat user array.
  *
  * Input:  { admin: { role: { admin: ['a@b.com'], author: ['a@b.com', 'c@d.com'] } } }
