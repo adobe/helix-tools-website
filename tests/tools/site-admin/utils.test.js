@@ -38,13 +38,6 @@ describe('site-admin:utils.js', () => {
       );
     });
 
-    it('recognizes AEM content URL with markup type', () => {
-      assert.deepEqual(
-        getContentSourceType('https://author.adobeaemcloud.com/content', 'markup'),
-        { type: 'aem', label: 'AEM' },
-      );
-    });
-
     it('recognizes the api.aem.live connector as AEM (helix 6)', () => {
       assert.deepEqual(
         getContentSourceType('https://api.aem.live/org/site/main', 'markup'),
@@ -55,6 +48,13 @@ describe('site-admin:utils.js', () => {
     it('falls back to BYOM for markup type with unrecognized URL', () => {
       assert.deepEqual(
         getContentSourceType('https://example.com/content', 'markup'),
+        { type: 'byom', label: 'BYOM' },
+      );
+    });
+
+    it('treats adobeaemcloud markup URLs as BYOM (not the fixed connector)', () => {
+      assert.deepEqual(
+        getContentSourceType('https://author.adobeaemcloud.com/content', 'markup'),
         { type: 'byom', label: 'BYOM' },
       );
     });
