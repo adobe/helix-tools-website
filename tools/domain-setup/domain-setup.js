@@ -9,13 +9,13 @@ import {
 import * as api from './utils.js';
 
 // TODO: replace with the real deployed Worker URL once wired to the deployed
-const WORKER_BASE_URL = 'https://aem-domain-onboarding-worker-ci.adobeaem.workers.dev';
+const WORKER_BASE_URL = 'https://aem-domain-onboarding-worker.adobeaem.workers.dev';
 
 const adminForm = document.getElementById('admin-form');
 const orgSiteError = document.getElementById('org-site-error');
 const org = document.getElementById('org');
 const site = document.getElementById('site');
-const continueBtn = document.getElementById('fetch');
+const continueBtn = document.getElementById('fetch');``
 
 const domainForm = document.getElementById('domain-form');
 const domainInput = document.getElementById('domain');
@@ -62,7 +62,7 @@ const PANELS = [
 let currentDomain = null;
 let pollGeneration = 0;
 let pollTimer = null;
-
+``
 function hide(el) {
   el.setAttribute('aria-hidden', 'true');
 }
