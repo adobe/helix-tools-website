@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>Domain Setup | AEM Tools</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/utils/config/config.css" />
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/domain-setup/domain-setup.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/domain-setup/domain-setup.css" />
+</head>
+<body class="domain-setup">
+  <header></header>
+  <main>
+    <div>
+      <h1>Domain Setup</h1>
+      <p>
+        Connect a domain to your AEM Edge Delivery site. Select your organization and site,
+        enter your domain, and follow the steps below to point it at your production site and get
+        an SSL certificate issued automatically.
+      </p>
+    </div>
+
+    <div>
+      <form id="admin-form">
+        <section class="form-field config-field">
+          <div class="form-field org-field">
+            <label for="org">Organization</label>
+            <input name="org" id="org" list="org-list" autocomplete="off" required />
+            <datalist id="org-list"></datalist>
+          </div>
+          <div class="form-field site-field">
+            <label for="site">Site</label>
+            <input name="site" id="site" list="site-list" autocomplete="off" disabled />
+            <datalist id="site-list"></datalist>
+          </div>
+        </section>
+        <p class="button-wrapper">
+          <button type="submit" id="fetch" class="button">Continue</button>
+        </p>
+        <p id="org-site-error" class="field-error" aria-hidden="true"></p>
+      </form>
+    </div>
+
+    <div>
+      <form id="domain-form" aria-hidden="true" disabled>
+        <div class="form-field">
+          <label for="domain">Domain</label>
+          <input id="domain" name="domain" type="text" placeholder="e.g. www.yourdomain.com" required />
+          <div class="field-help-text">
+            <p>The domain you want to point at your production site, e.g. <code>www.yourdomain.com</code></p>
+          </div>
+        </div>
+        <p class="button-wrapper">
+          <button type="submit" id="setup" class="button">Set up domain</button>
+        </p>
+      </form>
+    </div>
+
+    <p id="flash" class="status-note" data-kind="success" aria-hidden="true"></p>
+
+    <div id="owner-mismatch" aria-hidden="true">
+      <p class="field-error">This domain is already registered to a different organization or site.</p>
+    </div>
+
+    <!-- Setup progress header: reflects the current phase of the 3-step setup flow. -->
+    <ol id="step-indicator" class="step-indicator" aria-hidden="true">
+      <li class="step todo" data-step="1"><span class="step-marker"></span><span class="step-label">Add DNS records</span></li>
+      <li class="step todo" data-step="2"><span class="step-marker"></span><span class="step-label">Issue certificate</span></li>
+      <li class="step todo" data-step="3"><span class="step-marker"></span><span class="step-label">Go live</span></li>
+    </ol>
+
+    <!-- Records panel (REGISTERED): the customer adds the two CNAMEs, then verifies. -->
+    <div id="panel-records" class="panel" aria-hidden="true">
+      <h2>Add these DNS records</h2>
+      <p>
+        At your DNS provider, add the two CNAME records below, then click "Verify records".
+        DNS changes can take a few minutes to take effect.
+      </p>
+      <div id="records-list" class="records-list"></div>
+      <p id="records-note" class="status-note" data-kind="warning" aria-hidden="true"></p>
+      <div class="button-bar">
+        <p class="button-wrapper">
+          <button type="button" id="verify" class="button">Verify records</button>
+          <button type="button" class="button outline remove remove-domain">Remove this domain</button>
+        </p>
+      </div>
+    </div>
+
+    <!-- Loading panel: shared by ONBOARDING / ISSUING_CERTIFICATE / DELETING (all polled).
+         role=status announces the changing title to screen readers; the spinner icon is
+         decorative. -->
+    <div id="panel-loading" class="panel loading-panel" role="status" aria-hidden="true">
+      <i class="symbol symbol-loading"></i>
+      <h2 id="loading-title"></h2>
+      <p id="loading-desc"></p>
+    </div>
+
+    <!-- Live panel (ACTIVE): the domain is serving the production site. -->
+    <div id="panel-live" class="panel live-panel" aria-hidden="true">
+      <span class="live-badge" aria-hidden="true"></span>
+      <h2>Your domain is live</h2>
+      <a id="live-domain" class="live-domain" href="#" target="_blank" rel="noopener"></a>
+      <p class="button-wrapper">
+        <a id="live-link" class="button live-visit" href="#" target="_blank" rel="noopener">Visit site</a>
+        <button type="button" class="button outline remove remove-domain">Remove this domain</button>
+      </p>
+    </div>
+
+    <!-- Error panel: shared by the FAILED_TO_* states; Retry re-drives the operation. -->
+    <div id="panel-error" class="panel error-panel" aria-hidden="true">
+      <span class="error-badge" aria-hidden="true"></span>
+      <h2 id="error-title">Something went wrong</h2>
+      <p id="error-message" class="field-error"></p>
+      <div class="button-bar">
+        <p class="button-wrapper">
+          <button type="button" id="retry" class="button">Retry</button>
+          <button type="button" class="button outline remove remove-domain">Remove this domain</button>
+        </p>
+      </div>
+    </div>
+
+    <div id="removal-panel" class="panel" aria-hidden="true">
+      <h2>Remove this domain?</h2>
+      <p id="removal-description"></p>
+      <div id="removal-records-list" class="records-list"></div>
+      <p id="removal-note" class="status-note" data-kind="info" aria-hidden="true"></p>
+      <div class="button-bar">
+        <p class="button-wrapper removal-actions">
+          <button type="button" id="check-records" class="button outline check-records">Check records</button>
+          <button type="button" id="cancel-removal" class="button outline">Cancel removal</button>
+          <button type="button" id="confirm-removal" class="button danger">Confirm removal</button>
+        </p>
+      </div>
+    </div>
+
+    <div>
+      <div class="console"></div>
+    </div>
+  </main>
+  <footer></footer>
+</body>
+</html>

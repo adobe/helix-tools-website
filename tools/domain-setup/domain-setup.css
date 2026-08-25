@@ -1,0 +1,458 @@
+/* Base form styles */
+.domain-setup .form-field {
+  margin-bottom: var(--spacing-l);
+}
+
+/* Authoritative hide: several panels set their own `display` (flex/grid) at the same
+   specificity as this rule, so without !important the later display wins and the
+   panel never actually hides. */
+.domain-setup [aria-hidden="true"] {
+  display: none !important;
+}
+
+.domain-setup .field-help-text {
+  margin-top: var(--spacing-xs);
+  font-size: var(--body-size-s);
+  color: var(--color-text-secondary);
+}
+
+.domain-setup .field-help-text p {
+  margin: 0;
+}
+
+.domain-setup .field-error {
+  color: var(--red-700);
+  font-size: var(--body-size-s);
+}
+
+/* Inline status note */
+.domain-setup .status-note {
+  margin: var(--spacing-m) 0;
+  padding: var(--spacing-s) var(--spacing-m);
+  border: var(--border-s) solid var(--color-border);
+  border-left-width: 4px;
+  border-radius: var(--rounding-m);
+  background: var(--layer-elevated);
+  font-size: var(--body-size-s);
+}
+
+.domain-setup .status-note[data-kind="warning"] {
+  border-left-color: var(--red-900);
+}
+
+.domain-setup .status-note[data-kind="success"] {
+  border-left-color: var(--green-900);
+}
+
+.domain-setup .status-note[data-kind="info"] {
+  border-left-color: var(--blue-900);
+}
+
+/* Setup progress header */
+.domain-setup .step-indicator {
+  display: flex;
+  list-style: none;
+  margin: var(--spacing-l) 0;
+  padding: 0;
+  counter-reset: step;
+}
+
+.domain-setup .step {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
+  text-align: center;
+  counter-increment: step;
+  color: var(--gray-500);
+  font-size: var(--body-size-s);
+}
+
+/* Connector line into each step (from the previous one). */
+.domain-setup .step:not(:first-child)::before {
+  content: "";
+  position: absolute;
+  top: 15px;
+  right: 50%;
+  z-index: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--gray-200);
+}
+
+.domain-setup .step.active:not(:first-child)::before,
+.domain-setup .step.done:not(:first-child)::before,
+.domain-setup .step.error:not(:first-child)::before {
+  background: var(--green-700);
+}
+
+.domain-setup .step-marker {
+  position: relative;
+  z-index: 1;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gray-200);
+  color: var(--gray-600);
+  font-weight: var(--weight-medium);
+}
+
+.domain-setup .step-marker::before {
+  content: counter(step);
+}
+
+.domain-setup .step.active {
+  color: var(--blue-700);
+  font-weight: var(--weight-medium);
+}
+
+.domain-setup .step.active .step-marker {
+  background: var(--blue-700);
+  color: var(--color-white);
+}
+
+.domain-setup .step.done .step-marker {
+  background: var(--green-700);
+  color: var(--color-white);
+}
+
+.domain-setup .step.done .step-marker::before {
+  content: "✓";
+}
+
+.domain-setup .step.error {
+  color: var(--red-700);
+}
+
+.domain-setup .step.error .step-marker {
+  background: var(--red-700);
+  color: var(--color-white);
+}
+
+.domain-setup .step.error .step-marker::before {
+  content: "✗";
+}
+
+/* Panels — one shown at a time. */
+.domain-setup .panel {
+  margin-bottom: var(--spacing-l);
+}
+
+.domain-setup .panel h2 {
+  margin-top: 0;
+}
+
+.domain-setup .loading-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-s);
+  padding: var(--spacing-xl) var(--spacing-l);
+  text-align: center;
+}
+
+.domain-setup .loading-panel .symbol-loading {
+  font-size: 2.5rem;
+}
+
+.domain-setup .live-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-s);
+  padding: var(--spacing-l) 0;
+  text-align: center;
+}
+
+.domain-setup .live-panel h2 {
+  margin: 0;
+}
+
+.domain-setup .live-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--green-700);
+}
+
+.domain-setup .live-badge::after {
+  content: "✓";
+  color: var(--color-white);
+  font-size: 30px;
+  font-weight: var(--weight-bold);
+  line-height: 1;
+}
+
+.domain-setup .live-domain {
+  color: var(--color-link);
+  font-weight: var(--weight-medium);
+  overflow-wrap: anywhere;
+}
+
+.domain-setup .live-visit::after {
+  content: " ↗";
+}
+
+.domain-setup .live-panel .button-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-m);
+  justify-content: center;
+  margin-top: var(--spacing-s);
+}
+
+/* Error panel — centered treatment mirroring the live panel, so the failed state reads as a
+   deliberate outcome rather than a stray inline message. */
+.domain-setup .error-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-s);
+  padding: var(--spacing-l) 0;
+  text-align: center;
+}
+
+.domain-setup .error-panel h2 {
+  margin: 0;
+}
+
+.domain-setup .error-panel .field-error {
+  font-size: var(--body-size-m);
+}
+
+.domain-setup .error-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--red-700);
+}
+
+.domain-setup .error-badge::after {
+  content: "✗";
+  color: var(--color-white);
+  font-size: 30px;
+  font-weight: var(--weight-bold);
+  line-height: 1;
+}
+
+/* DNS record cards (Host / Type / Value + copy) */
+.domain-setup .records-list {
+  display: grid;
+  gap: var(--spacing-m);
+  margin: var(--spacing-m) 0;
+}
+
+.domain-setup .record {
+  padding: var(--spacing-m);
+  border: var(--border-s) solid var(--gray-200);
+  border-radius: var(--rounding-m);
+  background: var(--layer-depth);
+}
+
+.domain-setup .record-title {
+  margin: 0 0 var(--spacing-s);
+  font-size: var(--body-size-m);
+  font-weight: var(--weight-medium);
+}
+
+.domain-setup .record-fields {
+  margin: 0;
+}
+
+.domain-setup .record-field {
+  margin-bottom: var(--spacing-s);
+}
+
+.domain-setup .record-field:last-child {
+  margin-bottom: 0;
+}
+
+.domain-setup .record-field dt {
+  margin-bottom: 2px;
+  font-size: var(--body-size-s);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.domain-setup .record-field dd {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+  margin: 0;
+}
+
+.domain-setup .record-field code {
+  flex: 1;
+  padding: var(--spacing-xs) var(--spacing-s);
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+  background: var(--layer-elevated);
+  border: var(--border-s) solid var(--gray-200);
+  border-radius: var(--rounding-s);
+  overflow-wrap: anywhere;
+}
+
+.domain-setup .copy-button {
+  flex-shrink: 0;
+  padding: var(--spacing-xs) var(--spacing-s);
+  font-size: var(--body-size-s);
+  color: var(--color-link);
+  background: transparent;
+  border: var(--border-s) solid var(--color-link);
+  border-radius: var(--rounding-s);
+  cursor: pointer;
+}
+
+.domain-setup .copy-button:hover,
+.domain-setup .copy-button:focus {
+  background: light-dark(var(--blue-100), var(--gray-800));
+}
+
+/* Removal: compact one-line-per-record list (no per-field boxes, no copy). */
+.domain-setup .record-lines {
+  display: grid;
+  gap: var(--spacing-s);
+  margin: var(--spacing-m) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.domain-setup .record-lines code {
+  display: block;
+  padding: var(--spacing-xs) var(--spacing-s);
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-s);
+  background: var(--layer-depth);
+  border-radius: var(--rounding-s);
+  overflow-wrap: anywhere;
+}
+
+/* Keep the console horizontally scrollable (long URLs stay on one line) but draw the box
+   outline on the scroll container so it stays fully visible.
+*/
+.domain-setup .console {
+  border: var(--border-s) solid var(--color-border);
+  border-radius: var(--rounding-m);
+}
+
+.domain-setup .console tbody::before,
+.domain-setup .console tbody::after {
+  display: none;
+}
+
+.domain-setup .console tbody tr {
+  border-left: 0;
+  border-right: 0;
+}
+
+/* Button bar */
+.domain-setup .button-bar {
+  margin-top: var(--spacing-l);
+}
+
+.domain-setup .button-bar .button-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-m);
+}
+
+/* Error panel button row: centered to match the panel's centered layout. */
+.domain-setup .error-panel .button-bar {
+  margin-top: var(--spacing-s);
+}
+
+.domain-setup .error-panel .button-bar .button-wrapper {
+  justify-content: center;
+}
+
+/* The base .button rule sets no height or line-height, so an <a class="button"> (inherits
+   --line-height-m) renders taller than a <button class="button"> (line-height: normal via
+   `font: inherit`). Pin both to the same metrics so mixed rows line up. */
+.domain-setup .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: var(--line-height-m);
+}
+
+/* Removal bar: the read-only "Check records" utility sits far left; Cancel + red Confirm
+   group on the right. */
+.domain-setup .removal-actions {
+  justify-content: flex-end;
+}
+
+.domain-setup .check-records {
+  margin-right: auto;
+}
+
+/* Filled-red for the irreversible confirm (heavier than the outline .remove staging action). */
+.domain-setup .button.danger {
+  background-color: var(--red-700);
+  border-color: var(--red-700);
+}
+
+.domain-setup .button.danger:hover,
+.domain-setup .button.danger:focus {
+  background-color: var(--red-900);
+  border-color: var(--red-900);
+}
+
+.domain-setup .button.remove {
+  border-color: var(--red-700);
+  color: var(--red-700);
+}
+
+.domain-setup .button.remove:hover,
+.domain-setup .button.remove:focus {
+  border-color: var(--red-900);
+  background-color: light-dark(var(--red-100), var(--gray-800));
+  color: var(--red-900);
+}
+
+/* In-flight busy state: hide the label and show a spinner. */
+.domain-setup .button[data-busy] {
+  position: relative;
+  color: transparent;
+  pointer-events: none;
+}
+
+.domain-setup .button[data-busy]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 1em;
+  height: 1em;
+  margin: auto;
+  border: 2px solid var(--color-white);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: domain-setup-spin 0.8s linear infinite;
+}
+
+.domain-setup .button.outline[data-busy]::after {
+  border-color: var(--color-link);
+  border-top-color: transparent;
+}
+
+.domain-setup .button.remove[data-busy]::after {
+  border-color: var(--red-700);
+  border-top-color: transparent;
+}
+
+@keyframes domain-setup-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
