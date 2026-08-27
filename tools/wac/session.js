@@ -1,12 +1,21 @@
 import { ensureLogin } from '../../blocks/profile/profile.js';
-import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
-import { getAdminClientForSite } from '../../scripts/admin-compat.js';
 import { secretStorageKey } from './utils.js';
 
 // Management API (list/upload/replace/delete) still lives behind the worker's
 // org/site-prefixed path — only *delivery* (preview/content-overlay fetches)
 // moved to the aem.network host. See deliveryUrl() in utils.js.
 export const WAC_WORKER_ENDPOINT = 'https://wac.david8603.workers.dev';
+
+// CORS proxy for cross-origin requests (fcors.org) — same pattern as
+// tools/cdn-check/cdn-check.js. The key is sent as a query param on every
+// proxied request and is visible in DevTools — it is not a server secret,
+// just a public attribution token for fcors rate/account tracking.
+const CORS_PROXY_URL = 'https://www.fcors.org';
+const CORS_PROXY_KEY = 'iyIjewSFgBzbPVG3';
+
+function corsProxy(url) {
+  return `${CORS_PROXY_URL}?url=${encodeURIComponent(url)}&key=${CORS_PROXY_KEY}`;
+}
 
 /**
  * Mirrors the small event-wait helper in utils/admin-request.js so a
@@ -47,32 +56,26 @@ export async function fetchProfileEmail(org, site) {
 }
 
 /**
- * Fetch a site's config document via the admin API (api.aem.live or
- * admin.hlx.page, whichever the site runs on), used to check whether its
- * mixerConfig routes `/wac/**` to the WAC worker — see isMixerConfigured()
- * in utils.js.
+ * Fetch a site's published configuration (the same config.json the site
+ * itself loads at runtime), used to check whether its mixerConfig routes
+ * `/wac/**` to the WAC worker — see isMixerConfigured() in utils.js.
  *
- * Deliberately not a plain fetch() against the site's own CDN host
- * (`main--<site>--<org>.aem.live/config.json`): that's cross-origin from
- * tools.aem.live with no CORS allowance, and it only reflects the last
- * *published* config anyway. The admin API is designed for cross-origin
- * tool access (same cookie-authenticated session ensureLogin() already
- * established) and returns the authoritative config, published or not —
- * call this after ensureSidekickLogin(), not before.
+ * Goes through the fcors CORS proxy rather than a plain fetch(): the
+ * site's own CDN host (`main--<site>--<org>.aem.live`) doesn't allow
+ * cross-origin reads from tools.aem.live. This is deliberately *not*
+ * routed through the admin API instead — reading a site's config there
+ * requires the user to have a "config" role, which regular authors/
+ * contributors often don't have, whereas the published config.json is
+ * public. Doesn't require sidekick login; safe to call before it.
  * @param {string} org
  * @param {string} site
  * @returns {Promise<object|null>} null if it couldn't be fetched/parsed
  */
 export async function fetchSiteConfig(org, site) {
   try {
-    const admin = await getAdminClientForSite({ org, site });
-    if (!admin) return null;
-    const result = await executeAdminRequest(
-      () => admin.config({ org, site }).read(),
-      { org, site, policy: AuthMode.RETRY_ON_401 },
-    );
-    if (!result?.ok) return null;
-    return await result.json();
+    const res = await fetch(corsProxy(`https://main--${site}--${org}.aem.live/config.json`));
+    if (!res.ok) return null;
+    return await res.json();
   } catch {
     return null;
   }

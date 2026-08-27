@@ -405,20 +405,20 @@ describe('wac:utils.js', () => {
 
   describe('browsePageUrl', () => {
     it('builds a bare link when no org/site/folder are given', () => {
-      assert.equal(browsePageUrl('https://tools.aem.live', '', ''), 'https://tools.aem.live/tools/wac/');
+      assert.equal(browsePageUrl('https://tools.aem.live', '', ''), 'https://tools.aem.live/tools/wac/index.html');
     });
 
     it('includes org/site but omits path when folder is empty', () => {
       assert.equal(
         browsePageUrl('https://tools.aem.live', 'goodness', 'demo'),
-        'https://tools.aem.live/tools/wac/?org=goodness&site=demo',
+        'https://tools.aem.live/tools/wac/index.html?org=goodness&site=demo',
       );
     });
 
     it('includes the folder as a path param when given', () => {
       assert.equal(
         browsePageUrl('https://tools.aem.live', 'goodness', 'demo', 'drafts/david'),
-        'https://tools.aem.live/tools/wac/?org=goodness&site=demo&path=drafts%2Fdavid',
+        'https://tools.aem.live/tools/wac/index.html?org=goodness&site=demo&path=drafts%2Fdavid',
       );
     });
   });

@@ -326,7 +326,7 @@ function showMixerConfigWarning(org, site) {
         <summary>Show instructions</summary>
         <ol>
           <li>
-            Open <a href="/tools/admin-edit/" target="_blank" rel="noopener noreferrer">admin-edit</a>
+            Open <a href="/tools/admin-edit/index.html" target="_blank" rel="noopener noreferrer">admin-edit</a>
             on tools.aem.live.
           </li>
           <li>
@@ -386,18 +386,19 @@ ui.connectForm.addEventListener('submit', async (e) => {
   try {
     const folder = readFolderPath(); // updateConfig() below clears the whole query string
 
-    const signedIn = await ensureSidekickLogin(org, site);
-    if (!signedIn) {
-      ui.connectError.textContent = 'Sign-in was cancelled.';
-      return;
-    }
-
-    // Needs the sidekick session above — the config read goes through the
-    // admin API (cookie-authenticated), not the site's own CDN host.
+    // Checked first, before sidekick login — it's an unauthenticated read
+    // of the site's published config, so there's no reason to make the
+    // user sign in first if the site isn't even set up for WAC.
     const config = await fetchSiteConfig(org, site);
     if (!isMixerConfigured(config, org, site)) {
       const proceed = await showMixerConfigWarning(org, site);
       if (!proceed) return;
+    }
+
+    const signedIn = await ensureSidekickLogin(org, site);
+    if (!signedIn) {
+      ui.connectError.textContent = 'Sign-in was cancelled.';
+      return;
     }
 
     const email = await fetchProfileEmail(org, site);

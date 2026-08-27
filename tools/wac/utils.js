@@ -183,7 +183,7 @@ export function editorPageUrl(origin, org, site, path) {
  * @returns {string}
  */
 export function browsePageUrl(origin, org, site, folder = '') {
-  const url = new URL('/tools/wac/', origin);
+  const url = new URL('/tools/wac/index.html', origin);
   if (org) url.searchParams.set('org', org);
   if (site) url.searchParams.set('site', site);
   if (folder) url.searchParams.set('path', folder);
