@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web Asset Containers</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/utils/config/config.css" />
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <link rel="stylesheet" href="/utils/card-ui/card-ui.css" />
+  <script nonce="aem" src="/tools/wac/wac.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/wac/wac.css" />
+</head>
+
+<body class="wac">
+  <header></header>
+  <main>
+    <!-- TITLE -->
+    <div>
+      <h1>Web Asset Containers</h1>
+      <p>Browse, upload, and manage Web Asset Containers (WACs) for a site.</p>
+    </div>
+
+    <!-- CONNECT FORM -->
+    <div id="wac-connect">
+      <form id="wac-connect-form">
+        <section class="form-field config-field">
+          <div class="form-field org-field">
+            <label for="org">Organization</label>
+            <input name="org" id="org" list="org-list" autocomplete="off" required />
+            <datalist id="org-list"></datalist>
+          </div>
+          <div class="form-field site-field">
+            <label for="site">Site</label>
+            <input name="site" id="site" list="site-list" autocomplete="off" required />
+            <datalist id="site-list"></datalist>
+          </div>
+        </section>
+        <div class="form-error" id="wac-connect-error" aria-live="polite"></div>
+        <p class="button-wrapper">
+          <button type="submit" id="wac-connect-submit" class="button">Connect</button>
+        </p>
+      </form>
+    </div>
+
+    <!-- WORKSPACE -->
+    <div id="wac-workspace" hidden>
+      <!--
+        Note: this direct child is intentionally an unclassed div (using an
+        id for CSS hooks instead). scripts/aem.js's decorateBlocks() treats
+        any classed div three levels below a top-level main > div as an
+        auto-block and tries to fetch blocks/{class}/{class}.js for it — see
+        decorateSections()/decorateBlocks() in scripts/aem.js.
+      -->
+      <div id="wac-toolbar">
+        <span id="wac-site-label" class="nav-pill"></span>
+        <div class="toolbar-actions">
+          <button type="button" id="btn-refresh" class="button outline">Refresh</button>
+          <button type="button" id="btn-new-folder" class="button outline">New folder</button>
+          <button type="button" id="btn-upload" class="button">Upload</button>
+          <button type="button" id="btn-switch-site" class="button quiet">Switch site</button>
+        </div>
+      </div>
+
+      <nav id="wac-breadcrumb" aria-label="Container path"></nav>
+
+      <p class="status" id="list-status"></p>
+      <div id="wac-list"></div>
+    </div>
+  </main>
+  <footer></footer>
+</body>
+
+</html>

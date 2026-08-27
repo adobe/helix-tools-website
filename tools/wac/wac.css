@@ -1,0 +1,571 @@
+/* Web Asset Containers */
+
+.wac #wac-connect-form {
+  display: grid;
+  gap: var(--spacing-s);
+}
+
+@media (width >= 720px) {
+  .wac #wac-connect-form {
+    grid-template-columns: 1fr max-content;
+    gap: var(--spacing-l);
+  }
+
+  .wac #wac-connect-form .config-field {
+    grid-column: 1 / span 2;
+  }
+}
+
+.wac #wac-connect-form .button-wrapper {
+  align-self: center;
+}
+
+/* Toolbar */
+.wac #wac-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-s);
+  margin-bottom: var(--spacing-m);
+}
+
+.wac .nav-pill {
+  border-radius: var(--rounding-m);
+  padding: 0.3em 0.85em;
+  background-color: var(--layer-elevated);
+  font-weight: var(--weight-medium);
+}
+
+.wac .toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-s);
+}
+
+.wac .status {
+  color: var(--color-font-grey);
+  font-size: var(--body-size-s);
+}
+
+.wac .status.bad {
+  color: var(--red-700);
+}
+
+/* Breadcrumb */
+.wac #wac-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin: var(--spacing-m) 0 var(--spacing-s);
+  font-size: var(--body-size-m);
+}
+
+.wac #wac-breadcrumb .crumb {
+  border: 0;
+  border-radius: var(--rounding-s);
+  padding: 0.15em 0.4em;
+  background: none;
+  color: var(--color-link);
+  cursor: pointer;
+}
+
+.wac #wac-breadcrumb .crumb:hover {
+  background-color: var(--color-button-accent-bg);
+  text-decoration: underline;
+}
+
+.wac #wac-breadcrumb .crumb.current {
+  color: var(--color-text);
+  font-weight: var(--weight-medium);
+  cursor: default;
+}
+
+.wac #wac-breadcrumb .crumb-sep {
+  color: var(--color-font-grey);
+}
+
+/* List */
+.wac #list-status {
+  margin: 0 0 var(--spacing-s);
+}
+
+.wac #wac-list {
+  display: flex;
+  flex-direction: column;
+  border: var(--border-m) solid var(--color-border);
+  border-radius: var(--rounding-l);
+  overflow: hidden;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+#wac-workspace.drag-over #wac-list {
+  border-color: var(--color-link);
+  border-style: dashed;
+  background-color: light-dark(var(--blue-100), var(--gray-800));
+}
+
+.wac .list-empty {
+  margin: 0;
+  padding: var(--spacing-l);
+  color: var(--color-font-grey);
+  text-align: center;
+}
+
+.wac .wac-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+  border: 0;
+  border-bottom: var(--border-m) solid var(--color-border);
+  padding: var(--spacing-s) var(--spacing-m);
+  background: none;
+  color: var(--color-text);
+  font-size: inherit;
+  text-align: left;
+}
+
+.wac #wac-list > *:last-child {
+  border-bottom: 0;
+}
+
+.wac .folder-row:hover,
+.wac .container-row:hover {
+  background-color: var(--color-button-accent-bg);
+}
+
+.wac .row-link {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text);
+  font-size: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.wac .row-icon {
+  flex-shrink: 0;
+  width: 1.2em;
+  height: 1.2em;
+}
+
+.wac .row-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.wac .row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.wac .row-chevron {
+  margin-left: auto;
+  color: var(--color-font-grey);
+}
+
+.wac .row-meta {
+  margin-left: auto;
+  max-width: 45%;
+  padding-right: var(--spacing-s);
+  overflow: hidden;
+  color: var(--color-font-grey);
+  font-size: var(--body-size-s);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.wac .row-menu-btn {
+  flex-shrink: 0;
+  border-radius: var(--rounding-s);
+  padding: 0.2em 0.5em;
+  color: var(--color-font-grey);
+  font-size: var(--heading-size-s);
+  line-height: 1;
+}
+
+.wac .row-menu-btn:hover {
+  background-color: var(--color-button-accent-bg);
+  color: var(--color-text);
+}
+
+.wac-row-menu {
+  position: absolute;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  border: var(--border-m) solid var(--color-border);
+  border-radius: var(--rounding-m);
+  padding: var(--spacing-xs);
+  background-color: var(--color-background);
+  box-shadow: var(--shadow-hover);
+}
+
+.wac-row-menu button {
+  border-radius: var(--rounding-s);
+  padding: 0.4em 0.6em;
+  text-align: left;
+  color: var(--color-text);
+}
+
+.wac-row-menu button:hover {
+  background-color: var(--color-button-accent-bg);
+}
+
+.wac-row-menu button.danger {
+  color: var(--red-700);
+}
+
+/* Direct (drag-and-drop) upload progress — appended to <body> */
+.wac-upload-progress {
+  position: fixed;
+  right: var(--spacing-l);
+  bottom: var(--spacing-l);
+  z-index: 200;
+  width: 280px;
+  border: var(--border-m) solid var(--color-border);
+  border-radius: var(--rounding-l);
+  padding: var(--spacing-m);
+  background-color: var(--color-background);
+  box-shadow: var(--shadow-hover);
+}
+
+.wac-upload-progress .upload-progress-label {
+  margin: 0 0 var(--spacing-s);
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: var(--body-size-s);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.wac-upload-progress .upload-progress-track {
+  height: 6px;
+  border-radius: var(--rounding-s);
+  background-color: var(--color-button-accent-bg);
+  overflow: hidden;
+}
+
+.wac-upload-progress .upload-progress-bar {
+  height: 100%;
+  width: 0;
+  border-radius: var(--rounding-s);
+  background-color: var(--color-link);
+  transition: width 0.2s;
+}
+
+.wac-upload-progress.indeterminate .upload-progress-bar {
+  width: 40%;
+  animation: wac-upload-indeterminate 1.1s ease-in-out infinite;
+}
+
+@keyframes wac-upload-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+
+.wac-upload-progress.done .upload-progress-bar {
+  background-color: var(--green-700);
+}
+
+.wac-upload-progress.failed .upload-progress-label {
+  color: var(--red-700);
+}
+
+.wac-upload-progress.failed .upload-progress-bar {
+  background-color: var(--red-700);
+}
+
+.wac .button.danger,
+dialog.wac-modal .button.danger {
+  color: var(--red-700);
+  border-color: var(--red-700);
+  background-color: var(--color-background);
+}
+
+.wac .button.danger:hover,
+.wac .button.danger:focus,
+dialog.wac-modal .button.danger:hover,
+dialog.wac-modal .button.danger:focus {
+  background-color: var(--red-700);
+  color: var(--gray-25);
+  border-color: var(--red-700);
+}
+
+/* Preview pane */
+.wac .preview-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+  min-height: 320px;
+}
+
+.wac .preview-bar {
+  display: flex;
+  gap: var(--spacing-s);
+}
+
+.wac .preview-bar select {
+  flex: 1;
+}
+
+.wac .preview-frame {
+  position: relative;
+  flex: 1;
+  min-height: 320px;
+  border: var(--border-m) solid var(--color-border);
+  border-radius: var(--rounding-l);
+  overflow: hidden;
+}
+
+.wac #preview {
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  border: 0;
+}
+
+/* Content panel */
+.wac .content-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+}
+
+.wac .content-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-s);
+}
+
+.wac .content-head h2 {
+  margin: 0;
+  font-size: var(--heading-size-s);
+}
+
+.wac .content-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+}
+
+.wac #content-text {
+  flex: 1;
+  min-height: 200px;
+  resize: vertical;
+  font-family: var(--code-font-family);
+  font-size: var(--body-size-m);
+}
+
+/* Modals — dialog is appended to <body>, scope with the element selector */
+dialog.wac-modal {
+  display: flex;
+  flex-direction: column;
+  max-width: 600px;
+  width: 90vw;
+  max-height: 85vh;
+  margin: 0;
+  border: var(--border-m) solid var(--color-border);
+  border-radius: var(--rounding-l);
+  padding: 0;
+  box-shadow: var(--shadow-hover);
+  background-color: var(--color-background);
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  overflow: hidden;
+}
+
+dialog.wac-modal::backdrop {
+  background-color: var(--transparent-black-600);
+}
+
+dialog.wac-modal .modal-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+dialog.wac-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-l);
+  border-bottom: var(--border-m) solid var(--color-border);
+  padding: var(--spacing-m) var(--spacing-l);
+  background-color: var(--layer-elevated);
+}
+
+dialog.wac-modal .modal-title {
+  margin: 0;
+  font-size: var(--heading-size-m);
+}
+
+dialog.wac-modal .modal-close {
+  border-radius: var(--rounding-s);
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--color-font-grey);
+}
+
+dialog.wac-modal .modal-close:hover {
+  background-color: var(--color-button-accent-bg);
+  color: var(--color-text);
+}
+
+dialog.wac-modal .modal-body {
+  flex: 1;
+  min-height: 0;
+  padding: var(--spacing-l);
+  overflow-y: auto;
+}
+
+dialog.wac-modal .modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-s);
+  border-top: var(--border-m) solid var(--color-border);
+  padding: var(--spacing-l);
+}
+
+dialog.wac-modal.confirm-dialog {
+  max-width: 420px;
+}
+
+dialog.wac-modal .form-error {
+  margin-top: 0;
+}
+
+dialog.wac-modal .field-hint {
+  margin: 0.5em 0 0;
+  color: var(--color-font-grey);
+  font-size: var(--body-size-s);
+}
+
+/* Upload modal */
+
+dialog.wac-modal .destination {
+  margin: 0 0 var(--spacing-m);
+  color: var(--color-font-grey);
+  font-size: var(--body-size-s);
+}
+
+dialog.wac-modal .destination code {
+  color: var(--color-text);
+}
+
+dialog.wac-modal .dropzone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2em;
+  min-height: 140px;
+  margin-bottom: var(--spacing-m);
+  border: var(--border-m) dashed var(--color-border);
+  border-radius: var(--rounding-m);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+dialog.wac-modal .dropzone:hover,
+dialog.wac-modal .dropzone.dragover {
+  border-color: var(--color-link);
+  background-color: light-dark(var(--blue-100), var(--gray-800));
+}
+
+dialog.wac-modal .dropzone.has-file {
+  border-style: solid;
+}
+
+dialog.wac-modal .dropzone-title {
+  margin: 0;
+  font-weight: var(--weight-medium);
+}
+
+dialog.wac-modal .dropzone-sub {
+  margin: 0;
+  color: var(--color-font-grey);
+  font-size: var(--body-size-s);
+}
+
+dialog.wac-modal .dropzone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+dialog.wac-modal .zip-details {
+  margin-bottom: var(--spacing-m);
+}
+
+dialog.wac-modal .zip-details summary {
+  cursor: pointer;
+  font-size: var(--body-size-s);
+  color: var(--color-font-grey);
+}
+
+dialog.wac-modal .file-list {
+  max-height: 160px;
+  margin-top: var(--spacing-xs);
+  font-size: var(--body-size-s);
+  overflow-y: auto;
+}
+
+dialog.wac-modal .status.ok {
+  color: var(--green-800);
+}
+
+dialog.wac-modal .status.bad {
+  color: var(--red-700);
+}
+
+/* Mixer-config warning */
+dialog.wac-modal.mixer-warning-modal {
+  max-width: 560px;
+}
+
+dialog.wac-modal #mixer-instructions summary {
+  margin-bottom: var(--spacing-s);
+  cursor: pointer;
+  font-weight: var(--weight-medium);
+}
+
+dialog.wac-modal #mixer-instructions ol {
+  margin: 0 0 var(--spacing-s);
+  padding-left: 1.25em;
+}
+
+dialog.wac-modal #mixer-snippet {
+  max-height: 240px;
+  margin: 0 0 var(--spacing-m);
+  padding: var(--spacing-s);
+  border: var(--border-m) solid var(--color-border);
+  border-radius: var(--rounding-m);
+  background-color: var(--layer-depth);
+  font-size: var(--body-size-s);
+  overflow: auto;
+  white-space: pre;
+}

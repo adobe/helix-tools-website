@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web Asset Container</title>
+  <link rel="stylesheet" href="/tools/wac/wac-editor.css" />
+  <script src="/tools/wac/wac-editor.js" type="module"></script>
+</head>
+
+<!--
+  Standalone, chrome-free view — intentionally does not load
+  scripts/aem.js or scripts/scripts.js (no header/footer/nav, no block
+  decoration pipeline). wac-editor.css is fully self-contained.
+-->
+<body>
+  <iframe
+    id="preview"
+    hidden
+    title="Web Asset Container preview"
+    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+  ></iframe>
+
+  <button type="button" id="panel-toggle" aria-label="Toggle panel" aria-expanded="true">‹</button>
+
+  <aside id="panel">
+    <p id="wac-editor-back-wrapper"><a href="/tools/wac/" id="wac-editor-back">← Back to containers</a></p>
+    <p class="status" id="wac-editor-status" aria-live="polite"></p>
+
+    <div id="panel-body" hidden>
+      <div class="preview-bar">
+        <select id="preview-file" disabled aria-label="HTML file to preview">
+          <option value="">Loading…</option>
+        </select>
+        <button type="button" id="btn-open" class="button outline" disabled>Open ↗</button>
+      </div>
+
+      <div class="content-head">
+        <h2>Content</h2>
+        <div class="content-actions">
+          <span class="status" id="content-status"></span>
+          <button type="button" id="btn-copy-block" class="button outline" disabled>Copy block</button>
+        </div>
+      </div>
+      <textarea
+        id="content-text"
+        spellcheck="false"
+        disabled
+        placeholder="Loading…"
+      ></textarea>
+    </div>
+  </aside>
+</body>
+
+</html>

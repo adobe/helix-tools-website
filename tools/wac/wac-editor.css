@@ -1,0 +1,341 @@
+/*
+ * Web Asset Container editor — standalone, chrome-free page.
+ * Deliberately self-contained: this page doesn't load styles/styles.css
+ * (which assumes the site's header/footer/block-decoration pipeline), so
+ * it imports only the raw design-token stylesheets (colors/spacing/
+ * rounding — plain :root custom properties, no side effects) and aliases
+ * the small subset of semantic tokens it actually needs.
+ */
+
+@import url('/styles/colors.css');
+@import url('/styles/containers.css');
+
+:root {
+  color-scheme: light dark;
+
+  --color-background: light-dark(var(--gray-25), var(--gray-900));
+  --color-text: light-dark(var(--gray-800), var(--gray-100));
+  --color-link: var(--blue-900);
+  --color-link-hover: var(--blue-1000);
+  --color-font-grey: light-dark(var(--gray-700), var(--gray-300));
+  --color-border: light-dark(var(--gray-300), var(--gray-600));
+  --color-button-accent-bg: light-dark(var(--gray-100), var(--gray-700));
+  --color-button-accent-bg-hover: light-dark(var(--gray-200), var(--gray-600));
+  --color-button-disabled-bg: light-dark(var(--gray-100), var(--gray-700));
+  --color-button-disabled-text: light-dark(var(--gray-400), var(--gray-500));
+  --body-font-family: robotoflex, -apple-system, sans-serif;
+  --code-font-family: robotomono, 'Courier New', monospace;
+  --spacing-xs: var(--spacing-100);
+  --spacing-s: var(--spacing-200);
+  --spacing-m: var(--spacing-300);
+  --spacing-l: var(--spacing-400);
+  --shadow-hover: 0 2px 8px 0 rgb(0 0 0 / 30%);
+  --panel-width: 380px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--body-font-family);
+  background-color: var(--color-background);
+  color: var(--color-text);
+}
+
+#preview {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: calc(100% - var(--panel-width));
+  height: 100%;
+  border: 0;
+  background-color: var(--color-background);
+  transition: width 0.2s;
+}
+
+body.panel-collapsed #preview {
+  width: 100%;
+}
+
+/* Panel */
+#panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-m);
+  width: var(--panel-width);
+  max-width: 90vw;
+  padding: var(--spacing-l);
+  overflow-y: auto;
+  border-left: var(--border-m) solid var(--color-border);
+  background-color: var(--color-background);
+  box-shadow: var(--shadow-hover);
+  transition: transform 0.2s;
+}
+
+body.panel-collapsed #panel {
+  transform: translateX(100%);
+}
+
+#panel-toggle {
+  position: fixed;
+  top: 50%;
+  right: var(--panel-width);
+  z-index: 3;
+  transform: translateY(-50%);
+  border: var(--border-m) solid var(--color-border);
+  border-right: 0;
+  border-radius: var(--rounding-m) 0 0 var(--rounding-m);
+  padding: var(--spacing-s) 0.5em;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: right 0.2s;
+}
+
+body.panel-collapsed #panel-toggle {
+  right: 0;
+}
+
+#wac-editor-back-wrapper {
+  margin: 0;
+}
+
+#wac-editor-back-wrapper a {
+  color: var(--color-link);
+  text-decoration: none;
+}
+
+#wac-editor-back-wrapper a:hover {
+  color: var(--color-link-hover);
+  text-decoration: underline;
+}
+
+.status {
+  margin: 0;
+  color: var(--color-font-grey);
+  font-size: 0.875rem;
+}
+
+.status.bad {
+  color: var(--red-700);
+}
+
+#panel-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: var(--spacing-m);
+  min-height: 0;
+}
+
+/* Form controls — styles.css isn't loaded on this page, so these are
+   defined locally rather than relying on its global input/button rules. */
+select,
+textarea,
+input {
+  width: 100%;
+  border: var(--border-m) solid var(--gray-300);
+  border-radius: var(--rounding-m);
+  padding: 0.4em 0.85em;
+  font: inherit;
+  color: var(--color-text);
+  background-color: var(--color-background);
+}
+
+select:disabled,
+textarea:disabled,
+input:disabled {
+  border-color: var(--color-button-disabled-bg);
+  background-color: var(--color-button-disabled-bg);
+  color: var(--color-button-disabled-text);
+}
+
+.preview-bar {
+  display: flex;
+  gap: var(--spacing-s);
+}
+
+.preview-bar select {
+  flex: 1;
+  min-width: 0;
+}
+
+.content-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-s);
+}
+
+.content-head h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.content-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+}
+
+#content-text {
+  flex: 1;
+  min-height: 200px;
+  resize: vertical;
+  font-family: var(--code-font-family);
+  font-size: 0.9rem;
+}
+
+.button {
+  display: inline-block;
+  border: var(--border-m) solid var(--color-link);
+  border-radius: 1.15em;
+  padding: 0.4em 1.15em;
+  background-color: var(--color-link);
+  color: var(--gray-25);
+  font: inherit;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+}
+
+.button:hover,
+.button:focus {
+  border-color: var(--color-link-hover);
+  background-color: var(--color-link-hover);
+}
+
+.button:disabled {
+  border-color: var(--color-button-disabled-bg);
+  background-color: var(--color-button-disabled-bg);
+  color: var(--color-button-disabled-text);
+  cursor: not-allowed;
+}
+
+.button.outline {
+  border-color: var(--color-link);
+  background-color: var(--color-background);
+  color: var(--color-link);
+}
+
+.button.outline:hover,
+.button.outline:focus {
+  border-color: var(--color-link-hover);
+  background-color: light-dark(var(--blue-100), var(--gray-800));
+  color: var(--color-link-hover);
+}
+
+.button.outline:disabled {
+  border-color: var(--color-button-disabled-bg);
+  background-color: var(--color-background);
+  color: var(--color-button-disabled-text);
+}
+
+label {
+  display: block;
+  margin-bottom: 0.5em;
+  color: var(--color-font-grey);
+  font-size: 0.875rem;
+}
+
+.form-field {
+  margin-bottom: var(--spacing-l);
+}
+
+.form-error {
+  margin-top: 0.5em;
+  color: var(--red-900);
+}
+
+/* Modal (shared modal.js appends a raw <dialog> to <body>) */
+dialog.wac-modal {
+  display: flex;
+  flex-direction: column;
+  max-width: 420px;
+  width: 90vw;
+  max-height: 85vh;
+  margin: 0;
+  border: var(--border-m) solid var(--color-border);
+  border-radius: var(--rounding-l);
+  padding: 0;
+  box-shadow: var(--shadow-hover);
+  background-color: var(--color-background);
+  color: var(--color-text);
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  overflow: hidden;
+}
+
+dialog.wac-modal::backdrop {
+  background-color: rgb(0 0 0 / 60%);
+}
+
+dialog.wac-modal .modal-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+dialog.wac-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-l);
+  border-bottom: var(--border-m) solid var(--color-border);
+  padding: var(--spacing-m) var(--spacing-l);
+  background-color: var(--color-button-accent-bg);
+}
+
+dialog.wac-modal .modal-title {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+dialog.wac-modal .modal-close {
+  border: 0;
+  border-radius: var(--rounding-s);
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  background: none;
+  color: var(--color-font-grey);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+dialog.wac-modal .modal-close:hover {
+  background-color: var(--color-button-accent-bg);
+  color: var(--color-text);
+}
+
+dialog.wac-modal .modal-body {
+  flex: 1;
+  min-height: 0;
+  padding: var(--spacing-l);
+  overflow-y: auto;
+}
+
+dialog.wac-modal .modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-s);
+  border-top: var(--border-m) solid var(--color-border);
+  padding: var(--spacing-l);
+}
