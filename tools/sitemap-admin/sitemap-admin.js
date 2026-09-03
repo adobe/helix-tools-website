@@ -1,11 +1,9 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField } from '../../utils/config/config.js';
-import getAdminClient from '../../scripts/admin-compat.js';
+import { getAdminClientForSite } from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { escapeXml, parseHreflang, collectSitemapEntries } from './utils.js';
-
-let admin;
 
 const adminForm = document.getElementById('admin-form');
 const site = document.getElementById('site');
@@ -16,6 +14,10 @@ const addSitemapButton = document.getElementById('add-sitemap');
 let loadedSitemaps;
 let YAML;
 let cdnProdHost;
+
+function getAdmin() {
+  return getAdminClientForSite({ org: org.value, site: site.value });
+}
 
 function cleanupDialog(dialog) {
   dialog.close();
@@ -49,7 +51,7 @@ function logResult(result) {
 async function saveSitemapYaml() {
   const yamlText = YAML.stringify(loadedSitemaps);
   return executeAdminRequest(
-    () => admin.config({ org: org.value, site: site.value }).select('content/sitemap.yaml').update(yamlText),
+    async () => (await getAdmin()).config({ org: org.value, site: site.value }).select('content/sitemap.yaml').update(yamlText),
     { org: org.value, site: site.value },
   );
 }
@@ -357,7 +359,8 @@ async function removeLanguage(sitemapName, langCode) {
 
 async function generateSitemap(destination) {
   const result = await executeAdminRequest(
-    () => admin.sitemap({ org: org.value, site: site.value }).update(destination),
+    async () => (await getAdmin())
+      .sitemap({ org: org.value, site: site.value }).update(destination),
     { org: org.value, site: site.value },
   );
   if (!result) return;
@@ -494,7 +497,7 @@ function populateSitemaps(sitemaps) {
 
 async function fetchCdnProdHost() {
   const result = await executeAdminRequest(
-    () => admin.config({ org: org.value, site: site.value }).select('cdn.json').read(),
+    async () => (await getAdmin()).config({ org: org.value, site: site.value }).select('cdn.json').read(),
     { org: org.value, site: site.value },
   );
   if (!result) return;
@@ -574,7 +577,6 @@ async function showIndexDialog() {
 }
 
 async function init() {
-  admin = await getAdminClient();
   await initConfigField();
 
   addSitemapButton.addEventListener('click', () => {
@@ -591,7 +593,7 @@ async function init() {
 
     // Preflight on the fetch (entry point); the resulting session covers later saves.
     const result = await executeAdminRequest(
-      () => admin.config({ org: org.value, site: site.value }).select('content/sitemap.yaml').read(),
+      async () => (await getAdmin()).config({ org: org.value, site: site.value }).select('content/sitemap.yaml').read(),
       { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
     );
     if (!result) return;
