@@ -46,10 +46,14 @@ blocks/ai-optel-report-generator/
 │   └── da-upload.js               # HTML generation, template loading, DA upload via CF Worker
 │
 └── templates/
-    ├── system-prompt.txt           # AI system instructions for analysis tone and format
-    ├── overview-analysis-template.html  # Report structure template for final synthesis
     └── report-template.html        # HTML shell for saved report files
 ```
+
+> The AI system prompt and the final-report analysis template are owned by the
+> Bedrock proxy (`helix-rum-bundler`, `src/api/bedrock.js` + `bedrock-prompts.js`)
+> and selected per request via `purpose`. They are no longer shipped to the
+> browser, so model IDs, token limits, and prompt text cannot be overridden by
+> the client.
 
 ## How It Works
 
@@ -91,14 +95,13 @@ A DOM operation queue serializes filter operations to prevent conflicts during c
 ### 6. Final Synthesis
 
 `analysis-engine.js` orchestrates the end-to-end flow:
-- Loads `system-prompt.txt` and `overview-analysis-template.html`
-- Injects facet linking instructions from `facet-link-generator.js` into the system prompt
-- Makes an async job-queue call for the final comprehensive report to avoid browser timeouts
+- Builds the dynamic facet-linking instructions with `facet-link-generator.js` and sends them as `systemExtra` (the proxy appends them to its server-owned base prompt + analysis template)
+- Makes an async job-queue call (`purpose: 'synthesis'`) for the final comprehensive report to avoid browser timeouts
 - The AI produces structured HTML with `data-facet` spans for interactive links
 
 ### 7. AWS Bedrock Integration
 
-All AI calls go through `bundles.aem.page/bedrock` (proxied via the RUM Bundler).
+All AI calls go through `bundles.aem.page/bedrock` (proxied via the RUM Bundler). Each request carries a `purpose` (`batch`, `followup`, or `synthesis`); the proxy resolves the model ID, token limit, temperature, and base system prompt from that purpose. The client never sends those values.
 
 `bedrock-api.js` provides two modes:
 - **Sync:** Used for per-facet batch calls. Includes retry logic (up to 4 attempts) with exponential backoff for 429/502/503 errors.
@@ -145,17 +148,15 @@ Reports are addressable via `?report=YYYY-MM-DD&view=week`. On page load, the da
 
 ## Configuration
 
-All configuration lives in `config.js`:
+Client-side configuration lives in `config.js`:
 
 | Key | Purpose |
 |---|---|
-| `AI_MODELS.BEDROCK_MODEL_ID` | Model for batch analysis calls |
-| `AI_MODELS.SYNTHESIS_MODEL_ID` | Model for final report synthesis |
 | `BEDROCK_CONFIG.PROXY_ENDPOINT` | Bedrock proxy URL |
-| `API_CONFIG.BATCH_MAX_TOKENS` | Max tokens per batch call (2048) |
-| `API_CONFIG.SYNTHESIS_MAX_TOKENS` | Max tokens for final report (7500) |
 | `DA_CONFIG.WORKER_URL` | Cloudflare Worker for DA operations |
 | `DA_CONFIG.UPLOAD_PATH` | DA folder path for reports |
+
+Model IDs, token limits, temperatures, and the AI system prompt/analysis template are **not** in `config.js` — they are owned server-side by the Bedrock proxy (`helix-rum-bundler`) and selected via the request `purpose`. Configure model IDs there via the `BEDROCK_MODEL_ID` / `BEDROCK_SYNTHESIS_MODEL_ID` environment variables.
 
 ## Integration Point
 

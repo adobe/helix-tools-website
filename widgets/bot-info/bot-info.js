@@ -499,6 +499,7 @@ export default async function decorate(widget) {
   // build the request log console (mirrors the other admin tools)
   const consoleBlock = widget.querySelector('.console');
   loadCSS(`${window.hlx.codeBasePath}/blocks/console/console.css`);
+  loadCSS(`${window.hlx.codeBasePath}/utils/roles/roles-field.css`);
   decorateConsole(consoleBlock);
 
   const fail = (error) => {

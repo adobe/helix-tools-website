@@ -11,37 +11,9 @@ import {
   processMetricsBatches,
 } from './metrics-processing.js';
 import { buildFacetInfoSection } from '../reports/facet-link-generator.js';
-import { PATHS, API_CONFIG, AI_MODELS } from '../config.js';
 
-// Template cache
-let systemPromptCache = null;
-let overviewAnalysisTemplateCache = null;
-
-async function loadTextFile(filename) {
-  try {
-    const response = await fetch(`${PATHS.BLOCK_BASE}/${filename}`);
-    if (!response.ok) {
-      throw new Error(`Failed to load ${filename}: ${response.status}`);
-    }
-    return await response.text();
-  } catch (error) {
-    throw new Error(`Error loading ${filename}: ${error.message}`);
-  }
-}
-
-async function getSystemPrompt() {
-  if (!systemPromptCache) {
-    systemPromptCache = await loadTextFile(PATHS.SYSTEM_PROMPT);
-  }
-  return systemPromptCache || 'You are a RUM data analyst specializing in web performance and user engagement analysis.';
-}
-
-async function getOverviewAnalysisTemplate() {
-  if (!overviewAnalysisTemplateCache) {
-    overviewAnalysisTemplateCache = await loadTextFile(PATHS.OVERVIEW_TEMPLATE);
-  }
-  return overviewAnalysisTemplateCache || 'CREATE A CLEAN, PROFESSIONAL REPORT WITH STRUCTURED SECTIONS.';
-}
+// The base system prompt and overview template are owned by the Bedrock proxy
+// (selected via `purpose: 'synthesis'`); only dynamic facet context is sent.
 
 function getCwvSeverityLabel(classes) {
   if (classes.includes('score-poor')) return ' [POOR]';
@@ -191,9 +163,6 @@ async function callAnthropicAPI(dashboardData, facetTools, progressCallback) {
       throw new Error('Domain key required for AI analysis. Ensure the dashboard has loaded with a valid domain key.');
     }
 
-    // Get system prompt
-    const systemPromptText = await getSystemPrompt();
-
     // Process metrics in sequential batches
     if (progressCallback) {
       progressCallback(2, 'in-progress', 'Starting analysis...');
@@ -202,8 +171,6 @@ async function callAnthropicAPI(dashboardData, facetTools, progressCallback) {
     const allInsights = await processMetricsBatches(
       facetTools,
       dashboardData,
-      systemPromptText,
-      null, // API credentials auto-detected in metrics-processing.js
       'Analyze the RUM data from the dashboard.',
       handleDynamicFacetToolCall,
       progressCallback,
@@ -222,13 +189,8 @@ async function callAnthropicAPI(dashboardData, facetTools, progressCallback) {
         progressCallback(3, 'in-progress', 'Generating streamlined overview report...', 10);
       }
 
-      // Load overview template and facet info into system prompt
-      if (progressCallback) {
-        progressCallback(3, 'in-progress', 'Loading overview template...', 25);
-      }
-      const overviewTemplate = await getOverviewAnalysisTemplate();
+      // Dynamic facet-linking context, appended server-side to the base prompt
       const facetInfoSection = buildFacetInfoSection(dashboardData);
-      const enhancedSystemPrompt = `${systemPromptText}\n\n${overviewTemplate}\n\n${facetInfoSection}`;
 
       // Build lean user message with just data
       const finalSynthesisMessage = buildFinalSynthesisMessage(
@@ -237,14 +199,10 @@ async function callAnthropicAPI(dashboardData, facetTools, progressCallback) {
         crossRefData,
       );
 
-      const maxTokens = API_CONFIG.SYNTHESIS_MAX_TOKENS || 4096;
-
       const finalRequest = {
-        modelId: AI_MODELS.SYNTHESIS_MODEL_ID || AI_MODELS.BEDROCK_MODEL_ID,
-        max_tokens: maxTokens,
+        purpose: 'synthesis',
         messages: [{ role: 'user', content: finalSynthesisMessage }],
-        system: enhancedSystemPrompt,
-        temperature: API_CONFIG.BATCH_TEMPERATURE,
+        systemExtra: facetInfoSection,
       };
 
       if (progressCallback) {

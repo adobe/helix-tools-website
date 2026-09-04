@@ -24,7 +24,7 @@ describe('site-admin:utils.js', () => {
     });
 
     it('recognizes google source type', () => {
-      assert.deepEqual(getContentSourceType('', 'google'), { type: 'google', label: 'Google Drive' });
+      assert.deepEqual(getContentSourceType('', 'google'), { type: 'google', label: 'GDrive' });
     });
 
     it('recognizes onedrive source type', () => {
@@ -41,6 +41,13 @@ describe('site-admin:utils.js', () => {
     it('recognizes AEM content URL with markup type', () => {
       assert.deepEqual(
         getContentSourceType('https://author.adobeaemcloud.com/content', 'markup'),
+        { type: 'aem', label: 'AEM' },
+      );
+    });
+
+    it('recognizes the api.aem.live connector as AEM (helix 6)', () => {
+      assert.deepEqual(
+        getContentSourceType('https://api.aem.live/org/site/main', 'markup'),
         { type: 'aem', label: 'AEM' },
       );
     });

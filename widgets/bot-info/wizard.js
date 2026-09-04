@@ -6,9 +6,7 @@
  * editable user rows and content-source fields used by the single-page form.
  */
 
-// Mirror of the roles offered by the user-admin tool. Duplicated here (rather
-// than imported) so the wizard stays decoupled from that tool's UI module.
-export const ROLES = ['admin', 'author', 'publish', 'develop', 'basic_author', 'basic_publish', 'config', 'config_admin'];
+import { createRolesField } from '../../utils/roles/roles-field.js';
 
 // UI-facing content-source kinds. `configType` is what the admin API stores in
 // `content.source.type`; the granular DA/AEM/BYOM kinds all map to `markup`.
@@ -132,59 +130,6 @@ export function usersError(orgUsers, newOrg) {
 /* DOM builders (not unit-tested)                                     */
 /* ------------------------------------------------------------------ */
 
-function createRolePill(role, checked) {
-  const label = document.createElement('label');
-  label.className = 'bot-info-role-pill';
-  const checkbox = document.createElement('input');
-  checkbox.type = 'checkbox';
-  checkbox.value = role;
-  checkbox.checked = checked;
-  const span = document.createElement('span');
-  span.textContent = role;
-  label.append(checkbox, span);
-  return label;
-}
-
-/**
- * Build the role pills for a user. The primary `admin` pill is always visible;
- * the remaining roles stay tucked behind a `…` link unless one of them is
- * already selected.
- *
- * @param {string[]} selectedRoles
- * @returns {HTMLElement}
- */
-function createRolePills(selectedRoles = []) {
-  const [primary, ...others] = ROLES;
-  const container = document.createElement('div');
-  container.className = 'bot-info-roles';
-
-  container.append(createRolePill(primary, selectedRoles.includes(primary)));
-
-  const rest = document.createElement('div');
-  rest.className = 'bot-info-roles-rest';
-  others.forEach((role) => rest.append(createRolePill(role, selectedRoles.includes(role))));
-  // reveal the rest up-front if any of those roles is already selected
-  const expanded = others.some((role) => selectedRoles.includes(role));
-  rest.setAttribute('aria-hidden', String(!expanded));
-  container.append(rest);
-
-  const more = document.createElement('button');
-  more.type = 'button';
-  more.className = 'bot-info-roles-more';
-  more.setAttribute('aria-expanded', String(expanded));
-  more.title = 'Show more roles';
-  more.textContent = expanded ? '‹' : '…';
-  more.addEventListener('click', () => {
-    const isExpanded = rest.getAttribute('aria-hidden') === 'false';
-    rest.setAttribute('aria-hidden', String(isExpanded));
-    more.setAttribute('aria-expanded', String(!isExpanded));
-    more.textContent = isExpanded ? '…' : '‹';
-  });
-  container.append(more);
-
-  return container;
-}
-
 /**
  * Build an editable user row (email + role pills + remove button). The original
  * user id, when present, is stashed on the row so the diff can target it.
@@ -208,7 +153,7 @@ export function createUserRow(user = {}, defaultRole = 'admin') {
   emailInput.value = user.email || '';
   emailField.append(emailInput);
 
-  const pills = createRolePills(user.roles && user.roles.length ? user.roles : [defaultRole]);
+  const pills = createRolesField(user.roles && user.roles.length ? user.roles : [defaultRole]);
 
   const removeBtn = document.createElement('button');
   removeBtn.type = 'button';
@@ -231,7 +176,7 @@ export function createUserRow(user = {}, defaultRole = 'admin') {
 export function collectUsers(listEl) {
   return [...listEl.querySelectorAll('.bot-info-user-row')].map((row) => {
     const email = row.querySelector('.bot-info-email').value.trim();
-    const roles = [...row.querySelectorAll('.bot-info-roles input:checked')].map((c) => c.value);
+    const roles = [...row.querySelectorAll('.roles-field input:checked')].map((c) => c.value);
     const { userId } = row.dataset;
     return userId ? { email, id: userId, roles } : { email, roles };
   }).filter((u) => u.email);

@@ -33,7 +33,7 @@ export const getContentSourceType = (contentUrl, contentSourceType, isLoading = 
   if (!contentSourceType && !contentUrl) return { type: 'unknown', label: '?' };
 
   const sourceTypeLookup = {
-    google: { type: 'google', label: 'Google Drive' },
+    google: { type: 'google', label: 'GDrive' },
     onedrive: { type: 'sharepoint', label: 'Sharepoint' },
   };
 
@@ -46,7 +46,8 @@ export const getContentSourceType = (contentUrl, contentSourceType, isLoading = 
       return { type: 'da', label: 'DA' };
     }
 
-    if (contentUrl?.includes('adobeaemcloud')) {
+    if (contentUrl?.includes('adobeaemcloud')
+      || contentUrl?.startsWith('https://api.aem.live/')) {
       return { type: 'aem', label: 'AEM' };
     }
 

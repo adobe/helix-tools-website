@@ -5,6 +5,8 @@ import { loadIcon, icon, showToast } from '../../utils/card-ui/card-ui.js';
 import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { parseUsersFromAccessConfig, buildAccessConfig } from './utils.js';
+import { ROLE_DESCRIPTIONS } from '../../utils/roles/roles.js';
+import { createRolesField } from '../../utils/roles/roles-field.js';
 
 const VIEW_STORAGE_KEY = 'user-admin-view';
 
@@ -16,52 +18,6 @@ const org = document.getElementById('org');
 const consoleBlock = document.querySelector('.console');
 const usersContainer = document.getElementById('users-container');
 const accessConfig = { type: 'org', users: [], originalSiteAccess: {} };
-
-const ROLES = ['admin', 'author', 'publish', 'develop', 'basic_author', 'basic_publish', 'config', 'config_admin'];
-
-// Role descriptions from https://www.aem.live/docs/authentication-setup-authoring#admin-roles
-const ROLE_DESCRIPTIONS = {
-  admin: {
-    label: 'Admin',
-    description: 'Full access to all permissions',
-    permissions: 'All permissions',
-  },
-  basic_author: {
-    label: 'Basic Author',
-    description: 'Basic authoring capabilities without publishing',
-    permissions: 'cache:write, code:read, code:write, code:delete, index:read, index:write, preview:read, preview:write, preview:delete, edit:read, live:read, cron:read, cron:write, snapshot:read, job:read',
-  },
-  basic_publish: {
-    label: 'Basic Publish',
-    description: 'Basic author permissions plus publishing',
-    permissions: 'basic_author + live:write, live:delete',
-  },
-  author: {
-    label: 'Author',
-    description: 'Full authoring capabilities',
-    permissions: 'basic_author + edit:list, job:list, log:read, preview:list, preview:delete-forced, snapshot:delete, snapshot:write, job:write',
-  },
-  publish: {
-    label: 'Publish',
-    description: 'Full authoring and publishing capabilities',
-    permissions: 'author + live:write, live:delete, live:delete-forced, live:list',
-  },
-  develop: {
-    label: 'Develop',
-    description: 'Author permissions plus code management',
-    permissions: 'author + code:write, code:delete, code:delete-forced',
-  },
-  config: {
-    label: 'Config',
-    description: 'Read-only access to redacted configuration',
-    permissions: 'config:read-redacted',
-  },
-  config_admin: {
-    label: 'Config Admin',
-    description: 'Full publishing and configuration management',
-    permissions: 'publish + config:read, config:write',
-  },
-};
 
 async function getOrgConfig() {
   const result = await executeAdminRequest(
@@ -191,85 +147,14 @@ async function updateSiteUserRoles(user) {
   return updateSiteAccess();
 }
 
-function createDetailedRoleCheckboxes(selectedRoles = []) {
-  const grid = document.createElement('div');
-  grid.className = 'roles-grid';
-  ROLES.forEach((role) => {
-    const roleInfo = ROLE_DESCRIPTIONS[role];
-    const label = document.createElement('label');
-    label.className = 'role-option';
-    label.title = roleInfo.permissions;
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.name = 'role';
-    checkbox.value = role;
-    if (selectedRoles.includes(role)) checkbox.checked = true;
-    const infoSpan = document.createElement('span');
-    infoSpan.className = 'role-info';
-    const nameSpan = document.createElement('span');
-    nameSpan.className = 'role-name';
-    nameSpan.textContent = roleInfo.label;
-    const descSpan = document.createElement('span');
-    descSpan.className = 'role-desc';
-    descSpan.textContent = roleInfo.description;
-    infoSpan.appendChild(nameSpan);
-    infoSpan.appendChild(descSpan);
-    label.appendChild(checkbox);
-    label.appendChild(infoSpan);
-    grid.appendChild(label);
-  });
-  return grid;
-}
-
-function createCompactRoleCheckboxes(selectedRoles = []) {
-  const container = document.createElement('div');
-  container.className = 'compact-roles';
-  ROLES.forEach((role) => {
-    const roleInfo = ROLE_DESCRIPTIONS[role];
-    const label = document.createElement('label');
-    label.className = 'role-pill';
-    label.title = roleInfo.description;
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.value = role;
-    if (selectedRoles.includes(role)) checkbox.checked = true;
-    const span = document.createElement('span');
-    span.textContent = roleInfo.label;
-    label.appendChild(checkbox);
-    label.appendChild(span);
-    container.appendChild(label);
-  });
-  return container;
-}
-
 function createRolesReference() {
-  const details = document.createElement('details');
-  details.className = 'roles-reference';
-  const summary = document.createElement('summary');
-  summary.textContent = 'What do the Roles mean?';
-  details.appendChild(summary);
-  const panel = document.createElement('div');
-  panel.className = 'roles-reference-panel';
-  const list = document.createElement('dl');
-  list.className = 'roles-reference-list';
-  ROLES.forEach((role) => {
-    const roleInfo = ROLE_DESCRIPTIONS[role];
-    const dt = document.createElement('dt');
-    dt.textContent = roleInfo.label;
-    const dd = document.createElement('dd');
-    dd.textContent = roleInfo.description;
-    list.appendChild(dt);
-    list.appendChild(dd);
-  });
   const link = document.createElement('a');
   link.href = 'https://www.aem.live/docs/authentication-setup-authoring#admin-roles';
   link.target = '_blank';
+  link.rel = 'noopener noreferrer';
   link.className = 'roles-reference-link';
   link.textContent = 'Learn more about roles';
-  panel.appendChild(list);
-  panel.appendChild(link);
-  details.appendChild(panel);
-  return details;
+  return link;
 }
 
 let entryIdCounter = 0;
@@ -307,7 +192,7 @@ function createUserEntry(entriesContainer, updateSaveLabel, selectedRoles = []) 
   const rolesLabel = document.createElement('label');
   rolesLabel.id = rolesFieldId;
   rolesLabel.textContent = 'Roles';
-  const rolesContainer = createCompactRoleCheckboxes(selectedRoles);
+  const rolesContainer = createRolesField(selectedRoles);
   rolesContainer.setAttribute('role', 'group');
   rolesContainer.setAttribute('aria-labelledby', rolesFieldId);
   rolesField.appendChild(rolesLabel);
@@ -615,7 +500,7 @@ function openEditUserModal(user, onSave) {
   hint.append('Select one or more roles. ', hintLink);
   rolesField.appendChild(rolesLabel);
   rolesField.appendChild(hint);
-  rolesField.appendChild(createDetailedRoleCheckboxes(user.roles || []));
+  rolesField.appendChild(createRolesField(user.roles || []));
   form.appendChild(rolesField);
   bodyDiv.appendChild(form);
 

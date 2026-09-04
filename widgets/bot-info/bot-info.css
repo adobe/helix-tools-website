@@ -356,54 +356,9 @@
   display: none;
 }
 
-.bot-info-roles {
+/* the shared roles-field spans the full user row, below email + remove */
+.bot-info-user-row .roles-field {
   grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-
-/* lets the hidden pills participate in the parent's flow when revealed */
-.bot-info-roles-rest {
-  display: contents;
-}
-
-.bot-info-roles-rest[aria-hidden="true"] {
-  display: none;
-}
-
-.bot-info-roles-more {
-  padding: 2px 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  background-color: var(--color-background);
-  color: var(--color-font-grey);
-  font-size: 0.85em;
-  line-height: 1.4;
-  cursor: pointer;
-}
-
-.bot-info-roles-more:hover {
-  border-color: light-dark(var(--blue-900), var(--blue-500));
-  color: var(--color-text);
-}
-
-.bot-info-role-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  font-size: 0.85em;
-  cursor: pointer;
-  user-select: none;
-}
-
-.bot-info-role-pill:has(input:checked) {
-  border-color: light-dark(var(--blue-900), var(--blue-500));
-  background-color: light-dark(var(--blue-100), var(--blue-1200));
 }
 
 .bot-info-remove {

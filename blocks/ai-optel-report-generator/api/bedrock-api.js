@@ -3,7 +3,7 @@
  * Authenticates via domainkey (passed in request body/query params).
  */
 
-import { AI_MODELS, BEDROCK_CONFIG } from '../config.js';
+import { BEDROCK_CONFIG } from '../config.js';
 import { getEffectiveDomainKey, getPageDomain } from '../domainkey-context.js';
 
 export function hasBedrockToken() {
@@ -104,26 +104,27 @@ function transformMessage(msg) {
   return { role: msg.role, content };
 }
 
-/** Build request body for Messages API via proxy */
+/**
+ * Build request body for Messages API via proxy.
+ *
+ * The proxy owns the model, token limit, temperature, and base system prompt,
+ * selected by `purpose` ('batch' | 'followup' | 'synthesis'). The client only
+ * sends the messages/tools and, for synthesis, dynamic facet context in
+ * `systemExtra` (appended server-side to the base prompt).
+ */
 function buildRequestBody(params) {
   const {
-    messages,
-    system,
-    max_tokens: maxTokens = BEDROCK_CONFIG.MAX_TOKENS,
-    temperature = BEDROCK_CONFIG.TEMPERATURE,
-    tools,
+    messages, purpose, systemExtra, tools,
   } = params;
 
   const body = {
     domain: getPageDomain(),
     domainkey: getEffectiveDomainKey(),
-    modelId: params.modelId || AI_MODELS.BEDROCK_MODEL_ID,
+    purpose,
     messages: messages.map(transformMessage),
-    max_tokens: maxTokens,
-    temperature,
   };
 
-  if (system) body.system = system;
+  if (systemExtra) body.systemExtra = systemExtra;
   if (tools?.length) body.tools = tools;
 
   return body;
@@ -189,14 +190,14 @@ export async function callBedrockAPI(params) {
       const normalizedContent = normalizeResponseContent(data.content, params.tools);
 
       // Track usage for billing
-      trackUsage(data.usage, data.model || AI_MODELS.BEDROCK_MODEL_ID);
+      trackUsage(data.usage, data.model || 'unknown');
 
       return {
         id: data.id || `bedrock-${Date.now()}`,
         type: 'message',
         role: 'assistant',
         content: normalizedContent,
-        model: data.model || AI_MODELS.BEDROCK_MODEL_ID,
+        model: data.model || 'unknown',
         stop_reason: data.stop_reason,
         usage: data.usage,
       };
@@ -321,14 +322,14 @@ export async function callBedrockAPIAsync(params, onProgress = null) {
       const normalizedContent = normalizeResponseContent(result.content, params.tools);
 
       // Track usage for billing
-      trackUsage(result.usage, result.model || AI_MODELS.BEDROCK_MODEL_ID);
+      trackUsage(result.usage, result.model || 'unknown');
 
       return {
         id: result.id || `bedrock-${Date.now()}`,
         type: 'message',
         role: 'assistant',
         content: normalizedContent,
-        model: result.model || AI_MODELS.BEDROCK_MODEL_ID,
+        model: result.model || 'unknown',
         stop_reason: result.stop_reason,
         usage: result.usage,
       };
