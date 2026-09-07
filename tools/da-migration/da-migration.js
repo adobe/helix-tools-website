@@ -7,8 +7,10 @@ import { ensureLogin } from '../../blocks/profile/profile.js';
 // checkbox. `action` is the label of the primary button while a step is active.
 const STEPS = [
   { key: 'setup', label: 'Pick site', action: 'Next' },
-  { key: 'copy', label: 'Copy content', action: 'Copy content' },
+  // in-place: switch first, so the user sees the downtime warning before any
+  // content is copied. `config` is filtered out entirely for site-to-site.
   { key: 'config', label: 'Switch to API Service', action: 'Update config' },
+  { key: 'copy', label: 'Copy content', action: 'Copy content' },
   { key: 'preview', label: 'Preview content', action: 'Preview all' },
   { key: 'publish', label: 'Publish content', action: 'Publish all' },
 ];
