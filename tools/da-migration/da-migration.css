@@ -1,0 +1,269 @@
+.da-migration main {
+  max-width: 1000px;
+}
+
+.da-migration code {
+  font-size: 0.9em;
+}
+
+/* stepper / progress indicator */
+.da-migration .da-migration-steps {
+  display: flex;
+  list-style: none;
+  margin: var(--spacing-xl) 0 var(--spacing-l);
+  padding: 0;
+}
+
+.da-migration .da-migration-steps-item {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  font-size: 0.85em;
+  color: var(--color-font-grey);
+}
+
+/* connector line joining an item to the previous one, inset by the badge
+   radius (14px) so it sits between the circles */
+.da-migration .da-migration-steps-item::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: calc(-50% + 14px);
+  width: calc(100% - 28px);
+  height: 2px;
+  background-color: var(--color-border);
+}
+
+.da-migration .da-migration-steps-item:first-child::before {
+  display: none;
+}
+
+.da-migration .da-migration-steps-item.is-active::before,
+.da-migration .da-migration-steps-item.is-complete::before {
+  background-color: light-dark(var(--green-900), var(--green-500));
+}
+
+.da-migration .da-migration-steps-num {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--color-border);
+  border-radius: 50%;
+  background-color: var(--color-background);
+  font-weight: var(--weight-bold);
+  line-height: 1;
+}
+
+.da-migration .da-migration-steps-item.is-active {
+  color: var(--color-text);
+  font-weight: var(--weight-bold);
+}
+
+.da-migration .da-migration-steps-item.is-active .da-migration-steps-num {
+  border-color: var(--color-text);
+  color: var(--color-text);
+}
+
+.da-migration .da-migration-steps-item.is-complete .da-migration-steps-num {
+  border-color: light-dark(var(--green-900), var(--green-500));
+  background-color: light-dark(var(--green-900), var(--green-500));
+  color: light-dark(var(--green-100), var(--green-1200));
+}
+
+/* panels */
+.da-migration .da-migration-panel {
+  margin-top: var(--spacing-xl);
+}
+
+.da-migration .da-migration-panel[aria-hidden="true"] {
+  display: none;
+}
+
+.da-migration .da-migration-panel h2 {
+  margin-bottom: var(--spacing-xs);
+}
+
+.da-migration .da-migration-panel > p {
+  margin-top: 0;
+  color: var(--color-font-grey);
+}
+
+.da-migration .da-migration-desc {
+  padding: var(--spacing-l);
+  border: 1px solid var(--color-border);
+  border-radius: var(--rounding-m);
+  background-color: var(--layer-elevated);
+  color: var(--color-text);
+}
+
+.da-migration .form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-s);
+  margin-top: var(--spacing-l);
+}
+
+.da-migration .form-field.config-field {
+  margin-top: var(--spacing-l);
+}
+
+/* destination-site toggle */
+.da-migration .da-migration-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-xl);
+  cursor: pointer;
+  font-weight: var(--weight-medium);
+}
+
+.da-migration .da-migration-toggle input {
+  width: unset;
+}
+
+.da-migration .da-migration-toggle-hint {
+  margin-top: var(--spacing-xs);
+  color: var(--color-font-grey);
+  font-size: 0.9em;
+}
+
+/* collapsible "how to get the token" help */
+.da-migration .da-migration-token-help {
+  margin-top: var(--spacing-xs);
+  font-size: 0.9em;
+}
+
+.da-migration .da-migration-token-help summary {
+  cursor: pointer;
+  color: var(--color-link);
+  width: fit-content;
+}
+
+.da-migration .da-migration-token-help ol {
+  margin: var(--spacing-s) 0 0;
+  padding-left: 1.4em;
+  color: var(--color-font-grey);
+}
+
+.da-migration .da-migration-token-help li {
+  margin-bottom: var(--spacing-xs);
+}
+
+/* simulated progress bar for bulk steps */
+.da-migration .da-migration-progress {
+  margin-top: var(--spacing-l);
+}
+
+.da-migration .da-migration-progress[aria-hidden="true"] {
+  display: none;
+}
+
+.da-migration .da-migration-progress-track {
+  height: 10px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background-color: var(--layer-elevated);
+}
+
+.da-migration .da-migration-progress-bar {
+  width: 0;
+  height: 100%;
+  border-radius: 999px;
+  background-color: light-dark(var(--blue-900), var(--blue-500));
+}
+
+.da-migration .da-migration-progress-label {
+  margin-top: var(--spacing-s);
+  color: var(--color-font-grey);
+  font-size: 0.9em;
+}
+
+/* destination fields, revealed by the toggle */
+.da-migration .da-migration-destination {
+  margin-top: var(--spacing-l);
+  padding: 0 var(--spacing-l) var(--spacing-l);
+  border: 1px solid var(--color-border);
+  border-radius: var(--rounding-m);
+}
+
+.da-migration .da-migration-destination[aria-hidden="true"] {
+  display: none;
+}
+
+.da-migration .da-migration-destination legend {
+  padding: 0 var(--spacing-xs);
+  font-weight: var(--weight-bold);
+}
+
+.da-migration .da-migration-destination > p {
+  margin-top: 0;
+  color: var(--color-font-grey);
+  font-size: 0.9em;
+}
+
+/* done panel */
+.da-migration .da-migration-links-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-l);
+  margin-top: var(--spacing-m);
+}
+
+.da-migration .da-migration-links {
+  flex: 1 1 280px;
+  padding: var(--spacing-m);
+  border: 1px solid var(--color-border);
+  border-radius: var(--rounding-m);
+}
+
+.da-migration .da-migration-links[aria-hidden="true"] {
+  display: none;
+}
+
+.da-migration .da-migration-links-title {
+  margin: 0 0 var(--spacing-s);
+  font-size: var(--heading-size-s);
+}
+
+.da-migration .da-migration-links a {
+  word-break: break-all;
+}
+
+/* warning note (e.g. downtime during in-place switch); the selector is scoped
+   to the panel so it out-specifies the generic `.da-migration-panel > p` color */
+.da-migration .da-migration-panel .da-migration-warning {
+  color: light-dark(var(--red-900), var(--red-500));
+  font-weight: var(--weight-bold);
+}
+
+/* error + navigation footer */
+.da-migration .da-migration-error {
+  color: light-dark(var(--red-900), var(--red-500));
+}
+
+.da-migration .da-migration-error[aria-hidden="true"] {
+  display: none;
+}
+
+.da-migration .da-migration-nav {
+  display: flex;
+  gap: var(--spacing-m);
+  margin-top: var(--spacing-xl);
+}
+
+.da-migration .da-migration-nav[aria-hidden="true"] {
+  display: none;
+}
+
+.da-migration .da-migration-next {
+  margin-left: auto;
+}
