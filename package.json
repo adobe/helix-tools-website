@@ -36,7 +36,7 @@
     "stylelint-config-standard": "40.0.0"
   },
   "dependencies": {
-    "@adobe/rum-distiller": "1.23.0",
+    "@adobe/rum-distiller": "1.23.1",
     "@codemirror/lang-html": "6.4.12",
     "@codemirror/lang-json": "6.0.2",
     "@codemirror/lang-yaml": "6.1.3",
