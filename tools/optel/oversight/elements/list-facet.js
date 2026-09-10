@@ -115,6 +115,13 @@ export default class ListFacet extends HTMLElement {
         if (sortMetric === 'count') return 0; // keep the default order from distiller
         if (sortMetric === 'weight') return b.weight - a.weight; // order by weight, aka number of page views
         if (sortMetric === 'value') return a.value.localeCompare(b.value);
+        if (sortMetric === 'asc') {
+          // numeric sort for histogram facets (e.g. "00:10 - 00:30")
+          const aNum = Number.parseFloat(a.value.replace(/[^0-9.]/g, ''));
+          const bNum = Number.parseFloat(b.value.replace(/[^0-9.]/g, ''));
+          if (Number.isNaN(aNum) || Number.isNaN(bNum)) return a.value.localeCompare(b.value);
+          return aNum - bNum;
+        }
         // get metric and property (e.g. lcp.mean)
         const aNum = a.metrics[sortMetric][sortProperty];
         const bNum = b.metrics[sortMetric][sortProperty];

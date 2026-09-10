@@ -21,3 +21,5 @@ MIGRATION_PLAN.md
 .playwright-cli/
 .claude/settings.local.json
 .claude/skills/tool-image-prompt/scripts/.cache/
+
+.claude/worktrees
