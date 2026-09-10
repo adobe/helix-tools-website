@@ -2,7 +2,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { loadIcon, icon, showToast } from '../../utils/card-ui/card-ui.js';
-import getAdminClient from '../../scripts/admin-compat.js';
+import { getAdminClientForSite } from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { parseUsersFromAccessConfig, buildAccessConfig } from './utils.js';
 import { ROLE_DESCRIPTIONS } from '../../utils/roles/roles.js';
@@ -10,11 +10,14 @@ import { createRolesField } from '../../utils/roles/roles-field.js';
 
 const VIEW_STORAGE_KEY = 'user-admin-view';
 
-let admin;
-
 const adminForm = document.getElementById('admin-form');
 const site = document.getElementById('site');
 const org = document.getElementById('org');
+
+function getAdmin() {
+  return getAdminClientForSite({ org: org.value, site: site.value });
+}
+
 const consoleBlock = document.querySelector('.console');
 const usersContainer = document.getElementById('users-container');
 const accessConfig = { type: 'org', users: [], originalSiteAccess: {} };
@@ -22,7 +25,7 @@ const accessConfig = { type: 'org', users: [], originalSiteAccess: {} };
 async function getOrgConfig() {
   const result = await executeAdminRequest(
     async () => {
-      const res = await admin.config({ org: org.value }).read();
+      const res = await (await getAdmin()).config({ org: org.value }).read();
       logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
       return res;
     },
@@ -35,7 +38,7 @@ async function getOrgConfig() {
 async function getSiteAccessConfig() {
   const result = await executeAdminRequest(
     async () => {
-      const res = await admin.config({ org: org.value, site: site.value })
+      const res = await (await getAdmin()).config({ org: org.value, site: site.value })
         .select('access.json')
         .read();
       logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
@@ -53,7 +56,7 @@ async function updateSiteAccess() {
   const access = buildAccessConfig(originalSiteAccess, users);
   const result = await executeAdminRequest(
     async () => {
-      const res = await admin.config({ org: org.value, site: site.value })
+      const res = await (await getAdmin()).config({ org: org.value, site: site.value })
         .select('access.json')
         .update(JSON.stringify(access));
       logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
@@ -67,7 +70,7 @@ async function updateSiteAccess() {
 async function updateOrgUserRoles(user) {
   const result = await executeAdminRequest(
     async () => {
-      const res = await admin.config({ org: org.value })
+      const res = await (await getAdmin()).config({ org: org.value })
         .select(`users/${user.id}.json`)
         .update(JSON.stringify(user));
       logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
@@ -86,7 +89,7 @@ async function deleteUserFromSite(user) {
 async function deleteUserFromOrg(user) {
   const result = await executeAdminRequest(
     async () => {
-      const res = await admin.config({ org: org.value })
+      const res = await (await getAdmin()).config({ org: org.value })
         .select(`users/${user.id}.json`)
         .remove();
       logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
@@ -117,7 +120,7 @@ async function addUsersToOrg(users) {
       await prevPromise;
       const result = await executeAdminRequest(
         async () => {
-          const res = await admin.config({ org: org.value })
+          const res = await (await getAdmin()).config({ org: org.value })
             .select('users.json')
             .update(JSON.stringify(user));
           logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
@@ -746,7 +749,6 @@ adminForm.addEventListener('submit', async (e) => {
 });
 
 async function init() {
-  admin = await getAdminClient();
   // Load required icons
   const neededIcons = ['user', 'edit', 'grid', 'list', 'trash'];
   await Promise.all(neededIcons.map(loadIcon));
