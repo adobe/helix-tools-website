@@ -101,9 +101,13 @@ function createPropertyRow(propertiesContainer, {
   property.querySelector('label[for="index-property-value-type"]').htmlFor = valueTypeField.id;
   property.querySelector('label[for="index-property-value"]').htmlFor = valueField.id;
 
+  let nameOnFocus = nameField.value;
+  nameField.addEventListener('focus', () => {
+    nameOnFocus = nameField.value;
+  });
   nameField.addEventListener('blur', () => {
     const name = nameField.value.trim();
-    if (!name) return;
+    if (!name || name === nameOnFocus.trim()) return;
 
     const selectVal = selectField.value.trim();
     const selectFirstVal = selectFirstField.value.trim();
