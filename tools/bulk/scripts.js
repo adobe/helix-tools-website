@@ -2,53 +2,17 @@ import { analyzeUrls, extractOrgSite } from './utils.js';
 import { getAdminClientForSite } from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 
-const log = document.getElementById('logger');
-const resultsList = document.getElementById('results-list');
-const summaryText = document.getElementById('summary-text');
+const resultsContainer = document.getElementById('results-container');
+const runButton = document.getElementById('run');
 const adminVersion = new URLSearchParams(window.location.search).get('hlx-admin-version');
 
-const append = (string, status = 'unknown') => {
-  const p = document.createElement('p');
-  p.textContent = string;
-  if (status !== 'unknown') {
-    p.className = `status-light http${Math.floor(status / 100) % 10}`;
-  }
-  log.append(p);
-  p.scrollIntoView();
-  return p;
-};
-
-// per-run result tracking: failures are kept above successes, both in arrival order
-let successCount = 0;
-let failCount = 0;
-let firstSuccessRow = null;
-
-const updateSummary = (total) => {
-  const processed = successCount + failCount;
-  summaryText.textContent = `${processed}/${total} processed — ${successCount} succeeded, ${failCount} failed`;
-};
-
-const resetResults = () => {
-  resultsList.textContent = '';
-  successCount = 0;
-  failCount = 0;
-  firstSuccessRow = null;
-};
-
-const appendResult = (text, status, total) => {
-  const li = document.createElement('li');
-  li.textContent = text;
-  li.className = `status-light http${Math.floor(status / 100) % 10}`;
-  if (status >= 400) {
-    resultsList.insertBefore(li, firstSuccessRow);
-    failCount += 1;
-  } else {
-    resultsList.appendChild(li);
-    if (!firstSuccessRow) firstSuccessRow = li;
-    successCount += 1;
-  }
-  updateSummary(total);
-  return li;
+const OPERATION_LABELS = {
+  preview: 'Preview',
+  live: 'Publish',
+  index: 'Index',
+  cache: 'Purge',
+  unpublish: 'Unpublish',
+  unpreview: 'Unpreview',
 };
 
 function sleep(ms) {
@@ -56,6 +20,70 @@ function sleep(ms) {
     setTimeout(resolve, ms);
   });
 }
+
+// Creates a fresh, collapsed results block for a single run; replaces any previous one.
+const createRunBlock = () => {
+  const details = document.createElement('details');
+  details.className = 'run-result';
+
+  const summary = document.createElement('summary');
+  summary.textContent = 'Running…';
+  details.append(summary);
+
+  const messages = document.createElement('div');
+  messages.className = 'run-messages';
+  details.append(messages);
+
+  const list = document.createElement('ol');
+  list.className = 'results-list';
+  details.append(list);
+
+  resultsContainer.replaceChildren(details);
+
+  let successCount = 0;
+  let failCount = 0;
+
+  const updateSummary = (processed, total, label) => {
+    summary.textContent = `${label} ${processed} of ${total} - ${failCount} failed, ${successCount} succeeded`;
+  };
+
+  const appendMessage = (string, status = 'unknown') => {
+    const p = document.createElement('p');
+    p.textContent = string;
+    if (status !== 'unknown') {
+      p.className = `status-light http${Math.floor(status / 100) % 10}`;
+    }
+    messages.append(p);
+    p.scrollIntoView();
+    return p;
+  };
+
+  // Appended in arrival order; sortResults() groups failures to the top on completion.
+  const appendResult = (text, status, processed, total, label) => {
+    const li = document.createElement('li');
+    li.textContent = text;
+    li.className = `status-light http${Math.floor(status / 100) % 10}`;
+    list.appendChild(li);
+    if (status >= 400) failCount += 1; else successCount += 1;
+    updateSummary(processed, total, label);
+    return li;
+  };
+
+  const sortResults = () => {
+    const isFailure = (row) => row.classList.contains('http4') || row.classList.contains('http5');
+    const rows = [...list.children].sort((a, b) => isFailure(b) - isFailure(a));
+    list.append(...rows);
+  };
+
+  const finish = () => {
+    sortResults();
+    runButton.disabled = false;
+  };
+
+  return {
+    appendMessage, appendResult, updateSummary, finish,
+  };
+};
 
 /**
  * Show a confirmation dialog with sanitization warnings
@@ -221,7 +249,10 @@ const showSanitizationWarning = (changes) => {
 document.getElementById('urls-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   let counter = 0;
-  resetResults();
+  runButton.disabled = true;
+  const {
+    appendMessage, appendResult, updateSummary, finish,
+  } = createRunBlock();
 
   const rawUrls = document.getElementById('urls').value
     .split('\n')
@@ -229,7 +260,8 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
     .filter((u) => u.length > 0);
 
   if (rawUrls.length === 0) {
-    append('No URLs provided');
+    appendMessage('No URLs provided');
+    finish();
     return false;
   }
 
@@ -245,21 +277,23 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
   if (hasIssues) {
     const choice = await showSanitizationWarning({ rejected, modified, deduplicated });
     if (!choice) {
-      append('Operation cancelled by user');
+      appendMessage('Operation cancelled by user');
+      finish();
       return false;
     }
     urlsToUse = choice === 'unsanitized' ? urlsUnsanitized : urls;
     if (choice === 'sanitized' || choice === true) {
       document.getElementById('urls').value = urls.join('\n');
-      append(`URL(s) updated with ${urls.length} sanitized URL(s)`);
+      appendMessage(`URL(s) updated with ${urls.length} sanitized URL(s)`);
     } else {
-      append(`Proceeding with ${urlsToUse.length} original URL(s)`);
+      appendMessage(`Proceeding with ${urlsToUse.length} original URL(s)`);
     }
   }
 
   const total = urlsToUse.length;
   if (urlsToUse.length === 0) {
-    append('No valid URLs after sanitization');
+    appendMessage('No valid URLs after sanitization');
+    finish();
     return false;
   }
 
@@ -270,8 +304,10 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
   if (adminVersion) admin = admin.pinVersion(adminVersion);
 
   const operation = document.getElementById('operation').dataset.value;
+  const label = OPERATION_LABELS[operation] || operation;
   const slow = document.getElementById('slow').checked;
   const forceUpdate = document.getElementById('force').checked;
+  updateSummary(0, total, label);
 
   const ENDPOINTS = { unpublish: 'live', unpreview: 'preview' };
   const METHODS = { unpublish: 'DELETE', unpreview: 'DELETE' };
@@ -293,15 +329,15 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
 
   const logOp = (resp) => {
     const { url: reqUrl } = resp.request;
-    resp.text().then(() => {
+    return resp.text().then(() => {
       counter += 1;
-      appendResult(`${counter}/${total}: ${reqUrl}`, resp.status, total);
+      appendResult(`${counter}/${total}: ${reqUrl}`, resp.status, counter, total, label);
     });
   };
 
   const executeOperation = async (url) => {
     const resp = await doAdminOp(url);
-    if (resp) logOp(resp);
+    if (resp) await logOp(resp);
   };
 
   const dequeue = async () => {
@@ -314,84 +350,92 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
   };
 
   const doBulkOperation = async () => {
-    if (total > 0) {
-      const VERB = { preview: 'preview', live: 'publish' };
-      const { hostname } = new URL(urlsToUse[0]);
-      const [branch, repo, owner] = hostname.split('.')[0].split('--');
-      const bulkText = `$1/${total} URL(s) bulk ${VERB[operation]}ed on ${owner}/${repo} ${forceUpdate ? '(force update)' : ''}`;
-      const bulkLog = append(bulkText.replace('$1', 0));
-      const paths = urlsToUse.map((url) => new URL(url).pathname);
-      const bulkResp = await executeAdminRequest(
-        () => admin[operation]({ org: owner, site: repo, ref: branch })
-          .bulk({ paths, forceUpdate }),
-        { org: owner, site: repo, policy: AuthMode.PREFLIGHT_AND_RETRY },
-      );
-      if (!bulkResp) {
-        append('Sign-in cancelled');
-        return;
-      }
-      if (!bulkResp.ok) {
-        append(`Failed to bulk ${VERB[operation]} ${paths.length} URLs on ${owner}/${repo}: ${await bulkResp.text()}`);
-      } else {
-        const { job } = await bulkResp.json();
-        const { name } = job;
-        // H6 job topics differ from the operation (e.g. live -> live-publish);
-        // job.topic is echoed by H6's start response and absent on H5.
-        const jobTopic = job.topic || VERB[operation];
-        const jobStatusPoll = window.setInterval(async () => {
-          try {
-            const jobResp = await executeAdminRequest(
-              () => admin.job({ org: owner, site: repo, ref: branch })
-                .get(`${jobTopic}/${name}/details`),
-              { org: owner, site: repo, policy: AuthMode.NONE },
-            );
-            const jobStatus = await jobResp.json();
-            const {
-              state,
-              progress: { processed = 0 } = {},
-              startTime,
-              stopTime,
-              data: { resources = [] } = {},
-            } = jobStatus;
-            if (state === 'stopped') {
-              window.clearInterval(jobStatusPoll);
-              // H5 resources carry `path`; H6 carries `resourcePath`.
-              resources.forEach((res) => appendResult(`${res.resourcePath || res.path} (${res.status})`, res.status, resources.length));
-              bulkLog.textContent = bulkText.replace('$1', processed);
-              const duration = (new Date(stopTime).valueOf()
-                - new Date(startTime).valueOf()) / 1000;
-              append(`Bulk ${operation} completed in ${duration}s`);
-            } else {
-              bulkLog.textContent = bulkText.replace('$1', processed);
-            }
-          } catch (error) {
-            // eslint-disable-next-line no-console
-            console.error(`failed to get status for job ${name}: ${error}`);
-            window.clearInterval(jobStatusPoll);
-          }
-        }, 1000);
-      }
+    if (total === 0) {
+      finish();
+      return;
     }
+    const VERB = { preview: 'preview', live: 'publish' };
+    const { hostname } = new URL(urlsToUse[0]);
+    const [branch, repo, owner] = hostname.split('.')[0].split('--');
+    const paths = urlsToUse.map((url) => new URL(url).pathname);
+    const bulkResp = await executeAdminRequest(
+      () => admin[operation]({ org: owner, site: repo, ref: branch })
+        .bulk({ paths, forceUpdate }),
+      { org: owner, site: repo, policy: AuthMode.PREFLIGHT_AND_RETRY },
+    );
+    if (!bulkResp) {
+      appendMessage('Sign-in cancelled');
+      finish();
+      return;
+    }
+    if (!bulkResp.ok) {
+      appendMessage(`Failed to bulk ${VERB[operation]} ${paths.length} URLs on ${owner}/${repo}: ${await bulkResp.text()}`);
+      finish();
+      return;
+    }
+    const { job } = await bulkResp.json();
+    const { name } = job;
+    // H6 job topics differ from the operation (e.g. live -> live-publish);
+    // job.topic is echoed by H6's start response and absent on H5.
+    const jobTopic = job.topic || VERB[operation];
+    let loggedCount = 0;
+    const jobStatusPoll = window.setInterval(async () => {
+      try {
+        const jobResp = await executeAdminRequest(
+          () => admin.job({ org: owner, site: repo, ref: branch })
+            .get(`${jobTopic}/${name}/details`),
+          { org: owner, site: repo, policy: AuthMode.NONE },
+        );
+        const jobStatus = await jobResp.json();
+        const {
+          state,
+          progress: { processed = 0 } = {},
+          startTime,
+          stopTime,
+          data: { resources = [] } = {},
+        } = jobStatus;
+        // resources fills in incrementally as the job progresses, not just once it stops.
+        resources.slice(loggedCount).forEach((res) => {
+          // H5 resources carry `path`; H6 carries `resourcePath`.
+          appendResult(`${res.resourcePath || res.path} (${res.status})`, res.status, processed, total, label);
+        });
+        loggedCount = resources.length;
+        if (state === 'stopped') {
+          window.clearInterval(jobStatusPoll);
+          const duration = (new Date(stopTime).valueOf()
+            - new Date(startTime).valueOf()) / 1000;
+          appendMessage(`Bulk ${operation} completed in ${duration}s`);
+          finish();
+        } else {
+          updateSummary(processed, total, label);
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error(`failed to get status for job ${name}: ${error}`);
+        window.clearInterval(jobStatusPoll);
+        finish();
+      }
+    }, 1000);
   };
 
   if (['preview', 'live'].includes(operation)) {
     doBulkOperation();
   } else {
-    append(`URLs: ${urlsToUse.length}`);
+    appendMessage(`URLs: ${urlsToUse.length}`);
     let concurrency = ['live', 'unpublish', 'unpreview'].includes(operation) ? 40 : 3;
     if (slow) concurrency = 1;
 
     // Auth preflight on first URL before launching concurrent dequeues.
     const firstResp = await doAdminOp(urlsToUse.shift(), AuthMode.PREFLIGHT_AND_RETRY);
     if (!firstResp) {
-      append('Sign-in cancelled');
+      appendMessage('Sign-in cancelled');
+      finish();
       return false;
     }
-    logOp(firstResp);
+    await logOp(firstResp);
 
-    for (let i = 0; i < concurrency; i += 1) {
-      dequeue();
-    }
+    await Promise.all(Array.from({ length: concurrency }, () => dequeue()));
+    finish();
   }
   return true;
 });
