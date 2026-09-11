@@ -93,11 +93,11 @@ function displayJobDetails() {
 
 async function unpublishOrphanedPages(paths) {
   console.log('Unpublishing', paths);
-  const body = JSON.stringify({ paths, delete: true });
-  const liveRes = await admin.live({ org: ORG, site: SITE }).update('/*', body);
+  const payload = { paths, delete: true };
+  const liveRes = await admin.live({ org: ORG, site: SITE }).bulk(payload);
   if (!liveRes.ok) throw liveRes;
   const liveJson = await liveRes.json();
-  const previewRes = await admin.preview({ org: ORG, site: SITE }).update('/*', body);
+  const previewRes = await admin.preview({ org: ORG, site: SITE }).bulk(payload);
   if (!previewRes.ok) throw previewRes;
   const previewJson = await previewRes.json();
   console.log('Unpublished', liveJson, previewJson);
