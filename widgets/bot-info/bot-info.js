@@ -289,13 +289,16 @@ async function submitConfig(api, widget, config, { org, site, newOrg }, consoleB
 
   const siteList = widget.querySelector('.bot-info-user-list[data-scope="site"]');
   const siteUsers = collectUsers(siteList);
+  const { kind, contentUrl, suffix } = readContentSelection(widget, org, site);
   const access = buildAccessConfig(config.access, siteUsers);
+  // the built-in AEM content source serves content through the admin API, so
+  // admin access must always be authenticated (rather than the default 'auto')
+  if (kind === 'aem') access.admin.requireAuth = true;
   await must(
     logged(consoleBlock, api.config({ org, site }).select('access.json').update(JSON.stringify(access))),
     'Saving site administrators',
   );
 
-  const { kind, contentUrl, suffix } = readContentSelection(widget, org, site);
   const source = buildContentSource(contentUrl, kind, suffix);
   // update only the content sub-config; POSTing the whole site config would
   // overwrite the access.json we just wrote with the stale copy read on load
