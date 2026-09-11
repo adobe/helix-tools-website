@@ -26,6 +26,45 @@
   gap: var(--spacing-s);
 }
 
+/* Run summary / results */
+
+/* #results-container isn't CMS content, so it never goes through aem.js's
+   automatic section/default-content-wrapper decoration (and wrapping it in a
+   real .section div would make decorateBlocks() mistake it for a block).
+   Reuse the same page-edge spacing (main > .section > div) by hand instead. */
+.bulk-ops #results-container {
+  margin: var(--horizontal-spacing) auto;
+  padding: 0 var(--horizontal-spacing);
+}
+
+.bulk-ops .run-result {
+  margin-top: var(--spacing-m);
+  border: 1px solid var(--color-border);
+  border-radius: var(--rounding-s);
+}
+
+.bulk-ops .run-result summary {
+  cursor: pointer;
+  font-weight: var(--weight-bold);
+  padding: var(--spacing-m);
+}
+
+.bulk-ops .run-result .run-messages,
+.bulk-ops .run-result .results-list {
+  padding: 0 var(--spacing-m) var(--spacing-m);
+}
+
+.bulk-ops .run-result .results-list {
+  margin: 0;
+  list-style: none;
+}
+
+.bulk-ops .run-result .results-list li {
+  padding: 2px 0;
+  font-size: var(--body-size-s);
+  word-break: break-all;
+}
+
 /* Sanitization Warning Dialog */
 .bulk-ops dialog.sanitization-warning {
   max-width: 800px;
