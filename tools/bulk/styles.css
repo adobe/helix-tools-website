@@ -27,7 +27,12 @@
 }
 
 /* Run summary / results */
-.bulk-ops #results-container.default-content-wrapper {
+
+/* #results-container isn't CMS content, so it never goes through aem.js's
+   automatic section/default-content-wrapper decoration (and wrapping it in a
+   real .section div would make decorateBlocks() mistake it for a block).
+   Reuse the same page-edge spacing (main > .section > div) by hand instead. */
+.bulk-ops #results-container {
   margin: var(--horizontal-spacing) auto;
   padding: 0 var(--horizontal-spacing);
 }
