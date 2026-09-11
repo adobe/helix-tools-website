@@ -27,6 +27,11 @@
 }
 
 /* Run summary / results */
+.bulk-ops #results-container.default-content-wrapper {
+  margin: var(--horizontal-spacing) auto;
+  padding: 0 var(--horizontal-spacing);
+}
+
 .bulk-ops .run-result {
   margin-top: var(--spacing-m);
   border: 1px solid var(--color-border);
@@ -36,12 +41,12 @@
 .bulk-ops .run-result summary {
   cursor: pointer;
   font-weight: var(--weight-bold);
-  padding: var(--spacing-m) var(--horizontal-spacing);
+  padding: var(--spacing-m);
 }
 
 .bulk-ops .run-result .run-messages,
 .bulk-ops .run-result .results-list {
-  padding: 0 var(--horizontal-spacing) var(--spacing-m);
+  padding: 0 var(--spacing-m) var(--spacing-m);
 }
 
 .bulk-ops .run-result .results-list {
