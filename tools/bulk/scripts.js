@@ -62,15 +62,17 @@ const createRunBlock = () => {
   const appendResult = (text, status, processed, total, label) => {
     const li = document.createElement('li');
     li.textContent = text;
-    li.className = `status-light http${Math.floor(status / 100) % 10}`;
+    // status 0 means a network/transport failure, not a real 2xx/3xx outcome.
+    const failed = !status || status >= 400;
+    li.className = `status-light http${Math.floor(status / 100) % 10}${failed ? ' is-failure' : ''}`;
     list.appendChild(li);
-    if (status >= 400) failCount += 1; else successCount += 1;
+    if (failed) failCount += 1; else successCount += 1;
     updateSummary(processed, total, label);
     return li;
   };
 
   const sortResults = () => {
-    const isFailure = (row) => row.classList.contains('http4') || row.classList.contains('http5');
+    const isFailure = (row) => row.classList.contains('is-failure');
     const rows = [...list.children].sort((a, b) => isFailure(b) - isFailure(a));
     list.append(...rows);
   };
@@ -299,9 +301,18 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
 
   // All URLs in a run target the same site; detect the backend from the first
   // one and pick the matching admin client (H5 admin.hlx.page or H6 api.aem.live).
-  const firstCoords = extractOrgSite(urlsToUse[0]);
-  let admin = await getAdminClientForSite(firstCoords);
-  if (adminVersion) admin = admin.pinVersion(adminVersion);
+  let admin;
+  try {
+    const firstCoords = extractOrgSite(urlsToUse[0]);
+    admin = await getAdminClientForSite(firstCoords);
+    if (adminVersion) admin = admin.pinVersion(adminVersion);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(error);
+    appendMessage(`Unexpected error: ${error.message}`);
+    finish();
+    return false;
+  }
 
   const operation = document.getElementById('operation').dataset.value;
   const label = OPERATION_LABELS[operation] || operation;
@@ -423,23 +434,35 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
   };
 
   if (['preview', 'live'].includes(operation)) {
-    doBulkOperation();
+    // Runs its own polling loop in the background; guard against any
+    // unexpected rejection leaving the run button stuck disabled.
+    doBulkOperation().catch((error) => {
+      // eslint-disable-next-line no-console
+      console.error(error);
+      appendMessage(`Unexpected error: ${error.message}`);
+      finish();
+    });
   } else {
     appendMessage(`URLs: ${urlsToUse.length}`);
     let concurrency = ['live', 'unpublish', 'unpreview'].includes(operation) ? 40 : 3;
     if (slow) concurrency = 1;
 
-    // Auth preflight on first URL before launching concurrent dequeues.
-    const firstResp = await doAdminOp(urlsToUse.shift(), AuthMode.PREFLIGHT_AND_RETRY);
-    if (!firstResp) {
-      appendMessage('Sign-in cancelled');
+    try {
+      // Auth preflight on first URL before launching concurrent dequeues.
+      const firstResp = await doAdminOp(urlsToUse.shift(), AuthMode.PREFLIGHT_AND_RETRY);
+      if (!firstResp) {
+        appendMessage('Sign-in cancelled');
+        return false;
+      }
+      await logOp(firstResp);
+      await Promise.all(Array.from({ length: concurrency }, () => dequeue()));
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error(error);
+      appendMessage(`Unexpected error: ${error.message}`);
+    } finally {
       finish();
-      return false;
     }
-    await logOp(firstResp);
-
-    await Promise.all(Array.from({ length: concurrency }, () => dequeue()));
-    finish();
   }
   return true;
 });
