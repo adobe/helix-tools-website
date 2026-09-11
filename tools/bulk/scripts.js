@@ -378,7 +378,7 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
     // H6 job topics differ from the operation (e.g. live -> live-publish);
     // job.topic is echoed by H6's start response and absent on H5.
     const jobTopic = job.topic || VERB[operation];
-    let loggedCount = 0;
+    const loggedPaths = new Set();
     const jobStatusPoll = window.setInterval(async () => {
       try {
         const jobResp = await executeAdminRequest(
@@ -394,12 +394,16 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
           stopTime,
           data: { resources = [] } = {},
         } = jobStatus;
-        // resources fills in incrementally as the job progresses, not just once it stops.
-        resources.slice(loggedCount).forEach((res) => {
-          // H5 resources carry `path`; H6 carries `resourcePath`.
-          appendResult(`${res.resourcePath || res.path} (${res.status})`, res.status, processed, total, label);
+        // resources fills in incrementally as the job progresses, but includes
+        // queued/in-progress entries (status 0) alongside completed ones; only
+        // log a resource once it has an actual outcome, and only once.
+        resources.forEach((res) => {
+          if (!res.status) return;
+          const path = res.resourcePath || res.path;
+          if (loggedPaths.has(path)) return;
+          loggedPaths.add(path);
+          appendResult(`${path} (${res.status})`, res.status, processed, total, label);
         });
-        loggedCount = resources.length;
         if (state === 'stopped') {
           window.clearInterval(jobStatusPoll);
           const duration = (new Date(stopTime).valueOf()
