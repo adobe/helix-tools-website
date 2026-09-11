@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import deriveReindexPaths from '../../../tools/index-admin/utils.js';
+import deriveReindexPaths, { deriveAutoMetaUpdate } from '../../../tools/index-admin/utils.js';
 
 describe('index-admin:utils.js', () => {
   describe('deriveReindexPaths', () => {
@@ -78,6 +78,66 @@ describe('index-admin:utils.js', () => {
       // segments: ['**', 'fragments', '**'] — first segment is wildcard, so pathSegments = []
       // basePath = '' → '/', which maps to '/*'
       assert.deepEqual(deriveReindexPaths(['**/fragments/**']), ['/*']);
+    });
+  });
+
+  describe('deriveAutoMetaUpdate', () => {
+    it('fills selectFirst when both fields are empty', () => {
+      assert.deepEqual(
+        deriveAutoMetaUpdate({
+          oldName: '', newName: 'description', selectVal: '', selectFirstVal: '',
+        }),
+        { selectFirst: 'meta[property="og:description"]' },
+      );
+    });
+
+    it('no-ops when the name did not actually change', () => {
+      assert.deepEqual(
+        deriveAutoMetaUpdate({
+          oldName: 'description', newName: 'description', selectVal: '', selectFirstVal: 'meta[property="og:description"]',
+        }),
+        {},
+      );
+    });
+
+    it('updates selectFirst when it still matches what we generated for the old name', () => {
+      assert.deepEqual(
+        deriveAutoMetaUpdate({
+          oldName: 'description', newName: 'excerpt', selectVal: '', selectFirstVal: 'meta[property="og:description"]',
+        }),
+        { selectFirst: 'meta[name="excerpt"]' },
+      );
+    });
+
+    it('leaves selectFirst alone when it does not match the old name pattern (custom value)', () => {
+      assert.deepEqual(
+        deriveAutoMetaUpdate({
+          oldName: 'description', newName: 'excerpt', selectVal: '', selectFirstVal: 'meta[name="custom-excerpt"]',
+        }),
+        {},
+      );
+    });
+
+    it('leaves a field alone when it looks auto-generated but for an unrelated name', () => {
+      // e.g. field was renamed from "title" to "excerpt" previously, leaving an
+      // og:title selector that happens to match the auto-pattern regex, but not
+      // what we'd generate for the prior name "title" -> should be left alone here
+      // since oldName passed in is "description", not "title"
+      assert.deepEqual(
+        deriveAutoMetaUpdate({
+          oldName: 'description', newName: 'excerpt', selectVal: '', selectFirstVal: 'meta[property="og:title"]',
+        }),
+        {},
+      );
+    });
+
+    it('updates select when it matches the old-name pattern', () => {
+      assert.deepEqual(
+        deriveAutoMetaUpdate({
+          oldName: 'title', newName: 'headline', selectVal: 'meta[property="og:title"]', selectFirstVal: '',
+        }),
+        { select: 'meta[name="headline"]' },
+      );
     });
   });
 });
