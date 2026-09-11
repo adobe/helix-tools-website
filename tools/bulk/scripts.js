@@ -21,7 +21,8 @@ function sleep(ms) {
   });
 }
 
-// Creates a fresh, collapsed results block for a single run; replaces any previous one.
+// Creates a fresh, collapsed results block for a single run, kept alongside
+// (above) any earlier runs' blocks rather than replacing them.
 const createRunBlock = () => {
   const details = document.createElement('details');
   details.className = 'run-result';
@@ -38,7 +39,7 @@ const createRunBlock = () => {
   list.className = 'results-list';
   details.append(list);
 
-  resultsContainer.replaceChildren(details);
+  resultsContainer.prepend(details);
 
   let successCount = 0;
   let failCount = 0;
@@ -389,7 +390,7 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
     // H6 job topics differ from the operation (e.g. live -> live-publish);
     // job.topic is echoed by H6's start response and absent on H5.
     const jobTopic = job.topic || VERB[operation];
-    const loggedPaths = new Set();
+    let loggedCount = 0;
     const jobStatusPoll = window.setInterval(async () => {
       try {
         const jobResp = await executeAdminRequest(
@@ -405,16 +406,17 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
           stopTime,
           data: { resources = [] } = {},
         } = jobStatus;
-        // resources fills in incrementally as the job progresses, but includes
-        // queued/in-progress entries (status 0) alongside completed ones; only
-        // log a resource once it has an actual outcome, and only once.
-        resources.forEach((res) => {
-          if (!res.status) return;
+        // resources fills in front-to-back as the job processes them; status 0
+        // means "not yet processed". Stop at the first unprocessed entry each
+        // tick so it gets picked up (in order) on a later poll instead of
+        // being logged as a failure.
+        for (let i = loggedCount; i < resources.length; i += 1) {
+          const res = resources[i];
+          if (!res.status) break;
           const path = res.resourcePath || res.path;
-          if (loggedPaths.has(path)) return;
-          loggedPaths.add(path);
           appendResult(`${path} (${res.status})`, res.status, processed, total, label);
-        });
+          loggedCount = i + 1;
+        }
         if (state === 'stopped') {
           window.clearInterval(jobStatusPoll);
           const duration = (new Date(stopTime).valueOf()
