@@ -70,9 +70,6 @@ const CDN_FIELDS = {
   ],
   managed: [
     {
-      name: 'envId', type: 'text', required: false, label: 'Environment ID (optional)',
-    },
-    {
       name: 'route', type: 'text', required: false, label: 'Routes (comma-separated)',
     },
   ],
