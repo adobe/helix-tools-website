@@ -123,3 +123,21 @@
   background: var(--color-button-accent-bg);
   color: var(--color-text);
 }
+
+/* Run summary / results */
+.bulk-ops #run-summary summary {
+  cursor: pointer;
+  font-weight: var(--weight-bold);
+}
+
+.bulk-ops #results-list {
+  margin: var(--spacing-s) 0 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.bulk-ops #results-list li {
+  padding: 2px 0;
+  font-size: var(--body-size-s);
+  word-break: break-all;
+}

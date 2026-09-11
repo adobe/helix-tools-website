@@ -3,6 +3,8 @@ import { getAdminClientForSite } from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 
 const log = document.getElementById('logger');
+const resultsList = document.getElementById('results-list');
+const summaryText = document.getElementById('summary-text');
 const adminVersion = new URLSearchParams(window.location.search).get('hlx-admin-version');
 
 const append = (string, status = 'unknown') => {
@@ -14,6 +16,39 @@ const append = (string, status = 'unknown') => {
   log.append(p);
   p.scrollIntoView();
   return p;
+};
+
+// per-run result tracking: failures are kept above successes, both in arrival order
+let successCount = 0;
+let failCount = 0;
+let firstSuccessRow = null;
+
+const updateSummary = (total) => {
+  const processed = successCount + failCount;
+  summaryText.textContent = `${processed}/${total} processed — ${successCount} succeeded, ${failCount} failed`;
+};
+
+const resetResults = () => {
+  resultsList.textContent = '';
+  successCount = 0;
+  failCount = 0;
+  firstSuccessRow = null;
+};
+
+const appendResult = (text, status, total) => {
+  const li = document.createElement('li');
+  li.textContent = text;
+  li.className = `status-light http${Math.floor(status / 100) % 10}`;
+  if (status >= 400) {
+    resultsList.insertBefore(li, firstSuccessRow);
+    failCount += 1;
+  } else {
+    resultsList.appendChild(li);
+    if (!firstSuccessRow) firstSuccessRow = li;
+    successCount += 1;
+  }
+  updateSummary(total);
+  return li;
 };
 
 function sleep(ms) {
@@ -186,6 +221,7 @@ const showSanitizationWarning = (changes) => {
 document.getElementById('urls-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   let counter = 0;
+  resetResults();
 
   const rawUrls = document.getElementById('urls').value
     .split('\n')
@@ -259,8 +295,7 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
     const { url: reqUrl } = resp.request;
     resp.text().then(() => {
       counter += 1;
-      append(`${counter}/${total}: ${reqUrl}`, resp.status);
-      document.getElementById('total').textContent = `${counter}/${total}`;
+      appendResult(`${counter}/${total}: ${reqUrl}`, resp.status, total);
     });
   };
 
@@ -321,7 +356,7 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
             if (state === 'stopped') {
               window.clearInterval(jobStatusPoll);
               // H5 resources carry `path`; H6 carries `resourcePath`.
-              resources.forEach((res) => append(`${res.resourcePath || res.path} (${res.status})`, res.status));
+              resources.forEach((res) => appendResult(`${res.resourcePath || res.path} (${res.status})`, res.status, resources.length));
               bulkLog.textContent = bulkText.replace('$1', processed);
               const duration = (new Date(stopTime).valueOf()
                 - new Date(startTime).valueOf()) / 1000;
