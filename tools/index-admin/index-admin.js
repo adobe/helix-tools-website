@@ -4,7 +4,7 @@ import { toClassName } from '../../scripts/aem.js';
 import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { logResponse } from '../../blocks/console/console.js';
-import deriveReindexPaths from './utils.js';
+import deriveReindexPaths, { deriveAutoMetaUpdate } from './utils.js';
 
 let admin;
 
@@ -21,30 +21,6 @@ let YAML;
 async function ensureYaml() {
   // eslint-disable-next-line import/no-unresolved
   YAML = YAML || await import('../../vendor/yaml/yaml.js');
-}
-
-const OG_META_PROPERTIES = new Set(['title', 'description', 'image']);
-
-function metaSelectFirstForProperty(propName) {
-  const name = propName.trim();
-  if (!name) return '';
-
-  const lower = name.toLowerCase();
-  if (OG_META_PROPERTIES.has(lower)) {
-    return `meta[property="og:${lower}"]`;
-  }
-  if (lower === 'date') {
-    return 'meta[name="publication-date"]';
-  }
-
-  const kebab = name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
-  return `meta[name="${kebab}"]`;
-}
-
-const META_SELECTOR_PATTERN = /^meta\[(?:property|name)="[^"]*"]$/;
-
-function isAutoMetaSelector(value) {
-  return META_SELECTOR_PATTERN.test(value.trim());
 }
 
 function createPropertyRow(propertiesContainer, {
@@ -106,20 +82,14 @@ function createPropertyRow(propertiesContainer, {
     nameOnFocus = nameField.value;
   });
   nameField.addEventListener('blur', () => {
-    const name = nameField.value.trim();
-    if (!name || name === nameOnFocus.trim()) return;
-
-    const selectVal = selectField.value.trim();
-    const selectFirstVal = selectFirstField.value.trim();
-    const candidate = metaSelectFirstForProperty(name);
-
-    if (!selectVal && !selectFirstVal) {
-      selectFirstField.value = candidate;
-    } else if (selectVal && isAutoMetaSelector(selectVal)) {
-      selectField.value = candidate;
-    } else if (selectFirstVal && isAutoMetaSelector(selectFirstVal)) {
-      selectFirstField.value = candidate;
-    }
+    const { select, selectFirst } = deriveAutoMetaUpdate({
+      oldName: nameOnFocus,
+      newName: nameField.value,
+      selectVal: selectField.value,
+      selectFirstVal: selectFirstField.value,
+    });
+    if (select !== undefined) selectField.value = select;
+    if (selectFirst !== undefined) selectFirstField.value = selectFirst;
   });
 
   property.querySelector('.remove-property-btn').addEventListener('click', () => {
