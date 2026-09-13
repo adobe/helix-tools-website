@@ -324,16 +324,18 @@ async function deleteApiKey(api, { org, site, newOrg }, tokenId, consoleBlock) {
   const safeTokenId = tokenId.replace(/\//g, '_').replace(/\+/g, '-');
   const res = await logged(consoleBlock, node.select(`apiKeys/${safeTokenId}.json`).remove());
   if (!res?.ok) {
-    logMessage(consoleBlock, 'warning', ['setup', `Could not remove setup API key: ${res?.error || res?.status || 'network error'}`]);
+    logMessage(consoleBlock, 'warning', ['setup', `Could not remove setup API key: ${res?.error || res?.status || 'network error'}`, '']);
   }
 }
 
 /**
- * Point the "create your content" link at the DA editor for DA sources,
- * otherwise straight at the content source URL.
+ * Point the "manage your content" link at the DA editor for DA and built-in
+ * AEM sources (both are authored in DA), otherwise straight at the content
+ * source URL.
  */
 function setCreateContentLink(widget, org, site, kind, contentUrl) {
-  const editUrl = kind === 'da' ? `https://da.live/#/${org}/${site}` : contentUrl;
+  const daEdited = kind === 'da' || kind === 'aem';
+  const editUrl = daEdited ? `https://da.live/#/${org}/${site}` : contentUrl;
   const contentSource = widget.querySelector('.bot-info-content-source');
   if (!contentSource) return;
   const link = document.createElement('a');
@@ -508,7 +510,7 @@ export default async function decorate(widget) {
   const fail = (error) => {
     // eslint-disable-next-line no-console
     console.error(error);
-    if (consoleBlock) logMessage(consoleBlock, 'error', ['setup', error.message]);
+    if (consoleBlock) logMessage(consoleBlock, 'error', ['setup', error.message, '']);
     setHidden(loading, true);
     setHidden(form, true);
     setHidden(alert, false);
@@ -546,7 +548,7 @@ export default async function decorate(widget) {
     });
 
     const api = tokenClient(token);
-    logMessage(consoleBlock, 'info', ['setup', `Loading configuration for ${ctx.org}/${ctx.site}…`]);
+    logMessage(consoleBlock, 'info', ['setup', `Loading configuration for ${ctx.org}/${ctx.site}…`, '']);
     const config = await loadConfig(api, ctx, consoleBlock);
     renderForm(widget, config, ctx);
 
@@ -675,7 +677,7 @@ export default async function decorate(widget) {
       submitBtn.disabled = true;
       backBtn.disabled = true;
       submitBtn.textContent = 'Saving…';
-      logMessage(consoleBlock, 'info', ['setup', 'Saving configuration…']);
+      logMessage(consoleBlock, 'info', ['setup', 'Saving configuration…', '']);
       try {
         const summary = await submitConfig(api, widget, config, ctx, consoleBlock);
         // revoke the one-time setup key now that the config is saved, then
@@ -683,12 +685,12 @@ export default async function decorate(widget) {
         await deleteApiKey(api, ctx, tokenId, consoleBlock);
         clearStoredToken();
         stopWarning();
-        logMessage(consoleBlock, 'success', ['setup', 'Setup complete']);
+        logMessage(consoleBlock, 'success', ['setup', 'Setup complete', '']);
         showConfirmation(widget, ctx, summary);
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error(error);
-        logMessage(consoleBlock, 'error', ['setup', error.message]);
+        logMessage(consoleBlock, 'error', ['setup', error.message, '']);
         errorEl.textContent = error.message;
         setHidden(errorEl, false);
         submitBtn.disabled = false;
