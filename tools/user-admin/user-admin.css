@@ -84,6 +84,12 @@
   height: 18px;
 }
 
+/* IMS groups are identities too, but distinct enough to flag at a glance */
+.user-admin .user-card.group-card .user-icon {
+  background: var(--purple-100);
+  color: var(--purple-900);
+}
+
 .user-admin .user-card .card-item-name {
   margin: 0;
   font-size: var(--body-size-l);
@@ -177,6 +183,10 @@ dialog.user-admin-modal .modal-header h3 {
   font-size: var(--heading-size-m);
   color: var(--color-text);
   padding-right: var(--spacing-400);
+
+  /* entity values can be long: wrap them instead of squeezing the close button */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 dialog.user-admin-modal .modal-close {
@@ -187,6 +197,7 @@ dialog.user-admin-modal .modal-close {
   color: var(--color-font-grey);
   cursor: pointer;
   padding: 0;
+  flex-shrink: 0;
   width: 28px;
   height: 28px;
   display: flex;
@@ -248,7 +259,7 @@ dialog.user-admin-modal .form-field label {
   color: var(--color-text);
 }
 
-dialog.user-admin-modal .form-field input[type="email"] {
+dialog.user-admin-modal .form-field input[type="text"] {
   width: 100%;
   padding: var(--spacing-s);
   border: 1px solid var(--color-border);
@@ -258,7 +269,7 @@ dialog.user-admin-modal .form-field input[type="email"] {
   color: var(--color-text);
 }
 
-dialog.user-admin-modal .form-field input[type="email"]:focus {
+dialog.user-admin-modal .form-field input[type="text"]:focus {
   outline: none;
   border-color: var(--blue-500);
   box-shadow: 0 0 0 2px var(--blue-100);
@@ -314,6 +325,38 @@ dialog.user-admin-modal .user-entry-header {
   justify-content: flex-end;
   align-items: center;
   margin-bottom: var(--spacing-s);
+}
+
+dialog.user-admin-modal .identity-type {
+  display: flex;
+  gap: var(--spacing-m);
+  align-items: center;
+  margin-bottom: var(--spacing-xs);
+}
+
+/* the identity inputs belong to the type radios above, so they replace the
+   stacked `.form-field + .form-field` gap with a tight one — only the roles
+   field keeps the full spacing */
+dialog.user-admin-modal .user-entry .identity-type ~ .form-field:not(:last-child) {
+  margin-top: var(--spacing-xs);
+}
+
+/* label wins over the generic `.form-field label` rule: the radio and its text
+   must sit on the same baseline, unbolded and without the label bottom margin */
+dialog.user-admin-modal .identity-type label.identity-type-option {
+  display: flex;
+  gap: var(--spacing-xs);
+  align-items: center;
+  margin: 0;
+  font-weight: 400;
+  line-height: 1;
+  cursor: pointer;
+}
+
+dialog.user-admin-modal .identity-type .identity-type-radio {
+  width: auto;
+  margin: 0;
+  padding: 0;
 }
 
 dialog.user-admin-modal .user-entry-remove {
