@@ -329,7 +329,7 @@ async function deleteApiKey(api, { org, site, newOrg }, tokenId, consoleBlock) {
 }
 
 /**
- * Point the "create your content" link at the DA editor for DA and built-in
+ * Point the "manage your content" link at the DA editor for DA and built-in
  * AEM sources (both are authored in DA), otherwise straight at the content
  * source URL.
  */
