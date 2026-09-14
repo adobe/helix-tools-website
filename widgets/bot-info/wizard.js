@@ -15,7 +15,7 @@ export const CONTENT_SOURCE_KINDS = [
   { value: 'da', label: 'Document Authoring (DA)', configType: 'markup' },
   { value: 'onedrive', label: 'SharePoint', configType: 'onedrive' },
   { value: 'google', label: 'Google Drive', configType: 'google' },
-  { value: 'aem', label: 'AEM', configType: 'markup' },
+  { value: 'aem', label: 'Built-in (api.aem.live)', configType: 'markup' },
   {
     value: 'byom', label: 'Other (bring your own markup)', configType: 'markup', suffix: true,
   },

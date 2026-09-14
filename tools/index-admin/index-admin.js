@@ -41,6 +41,12 @@ function metaSelectFirstForProperty(propName) {
   return `meta[name="${kebab}"]`;
 }
 
+const META_SELECTOR_PATTERN = /^meta\[(?:property|name)="[^"]*"]$/;
+
+function isAutoMetaSelector(value) {
+  return META_SELECTOR_PATTERN.test(value.trim());
+}
+
 function createPropertyRow(propertiesContainer, {
   propName = '',
   propInfo = {},
@@ -95,10 +101,24 @@ function createPropertyRow(propertiesContainer, {
   property.querySelector('label[for="index-property-value-type"]').htmlFor = valueTypeField.id;
   property.querySelector('label[for="index-property-value"]').htmlFor = valueField.id;
 
+  let nameOnFocus = nameField.value;
+  nameField.addEventListener('focus', () => {
+    nameOnFocus = nameField.value;
+  });
   nameField.addEventListener('blur', () => {
     const name = nameField.value.trim();
-    if (name && !selectFirstField.value.trim()) {
-      selectFirstField.value = metaSelectFirstForProperty(name);
+    if (!name || name === nameOnFocus.trim()) return;
+
+    const selectVal = selectField.value.trim();
+    const selectFirstVal = selectFirstField.value.trim();
+    const candidate = metaSelectFirstForProperty(name);
+
+    if (!selectVal && !selectFirstVal) {
+      selectFirstField.value = candidate;
+    } else if (selectVal && isAutoMetaSelector(selectVal)) {
+      selectField.value = candidate;
+    } else if (selectFirstVal && isAutoMetaSelector(selectFirstVal)) {
+      selectFirstField.value = candidate;
     }
   });
 
