@@ -31,7 +31,12 @@ const MAX_HOSTNAME_LENGTH = 63;
 const BRANCH_NAME_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*-?$/;
 
 const BRANCH_FIELD = {
-  name: 'branch', type: 'text', required: false, label: 'Default Branch', placeholder: 'main',
+  name: 'branch',
+  type: 'text',
+  required: false,
+  label: 'Branch',
+  placeholder: 'main',
+  hint: 'Determines which branch is flushed from the CDN when content is published.',
 };
 
 const CDN_FIELDS = {
@@ -150,6 +155,16 @@ function createField(field) {
   }
 
   div.append(label, input);
+
+  if (field.hint) {
+    const hint = document.createElement('div');
+    hint.className = 'field-help-text';
+    const p = document.createElement('p');
+    p.textContent = field.hint;
+    hint.append(p);
+    div.append(hint);
+  }
+
   if (field.type === 'password') {
     input.addEventListener('focus', () => {
       input.type = 'text';
