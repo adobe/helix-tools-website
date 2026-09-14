@@ -167,25 +167,24 @@ html[data-theme="system"] .cdn-setup .cdn-type-list li[aria-selected='false'] im
   margin-bottom: var(--spacing-l);
 }
 
-/* stylelint-disable-next-line no-descending-specificity */
-.cdn-setup .cdn-fields .form-field {
+.cdn-setup .field-row {
   display: flex;
   flex-direction: column;
 }
 
 @media (width >= 700px) {
-  .cdn-setup .cdn-fields .form-field {
+  .cdn-setup .field-row {
     flex-direction: row;
     align-items: baseline;
     gap: var(--spacing-m);
   }
 
-  .cdn-setup .cdn-fields .form-field label {
+  .cdn-setup .field-row label {
     min-width: 120px;
     text-align: right;
   }
 
-  .cdn-setup .cdn-fields .form-field input {
+  .cdn-setup .field-row input {
     flex: 1;
   }
 }

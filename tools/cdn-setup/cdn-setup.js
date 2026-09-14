@@ -141,6 +141,9 @@ function createField(field) {
   const div = document.createElement('div');
   div.className = 'form-field';
 
+  const row = document.createElement('div');
+  row.className = 'field-row';
+
   const label = document.createElement('label');
   label.htmlFor = field.name;
   label.textContent = field.label;
@@ -154,7 +157,8 @@ function createField(field) {
     input.placeholder = field.placeholder;
   }
 
-  div.append(label, input);
+  row.append(label, input);
+  div.append(row);
 
   if (field.hint) {
     const hint = document.createElement('div');
