@@ -28,6 +28,7 @@
   border: var(--border-m) solid var(--color-border);
   color: var(--color-text-secondary);
   font-size: var(--detail-size-s);
+  anchor-name: --field-hint-anchor;
 }
 
 .cdn-setup .field-hint-icon:hover,
@@ -49,10 +50,14 @@
 }
 
 /* Anchor positioning isn't universally supported yet; unsupported browsers
-   fall back to the popover's default (roughly centered) placement. */
+   fall back to the popover's default (roughly centered) placement.
+   All hint icons/popovers share one anchor-name; each popover sits right
+   after its own icon in the DOM, and only one is ever open at a time, so
+   anchor resolution always binds to the correct pair. */
 @supports (position-anchor: --a) {
   .cdn-setup .field-hint-popover {
     position: absolute;
+    position-anchor: --field-hint-anchor;
     top: calc(anchor(bottom) + var(--spacing-xs));
     left: anchor(left);
   }

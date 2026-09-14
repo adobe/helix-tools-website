@@ -4,7 +4,7 @@ import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
-import { getErrorMessage } from './utils.js';
+import { getErrorMessage, validateBranchName } from './utils.js';
 
 const adminForm = document.getElementById('admin-form');
 const cdnForm = document.getElementById('cdn-form');
@@ -24,11 +24,6 @@ let originalConfig;
 let validationPassed = false;
 
 const VALIDATION_URL = 'https://admin.hlx.page/hook/byocdn-push-invalidation/';
-
-// Preview/live hostnames follow `{branch}--{site}--{org}.aem.page` and must fit
-// within the 63-character DNS label limit, same rule as site-admin site names.
-const MAX_HOSTNAME_LENGTH = 63;
-const BRANCH_NAME_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*-?$/;
 
 const BRANCH_FIELD = {
   name: 'branch',
@@ -164,14 +159,12 @@ function createField(field) {
   let bubble;
   if (field.hint) {
     const hintId = `${field.name}-hint`;
-    const anchorName = `--${field.name}-hint-anchor`;
 
     const icon = document.createElement('button');
     icon.type = 'button';
     icon.className = 'field-hint-icon';
     icon.setAttribute('popovertarget', hintId);
-    icon.setAttribute('aria-label', field.hint);
-    icon.style.anchorName = anchorName;
+    icon.setAttribute('aria-label', `Help for ${field.label}`);
     icon.textContent = '?';
     labelRow.append(icon);
 
@@ -179,7 +172,6 @@ function createField(field) {
     bubble.id = hintId;
     bubble.className = 'field-hint-popover';
     bubble.setAttribute('popover', '');
-    bubble.style.positionAnchor = anchorName;
     bubble.textContent = field.hint;
   }
 
@@ -371,16 +363,11 @@ async function saveConfig() {
   }
 
   const branchInput = document.getElementById('branch');
-  if (branchInput && branchInput.value.trim()) {
-    const branch = branchInput.value.trim();
-    if (!BRANCH_NAME_PATTERN.test(branch)) {
-      alert('Branch name may only contain lowercase letters, numbers, and single hyphens, and cannot start with a hyphen.');
-      branchInput.focus();
-      return;
-    }
-    const hostnameLength = `${branch}--${site.value}--${org.value}`.length;
-    if (hostnameLength > MAX_HOSTNAME_LENGTH) {
-      alert(`Branch name is too long: "${branch}--${site.value}--${org.value}" exceeds the ${MAX_HOSTNAME_LENGTH}-character domain label limit.`);
+  if (branchInput) branchInput.value = branchInput.value.trim();
+  if (branchInput && branchInput.value) {
+    const branchError = validateBranchName(branchInput.value, site.value, org.value);
+    if (branchError) {
+      alert(branchError);
       branchInput.focus();
       return;
     }
