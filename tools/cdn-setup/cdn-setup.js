@@ -105,7 +105,6 @@ const CDN_FIELDS = {
     {
       name: 'secretAccessKey', type: 'password', required: true, label: 'Secret Access Key',
     },
-    BRANCH_FIELD,
   ],
 };
 
@@ -157,17 +156,39 @@ function createField(field) {
     input.placeholder = field.placeholder;
   }
 
-  row.append(label, input);
-  div.append(row);
+  const labelRow = document.createElement('div');
+  labelRow.className = 'field-label-row';
+  labelRow.append(label);
+  row.append(labelRow);
 
+  let bubble;
   if (field.hint) {
-    const hint = document.createElement('div');
-    hint.className = 'field-help-text';
-    const p = document.createElement('p');
-    p.textContent = field.hint;
-    hint.append(p);
-    div.append(hint);
+    const hintId = `${field.name}-hint`;
+    const anchorName = `--${field.name}-hint-anchor`;
+
+    const icon = document.createElement('button');
+    icon.type = 'button';
+    icon.className = 'field-hint-icon';
+    icon.setAttribute('popovertarget', hintId);
+    icon.setAttribute('aria-label', field.hint);
+    icon.style.anchorName = anchorName;
+    icon.textContent = '?';
+    labelRow.append(icon);
+
+    bubble = document.createElement('div');
+    bubble.id = hintId;
+    bubble.className = 'field-hint-popover';
+    bubble.setAttribute('popover', '');
+    bubble.style.positionAnchor = anchorName;
+    bubble.textContent = field.hint;
   }
+
+  row.append(input);
+  if (bubble) {
+    row.append(bubble);
+  }
+
+  div.append(row);
 
   if (field.type === 'password') {
     input.addEventListener('focus', () => {

@@ -1,6 +1,7 @@
 /* Base form styles */
 .cdn-setup {
   --cdn-field-label-width: 120px;
+  --cdn-field-hint-icon-width: 18px;
 }
 
 .cdn-setup .form-field {
@@ -15,20 +16,46 @@
   display: none;
 }
 
-.cdn-setup .field-help-text {
-  margin-top: var(--spacing-xs);
-  font-size: var(--body-size-s);
+.cdn-setup .field-hint-icon {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--cdn-field-hint-icon-width);
+  height: var(--cdn-field-hint-icon-width);
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: var(--border-m) solid var(--color-border);
   color: var(--color-text-secondary);
+  font-size: var(--detail-size-s);
 }
 
-@media (width >= 700px) {
-  .cdn-setup .form-field .field-help-text {
-    margin-left: calc(var(--cdn-field-label-width) + var(--spacing-m));
-  }
+.cdn-setup .field-hint-icon:hover,
+.cdn-setup .field-hint-icon:focus-visible {
+  color: var(--color-text);
+  border-color: var(--color-text-secondary);
 }
 
-.cdn-setup .field-help-text p {
+.cdn-setup .field-hint-popover {
+  max-width: 260px;
   margin: 0;
+  padding: var(--spacing-xs) var(--spacing-s);
+  border: var(--border-m) solid var(--color-border);
+  border-radius: var(--rounding-s);
+  background-color: var(--layer-elevated);
+  color: var(--color-text);
+  font-size: var(--body-size-s);
+  box-shadow: var(--shadow-default);
+}
+
+/* Anchor positioning isn't universally supported yet; unsupported browsers
+   fall back to the popover's default (roughly centered) placement. */
+@supports (position-anchor: --a) {
+  .cdn-setup .field-hint-popover {
+    position: absolute;
+    top: calc(anchor(bottom) + var(--spacing-xs));
+    left: anchor(left);
+  }
 }
 
 /* CDN Type Selector */
@@ -182,20 +209,36 @@ html[data-theme="system"] .cdn-setup .cdn-type-list li[aria-selected='false'] im
   flex-direction: column;
 }
 
+.cdn-setup .field-label-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
 @media (width >= 700px) {
   .cdn-setup .field-row {
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: var(--cdn-field-label-width) var(--cdn-field-hint-icon-width) 1fr;
     align-items: baseline;
     gap: var(--spacing-m);
   }
 
+  .cdn-setup .field-label-row {
+    display: contents;
+  }
+
   .cdn-setup .field-row label {
-    min-width: var(--cdn-field-label-width);
+    grid-column: 1;
     text-align: right;
   }
 
+  .cdn-setup .field-row .field-hint-icon {
+    grid-column: 2;
+  }
+
   .cdn-setup .field-row input {
-    flex: 1;
+    grid-column: 3;
+    width: 100%;
   }
 }
 
