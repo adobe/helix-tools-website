@@ -3,6 +3,52 @@ import escapeHtml from '../../utils/html.js';
 // queue any messages that attempt to log before ready
 const preInitQ = [];
 
+// site-wide preference (shared by every tool on the site): the log is collapsed
+// unless the user has explicitly opted into seeing it
+const VISIBILITY_STORAGE_KEY = 'aem-console';
+
+/**
+ * Whether the console log is expanded, based on the stored site-wide preference.
+ * @returns {boolean} True if the log should be shown
+ */
+export function isConsoleVisible() {
+  try {
+    return window.localStorage.getItem(VISIBILITY_STORAGE_KEY) === 'true';
+  } catch (e) {
+    // localStorage not available
+    return false;
+  }
+}
+
+/**
+ * Reflects the current visibility preference on a console block.
+ * @param {HTMLElement} block - The console block element
+ */
+function applyVisibility(block) {
+  const visible = isConsoleVisible();
+  block.dataset.expanded = visible;
+  const toggle = block.querySelector('.console-toggle');
+  if (toggle) {
+    toggle.setAttribute('aria-expanded', visible);
+    toggle.textContent = visible ? 'Hide log' : 'Show log';
+  }
+}
+
+/**
+ * Stores the site-wide console visibility preference and applies it to every
+ * console on the page.
+ * @param {boolean} visible - True to show the log, false to collapse it
+ */
+export function setConsoleVisible(visible) {
+  try {
+    if (visible) window.localStorage.setItem(VISIBILITY_STORAGE_KEY, 'true');
+    else window.localStorage.removeItem(VISIBILITY_STORAGE_KEY);
+  } catch (e) {
+    // localStorage not available
+  }
+  document.querySelectorAll('.console').forEach(applyVisibility);
+}
+
 /**
  * Appends a row to the console table
  * @param {HTMLElement} block - The console block element
@@ -93,6 +139,18 @@ export function logMessage(block, level, cols) {
 }
 
 export default function decorate(block) {
+  // Toggle bar: lets the user reveal or collapse the log, site-wide
+  const header = document.createElement('div');
+  header.className = 'console-header';
+
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'console-toggle';
+  header.append(toggle);
+  block.append(header);
+
+  toggle.addEventListener('click', () => setConsoleVisible(!isConsoleVisible()));
+
   // Create table structure
   const table = document.createElement('table');
   table.id = 'console';
@@ -102,6 +160,12 @@ export default function decorate(block) {
 
   // Hide console by default
   block.setAttribute('aria-hidden', 'true');
+  applyVisibility(block);
+
+  // keep other tabs in sync with the stored preference
+  window.addEventListener('storage', (e) => {
+    if (e.key === VISIBILITY_STORAGE_KEY) applyVisibility(block);
+  });
 
   return block;
 }
