@@ -51,14 +51,6 @@
 
     <div>
       <form id="cdn-form" aria-hidden="true" disabled>
-        <div class="form-field">
-          <label for="host">Production Host</label>
-          <input id="host" name="host" type="text" placeholder="e.g. www.yourdomain.com" required />
-          <div class="field-help-text">
-            <p>Host name of production site, e.g. <code>www.yourdomain.com</code></p>
-          </div>
-        </div>
-
         <fieldset class="cdn-type-selector">
           <legend>CDN Type</legend>
           <ul class="cdn-type-list">
@@ -101,6 +93,14 @@
             </li>
           </ul>
         </fieldset>
+
+        <div class="form-field">
+          <label for="host">Production Host</label>
+          <input id="host" name="host" type="text" placeholder="e.g. www.yourdomain.com" required />
+          <div class="field-help-text">
+            <p>Host name of production site, e.g. <code>www.yourdomain.com</code></p>
+          </div>
+        </div>
 
         <div id="cdn-fields" class="cdn-fields">
           <!-- CDN-specific fields will be dynamically added here -->
