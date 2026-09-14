@@ -25,6 +25,15 @@ let validationPassed = false;
 
 const VALIDATION_URL = 'https://admin.hlx.page/hook/byocdn-push-invalidation/';
 
+// Preview/live hostnames follow `{branch}--{site}--{org}.aem.page` and must fit
+// within the 63-character DNS label limit, same rule as site-admin site names.
+const MAX_HOSTNAME_LENGTH = 63;
+const BRANCH_NAME_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*-?$/;
+
+const BRANCH_FIELD = {
+  name: 'branch', type: 'text', required: false, label: 'Branch (defaults to main)',
+};
+
 const CDN_FIELDS = {
   fastly: [
     {
@@ -36,6 +45,7 @@ const CDN_FIELDS = {
     {
       name: 'authToken', type: 'password', required: true, label: 'Auth Token',
     },
+    BRANCH_FIELD,
   ],
   cloudflare: [
     {
@@ -50,6 +60,7 @@ const CDN_FIELDS = {
     {
       name: 'apiToken', type: 'password', required: true, label: 'API Token',
     },
+    BRANCH_FIELD,
   ],
   akamai: [
     {
@@ -67,11 +78,13 @@ const CDN_FIELDS = {
     {
       name: 'accessToken', type: 'password', required: true, label: 'Access Token',
     },
+    BRANCH_FIELD,
   ],
   managed: [
     {
       name: 'route', type: 'text', required: false, label: 'Routes (comma-separated)',
     },
+    BRANCH_FIELD,
   ],
   cloudfront: [
     {
@@ -86,6 +99,7 @@ const CDN_FIELDS = {
     {
       name: 'secretAccessKey', type: 'password', required: true, label: 'Secret Access Key',
     },
+    BRANCH_FIELD,
   ],
 };
 
@@ -310,6 +324,22 @@ async function saveConfig() {
     alert('Please enter a valid production host (e.g. www.example.com)');
     host.focus();
     return;
+  }
+
+  const branchInput = document.getElementById('branch');
+  if (branchInput && branchInput.value.trim()) {
+    const branch = branchInput.value.trim();
+    if (!BRANCH_NAME_PATTERN.test(branch)) {
+      alert('Branch name may only contain lowercase letters, numbers, and single hyphens, and cannot start with a hyphen.');
+      branchInput.focus();
+      return;
+    }
+    const hostnameLength = `${branch}--${site.value}--${org.value}`.length;
+    if (hostnameLength > MAX_HOSTNAME_LENGTH) {
+      alert(`Branch name is too long: "${branch}--${site.value}--${org.value}" exceeds the ${MAX_HOSTNAME_LENGTH}-character domain label limit.`);
+      branchInput.focus();
+      return;
+    }
   }
 
   const cdnConfig = getFormData();
