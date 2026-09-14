@@ -31,7 +31,7 @@ const MAX_HOSTNAME_LENGTH = 63;
 const BRANCH_NAME_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*-?$/;
 
 const BRANCH_FIELD = {
-  name: 'branch', type: 'text', required: false, label: 'Branch (defaults to main)',
+  name: 'branch', type: 'text', required: false, label: 'Branch', placeholder: 'main',
 };
 
 const CDN_FIELDS = {
@@ -144,6 +144,9 @@ function createField(field) {
   input.id = field.name;
   input.name = field.name;
   input.required = field.required;
+  if (field.placeholder) {
+    input.placeholder = field.placeholder;
+  }
 
   div.append(label, input);
   if (field.type === 'password') {
