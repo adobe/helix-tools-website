@@ -36,7 +36,7 @@ const BRANCH_FIELD = {
   required: false,
   label: 'Branch',
   placeholder: 'main',
-  hint: 'Determines which branch is flushed from the CDN when content is published.',
+  hint: 'Branch that triggers production CDN purge.',
 };
 
 const CDN_FIELDS = {
