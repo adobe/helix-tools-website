@@ -31,7 +31,7 @@ const MAX_HOSTNAME_LENGTH = 63;
 const BRANCH_NAME_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*-?$/;
 
 const BRANCH_FIELD = {
-  name: 'branch', type: 'text', required: false, label: 'Branch', placeholder: 'main',
+  name: 'branch', type: 'text', required: false, label: 'Default Branch', placeholder: 'main',
 };
 
 const CDN_FIELDS = {
@@ -39,18 +39,19 @@ const CDN_FIELDS = {
     {
       name: 'route', type: 'text', required: false, label: 'Routes (comma-separated)',
     },
+    BRANCH_FIELD,
     {
       name: 'serviceId', type: 'text', required: true, label: 'Service ID',
     },
     {
       name: 'authToken', type: 'password', required: true, label: 'Auth Token',
     },
-    BRANCH_FIELD,
   ],
   cloudflare: [
     {
       name: 'route', type: 'text', required: false, label: 'Routes (comma-separated)',
     },
+    BRANCH_FIELD,
     {
       name: 'plan', type: 'text', required: true, label: 'Plan',
     },
@@ -60,12 +61,12 @@ const CDN_FIELDS = {
     {
       name: 'apiToken', type: 'password', required: true, label: 'API Token',
     },
-    BRANCH_FIELD,
   ],
   akamai: [
     {
       name: 'route', type: 'text', required: false, label: 'Routes (comma-separated)',
     },
+    BRANCH_FIELD,
     {
       name: 'endpoint', type: 'text', required: true, label: 'Endpoint',
     },
@@ -78,7 +79,6 @@ const CDN_FIELDS = {
     {
       name: 'accessToken', type: 'password', required: true, label: 'Access Token',
     },
-    BRANCH_FIELD,
   ],
   managed: [
     {
@@ -90,6 +90,7 @@ const CDN_FIELDS = {
     {
       name: 'route', type: 'text', required: false, label: 'Routes (comma-separated)',
     },
+    BRANCH_FIELD,
     {
       name: 'distributionId', type: 'text', required: true, label: 'Distribution ID',
     },
