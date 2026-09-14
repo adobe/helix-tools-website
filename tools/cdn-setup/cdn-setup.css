@@ -213,6 +213,12 @@ html[data-theme="system"] .cdn-setup .cdn-type-list li[aria-selected='false'] im
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
+  margin-bottom: 0.5em;
+}
+
+/* stylelint-disable-next-line no-descending-specificity */
+.cdn-setup .field-label-row label {
+  margin-bottom: 0;
 }
 
 @media (width >= 700px) {
