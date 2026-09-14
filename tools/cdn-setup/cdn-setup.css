@@ -1,4 +1,8 @@
 /* Base form styles */
+.cdn-setup {
+  --cdn-field-label-width: 120px;
+}
+
 .cdn-setup .form-field {
   margin-bottom: var(--spacing-l);
 }
@@ -15,6 +19,12 @@
   margin-top: var(--spacing-xs);
   font-size: var(--body-size-s);
   color: var(--color-text-secondary);
+}
+
+@media (width >= 700px) {
+  .cdn-setup .form-field .field-help-text {
+    margin-left: calc(var(--cdn-field-label-width) + var(--spacing-m));
+  }
 }
 
 .cdn-setup .field-help-text p {
@@ -180,7 +190,7 @@ html[data-theme="system"] .cdn-setup .cdn-type-list li[aria-selected='false'] im
   }
 
   .cdn-setup .field-row label {
-    min-width: 120px;
+    min-width: var(--cdn-field-label-width);
     text-align: right;
   }
 
