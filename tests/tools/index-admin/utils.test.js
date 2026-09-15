@@ -1,6 +1,12 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import deriveReindexPaths from '../../../tools/index-admin/utils.js';
+import deriveReindexPaths, {
+  isAutoMetaSelector,
+  metaSelectFirstForProperty,
+  suggestPropertyConfig,
+  LAST_MODIFIED_CONFIG,
+  META_VALUE,
+} from '../../../tools/index-admin/utils.js';
 
 describe('index-admin:utils.js', () => {
   describe('deriveReindexPaths', () => {
@@ -78,6 +84,69 @@ describe('index-admin:utils.js', () => {
       // segments: ['**', 'fragments', '**'] — first segment is wildcard, so pathSegments = []
       // basePath = '' → '/', which maps to '/*'
       assert.deepEqual(deriveReindexPaths(['**/fragments/**']), ['/*']);
+    });
+  });
+  describe('metaSelectFirstForProperty', () => {
+    it('returns an empty string for an empty name', () => {
+      assert.equal(metaSelectFirstForProperty('  '), '');
+    });
+
+    it('maps open graph properties', () => {
+      assert.equal(metaSelectFirstForProperty('title'), 'meta[property="og:title"]');
+      assert.equal(metaSelectFirstForProperty('Description'), 'meta[property="og:description"]');
+      assert.equal(metaSelectFirstForProperty('image'), 'meta[property="og:image"]');
+    });
+
+    it('maps date to the publication date meta', () => {
+      assert.equal(metaSelectFirstForProperty('date'), 'meta[name="publication-date"]');
+    });
+
+    it('kebab-cases other names', () => {
+      assert.equal(metaSelectFirstForProperty('author'), 'meta[name="author"]');
+      assert.equal(metaSelectFirstForProperty('readingTime'), 'meta[name="reading-time"]');
+    });
+  });
+
+  describe('isAutoMetaSelector', () => {
+    it('recognizes generated selectors', () => {
+      assert.equal(isAutoMetaSelector('meta[name="author"]'), true);
+      assert.equal(isAutoMetaSelector('  meta[property="og:title"]  '), true);
+    });
+
+    it('rejects hand-written selectors', () => {
+      assert.equal(isAutoMetaSelector('main > div'), false);
+      assert.equal(isAutoMetaSelector('none'), false);
+      assert.equal(isAutoMetaSelector(''), false);
+    });
+  });
+
+  describe('suggestPropertyConfig', () => {
+    it('suggests the response header for lastModified', () => {
+      assert.deepEqual(suggestPropertyConfig('lastModified'), {
+        select: LAST_MODIFIED_CONFIG.select,
+        selectFirst: '',
+        value: LAST_MODIFIED_CONFIG.value,
+      });
+    });
+
+    it('matches lastModified regardless of case and padding', () => {
+      assert.deepEqual(suggestPropertyConfig('  LastModified '), suggestPropertyConfig('lastModified'));
+    });
+
+    it('suggests a meta selector for other properties', () => {
+      assert.deepEqual(suggestPropertyConfig('author'), {
+        select: '',
+        selectFirst: 'meta[name="author"]',
+        value: META_VALUE,
+      });
+    });
+
+    it('suggests no selector for an empty name', () => {
+      assert.deepEqual(suggestPropertyConfig(''), {
+        select: '',
+        selectFirst: '',
+        value: META_VALUE,
+      });
     });
   });
 });
