@@ -458,12 +458,12 @@ async function init() {
         '**/*.json',
       ],
       properties: {
+        lastModified: {
+          select: 'none',
+          value: 'parseTimestamp(headers["last-modified"], "ddd, DD MMM YYYY hh:mm:ss GMT")',
+        },
         title: {
           selectFirst: 'meta[property="og:title"]',
-          value: 'attribute(el, "content")',
-        },
-        date: {
-          selectFirst: 'meta[name="publication-date"]',
           value: 'attribute(el, "content")',
         },
         description: {
