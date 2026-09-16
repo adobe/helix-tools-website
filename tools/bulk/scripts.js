@@ -59,27 +59,26 @@ const createRunBlock = () => {
     return p;
   };
 
-  // Appended in arrival order; sortResults() groups failures to the top on completion.
+  // Failures are prepended (newest on top) so they stay grouped above successes
+  // as results stream in; successes are appended in arrival order.
   const appendResult = (text, status, processed, total, label) => {
     const li = document.createElement('li');
     li.textContent = text;
     // status 0 means a network/transport failure, not a real 2xx/3xx outcome.
     const failed = !status || status >= 400;
     li.className = `status-light http${Math.floor(status / 100) % 10}${failed ? ' is-failure' : ''}`;
-    list.appendChild(li);
-    if (failed) failCount += 1; else successCount += 1;
+    if (failed) {
+      list.prepend(li);
+      failCount += 1;
+    } else {
+      list.appendChild(li);
+      successCount += 1;
+    }
     updateSummary(processed, total, label);
     return li;
   };
 
-  const sortResults = () => {
-    const isFailure = (row) => row.classList.contains('is-failure');
-    const rows = [...list.children].sort((a, b) => isFailure(b) - isFailure(a));
-    list.append(...rows);
-  };
-
   const finish = () => {
-    sortResults();
     runButton.disabled = false;
   };
 
