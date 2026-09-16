@@ -4,7 +4,11 @@ import { toClassName } from '../../scripts/aem.js';
 import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { logResponse } from '../../blocks/console/console.js';
-import deriveReindexPaths, { deriveAutoMetaUpdate } from './utils.js';
+import deriveReindexPaths, {
+  deriveAutoPropertyUpdate,
+  LAST_MODIFIED_CONFIG,
+  META_VALUE,
+} from './utils.js';
 
 let admin;
 
@@ -66,7 +70,7 @@ function createPropertyRow(propertiesContainer, {
   } else if (propInfo.values !== undefined) {
     valueField.value = propInfo.values?.join?.('\n') ?? propInfo.values;
   } else if (isNewRow) {
-    valueField.value = 'attribute(el, "content")';
+    valueField.value = META_VALUE;
   } else {
     valueField.value = '';
   }
@@ -82,14 +86,16 @@ function createPropertyRow(propertiesContainer, {
     nameOnFocus = nameField.value;
   });
   nameField.addEventListener('blur', () => {
-    const { select, selectFirst } = deriveAutoMetaUpdate({
+    const update = deriveAutoPropertyUpdate({
       oldName: nameOnFocus,
       newName: nameField.value,
-      selectVal: selectField.value,
-      selectFirstVal: selectFirstField.value,
+      selectVal: selectField.value.trim(),
+      selectFirstVal: selectFirstField.value.trim(),
+      valueVal: valueField.value.trim(),
     });
-    if (select !== undefined) selectField.value = select;
-    if (selectFirst !== undefined) selectFirstField.value = selectFirst;
+    if (update.select !== undefined) selectField.value = update.select;
+    if (update.selectFirst !== undefined) selectFirstField.value = update.selectFirst;
+    if (update.value !== undefined) valueField.value = update.value;
   });
 
   property.querySelector('.remove-property-btn').addEventListener('click', () => {
@@ -428,12 +434,9 @@ async function init() {
         '**/*.json',
       ],
       properties: {
+        lastModified: { ...LAST_MODIFIED_CONFIG },
         title: {
           selectFirst: 'meta[property="og:title"]',
-          value: 'attribute(el, "content")',
-        },
-        date: {
-          selectFirst: 'meta[name="publication-date"]',
           value: 'attribute(el, "content")',
         },
         description: {

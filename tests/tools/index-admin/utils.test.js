@@ -1,6 +1,13 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import deriveReindexPaths, { deriveAutoMetaUpdate } from '../../../tools/index-admin/utils.js';
+import deriveReindexPaths, {
+  isAutoMetaSelector,
+  metaSelectFirstForProperty,
+  suggestPropertyConfig,
+  deriveAutoPropertyUpdate,
+  LAST_MODIFIED_CONFIG,
+  META_VALUE,
+} from '../../../tools/index-admin/utils.js';
 
 describe('index-admin:utils.js', () => {
   describe('deriveReindexPaths', () => {
@@ -81,20 +88,88 @@ describe('index-admin:utils.js', () => {
     });
   });
 
-  describe('deriveAutoMetaUpdate', () => {
-    it('fills selectFirst when both fields are empty', () => {
+  describe('metaSelectFirstForProperty', () => {
+    it('returns an empty string for an empty name', () => {
+      assert.equal(metaSelectFirstForProperty('  '), '');
+    });
+
+    it('maps open graph properties', () => {
+      assert.equal(metaSelectFirstForProperty('title'), 'meta[property="og:title"]');
+      assert.equal(metaSelectFirstForProperty('Description'), 'meta[property="og:description"]');
+      assert.equal(metaSelectFirstForProperty('image'), 'meta[property="og:image"]');
+    });
+
+    it('maps date to the publication date meta', () => {
+      assert.equal(metaSelectFirstForProperty('date'), 'meta[name="publication-date"]');
+    });
+
+    it('kebab-cases other names', () => {
+      assert.equal(metaSelectFirstForProperty('author'), 'meta[name="author"]');
+      assert.equal(metaSelectFirstForProperty('readingTime'), 'meta[name="reading-time"]');
+    });
+  });
+
+  describe('isAutoMetaSelector', () => {
+    it('recognizes generated selectors', () => {
+      assert.equal(isAutoMetaSelector('meta[name="author"]'), true);
+      assert.equal(isAutoMetaSelector('  meta[property="og:title"]  '), true);
+    });
+
+    it('rejects hand-written selectors', () => {
+      assert.equal(isAutoMetaSelector('main > div'), false);
+      assert.equal(isAutoMetaSelector('none'), false);
+      assert.equal(isAutoMetaSelector(''), false);
+    });
+  });
+
+  describe('suggestPropertyConfig', () => {
+    it('suggests the response header for lastModified', () => {
+      assert.deepEqual(suggestPropertyConfig('lastModified'), {
+        select: LAST_MODIFIED_CONFIG.select,
+        selectFirst: '',
+        value: LAST_MODIFIED_CONFIG.value,
+      });
+    });
+
+    it('matches lastModified regardless of case and padding', () => {
+      assert.deepEqual(suggestPropertyConfig('  LastModified '), suggestPropertyConfig('lastModified'));
+    });
+
+    it('suggests a meta selector for other properties', () => {
+      assert.deepEqual(suggestPropertyConfig('author'), {
+        select: '',
+        selectFirst: 'meta[name="author"]',
+        value: META_VALUE,
+      });
+    });
+
+    it('suggests no selector for an empty name', () => {
+      assert.deepEqual(suggestPropertyConfig(''), {
+        select: '',
+        selectFirst: '',
+        value: META_VALUE,
+      });
+    });
+  });
+
+  describe('deriveAutoPropertyUpdate', () => {
+    it('fills selectFirst and value when all fields are empty', () => {
       assert.deepEqual(
-        deriveAutoMetaUpdate({
-          oldName: '', newName: 'description', selectVal: '', selectFirstVal: '',
+        deriveAutoPropertyUpdate({
+          oldName: '', newName: 'description', selectVal: '', selectFirstVal: '', valueVal: '',
         }),
-        { selectFirst: 'meta[property="og:description"]' },
+        { selectFirst: 'meta[property="og:description"]', value: META_VALUE },
       );
     });
 
     it('no-ops when the name did not actually change', () => {
       assert.deepEqual(
-        deriveAutoMetaUpdate({
-          oldName: 'description', newName: 'description', selectVal: '', selectFirstVal: 'meta[property="og:description"]',
+        deriveAutoPropertyUpdate({
+          oldName: 'description',
+          newName: 'description',
+          selectVal: '',
+          selectFirstVal: 'meta[property="og:description"]',
+          valueVal: META_VALUE,
         }),
         {},
       );
@@ -102,17 +177,25 @@ describe('index-admin:utils.js', () => {
 
     it('updates selectFirst when it still matches what we generated for the old name', () => {
       assert.deepEqual(
-        deriveAutoMetaUpdate({
-          oldName: 'description', newName: 'excerpt', selectVal: '', selectFirstVal: 'meta[property="og:description"]',
+        deriveAutoPropertyUpdate({
+          oldName: 'description',
+          newName: 'excerpt',
+          selectVal: '',
+          selectFirstVal: 'meta[property="og:description"]',
+          valueVal: META_VALUE,
         }),
-        { selectFirst: 'meta[name="excerpt"]' },
+        { selectFirst: 'meta[name="excerpt"]', value: META_VALUE },
       );
     });
 
     it('leaves selectFirst alone when it does not match the old name pattern (custom value)', () => {
       assert.deepEqual(
-        deriveAutoMetaUpdate({
-          oldName: 'description', newName: 'excerpt', selectVal: '', selectFirstVal: 'meta[name="custom-excerpt"]',
+        deriveAutoPropertyUpdate({
+          oldName: 'description',
+          newName: 'excerpt',
+          selectVal: '',
+          selectFirstVal: 'meta[name="custom-excerpt"]',
+          valueVal: 'attribute(el, "data-excerpt")',
         }),
         {},
       );
@@ -124,8 +207,12 @@ describe('index-admin:utils.js', () => {
       // what we'd generate for the prior name "title" -> should be left alone here
       // since oldName passed in is "description", not "title"
       assert.deepEqual(
-        deriveAutoMetaUpdate({
-          oldName: 'description', newName: 'excerpt', selectVal: '', selectFirstVal: 'meta[property="og:title"]',
+        deriveAutoPropertyUpdate({
+          oldName: 'description',
+          newName: 'excerpt',
+          selectVal: '',
+          selectFirstVal: 'meta[property="og:title"]',
+          valueVal: 'attribute(el, "data-title")',
         }),
         {},
       );
@@ -133,10 +220,40 @@ describe('index-admin:utils.js', () => {
 
     it('updates select when it matches the old-name pattern', () => {
       assert.deepEqual(
-        deriveAutoMetaUpdate({
-          oldName: 'title', newName: 'headline', selectVal: 'meta[property="og:title"]', selectFirstVal: '',
+        deriveAutoPropertyUpdate({
+          oldName: 'title',
+          newName: 'headline',
+          selectVal: 'meta[property="og:title"]',
+          selectFirstVal: '',
+          valueVal: META_VALUE,
         }),
-        { select: 'meta[name="headline"]' },
+        { select: 'meta[name="headline"]', value: META_VALUE },
+      );
+    });
+
+    it('switches from lastModified config to a meta selector on rename', () => {
+      assert.deepEqual(
+        deriveAutoPropertyUpdate({
+          oldName: 'lastModified',
+          newName: 'published',
+          selectVal: LAST_MODIFIED_CONFIG.select,
+          selectFirstVal: '',
+          valueVal: LAST_MODIFIED_CONFIG.value,
+        }),
+        { select: '', selectFirst: 'meta[name="published"]', value: META_VALUE },
+      );
+    });
+
+    it('fills the lastModified config when renaming into lastModified', () => {
+      assert.deepEqual(
+        deriveAutoPropertyUpdate({
+          oldName: 'published',
+          newName: 'lastModified',
+          selectVal: '',
+          selectFirstVal: 'meta[name="published"]',
+          valueVal: META_VALUE,
+        }),
+        { select: LAST_MODIFIED_CONFIG.select, selectFirst: '', value: LAST_MODIFIED_CONFIG.value },
       );
     });
   });
