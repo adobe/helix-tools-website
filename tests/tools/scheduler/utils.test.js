@@ -8,6 +8,8 @@ import {
   fetchSchedule,
   isPageHost,
   parseSidekickParams,
+  isIntentNotYetVisible,
+  retryWhileNotVisible,
 } from '../../../tools/scheduler/utils.js';
 
 describe('scheduler:utils.js', () => {
@@ -168,6 +170,56 @@ describe('scheduler:utils.js', () => {
       } finally {
         global.fetch = originalFetch;
       }
+    });
+  });
+
+  describe('isIntentNotYetVisible', () => {
+    it('is true only for a 425 response', () => {
+      assert.equal(isIntentNotYetVisible({ status: 425 }), true);
+      assert.equal(isIntentNotYetVisible({ status: 200 }), false);
+      assert.equal(isIntentNotYetVisible({ status: 401 }), false);
+      assert.equal(isIntentNotYetVisible(undefined), false);
+      assert.equal(isIntentNotYetVisible(null), false);
+    });
+  });
+
+  describe('retryWhileNotVisible', () => {
+    const noSleep = () => Promise.resolve();
+
+    it('returns the first response without retrying when it is not 425', async () => {
+      let calls = 0;
+      const doRequest = async () => { calls += 1; return { status: 200 }; };
+      const resp = await retryWhileNotVisible(doRequest, { sleep: noSleep });
+      assert.equal(resp.status, 200);
+      assert.equal(calls, 1);
+    });
+
+    it('retries the same request while 425, then returns success and reports waits', async () => {
+      let calls = 0;
+      const doRequest = async () => {
+        calls += 1;
+        return calls < 3 ? { status: 425 } : { status: 200 };
+      };
+      const waits = [];
+      const resp = await retryWhileNotVisible(doRequest, {
+        onWait: (attempt, delay) => waits.push([attempt, delay]),
+        backoffMs: [1, 1, 1],
+        sleep: noSleep,
+      });
+      assert.equal(resp.status, 200);
+      assert.equal(calls, 3);
+      assert.deepEqual(waits, [[1, 1], [2, 1]]);
+    });
+
+    it('gives up after the backoff is exhausted and returns the last 425', async () => {
+      let calls = 0;
+      const doRequest = async () => { calls += 1; return { status: 425 }; };
+      const resp = await retryWhileNotVisible(doRequest, {
+        backoffMs: [1, 1],
+        sleep: noSleep,
+      });
+      assert.equal(resp.status, 425);
+      assert.equal(calls, 3); // initial call + 2 retries
     });
   });
 });
