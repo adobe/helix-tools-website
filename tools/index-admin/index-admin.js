@@ -4,7 +4,11 @@ import { toClassName } from '../../scripts/aem.js';
 import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { logResponse } from '../../blocks/console/console.js';
-import deriveReindexPaths from './utils.js';
+import deriveReindexPaths, {
+  deriveAutoPropertyUpdate,
+  LAST_MODIFIED_CONFIG,
+  META_VALUE,
+} from './utils.js';
 
 let admin;
 
@@ -21,30 +25,6 @@ let YAML;
 async function ensureYaml() {
   // eslint-disable-next-line import/no-unresolved
   YAML = YAML || await import('../../vendor/yaml/yaml.js');
-}
-
-const OG_META_PROPERTIES = new Set(['title', 'description', 'image']);
-
-function metaSelectFirstForProperty(propName) {
-  const name = propName.trim();
-  if (!name) return '';
-
-  const lower = name.toLowerCase();
-  if (OG_META_PROPERTIES.has(lower)) {
-    return `meta[property="og:${lower}"]`;
-  }
-  if (lower === 'date') {
-    return 'meta[name="publication-date"]';
-  }
-
-  const kebab = name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
-  return `meta[name="${kebab}"]`;
-}
-
-const META_SELECTOR_PATTERN = /^meta\[(?:property|name)="[^"]*"]$/;
-
-function isAutoMetaSelector(value) {
-  return META_SELECTOR_PATTERN.test(value.trim());
 }
 
 function createPropertyRow(propertiesContainer, {
@@ -90,7 +70,7 @@ function createPropertyRow(propertiesContainer, {
   } else if (propInfo.values !== undefined) {
     valueField.value = propInfo.values?.join?.('\n') ?? propInfo.values;
   } else if (isNewRow) {
-    valueField.value = 'attribute(el, "content")';
+    valueField.value = META_VALUE;
   } else {
     valueField.value = '';
   }
@@ -106,20 +86,16 @@ function createPropertyRow(propertiesContainer, {
     nameOnFocus = nameField.value;
   });
   nameField.addEventListener('blur', () => {
-    const name = nameField.value.trim();
-    if (!name || name === nameOnFocus.trim()) return;
-
-    const selectVal = selectField.value.trim();
-    const selectFirstVal = selectFirstField.value.trim();
-    const candidate = metaSelectFirstForProperty(name);
-
-    if (!selectVal && !selectFirstVal) {
-      selectFirstField.value = candidate;
-    } else if (selectVal && isAutoMetaSelector(selectVal)) {
-      selectField.value = candidate;
-    } else if (selectFirstVal && isAutoMetaSelector(selectFirstVal)) {
-      selectFirstField.value = candidate;
-    }
+    const update = deriveAutoPropertyUpdate({
+      oldName: nameOnFocus,
+      newName: nameField.value,
+      selectVal: selectField.value.trim(),
+      selectFirstVal: selectFirstField.value.trim(),
+      valueVal: valueField.value.trim(),
+    });
+    if (update.select !== undefined) selectField.value = update.select;
+    if (update.selectFirst !== undefined) selectFirstField.value = update.selectFirst;
+    if (update.value !== undefined) valueField.value = update.value;
   });
 
   property.querySelector('.remove-property-btn').addEventListener('click', () => {
@@ -458,12 +434,9 @@ async function init() {
         '**/*.json',
       ],
       properties: {
+        lastModified: { ...LAST_MODIFIED_CONFIG },
         title: {
           selectFirst: 'meta[property="og:title"]',
-          value: 'attribute(el, "content")',
-        },
-        date: {
-          selectFirst: 'meta[name="publication-date"]',
           value: 'attribute(el, "content")',
         },
         description: {
