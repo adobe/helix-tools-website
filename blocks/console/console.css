@@ -18,6 +18,61 @@
   font-size: var(--body-size-m);
 }
 
+/* toggle bar: reveals or collapses the log (preference is stored site-wide) */
+.console[aria-hidden='true'] {
+  display: none;
+}
+
+.console .console-header {
+  display: flex;
+
+  /* the block scrolls horizontally, so leave room for the toggle's focus
+     outline (2px wide, 2px offset) to avoid it being clipped on the left */
+  padding-left: calc(var(--border-m) * 2);
+}
+
+/* only space the toggle off the table while the log is showing; the extra
+   0.6em accounts for the table's top border, drawn by the tbody::before */
+.console[data-expanded='true'] .console-header {
+  padding-bottom: calc(var(--spacing-s) + 0.6em);
+}
+
+.console .console-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-font-grey);
+  font-family: var(--body-font-family);
+  font-size: var(--body-size-s);
+  cursor: pointer;
+}
+
+.console .console-toggle:hover,
+.console .console-toggle:focus-visible {
+  color: var(--color-text);
+}
+
+.console .console-toggle::before {
+  content: '';
+  width: 0.4em;
+  height: 0.4em;
+  border-right: 1.5px solid currentcolor;
+  border-bottom: 1.5px solid currentcolor;
+  transform: translateY(-0.15em) rotate(45deg);
+}
+
+.console[data-expanded='true'] .console-toggle::before {
+  transform: translateY(0.1em) rotate(-135deg);
+}
+
+.console[data-expanded='false'] table {
+  display: none;
+}
+
 .console tbody {
   position: relative;
 }
