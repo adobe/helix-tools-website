@@ -4,7 +4,9 @@ import { logResponse } from '../../blocks/console/console.js';
 import { loadIcon, icon, showToast } from '../../utils/card-ui/card-ui.js';
 import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
-import { parseUsersFromAccessConfig, buildAccessConfig } from './utils.js';
+import {
+  parseUsersFromAccessConfig, buildAccessConfig, identityError, isImsGroup,
+} from './utils.js';
 import { ROLE_DESCRIPTIONS } from '../../utils/roles/roles.js';
 import { createRolesField } from '../../utils/roles/roles-field.js';
 
@@ -159,6 +161,19 @@ function createRolesReference() {
 
 let entryIdCounter = 0;
 
+/**
+ * Read the active identity of a user entry — either the email or the Adobe IMS
+ * group field, depending on the entry's type radio.
+ *
+ * @param {HTMLElement} entry
+ * @returns {{kind: 'email'|'group', input: HTMLInputElement, value: string}}
+ */
+function entryIdentity(entry) {
+  const kind = entry.querySelector('.identity-type-radio:checked').value;
+  const input = entry.querySelector(kind === 'group' ? '.user-group' : '.user-email');
+  return { kind, input, value: input.value.trim() };
+}
+
 function createUserEntry(entriesContainer, updateSaveLabel, selectedRoles = []) {
   entryIdCounter += 1;
   const entryId = entryIdCounter;
@@ -173,18 +188,54 @@ function createUserEntry(entriesContainer, updateSaveLabel, selectedRoles = []) 
   removeBtn.textContent = 'Remove';
   header.appendChild(removeBtn);
 
+  const typeField = document.createElement('div');
+  typeField.className = 'form-field identity-type';
+  typeField.setAttribute('role', 'radiogroup');
+  typeField.setAttribute('aria-label', 'Identity type');
+  [['email', 'Email'], ['group', 'Adobe IMS group']].forEach(([value, label], i) => {
+    const option = document.createElement('label');
+    option.className = 'identity-type-option';
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.className = 'identity-type-radio';
+    radio.name = `user-type-${entryId}`;
+    radio.value = value;
+    radio.checked = i === 0;
+    option.append(radio, label);
+    typeField.appendChild(option);
+  });
+
+  // the type radios above name the fields, so they carry an aria-label instead
   const emailField = document.createElement('div');
   emailField.className = 'form-field';
-  const emailLabel = document.createElement('label');
-  emailLabel.htmlFor = `user-email-${entryId}`;
-  emailLabel.textContent = 'Email';
   const emailInput = document.createElement('input');
-  emailInput.type = 'email';
+  emailInput.type = 'text';
+  emailInput.className = 'user-identity user-email';
   emailInput.id = `user-email-${entryId}`;
-  emailInput.required = true;
-  emailInput.placeholder = 'user@example.com';
-  emailField.appendChild(emailLabel);
+  emailInput.setAttribute('aria-label', 'Email');
+  emailInput.placeholder = 'user@example.com or *@example.com';
   emailField.appendChild(emailInput);
+
+  const groupField = document.createElement('div');
+  groupField.className = 'form-field';
+  groupField.hidden = true;
+  const groupInput = document.createElement('input');
+  groupInput.type = 'text';
+  groupInput.className = 'user-identity user-group';
+  groupInput.id = `user-group-${entryId}`;
+  groupInput.setAttribute('aria-label', 'Adobe IMS group');
+  groupInput.placeholder = '<ims-org-id>/<group-name>';
+  groupField.appendChild(groupInput);
+
+  typeField.addEventListener('change', () => {
+    const group = typeField.querySelector('.identity-type-radio:checked').value === 'group';
+    emailField.hidden = group;
+    groupField.hidden = !group;
+    // drop whatever was typed in the field that is now hidden, so it can't be
+    // submitted or counted as unsaved input
+    (group ? emailInput : groupInput).value = '';
+    (group ? groupInput : emailInput).focus();
+  });
 
   const rolesFieldId = `user-roles-${entryId}`;
   const rolesField = document.createElement('div');
@@ -199,7 +250,9 @@ function createUserEntry(entriesContainer, updateSaveLabel, selectedRoles = []) 
   rolesField.appendChild(rolesContainer);
 
   entry.appendChild(header);
+  entry.appendChild(typeField);
   entry.appendChild(emailField);
+  entry.appendChild(groupField);
   entry.appendChild(rolesField);
 
   removeBtn.addEventListener('click', () => {
@@ -347,15 +400,15 @@ function openAddUsersModal(onSave) {
 
   const {
     dialog, bodyDiv, footerDiv, saveBtn, closeModal, setConfirmClose,
-  } = createModal('Add Users', 'Add 1 User');
+  } = createModal('Add Entities', 'Add 1 Entity');
 
   const rolesReference = createRolesReference();
   rolesReference.classList.add('footer-roles-reference');
   footerDiv.prepend(rolesReference);
 
   setConfirmClose(async () => {
-    const emails = dialog.querySelectorAll('input[type="email"]');
-    const hasData = [...emails].some((input) => input.value.trim() !== '');
+    const identities = dialog.querySelectorAll('.user-identity');
+    const hasData = [...identities].some((input) => input.value.trim() !== '');
     const checkboxes = dialog.querySelectorAll('input[type="checkbox"]');
     const hasRoles = [...checkboxes].some((cb) => cb.checked);
     if (!hasData && !hasRoles) return true;
@@ -368,18 +421,18 @@ function openAddUsersModal(onSave) {
   const addAnotherBtn = document.createElement('button');
   addAnotherBtn.type = 'button';
   addAnotherBtn.className = 'button outline add-another-btn';
-  addAnotherBtn.textContent = '+ Add Another User';
+  addAnotherBtn.textContent = '+ More';
   form.appendChild(entriesContainer);
   form.appendChild(addAnotherBtn);
   bodyDiv.appendChild(form);
 
   const updateSaveLabel = () => {
     const count = entriesContainer.querySelectorAll('.user-entry').length;
-    saveBtn.textContent = `Add ${count} User${count !== 1 ? 's' : ''}`;
+    saveBtn.textContent = `Add ${count} Entit${count !== 1 ? 'ies' : 'y'}`;
   };
 
   const firstEntry = createUserEntry(entriesContainer, updateSaveLabel);
-  firstEntry.querySelector('input[type="email"]').focus();
+  firstEntry.querySelector('.user-email').focus();
 
   addAnotherBtn.addEventListener('click', () => {
     const previousEntries = entriesContainer.querySelectorAll('.user-entry');
@@ -388,7 +441,7 @@ function openAddUsersModal(onSave) {
       ? [...previousEntry.querySelectorAll('input[type="checkbox"]:checked')].map((cb) => cb.value)
       : [];
     const entry = createUserEntry(entriesContainer, updateSaveLabel, previousRoles);
-    entry.querySelector('input[type="email"]').focus();
+    entry.querySelector('.user-email').focus();
     entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
 
@@ -412,22 +465,21 @@ function openAddUsersModal(onSave) {
 
     entries.forEach((entry) => {
       if (hasError) return;
-      const emailInput = entry.querySelector('input[type="email"]');
-      const email = emailInput.value.trim();
+      const { kind, input, value: email } = entryIdentity(entry);
       const roles = [...entry.querySelectorAll('input[type="checkbox"]:checked')]
         .map((cb) => cb.value);
 
-      if (!email) { flagError(entry, 'Please enter an email for each user', emailInput); return; }
-      if (!emailInput.validity.valid) { flagError(entry, `Invalid email: ${email}`, emailInput); return; }
-      if (roles.length === 0) { flagError(entry, 'Please select at least one role for each user'); return; }
+      const invalid = identityError(email, kind);
+      if (invalid) { flagError(entry, invalid, input); return; }
+      if (roles.length === 0) { flagError(entry, 'Please select at least one role for each entity'); return; }
 
       const emailLower = email.toLowerCase();
       if (users.some((u) => u.email.toLowerCase() === emailLower)) {
-        flagError(entry, `Duplicate email in batch: ${email}`);
+        flagError(entry, `Duplicate entry in batch: ${email}`);
         return;
       }
       if (accessConfig.users.some((u) => u.email.toLowerCase() === emailLower)) {
-        flagError(entry, `User already exists: ${email}`);
+        flagError(entry, `Entity already exists: ${email}`);
         return;
       }
 
@@ -437,7 +489,7 @@ function openAddUsersModal(onSave) {
     if (hasError || users.length === 0) return;
 
     const validEntries = [...entriesContainer.querySelectorAll('.user-entry')]
-      .filter((entry) => entry.querySelector('input[type="email"]').value.trim());
+      .filter((entry) => entryIdentity(entry).value);
 
     saveBtn.disabled = true;
     saveBtn.textContent = 'Saving...';
@@ -446,14 +498,14 @@ function openAddUsersModal(onSave) {
       const added = await onSave(users);
       if (added === users.length) {
         const msg = users.length === 1
-          ? 'User added successfully'
-          : `${users.length} users added successfully`;
+          ? 'Entity added successfully'
+          : `${users.length} entities added successfully`;
         setConfirmClose(null);
         closeModal();
         showToast(msg);
         adminForm.dispatchEvent(new Event('submit'));
       } else {
-        showModalError(dialog, 'Failed to add users');
+        showModalError(dialog, 'Failed to add entities');
         saveBtn.disabled = false;
         updateSaveLabel();
         adminForm.dispatchEvent(new Event('submit'));
@@ -463,9 +515,9 @@ function openAddUsersModal(onSave) {
       if (added > 0) {
         validEntries.slice(0, added).forEach((entry) => entry.remove());
         const failed = users.length - added;
-        showModalError(dialog, `${added} user(s) added, ${failed} failed: ${err.message}`);
+        showModalError(dialog, `${added} entit${added !== 1 ? 'ies' : 'y'} added, ${failed} failed: ${err.message}`);
       } else {
-        showModalError(dialog, `Error: ${err.message || 'Failed to add users'}`);
+        showModalError(dialog, `Error: ${err.message || 'Failed to add entities'}`);
       }
       saveBtn.disabled = false;
       updateSaveLabel();
@@ -475,14 +527,15 @@ function openAddUsersModal(onSave) {
 }
 
 function openEditUserModal(user, onSave) {
+  const group = isImsGroup(user.email);
   const {
     dialog, bodyDiv, footerDiv, saveBtn, closeModal,
-  } = createModal(`Edit User: ${user.email}`);
+  } = createModal(user.email);
 
   const deleteBtn = document.createElement('button');
   deleteBtn.type = 'button';
   deleteBtn.className = 'button danger outline delete-btn';
-  deleteBtn.textContent = 'Delete User';
+  deleteBtn.textContent = 'Delete';
   footerDiv.prepend(deleteBtn);
 
   const form = document.createElement('form');
@@ -524,15 +577,15 @@ function openEditUserModal(user, onSave) {
       const success = await onSave(updatedUser);
       if (success) {
         closeModal();
-        showToast('User updated successfully');
+        showToast(group ? 'IMS group updated successfully' : 'Entity updated successfully');
         adminForm.dispatchEvent(new Event('submit'));
       } else {
-        showModalError(dialog, 'Failed to save user');
+        showModalError(dialog, 'Failed to save entity');
         saveBtn.disabled = false;
         saveBtn.textContent = 'Save';
       }
     } catch (err) {
-      showModalError(dialog, `Error: ${err.message || 'Failed to save user'}`);
+      showModalError(dialog, `Error: ${err.message || 'Failed to save entity'}`);
       saveBtn.disabled = false;
       saveBtn.textContent = 'Save';
     }
@@ -540,10 +593,11 @@ function openEditUserModal(user, onSave) {
 
   deleteBtn.addEventListener('click', async () => {
     clearModalError(dialog);
+    const label = group ? 'IMS group' : 'email';
     // eslint-disable-next-line no-alert
-    const emailCheck = prompt(`To confirm deletion, enter the email: ${user.email}`);
+    const emailCheck = prompt(`To confirm deletion, enter the ${label}: ${user.email}`);
     if (emailCheck !== user.email) {
-      if (emailCheck !== null) showModalError(dialog, 'Email did not match');
+      if (emailCheck !== null) showModalError(dialog, `The ${label} did not match`);
       return;
     }
 
@@ -560,24 +614,25 @@ function openEditUserModal(user, onSave) {
 
       if (success) {
         closeModal();
-        showToast('User deleted');
+        showToast(group ? 'IMS group deleted' : 'Entity deleted');
         adminForm.dispatchEvent(new Event('submit'));
       } else {
-        showModalError(dialog, 'Failed to delete user');
+        showModalError(dialog, 'Failed to delete entity');
         deleteBtn.disabled = false;
-        deleteBtn.textContent = 'Delete User';
+        deleteBtn.textContent = 'Delete';
       }
     } catch (err) {
-      showModalError(dialog, `Error: ${err.message || 'Failed to delete user'}`);
+      showModalError(dialog, `Error: ${err.message || 'Failed to delete entity'}`);
       deleteBtn.disabled = false;
-      deleteBtn.textContent = 'Delete User';
+      deleteBtn.textContent = 'Delete';
     }
   });
 }
 
 function createUserCard(user) {
+  const group = isImsGroup(user.email);
   const card = document.createElement('div');
-  card.className = 'card-item user-card';
+  card.className = `card-item user-card${group ? ' group-card' : ''}`;
   card.dataset.email = user.email.toLowerCase();
 
   // Build card structure safely to prevent XSS
@@ -586,11 +641,12 @@ function createUserCard(user) {
 
   const userIcon = document.createElement('span');
   userIcon.className = 'user-icon';
-  userIcon.innerHTML = icon('user');
+  userIcon.innerHTML = icon(group ? 'shield' : 'user');
 
   const nameEl = document.createElement('h3');
   nameEl.className = 'card-item-name';
   nameEl.textContent = user.email;
+  if (group) nameEl.title = 'IMS group';
 
   infoDiv.appendChild(userIcon);
   infoDiv.appendChild(nameEl);
@@ -648,10 +704,10 @@ function displayUsers(users) {
   const header = document.createElement('div');
   header.className = 'card-header';
   header.innerHTML = `
-    <span class="card-count">${users.length} user${users.length !== 1 ? 's' : ''}</span>
+    <span class="card-count">${users.length} entit${users.length !== 1 ? 'ies' : 'y'}</span>
     <div class="card-actions">
       <div class="card-search">
-        <input type="text" placeholder="Search users..." class="search-input" />
+        <input type="text" placeholder="Search entities..." class="search-input" />
       </div>
       <div class="view-toggle">
         <button type="button" class="view-btn ${savedView === 'grid' ? 'active' : ''}" data-view="grid" title="Grid view">
@@ -661,7 +717,7 @@ function displayUsers(users) {
           ${icon('list')}
         </button>
       </div>
-      <button class="button add-user-btn">+ Add User(s)</button>
+      <button class="button add-user-btn">+ Add</button>
     </div>
   `;
 
@@ -719,13 +775,13 @@ function displayUsers(users) {
 
 adminForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  usersContainer.innerHTML = '<p class="loading">Loading users...</p>';
+  usersContainer.innerHTML = '<p class="loading">Loading entities...</p>';
 
   if (site.value) {
     accessConfig.type = 'site';
     const config = await getSiteAccessConfig();
     if (!config) {
-      usersContainer.innerHTML = '<p class="error">Failed to load users</p>';
+      usersContainer.innerHTML = '<p class="error">Failed to load entities</p>';
       return;
     }
 
@@ -736,7 +792,7 @@ adminForm.addEventListener('submit', async (e) => {
     accessConfig.type = 'org';
     const config = await getOrgConfig();
     if (!config) {
-      usersContainer.innerHTML = '<p class="error">Failed to load users</p>';
+      usersContainer.innerHTML = '<p class="error">Failed to load entities</p>';
       return;
     }
 
@@ -748,7 +804,7 @@ adminForm.addEventListener('submit', async (e) => {
 async function init() {
   admin = await getAdminClient();
   // Load required icons
-  const neededIcons = ['user', 'edit', 'grid', 'list', 'trash'];
+  const neededIcons = ['user', 'shield', 'edit', 'grid', 'list', 'trash'];
   await Promise.all(neededIcons.map(loadIcon));
 
   await initConfigField();

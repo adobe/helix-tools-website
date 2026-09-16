@@ -1,8 +1,72 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseUsersFromAccessConfig, buildAccessConfig } from '../../../tools/user-admin/utils.js';
+import {
+  parseUsersFromAccessConfig, buildAccessConfig, isImsGroup, identityError,
+} from '../../../tools/user-admin/utils.js';
 
 describe('user-admin:utils.js', () => {
+  describe('isImsGroup', () => {
+    it('accepts an ims org id and group name', () => {
+      assert.equal(isImsGroup('0123456789abcdef01234567/administrators'), true);
+    });
+
+    it('accepts any character in the group name', () => {
+      assert.equal(isImsGroup('0123456789abcdef01234567/My Group (EMEA)/2'), true);
+    });
+
+    it('ignores surrounding whitespace', () => {
+      assert.equal(isImsGroup('  0123456789abcdef01234567/administrators  '), true);
+    });
+
+    it('rejects emails and malformed group references', () => {
+      assert.equal(isImsGroup('user@example.com'), false);
+      assert.equal(isImsGroup('0123456789abcdef01234567'), false);
+      assert.equal(isImsGroup('0123456789abcdef01234567/'), false);
+      assert.equal(isImsGroup('/administrators'), false);
+      assert.equal(isImsGroup('short/administrators'), false);
+      // 24 characters, but not hex
+      assert.equal(isImsGroup('zzz3456789abcdef01234567/administrators'), false);
+      assert.equal(isImsGroup(''), false);
+      assert.equal(isImsGroup(undefined), false);
+    });
+  });
+
+  describe('identityError', () => {
+    it('accepts email addresses', () => {
+      assert.equal(identityError('user@example.com'), null);
+      assert.equal(identityError('user@example.com', 'email'), null);
+    });
+
+    it('accepts email wildcards', () => {
+      assert.equal(identityError('*@example.com', 'email'), null);
+    });
+
+    it('accepts ims groups', () => {
+      assert.equal(identityError('0123456789abcdef01234567/administrators', 'group'), null);
+    });
+
+    it('reports an empty value for either type', () => {
+      const expected = /enter a valid email or Adobe IMS group for each entity/i;
+      assert.match(identityError('  ', 'email'), expected);
+      assert.match(identityError('', 'group'), expected);
+    });
+
+    it('reports an invalid email', () => {
+      assert.match(identityError('not-an-email', 'email'), /Invalid email/);
+      assert.match(identityError('user@example', 'email'), /Invalid email/);
+    });
+
+    it('reports an invalid ims group', () => {
+      assert.match(identityError('administrators', 'group'), /Invalid Adobe IMS group/);
+      assert.match(identityError('short/administrators', 'group'), /Invalid Adobe IMS group/);
+    });
+
+    it('does not accept a group in the email field, or vice versa', () => {
+      assert.match(identityError('0123456789abcdef01234567/administrators', 'email'), /Invalid email/);
+      assert.match(identityError('user@example.com', 'group'), /Invalid Adobe IMS group/);
+    });
+  });
+
   describe('parseUsersFromAccessConfig', () => {
     it('returns [] for null config', () => {
       assert.deepEqual(parseUsersFromAccessConfig(null), []);
