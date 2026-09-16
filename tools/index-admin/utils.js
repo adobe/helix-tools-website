@@ -100,3 +100,50 @@ export function suggestPropertyConfig(propName) {
   }
   return { select: '', selectFirst: metaSelectFirstForProperty(name), value: META_VALUE };
 }
+
+/**
+ * Decides how a name-field rename should affect select/selectFirst/value.
+ * Only replaces a field if it still holds exactly what we'd have generated
+ * for the property's *previous* name — a custom value, or one that came from
+ * an unrelated auto-generated pattern, is left alone.
+ * @param {object} params
+ * @param {string} params.oldName - name field value before the edit
+ * @param {string} params.newName - name field value after the edit
+ * @param {string} params.selectVal - current select field value
+ * @param {string} params.selectFirstVal - current selectFirst field value
+ * @param {string} params.valueVal - current value field value
+ * @returns {{select?: string, selectFirst?: string, value?: string}} fields to update, if any
+ */
+export function deriveAutoPropertyUpdate({
+  oldName, newName, selectVal, selectFirstVal, valueVal,
+}) {
+  const name = newName.trim();
+  if (!name || name === oldName.trim()) return {};
+
+  const suggestion = suggestPropertyConfig(name);
+  const priorCandidate = metaSelectFirstForProperty(oldName);
+  const wasLastModified = oldName.trim().toLowerCase() === 'lastmodified';
+  const update = {};
+
+  if (suggestion.select) {
+    // header-based property: a selector would only get in the way
+    if (!selectVal || selectVal === priorCandidate) update.select = suggestion.select;
+    if (selectFirstVal === priorCandidate) update.selectFirst = '';
+  } else if (!selectVal && !selectFirstVal) {
+    update.selectFirst = suggestion.selectFirst;
+  } else if (selectVal && selectVal === priorCandidate) {
+    update.select = suggestion.selectFirst;
+  } else if (selectFirstVal && selectFirstVal === priorCandidate) {
+    update.selectFirst = suggestion.selectFirst;
+  } else if (wasLastModified && selectVal === LAST_MODIFIED_CONFIG.select) {
+    // no longer the header-based property
+    update.select = '';
+    update.selectFirst = suggestion.selectFirst;
+  }
+
+  // keep the value expression in sync as long as it is a suggested one
+  const suggestedValues = [META_VALUE, LAST_MODIFIED_CONFIG.value];
+  if (!valueVal || suggestedValues.includes(valueVal)) update.value = suggestion.value;
+
+  return update;
+}
