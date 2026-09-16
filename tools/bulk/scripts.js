@@ -354,18 +354,21 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
 
   const dequeue = async () => {
     while (urlsToUse.length) {
-      // eslint-disable-next-line no-await-in-loop
-      await executeOperation(urlsToUse.shift());
+      const url = urlsToUse.shift();
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        await executeOperation(url);
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error(error);
+        appendResult(`${url} (failed: ${error.message})`, 0, counter, total, label);
+      }
       // eslint-disable-next-line no-await-in-loop
       if (slow) await sleep(1500);
     }
   };
 
   const doBulkOperation = async () => {
-    if (total === 0) {
-      finish();
-      return;
-    }
     const VERB = { preview: 'preview', live: 'publish' };
     const { hostname } = new URL(urlsToUse[0]);
     const [branch, repo, owner] = hostname.split('.')[0].split('--');
