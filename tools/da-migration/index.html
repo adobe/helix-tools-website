@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';" move-to-http-header="true">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>DA Content Migration | AEM Tools</title>
+  <meta name="description" content="Migrate content from DA storage to the API Service.">
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/utils/config/config.css" />
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/tools/da-migration/da-migration.js" type="module"></script>
+  <link rel="stylesheet" href="/tools/da-migration/da-migration.css" />
+</head>
+
+<body class="da-migration">
+  <header></header>
+  <main>
+    <div>
+      <h1>DA Content Migration</h1>
+      <p>
+        Copy existing content from DA storage (<code>admin.da.live</code>) to the API Service
+        (<code>api.aem.live</code>). Migrate a site in place, or copy it to a different destination site.
+      </p>
+    </div>
+
+    <div>
+      <form id="migration-wizard" class="da-migration-wizard">
+      <ol class="da-migration-steps" aria-label="Migration progress"></ol>
+
+      <!-- Step: Site -->
+      <section class="da-migration-panel" data-step="setup" aria-labelledby="da-migration-setup-heading">
+        <h2 id="da-migration-setup-heading">Pick site</h2>
+        <p>Select the site whose DA content you want to migrate.</p>
+
+        <div class="form-field config-field">
+          <div class="form-field org-field">
+            <label for="org">Organization</label>
+            <input name="org" id="org" list="org-list" autocomplete="off" required />
+            <datalist id="org-list"></datalist>
+          </div>
+          <div class="form-field site-field">
+            <label for="site">Site</label>
+            <input name="site" id="site" list="site-list" autocomplete="off" disabled />
+            <datalist id="site-list"></datalist>
+          </div>
+        </div>
+
+        <div class="da-migration-error" role="alert" aria-hidden="true"></div>
+
+        <label class="da-migration-toggle">
+          <input type="checkbox" id="use-destination" />
+          Use a different destination site
+        </label>
+        <p class="da-migration-toggle-hint">
+          Leave unchecked to migrate this site in place: content is copied to the API Service, then the site's
+          content source URL is switched.
+        </p>
+
+        <fieldset class="da-migration-destination" aria-hidden="true">
+          <legend>Destination site</legend>
+          <p>Provide the destination site. It must be in the same organization as the source site.
+            If it doesn't exist yet, it will be created.</p>
+          <input type="hidden" name="dest-org" id="dest-org" />
+          <div class="form-field">
+            <label for="dest-site">Destination site</label>
+            <input name="dest-site" id="dest-site" autocomplete="off" placeholder="Existing or new site name" />
+          </div>
+        </fieldset>
+      </section>
+
+      <!-- Step: Copy content -->
+      <section class="da-migration-panel" data-step="copy" aria-hidden="true"
+        aria-labelledby="da-migration-copy-heading">
+        <h2 id="da-migration-copy-heading">Copy content</h2>
+        <p class="da-migration-desc" data-desc="copy"></p>
+        <div class="form-field">
+          <!-- TODO: replace with a proper IMS login button -->
+          <label for="ims-token">DA IMS token</label>
+          <input type="password" name="ims-token" id="ims-token" autocomplete="off"
+            placeholder="Paste your IMS access token" required />
+          <div class="da-migration-error" role="alert" aria-hidden="true"></div>
+          <details class="da-migration-token-help">
+            <summary>How do I get this token?</summary>
+            <ol>
+              <li>Sign in to <a href="https://da.live" target="_blank" rel="noopener noreferrer">da.live</a>.</li>
+              <li>Open developer tools (⌘⌥I / Ctrl+Shift+I).</li>
+              <li>Go to <strong>Application</strong> → <strong>Storage</strong> → <strong>Cookies</strong> → <code>https://da.live</code>.</li>
+              <li>Find the <code>auth_token</code> cookie and copy its value.</li>
+              <li>Paste the value into the field above.</li>
+            </ol>
+          </details>
+        </div>
+        <div class="da-migration-progress" aria-hidden="true">
+          <div class="da-migration-progress-track">
+            <div class="da-migration-progress-bar"></div>
+          </div>
+          <p class="da-migration-progress-label"></p>
+        </div>
+      </section>
+
+      <!-- Step: Site config -->
+      <section class="da-migration-panel" data-step="config" aria-hidden="true"
+        aria-labelledby="da-migration-config-heading">
+        <h2 id="da-migration-config-heading">Switch to API Service</h2>
+        <p class="da-migration-desc" data-desc="config"></p>
+        <p class="da-migration-warning">
+          Warning: The site will remain unavailable until the migration is complete!
+        </p>
+      </section>
+
+      <!-- Step: Preview -->
+      <section class="da-migration-panel" data-step="preview" aria-hidden="true"
+        aria-labelledby="da-migration-preview-heading">
+        <h2 id="da-migration-preview-heading">Preview content</h2>
+        <p class="da-migration-desc" data-desc="preview"></p>
+        <div class="da-migration-progress" aria-hidden="true">
+          <div class="da-migration-progress-track">
+            <div class="da-migration-progress-bar"></div>
+          </div>
+          <p class="da-migration-progress-label"></p>
+        </div>
+      </section>
+
+      <!-- Step: Publish -->
+      <section class="da-migration-panel" data-step="publish" aria-hidden="true"
+        aria-labelledby="da-migration-publish-heading">
+        <h2 id="da-migration-publish-heading">Publish content</h2>
+        <p class="da-migration-desc" data-desc="publish"></p>
+        <div class="form-field">
+          <label for="sitemap-url">Sitemap URL (optional)</label>
+          <input type="url" name="sitemap-url" id="sitemap-url" autocomplete="off"
+            placeholder="https://…/sitemap.xml — leave blank to publish everything" />
+        </div>
+        <div class="da-migration-progress" aria-hidden="true">
+          <div class="da-migration-progress-track">
+            <div class="da-migration-progress-bar"></div>
+          </div>
+          <p class="da-migration-progress-label"></p>
+        </div>
+      </section>
+
+      <!-- Terminal: Done -->
+      <section class="da-migration-panel" data-step="done" aria-hidden="true"
+        aria-labelledby="da-migration-done-heading">
+        <h2 id="da-migration-done-heading">Migration complete</h2>
+        <p class="da-migration-done-summary"></p>
+        <div class="da-migration-links-groups">
+          <div class="da-migration-links" data-role="source">
+            <h3 class="da-migration-links-title"></h3>
+            <p>Preview: <a class="da-migration-preview-link" target="_blank" rel="noopener noreferrer" href="#"></a></p>
+            <p>Live: <a class="da-migration-live-link" target="_blank" rel="noopener noreferrer" href="#"></a></p>
+          </div>
+          <div class="da-migration-links" data-role="dest" aria-hidden="true">
+            <h3 class="da-migration-links-title"></h3>
+            <p>Preview: <a class="da-migration-preview-link" target="_blank" rel="noopener noreferrer" href="#"></a></p>
+            <p>Live: <a class="da-migration-live-link" target="_blank" rel="noopener noreferrer" href="#"></a></p>
+          </div>
+        </div>
+      </section>
+
+      <div class="da-migration-nav">
+        <button type="button" class="button outline da-migration-back">Previous</button>
+        <button type="button" class="button da-migration-next">Next</button>
+      </div>
+      </form>
+    </div>
+  </main>
+  <footer></footer>
+</body>
+
+</html>
