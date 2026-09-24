@@ -1,4 +1,38 @@
 /**
+ * Adobe IMS groups are entered as `<ims-org-id>/<group-name>`, e.g.
+ * `0123456789abcdef01234567/administrators`: a 24 character hex IMS org id, a
+ * slash, and a group name that may contain any character.
+ */
+const IMS_GROUP_PATTERN = /^[a-f0-9]{24}\/.+$/i;
+// deliberately lenient: the admin API also accepts wildcards like `*@example.com`
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Check whether an identity is an Adobe IMS group reference rather than an email.
+ *
+ * @param {string} identity
+ * @returns {boolean}
+ */
+export function isImsGroup(identity) {
+  return IMS_GROUP_PATTERN.test((identity || '').trim());
+}
+
+/**
+ * Validate a user identity for the selected identity type.
+ *
+ * @param {string} identity
+ * @param {'email'|'group'} [kind] identity type, defaults to email
+ * @returns {string|null} an error message, or null when valid
+ */
+export function identityError(identity, kind = 'email') {
+  const value = (identity || '').trim();
+  const group = kind === 'group';
+  if (!value) return 'Please enter a valid email or Adobe IMS group for each entity';
+  if (group) return isImsGroup(value) ? null : `Invalid Adobe IMS group: ${value}`;
+  return EMAIL_PATTERN.test(value) ? null : `Invalid email: ${value}`;
+}
+
+/**
  * Convert an access config's role map into a flat user array.
  *
  * Input:  { admin: { role: { admin: ['a@b.com'], author: ['a@b.com', 'c@d.com'] } } }
