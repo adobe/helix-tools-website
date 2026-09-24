@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseBody, getErrorMessage } from '../../../tools/cdn-setup/utils.js';
+import { parseBody, getErrorMessage, validateBranchName } from '../../../tools/cdn-setup/utils.js';
 
 describe('parseBody', () => {
   it('returns null for null', () => assert.equal(parseBody(null), null));
@@ -119,5 +119,46 @@ describe('getErrorMessage', () => {
 
   it('returns generic fallback for empty result', () => {
     assert.equal(getErrorMessage({}), 'Validation failed');
+  });
+});
+
+describe('validateBranchName', () => {
+  it('returns null when branch is empty', () => {
+    assert.equal(validateBranchName('', 'site', 'org'), null);
+  });
+
+  it('returns null for a valid branch name', () => {
+    assert.equal(validateBranchName('main', 'site', 'org'), null);
+    assert.equal(validateBranchName('feature-branch-1', 'site', 'org'), null);
+  });
+
+  it('rejects a trailing hyphen', () => {
+    assert.match(validateBranchName('main-', 'site', 'org'), /may only contain/);
+  });
+
+  it('rejects a leading hyphen', () => {
+    assert.match(validateBranchName('-main', 'site', 'org'), /may only contain/);
+  });
+
+  it('rejects uppercase letters', () => {
+    assert.match(validateBranchName('Main', 'site', 'org'), /may only contain/);
+  });
+
+  it('rejects a whitespace-only branch as invalid rather than skipping validation', () => {
+    assert.match(validateBranchName('   ', 'site', 'org'), /may only contain/);
+  });
+
+  it('rejects a hostname exceeding the 63-character limit', () => {
+    const branch = 'a'.repeat(60);
+    assert.match(
+      validateBranchName(branch, 'site', 'org'),
+      /exceeds the 63-character domain label limit/,
+    );
+  });
+
+  it('accepts a hostname exactly at the 63-character limit', () => {
+    const branch = 'a'.repeat(52);
+    assert.equal(`${branch}--site--org`.length, 63);
+    assert.equal(validateBranchName(branch, 'site', 'org'), null);
   });
 });
