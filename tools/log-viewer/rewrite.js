@@ -9,7 +9,7 @@ export class RewrittenData {
    * @param {Object} data - Original log entry.
    * @param {string} live - Live hostname.
    * @param {string} preview - Preview hostname.
-   * @param {Function} onAdminClick - Called with (requestFn, button) on admin button click.
+   * @param {Function} onAdminClick - Called with (requestFn|data, button) on detail button click.
    * @param {object} adminClient - Active admin API client.
    */
   constructor(data, live, preview, onAdminClick = async () => {}, adminClient = null) {
@@ -40,6 +40,9 @@ export class RewrittenData {
     const type = data.route || data.source;
     if (!type) return value || null;
 
+    // the partition property determines which content-bus partition was written
+    const contentHost = data.partition === 'preview' ? this.preview : this.live;
+
     const writeA = (href, text) => {
       const a = document.createElement('a');
       a.href = `https://${href}`;
@@ -48,14 +51,14 @@ export class RewrittenData {
       return a;
     };
 
-    const writeAdminDetails = (requestFn, text) => {
+    const writeDetails = (source, text) => {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'button outline';
       button.value = text;
       button.title = text;
       button.textContent = text.length > 26 ? `${text.substring(0, 26)}…` : text;
-      button.addEventListener('click', () => this.onAdminClick(requestFn, button));
+      button.addEventListener('click', () => this.onAdminClick(source, button));
       return button;
     };
 
@@ -63,49 +66,57 @@ export class RewrittenData {
       return writeA(`github.com/${data.owner}/${data.repo}/tree/${data.ref}`, value);
     }
     if (type === 'config') {
-      return writeAdminDetails(
+      return writeDetails(
         () => this.admin.config({ org: data.org, site: data.site }).read(),
         value,
       );
     }
     if (type === 'index' || type === 'live') {
-      return writeA(`${this.live}${value}`, value);
+      return writeA(`${contentHost}${value}`, value);
     }
     if (type === 'indexer') {
       if (!data.changes) return value || null;
       const updateMs = !data.duration;
       if (updateMs) data.duration = 0;
       const changesList = Array.isArray(data.changes) ? data.changes : [data.changes];
-      const fragment = document.createDocumentFragment();
-      changesList.forEach((change, i) => {
-        if (i > 0) {
-          fragment.append(document.createElement('br'));
-          fragment.append(document.createElement('br'));
-        }
-        const parts = String(change).split(' ');
-        const segment = parts.find((s) => s.startsWith('/'));
+      // changes read like "<index>: <action> <path>", collect a change log per index
+      const byIndex = new Map();
+      const unparsed = [];
+      changesList.forEach((change) => {
+        const parts = String(change).split(' ').filter((s) => s);
+        if (!parts.length) return;
+        const msParts = parts.filter((s) => /^\d+ms$/.test(s));
         if (updateMs) {
-          const ms = parts.find((s) => s.endsWith('ms') && s !== segment);
-          if (ms) {
+          msParts.forEach((ms) => {
             const n = Number.parseInt(ms.replace('ms', ''), 10);
             if (!Number.isNaN(n)) data.duration += n;
-          }
+          });
         }
-        if (segment) {
-          fragment.append(writeAdminDetails(
-            () => this.admin
-              .index({ org: data.owner, site: data.repo, ref: data.ref })
-              .get(segment),
-            segment,
-          ));
-        } else {
-          fragment.append('/');
+        const index = parts[0].endsWith(':') ? parts[0].slice(0, -1) : null;
+        const rest = index ? parts.slice(1) : parts;
+        const segment = rest.find((s) => s.startsWith('/'));
+        if (!index || !segment) {
+          unparsed.push(parts.filter((s) => !msParts.includes(s)).join(' '));
+          return;
         }
+        if (index.startsWith('#internal-')) return;
+        const action = rest
+          .filter((s) => s !== segment && !msParts.includes(s))
+          .join(' ') || 'changed';
+        if (!byIndex.has(index)) byIndex.set(index, {});
+        const log = byIndex.get(index);
+        if (!log[action]) log[action] = [];
+        log[action].push(`https://${contentHost}${segment}`);
       });
-      return fragment;
+      const fragment = document.createDocumentFragment();
+      byIndex.forEach((log, index) => {
+        fragment.append(writeDetails({ index, ...log }, index));
+      });
+      if (unparsed.length) fragment.append(unparsed.join(', '));
+      return fragment.childNodes.length ? fragment : null;
     }
     if (type === 'job' || type.includes('-job')) {
-      return writeAdminDetails(
+      return writeDetails(
         () => this.admin.job({ org: data.org, site: data.site, ref: data.ref }).get(`${value}/details`),
         value,
       );
@@ -113,7 +124,7 @@ export class RewrittenData {
     if (type === 'snapshot') {
       const { job: jobId } = data;
       if (jobId) {
-        return writeAdminDetails(
+        return writeDetails(
           () => this.admin.job({ org: data.org, site: data.site, ref: data.ref }).get(`${jobId}/details`),
           jobId,
         );
@@ -133,14 +144,14 @@ export class RewrittenData {
             fragment.append(document.createElement('br'));
             fragment.append(document.createElement('br'));
           }
-          fragment.append(writeA(`${this.live}${update}`, update));
+          fragment.append(writeA(`${contentHost}${update}`, update));
         });
         return fragment;
       }
-      return writeA(`${this.live}${data.path}`, data.path);
+      return writeA(`${contentHost}${data.path}`, data.path);
     }
     if (type === 'status') {
-      return writeAdminDetails(
+      return writeDetails(
         () => this.admin.status({ org: data.owner, site: data.repo, ref: data.ref }).get(value),
         value,
       );
