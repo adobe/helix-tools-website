@@ -1,8 +1,33 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseUsersFromAccessConfig, buildAccessConfig } from '../../../tools/user-admin/utils.js';
+import {
+  parseUsersFromAccessConfig,
+  buildAccessConfig,
+  userEmailError,
+} from '../../../tools/user-admin/utils.js';
 
 describe('user-admin:utils.js', () => {
+  describe('userEmailError', () => {
+    it('returns an error for blank and whitespace-only emails', () => {
+      ['', '   '].forEach((email) => {
+        assert.equal(
+          userEmailError(email, false),
+          'Enter an email for each user, or remove the empty user.',
+        );
+      });
+    });
+
+    it('returns an error when browser validation fails', () => {
+      assert.equal(userEmailError('not-an-email', false), 'Enter a valid email for each user.');
+    });
+
+    it('returns no error for a valid email, including surrounding whitespace', () => {
+      assert.equal(userEmailError('a@b.com', true), null);
+      assert.equal(userEmailError('  a@b.com  ', true), null);
+      assert.equal(userEmailError('*@adobe.com', true), null);
+    });
+  });
+
   describe('parseUsersFromAccessConfig', () => {
     it('returns [] for null config', () => {
       assert.deepEqual(parseUsersFromAccessConfig(null), []);

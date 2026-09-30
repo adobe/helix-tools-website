@@ -4,7 +4,7 @@ import { logResponse } from '../../blocks/console/console.js';
 import { loadIcon, icon, showToast } from '../../utils/card-ui/card-ui.js';
 import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
-import { parseUsersFromAccessConfig, buildAccessConfig } from './utils.js';
+import { parseUsersFromAccessConfig, buildAccessConfig, userEmailError } from './utils.js';
 import { ROLE_DESCRIPTIONS } from '../../utils/roles/roles.js';
 import { createRolesField } from '../../utils/roles/roles-field.js';
 
@@ -159,7 +159,7 @@ function createRolesReference() {
 
 let entryIdCounter = 0;
 
-function createUserEntry(entriesContainer, updateSaveLabel, selectedRoles = []) {
+function createUserEntry(entriesContainer, updateSaveLabel) {
   entryIdCounter += 1;
   const entryId = entryIdCounter;
   const entry = document.createElement('div');
@@ -192,7 +192,7 @@ function createUserEntry(entriesContainer, updateSaveLabel, selectedRoles = []) 
   const rolesLabel = document.createElement('label');
   rolesLabel.id = rolesFieldId;
   rolesLabel.textContent = 'Roles';
-  const rolesContainer = createRolesField(selectedRoles);
+  const rolesContainer = createRolesField();
   rolesContainer.setAttribute('role', 'group');
   rolesContainer.setAttribute('aria-labelledby', rolesFieldId);
   rolesField.appendChild(rolesLabel);
@@ -382,12 +382,7 @@ function openAddUsersModal(onSave) {
   firstEntry.querySelector('input[type="email"]').focus();
 
   addAnotherBtn.addEventListener('click', () => {
-    const previousEntries = entriesContainer.querySelectorAll('.user-entry');
-    const previousEntry = previousEntries[previousEntries.length - 1];
-    const previousRoles = previousEntry
-      ? [...previousEntry.querySelectorAll('input[type="checkbox"]:checked')].map((cb) => cb.value)
-      : [];
-    const entry = createUserEntry(entriesContainer, updateSaveLabel, previousRoles);
+    const entry = createUserEntry(entriesContainer, updateSaveLabel);
     entry.querySelector('input[type="email"]').focus();
     entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
@@ -417,8 +412,8 @@ function openAddUsersModal(onSave) {
       const roles = [...entry.querySelectorAll('input[type="checkbox"]:checked')]
         .map((cb) => cb.value);
 
-      if (!email) { flagError(entry, 'Please enter an email for each user', emailInput); return; }
-      if (!emailInput.validity.valid) { flagError(entry, `Invalid email: ${email}`, emailInput); return; }
+      const emailError = userEmailError(email, emailInput.validity.valid);
+      if (emailError) { flagError(entry, emailError, emailInput); return; }
       if (roles.length === 0) { flagError(entry, 'Please select at least one role for each user'); return; }
 
       const emailLower = email.toLowerCase();

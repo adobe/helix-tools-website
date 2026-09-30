@@ -7,6 +7,7 @@
  */
 
 import { createRolesField } from '../../utils/roles/roles-field.js';
+import { userEmailError } from '../../tools/user-admin/utils.js';
 
 // UI-facing content-source kinds. `configType` is what the admin API stores in
 // `content.source.type`; the granular DA/AEM/BYOM kinds all map to `markup`.
@@ -127,17 +128,14 @@ export function usersError(orgUsers, newOrg) {
 }
 
 /**
- * Validate every email field before collecting users, which omits blank rows.
+ * Return the first email-field error before collecting users, which omits blank rows.
  * @param {HTMLElement} container
  * @returns {string|null}
  */
-export function validateUserEmails(container) {
-  const invalid = [...container.querySelectorAll('.bot-info-email')]
-    .find((input) => !input.validity.valid);
-  if (!invalid) return null;
-  return invalid.validity.valueMissing
-    ? 'Enter an email for each user, or remove the empty user.'
-    : 'Enter a valid email for each user.';
+export function userEmailsError(container) {
+  return [...container.querySelectorAll('.bot-info-email')]
+    .map((input) => userEmailError(input.value, input.validity.valid))
+    .find(Boolean) || null;
 }
 
 /* ------------------------------------------------------------------ */

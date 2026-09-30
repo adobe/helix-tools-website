@@ -1,4 +1,16 @@
 /**
+ * Return an email error message from the browser's email-field validity.
+ * @param {string} email
+ * @param {boolean} emailValid
+ * @returns {string|null}
+ */
+export function userEmailError(email, emailValid) {
+  if (!email.trim()) return 'Enter an email for each user, or remove the empty user.';
+  if (!emailValid) return 'Enter a valid email for each user.';
+  return null;
+}
+
+/**
  * Convert an access config's role map into a flat user array.
  *
  * Input:  { admin: { role: { admin: ['a@b.com'], author: ['a@b.com', 'c@d.com'] } } }

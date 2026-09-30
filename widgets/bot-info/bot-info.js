@@ -11,7 +11,7 @@ import {
   collectUsers,
   validateContentSelection,
   usersError,
-  validateUserEmails,
+  userEmailsError,
 } from './wizard.js';
 
 const EMPTY_ACCESS = { admin: { role: {} } };
@@ -579,7 +579,7 @@ export default async function decorate(widget) {
       }
       if (step === 'users') {
         const orgList = widget.querySelector('.bot-info-user-list[data-scope="org"]');
-        return validateUserEmails(widget.querySelector('.bot-info-panel[data-step="users"]'))
+        return userEmailsError(widget.querySelector('.bot-info-panel[data-step="users"]'))
           || usersError(collectUsers(orgList), ctx.newOrg);
       }
       return null;
