@@ -4,7 +4,7 @@ import { logResponse } from '../../blocks/console/console.js';
 import { loadIcon, icon, showToast } from '../../utils/card-ui/card-ui.js';
 import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
-import { parseUsersFromAccessConfig, buildAccessConfig, userEmailError } from './utils.js';
+import { parseUsersFromAccessConfig, buildAccessConfig, userEmailErrors } from './utils.js';
 import { ROLE_DESCRIPTIONS } from '../../utils/roles/roles.js';
 import { createRolesField } from '../../utils/roles/roles-field.js';
 
@@ -405,6 +405,12 @@ function openAddUsersModal(onSave) {
 
     entries.forEach((entry) => entry.classList.remove('has-error'));
 
+    const [emailError] = userEmailErrors(entriesContainer.querySelectorAll('input[type="email"]'));
+    if (emailError) {
+      flagError(emailError.input.closest('.user-entry'), emailError.message, emailError.input);
+      return;
+    }
+
     entries.forEach((entry) => {
       if (hasError) return;
       const emailInput = entry.querySelector('input[type="email"]');
@@ -412,8 +418,6 @@ function openAddUsersModal(onSave) {
       const roles = [...entry.querySelectorAll('input[type="checkbox"]:checked')]
         .map((cb) => cb.value);
 
-      const emailError = userEmailError(email, emailInput.validity.valid);
-      if (emailError) { flagError(entry, emailError, emailInput); return; }
       if (roles.length === 0) { flagError(entry, 'Please select at least one role for each user'); return; }
 
       const emailLower = email.toLowerCase();

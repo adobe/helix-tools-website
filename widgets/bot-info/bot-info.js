@@ -1,7 +1,7 @@
 import { toClassName, loadCSS } from '../../scripts/aem.js';
 import admin from '../../scripts/helix-admin.js';
 import decorateConsole, { logResponse, logMessage } from '../../blocks/console/console.js';
-import { parseUsersFromAccessConfig, buildAccessConfig } from '../../tools/user-admin/utils.js';
+import { parseUsersFromAccessConfig, buildAccessConfig, userEmailErrors } from '../../tools/user-admin/utils.js';
 import {
   CONTENT_SOURCE_KINDS,
   detectContentSourceKind,
@@ -11,7 +11,6 @@ import {
   collectUsers,
   validateContentSelection,
   usersError,
-  userEmailsError,
 } from './wizard.js';
 
 const EMPTY_ACCESS = { admin: { role: {} } };
@@ -579,7 +578,8 @@ export default async function decorate(widget) {
       }
       if (step === 'users') {
         const orgList = widget.querySelector('.bot-info-user-list[data-scope="org"]');
-        return userEmailsError(widget.querySelector('.bot-info-panel[data-step="users"]'))
+        const [emailError] = userEmailErrors(widget.querySelectorAll('.bot-info-email'));
+        return emailError?.message
           || usersError(collectUsers(orgList), ctx.newOrg);
       }
       return null;

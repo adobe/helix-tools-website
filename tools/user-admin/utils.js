@@ -1,13 +1,15 @@
 /**
- * Return an email error message from the browser's email-field validity.
- * @param {string} email
- * @param {boolean} emailValid
- * @returns {string|null}
+ * Return invalid email inputs and their error messages in input order.
+ * @param {Iterable<HTMLInputElement>} inputs
+ * @returns {{input: HTMLInputElement, message: string}[]}
  */
-export function userEmailError(email, emailValid) {
-  if (!email.trim()) return 'Enter an email for each user, or remove the empty user.';
-  if (!emailValid) return 'Enter a valid email for each user.';
-  return null;
+export function userEmailErrors(inputs) {
+  return [...inputs].flatMap((input) => {
+    let message;
+    if (!input.value.trim()) message = 'Enter an email for each user, or remove the empty user.';
+    else if (!input.validity.valid) message = 'Enter a valid email for each user.';
+    return message ? [{ input, message }] : [];
+  });
 }
 
 /**

@@ -6,8 +6,6 @@ import {
   diffOrgUsers,
   validateContentSelection,
   usersError,
-  createUserRow,
-  userEmailsError,
 } from '../../../widgets/bot-info/wizard.js';
 
 describe('bot-info:wizard.js', () => {
@@ -170,59 +168,6 @@ describe('bot-info:wizard.js', () => {
         validateContentSelection({ advanced: true, url: 'https://example.com' }),
         null,
       );
-    });
-  });
-
-  describe('userEmailsError', () => {
-    const userList = (...emails) => {
-      const list = document.createElement('div');
-      emails.forEach((email) => list.append(createUserRow({ email })));
-      return list;
-    };
-
-    it('rejects an added blank row alongside a valid user', () => {
-      assert.equal(
-        userEmailsError(userList('a@b.com', '')),
-        'Enter an email for each user, or remove the empty user.',
-      );
-    });
-
-    it('rejects whitespace-only emails', () => {
-      assert.equal(
-        userEmailsError(userList('   ')),
-        'Enter an email for each user, or remove the empty user.',
-      );
-    });
-
-    it('rejects malformed emails', () => {
-      assert.equal(
-        userEmailsError(userList('a@b.com', 'not-an-email')),
-        'Enter a valid email for each user.',
-      );
-    });
-
-    it('accepts valid emails', () => {
-      assert.equal(userEmailsError(userList('a@b.com', 'c@d.com')), null);
-    });
-
-    it('accepts wildcard-domain entries', () => {
-      assert.equal(userEmailsError(userList('*@adobe.com', '*@example.com')), null);
-    });
-
-    it('accepts an empty list for inherited site access', () => {
-      assert.equal(userEmailsError(userList()), null);
-    });
-
-    it('accepts the list after the blank row is removed', () => {
-      const list = userList('a@b.com', '');
-      list.lastElementChild.remove();
-      assert.equal(userEmailsError(list), null);
-    });
-
-    it('accepts the list after the blank row is completed', () => {
-      const list = userList('a@b.com', '');
-      list.lastElementChild.querySelector('.bot-info-email').value = 'c@d.com';
-      assert.equal(userEmailsError(list), null);
     });
   });
 

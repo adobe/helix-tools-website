@@ -3,28 +3,79 @@ import assert from 'node:assert/strict';
 import {
   parseUsersFromAccessConfig,
   buildAccessConfig,
-  userEmailError,
+  userEmailErrors,
 } from '../../../tools/user-admin/utils.js';
 
 describe('user-admin:utils.js', () => {
-  describe('userEmailError', () => {
-    it('returns an error for blank and whitespace-only emails', () => {
-      ['', '   '].forEach((email) => {
-        assert.equal(
-          userEmailError(email, false),
-          'Enter an email for each user, or remove the empty user.',
-        );
+  describe('userEmailErrors', () => {
+    const emailFields = (...emails) => {
+      const container = document.createElement('div');
+      emails.forEach((email) => {
+        const input = document.createElement('input');
+        input.type = 'email';
+        input.required = true;
+        input.value = email;
+        container.append(input);
       });
+      return container;
+    };
+
+    it('returns the blank input and its error alongside a valid user', () => {
+      const container = emailFields('a@b.com', '');
+      assert.deepEqual(userEmailErrors(container.querySelectorAll('input')), [{
+        input: container.lastElementChild,
+        message: 'Enter an email for each user, or remove the empty user.',
+      }]);
     });
 
-    it('returns an error when browser validation fails', () => {
-      assert.equal(userEmailError('not-an-email', false), 'Enter a valid email for each user.');
+    it('returns an error for whitespace-only emails', () => {
+      const container = emailFields('   ');
+      assert.deepEqual(userEmailErrors(container.querySelectorAll('input')), [{
+        input: container.firstElementChild,
+        message: 'Enter an email for each user, or remove the empty user.',
+      }]);
     });
 
-    it('returns no error for a valid email, including surrounding whitespace', () => {
-      assert.equal(userEmailError('a@b.com', true), null);
-      assert.equal(userEmailError('  a@b.com  ', true), null);
-      assert.equal(userEmailError('*@adobe.com', true), null);
+    it('returns all invalid inputs in input order', () => {
+      const container = emailFields('not-an-email', 'a@b.com', '');
+      assert.deepEqual(userEmailErrors(container.querySelectorAll('input')), [{
+        input: container.firstElementChild,
+        message: 'Enter a valid email for each user.',
+      }, {
+        input: container.lastElementChild,
+        message: 'Enter an email for each user, or remove the empty user.',
+      }]);
+    });
+
+    it('returns no errors for valid emails, including surrounding whitespace', () => {
+      const container = emailFields('a@b.com', '  c@d.com  ');
+      assert.deepEqual(userEmailErrors(container.querySelectorAll('input')), []);
+    });
+
+    it('accepts wildcard-domain entries', () => {
+      const container = emailFields('*@adobe.com', '*@example.com');
+      assert.deepEqual(userEmailErrors(container.querySelectorAll('input')), []);
+    });
+
+    it('accepts an empty collection for inherited site access', () => {
+      assert.deepEqual(userEmailErrors(emailFields().querySelectorAll('input')), []);
+    });
+
+    it('returns no errors after a blank row is removed', () => {
+      const container = emailFields('a@b.com', '');
+      container.lastElementChild.remove();
+      assert.deepEqual(userEmailErrors(container.querySelectorAll('input')), []);
+    });
+
+    it('returns no errors after a blank row is completed', () => {
+      const container = emailFields('a@b.com', '');
+      container.lastElementChild.value = 'c@d.com';
+      assert.deepEqual(userEmailErrors(container.querySelectorAll('input')), []);
+    });
+
+    it('accepts an array of inputs as well as a NodeList', () => {
+      const container = emailFields('a@b.com');
+      assert.deepEqual(userEmailErrors([...container.querySelectorAll('input')]), []);
     });
   });
 
