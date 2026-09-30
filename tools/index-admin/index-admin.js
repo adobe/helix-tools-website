@@ -5,8 +5,7 @@ import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { logResponse } from '../../blocks/console/console.js';
 import deriveReindexPaths, {
-  isAutoMetaSelector,
-  suggestPropertyConfig,
+  deriveAutoPropertyUpdate,
   LAST_MODIFIED_CONFIG,
   META_VALUE,
 } from './utils.js';
@@ -87,33 +86,16 @@ function createPropertyRow(propertiesContainer, {
     nameOnFocus = nameField.value;
   });
   nameField.addEventListener('blur', () => {
-    const name = nameField.value.trim();
-    if (!name || name === nameOnFocus.trim()) return;
-
-    const selectVal = selectField.value.trim();
-    const selectFirstVal = selectFirstField.value.trim();
-    const suggestion = suggestPropertyConfig(name);
-
-    if (suggestion.select) {
-      // header-based property: a selector would only get in the way
-      if (!selectVal || isAutoMetaSelector(selectVal)) selectField.value = suggestion.select;
-      if (isAutoMetaSelector(selectFirstVal)) selectFirstField.value = '';
-    } else if (!selectVal && !selectFirstVal) {
-      selectFirstField.value = suggestion.selectFirst;
-    } else if (selectVal && isAutoMetaSelector(selectVal)) {
-      selectField.value = suggestion.selectFirst;
-    } else if (selectFirstVal && isAutoMetaSelector(selectFirstVal)) {
-      selectFirstField.value = suggestion.selectFirst;
-    } else if (selectVal === LAST_MODIFIED_CONFIG.select) {
-      // no longer the header-based property
-      selectField.value = '';
-      selectFirstField.value = suggestion.selectFirst;
-    }
-
-    // keep the value expression in sync as long as it is a suggested one
-    const valueVal = valueField.value.trim();
-    const suggested = [META_VALUE, LAST_MODIFIED_CONFIG.value];
-    if (!valueVal || suggested.includes(valueVal)) valueField.value = suggestion.value;
+    const update = deriveAutoPropertyUpdate({
+      oldName: nameOnFocus,
+      newName: nameField.value,
+      selectVal: selectField.value.trim(),
+      selectFirstVal: selectFirstField.value.trim(),
+      valueVal: valueField.value.trim(),
+    });
+    if (update.select !== undefined) selectField.value = update.select;
+    if (update.selectFirst !== undefined) selectFirstField.value = update.selectFirst;
+    if (update.value !== undefined) valueField.value = update.value;
   });
 
   property.querySelector('.remove-property-btn').addEventListener('click', () => {

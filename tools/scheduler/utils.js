@@ -19,6 +19,43 @@ async function readError(resp, fallback) {
   return fallback;
 }
 
+// The worker verifies scheduling by reading the intent back from admin's audit
+// log, which is written asynchronously (SQS -> helix-audit-logger -> S3). While
+// the intent is still propagating the worker returns 425 ("not yet visible").
+// It already blocks ~10s per call, so we only need a couple of client retries —
+// with the SAME nonce — to bridge the rare tail (a backed-up per-org/site FIFO
+// group can take up to ~30s). This is not a busy-poll: each retry re-incurs the
+// worker's own wait, so keep the count small to respect admin's 10 req/s limit.
+const NOT_YET_VISIBLE_STATUS = 425;
+const RETRY_BACKOFF_MS = [2000, 4000]; // 2 retries; ~34s worst case across 3 worker calls
+
+const defaultSleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
+
+export function isIntentNotYetVisible(resp) {
+  return resp?.status === NOT_YET_VISIBLE_STATUS;
+}
+
+/**
+ * Invoke `doRequest` (a thunk returning a Response) and, while the worker reports
+ * the intent is not yet visible (425), wait and retry with the same request.
+ * `onWait(attempt, delayMs)` fires before each wait so callers can surface a
+ * "waiting…" status. `backoffMs`/`sleep` are injectable for tests. Returns the
+ * final Response (the caller interprets ok/x-error as before).
+ */
+export async function retryWhileNotVisible(doRequest, {
+  onWait, backoffMs = RETRY_BACKOFF_MS, sleep = defaultSleep,
+} = {}) {
+  let resp = await doRequest();
+  for (let i = 0; i < backoffMs.length && isIntentNotYetVisible(resp); i += 1) {
+    if (onWait) onWait(i + 1, backoffMs[i]);
+    // eslint-disable-next-line no-await-in-loop
+    await sleep(backoffMs[i]);
+    // eslint-disable-next-line no-await-in-loop
+    resp = await doRequest();
+  }
+  return resp;
+}
+
 export async function checkRegistration(org, site) {
   const resp = await fetch(`${WORKER}/register/${org}/${site}`);
   if (resp.status === 200) return { registered: true, resp };
@@ -40,9 +77,9 @@ export function normalizeEntries(payload, org, site) {
     .sort((a, b) => new Date(a.scheduledPublish) - new Date(b.scheduledPublish));
 }
 
-export async function fetchSchedule(org, site, nonce) {
+export async function fetchSchedule(org, site, nonce, onWait) {
   const url = `${WORKER}/schedule/${org}/${site}?nonce=${encodeURIComponent(nonce)}`;
-  const resp = await fetch(url);
+  const resp = await retryWhileNotVisible(() => fetch(url), { onWait });
   if (!resp.ok) {
     return { error: await readError(resp, 'Could not load scheduled items.'), resp };
   }
@@ -55,30 +92,31 @@ export async function fetchSchedule(org, site, nonce) {
   return { entries: normalizeEntries(json, org, site), resp };
 }
 
-export async function deletePageSchedule(org, site, path, nonce) {
+export async function deletePageSchedule(org, site, path, nonce, onWait) {
   const idPath = encodeIdPath(path);
   const url = `${WORKER}/schedule/page/${org}/${site}${idPath}?nonce=${encodeURIComponent(nonce)}`;
-  const resp = await fetch(url, { method: 'DELETE' });
+  const resp = await retryWhileNotVisible(() => fetch(url, { method: 'DELETE' }), { onWait });
   if (resp.ok) return { ok: true, resp };
   return { ok: false, error: await readError(resp, 'Failed to delete scheduled page.'), resp };
 }
 
-export async function deleteSnapshotSchedule(org, site, snapshotId, nonce) {
+export async function deleteSnapshotSchedule(org, site, snapshotId, nonce, onWait) {
   const idPath = encodeIdPath(snapshotId);
   const url = `${WORKER}/schedule/snapshot/${org}/${site}${idPath}?nonce=${encodeURIComponent(nonce)}`;
-  const resp = await fetch(url, { method: 'DELETE' });
+  const resp = await retryWhileNotVisible(() => fetch(url, { method: 'DELETE' }), { onWait });
   if (resp.ok) return { ok: true, resp };
   return { ok: false, error: await readError(resp, 'Failed to delete scheduled snapshot.'), resp };
 }
 
 export async function schedulePage({
-  org, site, path, scheduledPublish, nonce,
+  org, site, path, scheduledPublish, nonce, onWait,
 }) {
-  const resp = await fetch(`${WORKER}/schedule/page/${org}/${site}`, {
+  const doRequest = () => fetch(`${WORKER}/schedule/page/${org}/${site}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ path, scheduledPublish, nonce }),
   });
+  const resp = await retryWhileNotVisible(doRequest, { onWait });
   if (resp.ok) return { ok: true, resp };
   return { ok: false, error: await readError(resp, 'Failed to schedule publish.'), resp };
 }

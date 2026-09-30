@@ -4,6 +4,7 @@ import deriveReindexPaths, {
   isAutoMetaSelector,
   metaSelectFirstForProperty,
   suggestPropertyConfig,
+  deriveAutoPropertyUpdate,
   LAST_MODIFIED_CONFIG,
   META_VALUE,
 } from '../../../tools/index-admin/utils.js';
@@ -86,6 +87,7 @@ describe('index-admin:utils.js', () => {
       assert.deepEqual(deriveReindexPaths(['**/fragments/**']), ['/*']);
     });
   });
+
   describe('metaSelectFirstForProperty', () => {
     it('returns an empty string for an empty name', () => {
       assert.equal(metaSelectFirstForProperty('  '), '');
@@ -147,6 +149,112 @@ describe('index-admin:utils.js', () => {
         selectFirst: '',
         value: META_VALUE,
       });
+    });
+  });
+
+  describe('deriveAutoPropertyUpdate', () => {
+    it('fills selectFirst and value when all fields are empty', () => {
+      assert.deepEqual(
+        deriveAutoPropertyUpdate({
+          oldName: '', newName: 'description', selectVal: '', selectFirstVal: '', valueVal: '',
+        }),
+        { selectFirst: 'meta[property="og:description"]', value: META_VALUE },
+      );
+    });
+
+    it('no-ops when the name did not actually change', () => {
+      assert.deepEqual(
+        deriveAutoPropertyUpdate({
+          oldName: 'description',
+          newName: 'description',
+          selectVal: '',
+          selectFirstVal: 'meta[property="og:description"]',
+          valueVal: META_VALUE,
+        }),
+        {},
+      );
+    });
+
+    it('updates selectFirst when it still matches what we generated for the old name', () => {
+      assert.deepEqual(
+        deriveAutoPropertyUpdate({
+          oldName: 'description',
+          newName: 'excerpt',
+          selectVal: '',
+          selectFirstVal: 'meta[property="og:description"]',
+          valueVal: META_VALUE,
+        }),
+        { selectFirst: 'meta[name="excerpt"]', value: META_VALUE },
+      );
+    });
+
+    it('leaves selectFirst alone when it does not match the old name pattern (custom value)', () => {
+      assert.deepEqual(
+        deriveAutoPropertyUpdate({
+          oldName: 'description',
+          newName: 'excerpt',
+          selectVal: '',
+          selectFirstVal: 'meta[name="custom-excerpt"]',
+          valueVal: 'attribute(el, "data-excerpt")',
+        }),
+        {},
+      );
+    });
+
+    it('leaves a field alone when it looks auto-generated but for an unrelated name', () => {
+      // e.g. field was renamed from "title" to "excerpt" previously, leaving an
+      // og:title selector that happens to match the auto-pattern regex, but not
+      // what we'd generate for the prior name "title" -> should be left alone here
+      // since oldName passed in is "description", not "title"
+      assert.deepEqual(
+        deriveAutoPropertyUpdate({
+          oldName: 'description',
+          newName: 'excerpt',
+          selectVal: '',
+          selectFirstVal: 'meta[property="og:title"]',
+          valueVal: 'attribute(el, "data-title")',
+        }),
+        {},
+      );
+    });
+
+    it('updates select when it matches the old-name pattern', () => {
+      assert.deepEqual(
+        deriveAutoPropertyUpdate({
+          oldName: 'title',
+          newName: 'headline',
+          selectVal: 'meta[property="og:title"]',
+          selectFirstVal: '',
+          valueVal: META_VALUE,
+        }),
+        { select: 'meta[name="headline"]', value: META_VALUE },
+      );
+    });
+
+    it('switches from lastModified config to a meta selector on rename', () => {
+      assert.deepEqual(
+        deriveAutoPropertyUpdate({
+          oldName: 'lastModified',
+          newName: 'published',
+          selectVal: LAST_MODIFIED_CONFIG.select,
+          selectFirstVal: '',
+          valueVal: LAST_MODIFIED_CONFIG.value,
+        }),
+        { select: '', selectFirst: 'meta[name="published"]', value: META_VALUE },
+      );
+    });
+
+    it('fills the lastModified config when renaming into lastModified', () => {
+      assert.deepEqual(
+        deriveAutoPropertyUpdate({
+          oldName: 'published',
+          newName: 'lastModified',
+          selectVal: '',
+          selectFirstVal: 'meta[name="published"]',
+          valueVal: META_VALUE,
+        }),
+        { select: LAST_MODIFIED_CONFIG.select, selectFirst: '', value: LAST_MODIFIED_CONFIG.value },
+      );
     });
   });
 });
