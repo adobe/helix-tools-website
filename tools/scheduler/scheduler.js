@@ -129,7 +129,8 @@ async function loadSchedule() {
     return;
   }
 
-  let result = await api.fetchSchedule(currentOrg, currentSite, viewNonce);
+  const onWait = () => setStatus('Waiting for confirmation…');
+  let result = await api.fetchSchedule(currentOrg, currentSite, viewNonce, onWait);
   log(result.resp, 'GET', `/schedule/${currentOrg}/${currentSite}`);
 
   if (result.error && /expired/i.test(result.error)) {
@@ -137,7 +138,7 @@ async function loadSchedule() {
     api.invalidateViewNonceCache();
     try {
       const fresh = await api.ensureViewNonce(currentOrg, currentSite, writeViewIntent);
-      result = await api.fetchSchedule(currentOrg, currentSite, fresh);
+      result = await api.fetchSchedule(currentOrg, currentSite, fresh, onWait);
       log(result.resp, 'GET', `/schedule/${currentOrg}/${currentSite}`);
     } catch (err) {
       setStatus(err.message || 'Could not record view intent.', 'warning');
@@ -179,9 +180,10 @@ async function handleDelete(entry) {
     return;
   }
 
+  const onWait = () => setStatus('Waiting for confirmation…');
   const result = entry.type === 'snapshot'
-    ? await api.deleteSnapshotSchedule(currentOrg, currentSite, entry.id, nonce)
-    : await api.deletePageSchedule(currentOrg, currentSite, entry.id, nonce);
+    ? await api.deleteSnapshotSchedule(currentOrg, currentSite, entry.id, nonce, onWait)
+    : await api.deletePageSchedule(currentOrg, currentSite, entry.id, nonce, onWait);
   log(result.resp, 'DELETE', `/schedule/${entry.type}/${currentOrg}/${currentSite}/${entry.id}`);
   if (!result.ok) {
     setStatus(result.error, 'warning');
