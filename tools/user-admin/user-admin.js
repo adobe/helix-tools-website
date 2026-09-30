@@ -159,7 +159,7 @@ function createRolesReference() {
 
 let entryIdCounter = 0;
 
-function createUserEntry(entriesContainer, updateSaveLabel) {
+function createUserEntry(entriesContainer, updateSaveLabel, selectedRoles = []) {
   entryIdCounter += 1;
   const entryId = entryIdCounter;
   const entry = document.createElement('div');
@@ -192,7 +192,7 @@ function createUserEntry(entriesContainer, updateSaveLabel) {
   const rolesLabel = document.createElement('label');
   rolesLabel.id = rolesFieldId;
   rolesLabel.textContent = 'Roles';
-  const rolesContainer = createRolesField();
+  const rolesContainer = createRolesField(selectedRoles);
   rolesContainer.setAttribute('role', 'group');
   rolesContainer.setAttribute('aria-labelledby', rolesFieldId);
   rolesField.appendChild(rolesLabel);
@@ -382,7 +382,12 @@ function openAddUsersModal(onSave) {
   firstEntry.querySelector('input[type="email"]').focus();
 
   addAnotherBtn.addEventListener('click', () => {
-    const entry = createUserEntry(entriesContainer, updateSaveLabel);
+    const previousEntries = entriesContainer.querySelectorAll('.user-entry');
+    const previousEntry = previousEntries[previousEntries.length - 1];
+    const previousRoles = previousEntry
+      ? [...previousEntry.querySelectorAll('input[type="checkbox"]:checked')].map((cb) => cb.value)
+      : [];
+    const entry = createUserEntry(entriesContainer, updateSaveLabel, previousRoles);
     entry.querySelector('input[type="email"]').focus();
     entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
