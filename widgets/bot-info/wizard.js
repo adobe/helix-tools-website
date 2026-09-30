@@ -126,6 +126,20 @@ export function usersError(orgUsers, newOrg) {
   return null;
 }
 
+/**
+ * Validate every email field before collecting users, which omits blank rows.
+ * @param {HTMLElement} container
+ * @returns {string|null}
+ */
+export function validateUserEmails(container) {
+  const invalid = [...container.querySelectorAll('.bot-info-email')]
+    .find((input) => !input.validity.valid);
+  if (!invalid) return null;
+  return invalid.validity.valueMissing
+    ? 'Enter an email for each user, or remove the empty user.'
+    : 'Enter a valid email for each user.';
+}
+
 /* ------------------------------------------------------------------ */
 /* DOM builders (not unit-tested)                                     */
 /* ------------------------------------------------------------------ */

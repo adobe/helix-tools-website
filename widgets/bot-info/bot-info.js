@@ -11,6 +11,7 @@ import {
   collectUsers,
   validateContentSelection,
   usersError,
+  validateUserEmails,
 } from './wizard.js';
 
 const EMPTY_ACCESS = { admin: { role: {} } };
@@ -498,7 +499,7 @@ export default async function decorate(widget) {
   const form = widget.querySelector('.bot-info-wizard');
   const alert = widget.querySelector('.bot-info-alert');
   const errorEl = widget.querySelector('.bot-info-error');
-  // the Users step shows its error in its own slot (below the org section)
+  // the Users step shows its error in its own slot below both user lists
   const usersErrorEl = widget.querySelector('.bot-info-users-error');
 
   // build the request log console (mirrors the other admin tools)
@@ -578,7 +579,8 @@ export default async function decorate(widget) {
       }
       if (step === 'users') {
         const orgList = widget.querySelector('.bot-info-user-list[data-scope="org"]');
-        return usersError(collectUsers(orgList), ctx.newOrg);
+        return validateUserEmails(widget.querySelector('.bot-info-panel[data-step="users"]'))
+          || usersError(collectUsers(orgList), ctx.newOrg);
       }
       return null;
     };
@@ -629,6 +631,7 @@ export default async function decorate(widget) {
           el.textContent = error;
           setHidden(el, false);
           goToStep(i);
+          panels[i].querySelector('input:invalid')?.focus();
           return;
         }
       }
@@ -663,7 +666,7 @@ export default async function decorate(widget) {
     const startIndex = Number.isNaN(linkedStep)
       ? 0
       : Math.min(Math.max(linkedStep - 1, 0), steps.length - 1);
-    goToStep(startIndex);
+    goTo(startIndex);
     window.addEventListener('beforeunload', warnBeforeUnload);
 
     form.addEventListener('submit', async (e) => {
