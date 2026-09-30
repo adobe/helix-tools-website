@@ -6,7 +6,10 @@ import {
   diffOrgUsers,
   validateContentSelection,
   usersError,
+  createUserRow,
+  collectUsers,
 } from '../../../widgets/bot-info/wizard.js';
+import { userEmailErrors } from '../../../tools/user-admin/utils.js';
 
 describe('bot-info:wizard.js', () => {
   describe('detectContentSourceKind', () => {
@@ -168,6 +171,32 @@ describe('bot-info:wizard.js', () => {
         validateContentSelection({ advanced: true, url: 'https://example.com' }),
         null,
       );
+    });
+  });
+
+  describe('new user rows', () => {
+    it('ignores a blank new row in validation and collection', () => {
+      const list = document.createElement('div');
+      list.append(createUserRow({ email: 'a@b.com' }), createUserRow());
+      assert.deepEqual(userEmailErrors(list.querySelectorAll('.bot-info-email')), []);
+      assert.deepEqual(collectUsers(list), [{ email: 'a@b.com', roles: ['admin'] }]);
+    });
+
+    it('does not silently remove an existing user whose email is cleared', () => {
+      const row = createUserRow({ email: 'a@b.com' });
+      const input = row.querySelector('.bot-info-email');
+      input.value = '';
+      assert.deepEqual(userEmailErrors([input]), [{
+        input,
+        message: 'Enter an email for each user, or remove the empty user.',
+      }]);
+    });
+
+    it('still requires an organization user when all new rows are blank', () => {
+      const list = document.createElement('div');
+      list.append(createUserRow());
+      assert.deepEqual(userEmailErrors(list.querySelectorAll('.bot-info-email')), []);
+      assert.equal(usersError(collectUsers(list), true), 'Add at least one organization user before saving.');
     });
   });
 

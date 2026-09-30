@@ -20,7 +20,7 @@ describe('user-admin:utils.js', () => {
       return container;
     };
 
-    it('returns the blank input and its error alongside a valid user', () => {
+    it('returns a required blank input and its error alongside a valid user', () => {
       const container = emailFields('a@b.com', '');
       assert.deepEqual(userEmailErrors(container.querySelectorAll('input')), [{
         input: container.lastElementChild,
@@ -76,6 +76,23 @@ describe('user-admin:utils.js', () => {
     it('accepts an array of inputs as well as a NodeList', () => {
       const container = emailFields('a@b.com');
       assert.deepEqual(userEmailErrors([...container.querySelectorAll('input')]), []);
+    });
+
+    it('ignores optional blank and whitespace-only new inputs', () => {
+      const container = emailFields('a@b.com', '', '   ');
+      [...container.querySelectorAll('input')].slice(1).forEach((input) => {
+        input.required = false;
+      });
+      assert.deepEqual(userEmailErrors(container.querySelectorAll('input')), []);
+    });
+
+    it('still reports invalid nonempty optional inputs', () => {
+      const container = emailFields('invalid-email');
+      container.firstElementChild.required = false;
+      assert.deepEqual(userEmailErrors(container.querySelectorAll('input')), [{
+        input: container.firstElementChild,
+        message: 'Enter a valid email for each user.',
+      }]);
     });
   });
 

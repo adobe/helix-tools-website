@@ -181,8 +181,8 @@ function createUserEntry(entriesContainer, updateSaveLabel, selectedRoles = []) 
   const emailInput = document.createElement('input');
   emailInput.type = 'email';
   emailInput.id = `user-email-${entryId}`;
-  emailInput.required = true;
   emailInput.placeholder = 'user@example.com';
+  emailInput.addEventListener('input', updateSaveLabel);
   emailField.appendChild(emailLabel);
   emailField.appendChild(emailInput);
 
@@ -374,8 +374,10 @@ function openAddUsersModal(onSave) {
   bodyDiv.appendChild(form);
 
   const updateSaveLabel = () => {
-    const count = entriesContainer.querySelectorAll('.user-entry').length;
-    saveBtn.textContent = `Add ${count} User${count !== 1 ? 's' : ''}`;
+    if (saveBtn.disabled) return;
+    const count = [...entriesContainer.querySelectorAll('input[type="email"]')]
+      .filter((input) => input.value.trim()).length;
+    saveBtn.textContent = count ? `Add ${count} User${count !== 1 ? 's' : ''}` : 'Add Users';
   };
 
   const firstEntry = createUserEntry(entriesContainer, updateSaveLabel);
@@ -420,6 +422,7 @@ function openAddUsersModal(onSave) {
       if (hasError) return;
       const emailInput = entry.querySelector('input[type="email"]');
       const email = emailInput.value.trim();
+      if (!email) return;
       const roles = [...entry.querySelectorAll('input[type="checkbox"]:checked')]
         .map((cb) => cb.value);
 
@@ -438,7 +441,12 @@ function openAddUsersModal(onSave) {
       users.push({ email, roles });
     });
 
-    if (hasError || users.length === 0) return;
+    if (hasError) return;
+    if (users.length === 0) {
+      showModalError(dialog, 'Enter at least one user before saving.');
+      entriesContainer.querySelector('input[type="email"]')?.focus();
+      return;
+    }
 
     const validEntries = [...entriesContainer.querySelectorAll('.user-entry')]
       .filter((entry) => entry.querySelector('input[type="email"]').value.trim());
