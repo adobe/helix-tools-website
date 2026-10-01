@@ -1,4 +1,20 @@
 /**
+ * Return invalid email inputs and their error messages in input order.
+ * Blank optional inputs represent unused new rows and are ignored.
+ * @param {Iterable<HTMLInputElement>} inputs
+ * @returns {{input: HTMLInputElement, message: string}[]}
+ */
+export function userEmailErrors(inputs) {
+  return [...inputs].flatMap((input) => {
+    if (!input.required && !input.value.trim()) return [];
+    let message;
+    if (!input.value.trim()) message = 'Enter an email for each user, or remove the empty user.';
+    else if (!input.validity.valid) message = 'Enter a valid email for each user.';
+    return message ? [{ input, message }] : [];
+  });
+}
+
+/**
  * Convert an access config's role map into a flat user array.
  *
  * Input:  { admin: { role: { admin: ['a@b.com'], author: ['a@b.com', 'c@d.com'] } } }

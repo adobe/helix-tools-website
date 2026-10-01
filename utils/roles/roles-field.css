@@ -36,6 +36,11 @@
   border-color: var(--blue-500);
 }
 
+.roles-field .role-pill.is-covered span {
+  opacity: 0.45;
+  border-style: dashed;
+}
+
 .roles-field .role-pill input[type="checkbox"]:focus-visible + span {
   outline: 2px solid var(--blue-500);
   outline-offset: 2px;
@@ -45,17 +50,4 @@
   background: var(--blue-100);
   border-color: var(--blue-500);
   color: var(--blue-700);
-}
-
-.roles-field .role-pill:has(input[type="checkbox"]:disabled) {
-  cursor: not-allowed;
-}
-
-.roles-field .role-pill input[type="checkbox"]:disabled + span {
-  opacity: 0.45;
-  border-style: dashed;
-}
-
-.roles-field .role-pill input[type="checkbox"]:disabled + span:hover {
-  border-color: var(--color-border);
 }
