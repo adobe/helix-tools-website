@@ -4,7 +4,7 @@ import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
-import { getErrorMessage } from './utils.js';
+import { getErrorMessage, validateBranchName } from './utils.js';
 
 const adminForm = document.getElementById('admin-form');
 const cdnForm = document.getElementById('cdn-form');
@@ -25,11 +25,21 @@ let validationPassed = false;
 
 const VALIDATION_URL = 'https://admin.hlx.page/hook/byocdn-push-invalidation/';
 
+const BRANCH_FIELD = {
+  name: 'branch',
+  type: 'text',
+  required: false,
+  label: 'Branch',
+  placeholder: 'main',
+  hint: 'Branch that triggers production CDN purge.',
+};
+
 const CDN_FIELDS = {
   fastly: [
     {
       name: 'route', type: 'text', required: false, label: 'Routes (comma-separated)',
     },
+    BRANCH_FIELD,
     {
       name: 'serviceId', type: 'text', required: true, label: 'Service ID',
     },
@@ -41,6 +51,7 @@ const CDN_FIELDS = {
     {
       name: 'route', type: 'text', required: false, label: 'Routes (comma-separated)',
     },
+    BRANCH_FIELD,
     {
       name: 'plan', type: 'text', required: true, label: 'Plan',
     },
@@ -55,6 +66,7 @@ const CDN_FIELDS = {
     {
       name: 'route', type: 'text', required: false, label: 'Routes (comma-separated)',
     },
+    BRANCH_FIELD,
     {
       name: 'endpoint', type: 'text', required: true, label: 'Endpoint',
     },
@@ -72,11 +84,13 @@ const CDN_FIELDS = {
     {
       name: 'route', type: 'text', required: false, label: 'Routes (comma-separated)',
     },
+    BRANCH_FIELD,
   ],
   cloudfront: [
     {
       name: 'route', type: 'text', required: false, label: 'Routes (comma-separated)',
     },
+    BRANCH_FIELD,
     {
       name: 'distributionId', type: 'text', required: true, label: 'Distribution ID',
     },
@@ -121,6 +135,9 @@ function createField(field) {
   const div = document.createElement('div');
   div.className = 'form-field';
 
+  const row = document.createElement('div');
+  row.className = 'field-row';
+
   const label = document.createElement('label');
   label.htmlFor = field.name;
   label.textContent = field.label;
@@ -130,8 +147,41 @@ function createField(field) {
   input.id = field.name;
   input.name = field.name;
   input.required = field.required;
+  if (field.placeholder) {
+    input.placeholder = field.placeholder;
+  }
 
-  div.append(label, input);
+  const labelRow = document.createElement('div');
+  labelRow.className = 'field-label-row';
+  labelRow.append(label);
+  row.append(labelRow);
+
+  let bubble;
+  if (field.hint) {
+    const hintId = `${field.name}-hint`;
+
+    const icon = document.createElement('button');
+    icon.type = 'button';
+    icon.className = 'field-hint-icon';
+    icon.setAttribute('popovertarget', hintId);
+    icon.setAttribute('aria-label', `Help for ${field.label}`);
+    icon.textContent = '?';
+    labelRow.append(icon);
+
+    bubble = document.createElement('div');
+    bubble.id = hintId;
+    bubble.className = 'field-hint-popover';
+    bubble.setAttribute('popover', '');
+    bubble.textContent = field.hint;
+  }
+
+  row.append(input);
+  if (bubble) {
+    row.append(bubble);
+  }
+
+  div.append(row);
+
   if (field.type === 'password') {
     input.addEventListener('focus', () => {
       input.type = 'text';
@@ -310,6 +360,17 @@ async function saveConfig() {
     alert('Please enter a valid production host (e.g. www.example.com)');
     host.focus();
     return;
+  }
+
+  const branchInput = document.getElementById('branch');
+  if (branchInput) branchInput.value = branchInput.value.trim();
+  if (branchInput && branchInput.value) {
+    const branchError = validateBranchName(branchInput.value, site.value, org.value);
+    if (branchError) {
+      alert(branchError);
+      branchInput.focus();
+      return;
+    }
   }
 
   const cdnConfig = getFormData();
