@@ -147,7 +147,7 @@ export function createUserRow(user = {}, defaultRole = 'admin') {
   emailField.className = 'bot-info-field';
   const emailInput = document.createElement('input');
   emailInput.type = 'email';
-  emailInput.required = true;
+  emailInput.required = Object.hasOwn(user, 'email') || !!user.id;
   emailInput.placeholder = 'name@example.com';
   emailInput.className = 'bot-info-email';
   emailInput.value = user.email || '';

@@ -6,21 +6,28 @@
 import { ROLES, ROLE_DESCRIPTIONS, getCoveredRoles } from './roles.js';
 
 /**
- * Enforce the role hierarchy within a checkbox container: whenever a more
- * privileged role is selected, the roles it already includes are unchecked and
- * disabled so authors cannot assign redundant roles.
+ * Mark included roles as covered without disabling them. Selecting a covered
+ * role replaces the selected roles that include it.
  * @param {Element} container element holding the role checkboxes
+ * @param {string} [selectedRole] role just selected by the user
  */
-export function applyRoleHierarchy(container) {
+export function applyRoleHierarchy(container, selectedRole) {
   const checkboxes = [...container.querySelectorAll('input[type="checkbox"]')];
+  if (selectedRole) {
+    checkboxes.forEach((cb) => {
+      if (cb.checked && getCoveredRoles([cb.value]).has(selectedRole)) cb.checked = false;
+    });
+  }
   const covered = getCoveredRoles(checkboxes.filter((cb) => cb.checked).map((cb) => cb.value));
   checkboxes.forEach((cb) => {
-    if (covered.has(cb.value)) {
-      cb.checked = false;
-      cb.disabled = true;
-    } else {
-      cb.disabled = false;
-    }
+    const isCovered = covered.has(cb.value);
+    if (isCovered) cb.checked = false;
+    const label = cb.closest('.role-pill');
+    const roleInfo = ROLE_DESCRIPTIONS[cb.value];
+    label.classList.toggle('is-covered', isCovered);
+    label.title = isCovered
+      ? `${roleInfo.description}. Select ${roleInfo.label} to replace roles that already include it.`
+      : roleInfo.description;
   });
 }
 
@@ -49,7 +56,9 @@ export function createRolesField(selectedRoles = []) {
     label.appendChild(span);
     container.appendChild(label);
   });
-  container.addEventListener('change', () => applyRoleHierarchy(container));
+  container.addEventListener('change', (e) => {
+    applyRoleHierarchy(container, e.target.checked ? e.target.value : undefined);
+  });
   applyRoleHierarchy(container);
   return container;
 }

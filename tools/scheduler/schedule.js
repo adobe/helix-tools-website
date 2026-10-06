@@ -122,7 +122,14 @@ async function handleSchedule() {
 
   setStatus('Scheduling…');
   const result = await api.schedulePage({
-    org, site, path, scheduledPublish, nonce,
+    org,
+    site,
+    path,
+    scheduledPublish,
+    nonce,
+    // The intent is written to admin's async audit log; the worker may need a
+    // few seconds to see it. Surface that instead of failing on the first miss.
+    onWait: () => setStatus('Waiting for confirmation…'),
   });
   if (!result.ok) {
     setStatus(result.error, 'warning');

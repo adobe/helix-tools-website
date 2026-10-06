@@ -4,7 +4,7 @@ import { logResponse } from '../../blocks/console/console.js';
 import { loadIcon, icon, showToast } from '../../utils/card-ui/card-ui.js';
 import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
-import { parseUsersFromAccessConfig, buildAccessConfig } from './utils.js';
+import { parseUsersFromAccessConfig, buildAccessConfig, userEmailErrors } from './utils.js';
 import { ROLE_DESCRIPTIONS } from '../../utils/roles/roles.js';
 import { createRolesField } from '../../utils/roles/roles-field.js';
 
@@ -181,8 +181,8 @@ function createUserEntry(entriesContainer, updateSaveLabel, selectedRoles = []) 
   const emailInput = document.createElement('input');
   emailInput.type = 'email';
   emailInput.id = `user-email-${entryId}`;
-  emailInput.required = true;
   emailInput.placeholder = 'user@example.com';
+  emailInput.addEventListener('input', updateSaveLabel);
   emailField.appendChild(emailLabel);
   emailField.appendChild(emailInput);
 
@@ -374,8 +374,10 @@ function openAddUsersModal(onSave) {
   bodyDiv.appendChild(form);
 
   const updateSaveLabel = () => {
-    const count = entriesContainer.querySelectorAll('.user-entry').length;
-    saveBtn.textContent = `Add ${count} User${count !== 1 ? 's' : ''}`;
+    if (saveBtn.disabled) return;
+    const count = [...entriesContainer.querySelectorAll('input[type="email"]')]
+      .filter((input) => input.value.trim()).length;
+    saveBtn.textContent = count ? `Add ${count} User${count !== 1 ? 's' : ''}` : 'Add Users';
   };
 
   const firstEntry = createUserEntry(entriesContainer, updateSaveLabel);
@@ -410,15 +412,20 @@ function openAddUsersModal(onSave) {
 
     entries.forEach((entry) => entry.classList.remove('has-error'));
 
+    const [emailError] = userEmailErrors(entriesContainer.querySelectorAll('input[type="email"]'));
+    if (emailError) {
+      flagError(emailError.input.closest('.user-entry'), emailError.message, emailError.input);
+      return;
+    }
+
     entries.forEach((entry) => {
       if (hasError) return;
       const emailInput = entry.querySelector('input[type="email"]');
       const email = emailInput.value.trim();
+      if (!email) return;
       const roles = [...entry.querySelectorAll('input[type="checkbox"]:checked')]
         .map((cb) => cb.value);
 
-      if (!email) { flagError(entry, 'Please enter an email for each user', emailInput); return; }
-      if (!emailInput.validity.valid) { flagError(entry, `Invalid email: ${email}`, emailInput); return; }
       if (roles.length === 0) { flagError(entry, 'Please select at least one role for each user'); return; }
 
       const emailLower = email.toLowerCase();
@@ -434,7 +441,12 @@ function openAddUsersModal(onSave) {
       users.push({ email, roles });
     });
 
-    if (hasError || users.length === 0) return;
+    if (hasError) return;
+    if (users.length === 0) {
+      showModalError(dialog, 'Enter at least one user before saving.');
+      entriesContainer.querySelector('input[type="email"]')?.focus();
+      return;
+    }
 
     const validEntries = [...entriesContainer.querySelectorAll('.user-entry')]
       .filter((entry) => entry.querySelector('input[type="email"]').value.trim());
