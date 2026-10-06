@@ -1,15 +1,23 @@
 /**
- * Return invalid email inputs and their error messages in input order.
+ * Return invalid email inputs, optionally allowing IMS groups, in input order.
  * Blank optional inputs represent unused new rows and are ignored.
  * @param {Iterable<HTMLInputElement>} inputs
  * @returns {{input: HTMLInputElement, message: string}[]}
  */
-export function userEmailErrors(inputs) {
+export function userEmailErrors(inputs, { allowGroups = false } = {}) {
   return [...inputs].flatMap((input) => {
     if (!input.required && !input.value.trim()) return [];
+    const identifier = allowGroups ? 'email or IMS group' : 'email';
+    let { valid } = input.validity;
+    if (allowGroups) {
+      const emailInput = document.createElement('input');
+      emailInput.type = 'email';
+      emailInput.value = input.value.trim();
+      valid = valid && (emailInput.validity.valid || /^[a-f0-9]+\/[^/]+$/i.test(input.value.trim()));
+    }
     let message;
-    if (!input.value.trim()) message = 'Enter an email for each user, or remove the empty user.';
-    else if (!input.validity.valid) message = 'Enter a valid email for each user.';
+    if (!input.value.trim()) message = `Enter an ${identifier} for each user, or remove the empty user.`;
+    else if (!valid) message = `Enter a valid ${identifier} for each user.`;
     return message ? [{ input, message }] : [];
   });
 }

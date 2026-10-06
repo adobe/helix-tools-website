@@ -57,6 +57,60 @@ describe('user-admin:utils.js', () => {
       assert.deepEqual(userEmailErrors(container.querySelectorAll('input')), []);
     });
 
+    it('accepts emails, wildcard domains and IMS groups in user-admin text fields', () => {
+      const container = emailFields(
+        'a@b.com',
+        '*@adobe.com',
+        '528D65B156D673FA7F000101/azhlx6-authors',
+        '  528d65b156d673fa7f000101/My Group 1  ',
+      );
+      container.querySelectorAll('input').forEach((input) => { input.type = 'text'; });
+      assert.deepEqual(userEmailErrors(container.querySelectorAll('input'), { allowGroups: true }), []);
+    });
+
+    it('rejects malformed identifiers in user-admin text fields', () => {
+      ['not-an-email', '/authors', '528D65B156D673FA7F000101/', 'not-an-org/authors']
+        .forEach((value) => {
+          const container = emailFields(value);
+          const input = container.firstElementChild;
+          input.type = 'text';
+          assert.deepEqual(userEmailErrors([input], { allowGroups: true }), [{
+            input,
+            message: 'Enter a valid email or IMS group for each user.',
+          }]);
+        });
+    });
+
+    it('keeps email-only validation for other callers', () => {
+      const container = emailFields('528D65B156D673FA7F000101/azhlx6-authors');
+      assert.deepEqual(userEmailErrors(container.querySelectorAll('input')), [{
+        input: container.firstElementChild,
+        message: 'Enter a valid email for each user.',
+      }]);
+    });
+
+    it('does not bypass other input constraints for IMS groups', () => {
+      const container = emailFields('528D65B156D673FA7F000101/azhlx6-authors');
+      const input = container.firstElementChild;
+      input.type = 'text';
+      input.setCustomValidity('Invalid user');
+      assert.deepEqual(userEmailErrors([input], { allowGroups: true }), [{
+        input,
+        message: 'Enter a valid email or IMS group for each user.',
+      }]);
+    });
+
+    it('preserves required and optional blank handling with IMS groups enabled', () => {
+      const container = emailFields('', '   ');
+      const inputs = container.querySelectorAll('input');
+      inputs.forEach((input) => { input.type = 'text'; });
+      inputs[1].required = false;
+      assert.deepEqual(userEmailErrors(inputs, { allowGroups: true }), [{
+        input: inputs[0],
+        message: 'Enter an email or IMS group for each user, or remove the empty user.',
+      }]);
+    });
+
     it('accepts an empty collection for inherited site access', () => {
       assert.deepEqual(userEmailErrors(emailFields().querySelectorAll('input')), []);
     });
@@ -97,6 +151,12 @@ describe('user-admin:utils.js', () => {
   });
 
   describe('parseUsersFromAccessConfig', () => {
+    it('round-trips IMS group identifiers and roles without changing them', () => {
+      const group = '528D65B156D673FA7F000101/azhlx6-authors';
+      const users = [{ email: group, roles: ['author', 'publish'] }];
+      assert.deepEqual(parseUsersFromAccessConfig(buildAccessConfig({}, users)), users);
+    });
+
     it('returns [] for null config', () => {
       assert.deepEqual(parseUsersFromAccessConfig(null), []);
     });

@@ -177,11 +177,12 @@ function createUserEntry(entriesContainer, updateSaveLabel, selectedRoles = []) 
   emailField.className = 'form-field';
   const emailLabel = document.createElement('label');
   emailLabel.htmlFor = `user-email-${entryId}`;
-  emailLabel.textContent = 'Email';
+  emailLabel.textContent = 'Email or IMS group';
   const emailInput = document.createElement('input');
-  emailInput.type = 'email';
+  emailInput.type = 'text';
+  emailInput.className = 'user-email';
   emailInput.id = `user-email-${entryId}`;
-  emailInput.placeholder = 'user@example.com';
+  emailInput.placeholder = 'user@example.com or IMS_ORG_ID/group';
   emailInput.addEventListener('input', updateSaveLabel);
   emailField.appendChild(emailLabel);
   emailField.appendChild(emailInput);
@@ -354,7 +355,7 @@ function openAddUsersModal(onSave) {
   footerDiv.prepend(rolesReference);
 
   setConfirmClose(async () => {
-    const emails = dialog.querySelectorAll('input[type="email"]');
+    const emails = dialog.querySelectorAll('.user-email');
     const hasData = [...emails].some((input) => input.value.trim() !== '');
     const checkboxes = dialog.querySelectorAll('input[type="checkbox"]');
     const hasRoles = [...checkboxes].some((cb) => cb.checked);
@@ -375,13 +376,13 @@ function openAddUsersModal(onSave) {
 
   const updateSaveLabel = () => {
     if (saveBtn.disabled) return;
-    const count = [...entriesContainer.querySelectorAll('input[type="email"]')]
+    const count = [...entriesContainer.querySelectorAll('.user-email')]
       .filter((input) => input.value.trim()).length;
     saveBtn.textContent = count ? `Add ${count} User${count !== 1 ? 's' : ''}` : 'Add Users';
   };
 
   const firstEntry = createUserEntry(entriesContainer, updateSaveLabel);
-  firstEntry.querySelector('input[type="email"]').focus();
+  firstEntry.querySelector('.user-email').focus();
 
   addAnotherBtn.addEventListener('click', () => {
     const previousEntries = entriesContainer.querySelectorAll('.user-entry');
@@ -390,7 +391,7 @@ function openAddUsersModal(onSave) {
       ? [...previousEntry.querySelectorAll('input[type="checkbox"]:checked')].map((cb) => cb.value)
       : [];
     const entry = createUserEntry(entriesContainer, updateSaveLabel, previousRoles);
-    entry.querySelector('input[type="email"]').focus();
+    entry.querySelector('.user-email').focus();
     entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
 
@@ -412,7 +413,10 @@ function openAddUsersModal(onSave) {
 
     entries.forEach((entry) => entry.classList.remove('has-error'));
 
-    const [emailError] = userEmailErrors(entriesContainer.querySelectorAll('input[type="email"]'));
+    const [emailError] = userEmailErrors(
+      entriesContainer.querySelectorAll('.user-email'),
+      { allowGroups: true },
+    );
     if (emailError) {
       flagError(emailError.input.closest('.user-entry'), emailError.message, emailError.input);
       return;
@@ -420,7 +424,7 @@ function openAddUsersModal(onSave) {
 
     entries.forEach((entry) => {
       if (hasError) return;
-      const emailInput = entry.querySelector('input[type="email"]');
+      const emailInput = entry.querySelector('.user-email');
       const email = emailInput.value.trim();
       if (!email) return;
       const roles = [...entry.querySelectorAll('input[type="checkbox"]:checked')]
@@ -430,7 +434,7 @@ function openAddUsersModal(onSave) {
 
       const emailLower = email.toLowerCase();
       if (users.some((u) => u.email.toLowerCase() === emailLower)) {
-        flagError(entry, `Duplicate email in batch: ${email}`);
+        flagError(entry, `Duplicate email or IMS group in batch: ${email}`);
         return;
       }
       if (accessConfig.users.some((u) => u.email.toLowerCase() === emailLower)) {
@@ -444,12 +448,12 @@ function openAddUsersModal(onSave) {
     if (hasError) return;
     if (users.length === 0) {
       showModalError(dialog, 'Enter at least one user before saving.');
-      entriesContainer.querySelector('input[type="email"]')?.focus();
+      entriesContainer.querySelector('.user-email')?.focus();
       return;
     }
 
     const validEntries = [...entriesContainer.querySelectorAll('.user-entry')]
-      .filter((entry) => entry.querySelector('input[type="email"]').value.trim());
+      .filter((entry) => entry.querySelector('.user-email').value.trim());
 
     saveBtn.disabled = true;
     saveBtn.textContent = 'Saving...';
