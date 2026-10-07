@@ -188,7 +188,7 @@ function createUserEntry(entriesContainer, updateSaveLabel, selectedRoles = []) 
   const groupHint = document.createElement('p');
   groupHint.className = 'field-hint group-hint';
   groupHint.id = `user-group-hint-${entryId}`;
-  groupHint.textContent = 'IMS groups only work on Helix 6 sites.';
+  groupHint.textContent = 'IMS groups only work on sites using api.aem.live. Contact Adobe via your Slack or Teams channel for details.';
   groupHint.hidden = true;
   emailInput.setAttribute('aria-describedby', groupHint.id);
   emailInput.addEventListener('input', () => {
