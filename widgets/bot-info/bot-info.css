@@ -315,6 +315,12 @@
   font-weight: var(--weight-medium);
 }
 
+.bot-info-hint {
+  margin: 0;
+  font-size: 0.85em;
+  color: var(--color-font-grey);
+}
+
 .bot-info-email,
 .bot-info-da-url,
 .bot-info-content-url,

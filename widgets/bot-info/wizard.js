@@ -7,6 +7,7 @@
  */
 
 import { createRolesField } from '../../utils/roles/roles-field.js';
+import { createImsGroupHint, normalizeUser } from '../../tools/user-admin/utils.js';
 
 // UI-facing content-source kinds. `configType` is what the admin API stores in
 // `content.source.type`; the granular DA/AEM/BYOM kinds all map to `markup`.
@@ -146,12 +147,12 @@ export function createUserRow(user = {}, defaultRole = 'admin') {
   const emailField = document.createElement('div');
   emailField.className = 'bot-info-field';
   const emailInput = document.createElement('input');
-  emailInput.type = 'email';
+  emailInput.type = 'text';
   emailInput.required = Object.hasOwn(user, 'email') || !!user.id;
-  emailInput.placeholder = 'name@example.com';
+  emailInput.placeholder = 'name@example.com or IMS_ORG_ID/group';
   emailInput.className = 'bot-info-email';
   emailInput.value = user.email || '';
-  emailField.append(emailInput);
+  emailField.append(emailInput, createImsGroupHint(emailInput, 'bot-info-hint'));
 
   const pills = createRolesField(user.roles && user.roles.length ? user.roles : [defaultRole]);
 
@@ -175,7 +176,7 @@ export function createUserRow(user = {}, defaultRole = 'admin') {
  */
 export function collectUsers(listEl) {
   return [...listEl.querySelectorAll('.bot-info-user-row')].map((row) => {
-    const email = row.querySelector('.bot-info-email').value.trim();
+    const email = normalizeUser(row.querySelector('.bot-info-email').value);
     const roles = [...row.querySelectorAll('.roles-field input:checked')].map((c) => c.value);
     const { userId } = row.dataset;
     return userId ? { email, id: userId, roles } : { email, roles };

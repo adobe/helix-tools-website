@@ -1,6 +1,9 @@
 const EMAIL_PATTERN = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/i;
 const IMS_GROUP_PATTERN = /^([a-f0-9]+)(?:@adobeorg)?\s*\/\s*(.+)$/i;
 
+const IMS_GROUP_HINT = 'IMS groups only work on sites using api.aem.live. Contact Adobe via your Slack or Teams channel for details.';
+let imsGroupHintCount = 0;
+
 /**
  * Normalize a user identifier. IMS groups become `ORG_ID/group`.
  * @param {string} value
@@ -18,6 +21,28 @@ export function normalizeUser(value) {
  */
 export function isImsGroup(value) {
   return IMS_GROUP_PATTERN.test(value.trim());
+}
+
+/**
+ * Create a hint that is shown while the input holds an IMS group.
+ * @param {HTMLInputElement} input
+ * @param {string} className
+ * @returns {HTMLParagraphElement}
+ */
+export function createImsGroupHint(input, className) {
+  imsGroupHintCount += 1;
+  const hint = document.createElement('p');
+  hint.className = className;
+  hint.id = `ims-group-hint-${imsGroupHintCount}`;
+  hint.textContent = IMS_GROUP_HINT;
+  const update = () => {
+    hint.hidden = !isImsGroup(input.value);
+    if (hint.hidden) input.removeAttribute('aria-describedby');
+    else input.setAttribute('aria-describedby', hint.id);
+  };
+  input.addEventListener('input', update);
+  update();
+  return hint;
 }
 
 /**

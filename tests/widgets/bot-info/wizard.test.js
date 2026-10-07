@@ -182,6 +182,21 @@ describe('bot-info:wizard.js', () => {
       assert.deepEqual(collectUsers(list), [{ email: 'a@b.com', roles: ['admin'] }]);
     });
 
+    it('accepts and normalizes IMS groups', () => {
+      const list = document.createElement('div');
+      list.append(createUserRow({ email: ' 0123456789ABCDEF01234567@AdobeOrg/authors ' }));
+      assert.deepEqual(
+        userEmailErrors(list.querySelectorAll('.bot-info-email'), { allowGroups: true }),
+        [],
+      );
+      assert.deepEqual(collectUsers(list), [{ email: '0123456789ABCDEF01234567/authors', roles: ['admin'] }]);
+    });
+
+    it('shows the IMS group hint only for group rows', () => {
+      assert.equal(createUserRow({ email: 'a@b.com' }).querySelector('.bot-info-hint').hidden, true);
+      assert.equal(createUserRow({ email: '0123456789ABCDEF01234567/authors' }).querySelector('.bot-info-hint').hidden, false);
+    });
+
     it('does not silently remove an existing user whose email is cleared', () => {
       const row = createUserRow({ email: 'a@b.com' });
       const input = row.querySelector('.bot-info-email');

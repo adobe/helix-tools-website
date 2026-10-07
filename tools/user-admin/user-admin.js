@@ -5,7 +5,7 @@ import { loadIcon, icon, showToast } from '../../utils/card-ui/card-ui.js';
 import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import {
-  parseUsersFromAccessConfig, buildAccessConfig, userEmailErrors, isImsGroup, normalizeUser,
+  parseUsersFromAccessConfig, buildAccessConfig, userEmailErrors, createImsGroupHint, normalizeUser,
 } from './utils.js';
 import { ROLE_DESCRIPTIONS } from '../../utils/roles/roles.js';
 import { createRolesField } from '../../utils/roles/roles-field.js';
@@ -185,16 +185,8 @@ function createUserEntry(entriesContainer, updateSaveLabel, selectedRoles = []) 
   emailInput.className = 'user-email';
   emailInput.id = `user-email-${entryId}`;
   emailInput.placeholder = 'user@example.com or IMS_ORG_ID/group';
-  const groupHint = document.createElement('p');
-  groupHint.className = 'field-hint group-hint';
-  groupHint.id = `user-group-hint-${entryId}`;
-  groupHint.textContent = 'IMS groups only work on sites using api.aem.live. Contact Adobe via your Slack or Teams channel for details.';
-  groupHint.hidden = true;
-  emailInput.setAttribute('aria-describedby', groupHint.id);
-  emailInput.addEventListener('input', () => {
-    groupHint.hidden = !isImsGroup(emailInput.value);
-    updateSaveLabel();
-  });
+  const groupHint = createImsGroupHint(emailInput, 'field-hint group-hint');
+  emailInput.addEventListener('input', updateSaveLabel);
   emailField.appendChild(emailLabel);
   emailField.appendChild(emailInput);
   emailField.appendChild(groupHint);

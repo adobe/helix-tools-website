@@ -6,9 +6,27 @@ import {
   userEmailErrors,
   isImsGroup,
   normalizeUser,
+  createImsGroupHint,
 } from '../../../tools/user-admin/utils.js';
 
 describe('user-admin:utils.js', () => {
+  describe('createImsGroupHint', () => {
+    it('toggles with the input value and links via aria-describedby', () => {
+      const input = document.createElement('input');
+      const hint = createImsGroupHint(input, 'hint');
+      assert.equal(hint.hidden, true);
+      assert.equal(input.hasAttribute('aria-describedby'), false);
+      input.value = '0123456789ABCDEF01234567/authors';
+      input.dispatchEvent(new window.Event('input'));
+      assert.equal(hint.hidden, false);
+      assert.equal(input.getAttribute('aria-describedby'), hint.id);
+      input.value = 'a@b.com';
+      input.dispatchEvent(new window.Event('input'));
+      assert.equal(hint.hidden, true);
+      assert.equal(input.hasAttribute('aria-describedby'), false);
+    });
+  });
+
   describe('normalizeUser', () => {
     it('trims emails', () => {
       assert.equal(normalizeUser('  a@b.com '), 'a@b.com');

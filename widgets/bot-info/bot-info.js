@@ -578,7 +578,10 @@ export default async function decorate(widget) {
       }
       if (step === 'users') {
         const orgList = widget.querySelector('.bot-info-user-list[data-scope="org"]');
-        const [emailError] = userEmailErrors(widget.querySelectorAll('.bot-info-email'));
+        const [emailError] = userEmailErrors(
+          widget.querySelectorAll('.bot-info-email'),
+          { allowGroups: true },
+        );
         return emailError?.message
           || usersError(collectUsers(orgList), ctx.newOrg);
       }
