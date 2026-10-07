@@ -571,17 +571,19 @@ export default async function decorate(widget) {
     // per-step validation, reusing the wizard's pure validators
     const validateStep = (step) => {
       if (step === 'content') {
-        return validateContentSelection({
+        const message = validateContentSelection({
           advanced: widget.querySelector('.bot-info-advanced-check').checked,
           url: widget.querySelector('.bot-info-content-url').value,
         });
+        return message && { message };
       }
       if (step === 'users') {
         const orgList = widget.querySelector('.bot-info-user-list[data-scope="org"]');
         const siteList = widget.querySelector('.bot-info-user-list[data-scope="site"]');
         const [rowError] = [...userRowErrors(orgList), ...userRowErrors(siteList)];
-        return rowError?.message
-          || usersError(collectUsers(orgList), ctx.newOrg);
+        if (rowError) return { message: rowError.message, input: rowError.input };
+        const message = usersError(collectUsers(orgList), ctx.newOrg);
+        return message && { message };
       }
       return null;
     };
@@ -629,10 +631,10 @@ export default async function decorate(widget) {
         const error = validateStep(steps[i]);
         if (error) {
           const el = errorFor(steps[i]);
-          el.textContent = error;
+          el.textContent = error.message;
           setHidden(el, false);
           goToStep(i);
-          panels[i].querySelector('input:invalid')?.focus();
+          (error.input || panels[i].querySelector('input:invalid'))?.focus();
           return;
         }
       }
