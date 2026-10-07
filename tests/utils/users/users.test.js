@@ -3,30 +3,12 @@ import assert from 'node:assert/strict';
 import {
   parseUsersFromAccessConfig,
   buildAccessConfig,
-  userEmailErrors,
   isImsGroup,
+  isValidUser,
   normalizeUser,
-  createImsGroupHint,
-} from '../../../tools/user-admin/utils.js';
+} from '../../../utils/users/users.js';
 
-describe('user-admin:utils.js', () => {
-  describe('createImsGroupHint', () => {
-    it('toggles with the input value and links via aria-describedby', () => {
-      const input = document.createElement('input');
-      const hint = createImsGroupHint(input, 'hint');
-      assert.equal(hint.hidden, true);
-      assert.equal(input.hasAttribute('aria-describedby'), false);
-      input.value = '0123456789ABCDEF01234567/authors';
-      input.dispatchEvent(new window.Event('input'));
-      assert.equal(hint.hidden, false);
-      assert.equal(input.getAttribute('aria-describedby'), hint.id);
-      input.value = 'a@b.com';
-      input.dispatchEvent(new window.Event('input'));
-      assert.equal(hint.hidden, true);
-      assert.equal(input.hasAttribute('aria-describedby'), false);
-    });
-  });
-
+describe('utils/users/users.js', () => {
   describe('normalizeUser', () => {
     it('trims emails', () => {
       assert.equal(normalizeUser('  a@b.com '), 'a@b.com');
@@ -55,147 +37,15 @@ describe('user-admin:utils.js', () => {
     });
   });
 
-  describe('userEmailErrors', () => {
-    const emailFields = (...emails) => {
-      const container = document.createElement('div');
-      emails.forEach((email) => {
-        const input = document.createElement('input');
-        input.type = 'email';
-        input.required = true;
-        input.value = email;
-        container.append(input);
-      });
-      return container;
-    };
-
-    it('returns a required blank input and its error alongside a valid user', () => {
-      const container = emailFields('a@b.com', '');
-      assert.deepEqual(userEmailErrors(container.querySelectorAll('input')), [{
-        input: container.lastElementChild,
-        message: 'Enter an email for each user, or remove the empty user.',
-      }]);
+  describe('isValidUser', () => {
+    it('accepts emails, wildcard domains and IMS groups', () => {
+      ['a@b.com', '  c@d.com  ', '*@adobe.com', '528D65B156D673FA7F000101/azhlx6-authors', '528D65B156D673FA7F000101@AdobeOrg/authors']
+        .forEach((value) => assert.equal(isValidUser(value), true, value));
     });
 
-    it('returns an error for whitespace-only emails', () => {
-      const container = emailFields('   ');
-      assert.deepEqual(userEmailErrors(container.querySelectorAll('input')), [{
-        input: container.firstElementChild,
-        message: 'Enter an email for each user, or remove the empty user.',
-      }]);
-    });
-
-    it('returns all invalid inputs in input order', () => {
-      const container = emailFields('not-an-email', 'a@b.com', '');
-      assert.deepEqual(userEmailErrors(container.querySelectorAll('input')), [{
-        input: container.firstElementChild,
-        message: 'Enter a valid email for each user.',
-      }, {
-        input: container.lastElementChild,
-        message: 'Enter an email for each user, or remove the empty user.',
-      }]);
-    });
-
-    it('returns no errors for valid emails, including surrounding whitespace', () => {
-      const container = emailFields('a@b.com', '  c@d.com  ');
-      assert.deepEqual(userEmailErrors(container.querySelectorAll('input')), []);
-    });
-
-    it('accepts wildcard-domain entries', () => {
-      const container = emailFields('*@adobe.com', '*@example.com');
-      assert.deepEqual(userEmailErrors(container.querySelectorAll('input')), []);
-    });
-
-    it('accepts emails, wildcard domains and IMS groups in user-admin text fields', () => {
-      const container = emailFields(
-        'a@b.com',
-        '*@adobe.com',
-        '528D65B156D673FA7F000101/azhlx6-authors',
-        '  528d65b156d673fa7f000101/My Group 1  ',
-        '528D65B156D673FA7F000101@AdobeOrg/authors',
-      );
-      container.querySelectorAll('input').forEach((input) => { input.type = 'text'; });
-      assert.deepEqual(userEmailErrors(container.querySelectorAll('input'), { allowGroups: true }), []);
-    });
-
-    it('rejects malformed identifiers in user-admin text fields', () => {
-      ['not-an-email', '/authors', '528D65B156D673FA7F000101/', 'not-an-org/authors']
-        .forEach((value) => {
-          const container = emailFields(value);
-          const input = container.firstElementChild;
-          input.type = 'text';
-          assert.deepEqual(userEmailErrors([input], { allowGroups: true }), [{
-            input,
-            message: 'Enter a valid email or IMS group for each user.',
-          }]);
-        });
-    });
-
-    it('keeps email-only validation for other callers', () => {
-      const container = emailFields('528D65B156D673FA7F000101/azhlx6-authors');
-      assert.deepEqual(userEmailErrors(container.querySelectorAll('input')), [{
-        input: container.firstElementChild,
-        message: 'Enter a valid email for each user.',
-      }]);
-    });
-
-    it('does not bypass other input constraints for IMS groups', () => {
-      const container = emailFields('528D65B156D673FA7F000101/azhlx6-authors');
-      const input = container.firstElementChild;
-      input.type = 'text';
-      input.setCustomValidity('Invalid user');
-      assert.deepEqual(userEmailErrors([input], { allowGroups: true }), [{
-        input,
-        message: 'Enter a valid email or IMS group for each user.',
-      }]);
-    });
-
-    it('preserves required and optional blank handling with IMS groups enabled', () => {
-      const container = emailFields('', '   ');
-      const inputs = container.querySelectorAll('input');
-      inputs.forEach((input) => { input.type = 'text'; });
-      inputs[1].required = false;
-      assert.deepEqual(userEmailErrors(inputs, { allowGroups: true }), [{
-        input: inputs[0],
-        message: 'Enter an email or IMS group for each user, or remove the empty user.',
-      }]);
-    });
-
-    it('accepts an empty collection for inherited site access', () => {
-      assert.deepEqual(userEmailErrors(emailFields().querySelectorAll('input')), []);
-    });
-
-    it('returns no errors after a blank row is removed', () => {
-      const container = emailFields('a@b.com', '');
-      container.lastElementChild.remove();
-      assert.deepEqual(userEmailErrors(container.querySelectorAll('input')), []);
-    });
-
-    it('returns no errors after a blank row is completed', () => {
-      const container = emailFields('a@b.com', '');
-      container.lastElementChild.value = 'c@d.com';
-      assert.deepEqual(userEmailErrors(container.querySelectorAll('input')), []);
-    });
-
-    it('accepts an array of inputs as well as a NodeList', () => {
-      const container = emailFields('a@b.com');
-      assert.deepEqual(userEmailErrors([...container.querySelectorAll('input')]), []);
-    });
-
-    it('ignores optional blank and whitespace-only new inputs', () => {
-      const container = emailFields('a@b.com', '', '   ');
-      [...container.querySelectorAll('input')].slice(1).forEach((input) => {
-        input.required = false;
-      });
-      assert.deepEqual(userEmailErrors(container.querySelectorAll('input')), []);
-    });
-
-    it('still reports invalid nonempty optional inputs', () => {
-      const container = emailFields('invalid-email');
-      container.firstElementChild.required = false;
-      assert.deepEqual(userEmailErrors(container.querySelectorAll('input')), [{
-        input: container.firstElementChild,
-        message: 'Enter a valid email for each user.',
-      }]);
+    it('rejects malformed identifiers', () => {
+      ['', 'not-an-email', '/authors', '528D65B156D673FA7F000101/', 'not-an-org/authors']
+        .forEach((value) => assert.equal(isValidUser(value), false, value));
     });
   });
 

@@ -1,13 +1,7 @@
 /**
- * Pure helpers and DOM builders for the bot-info setup wizard.
- *
- * The functions in the first half are side-effect free (no DOM, no fetch) so
- * they can be unit-tested; the DOM builders in the second half render the
- * editable user rows and content-source fields used by the single-page form.
+ * Pure helpers for the bot-info setup wizard. Side-effect free (no DOM, no
+ * fetch) so they can be unit-tested.
  */
-
-import { createRolesField } from '../../utils/roles/roles-field.js';
-import { createImsGroupHint, normalizeUser } from '../../tools/user-admin/utils.js';
 
 // UI-facing content-source kinds. `configType` is what the admin API stores in
 // `content.source.type`; the granular DA/AEM/BYOM kinds all map to `markup`.
@@ -125,60 +119,4 @@ export function validateContentSelection({ advanced, url }) {
 export function usersError(orgUsers, newOrg) {
   if (newOrg && orgUsers.length === 0) return 'Add at least one organization user before saving.';
   return null;
-}
-
-/* ------------------------------------------------------------------ */
-/* DOM builders (not unit-tested)                                     */
-/* ------------------------------------------------------------------ */
-
-/**
- * Build an editable user row (email + role pills + remove button). The original
- * user id, when present, is stashed on the row so the diff can target it.
- *
- * @param {{email?: string, id?: string, roles?: string[]}} user
- * @param {string} [defaultRole] role pre-selected when the user has none
- * @returns {HTMLElement}
- */
-export function createUserRow(user = {}, defaultRole = 'admin') {
-  const row = document.createElement('div');
-  row.className = 'bot-info-user-row';
-  if (user.id) row.dataset.userId = user.id;
-
-  const emailField = document.createElement('div');
-  emailField.className = 'bot-info-field';
-  const emailInput = document.createElement('input');
-  emailInput.type = 'text';
-  emailInput.required = Object.hasOwn(user, 'email') || !!user.id;
-  emailInput.placeholder = 'name@example.com or IMS_ORG_ID/group';
-  emailInput.className = 'bot-info-email';
-  emailInput.value = user.email || '';
-  emailField.append(emailInput, createImsGroupHint(emailInput, 'bot-info-hint'));
-
-  const pills = createRolesField(user.roles && user.roles.length ? user.roles : [defaultRole]);
-
-  const removeBtn = document.createElement('button');
-  removeBtn.type = 'button';
-  removeBtn.className = 'bot-info-remove';
-  removeBtn.title = 'Remove';
-  removeBtn.setAttribute('aria-label', 'Remove user');
-  removeBtn.textContent = '✕';
-  removeBtn.addEventListener('click', () => row.remove());
-
-  row.append(emailField, removeBtn, pills);
-  return row;
-}
-
-/**
- * Read the current user entries from a list container.
- *
- * @param {HTMLElement} listEl container holding `.bot-info-user-row` elements
- * @returns {{email: string, id?: string, roles: string[]}[]}
- */
-export function collectUsers(listEl) {
-  return [...listEl.querySelectorAll('.bot-info-user-row')].map((row) => {
-    const email = normalizeUser(row.querySelector('.bot-info-email').value);
-    const roles = [...row.querySelectorAll('.roles-field input:checked')].map((c) => c.value);
-    const { userId } = row.dataset;
-    return userId ? { email, id: userId, roles } : { email, roles };
-  }).filter((u) => u.email);
 }

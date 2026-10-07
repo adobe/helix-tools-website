@@ -248,30 +248,10 @@ dialog.user-admin-modal .form-field label {
   color: var(--color-text);
 }
 
-dialog.user-admin-modal .form-field .user-email {
-  width: 100%;
-  padding: var(--spacing-s);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  font-size: var(--body-size-m);
-  background: var(--color-background);
-  color: var(--color-text);
-}
-
-dialog.user-admin-modal .form-field .user-email:focus {
-  outline: none;
-  border-color: var(--blue-500);
-  box-shadow: 0 0 0 2px var(--blue-100);
-}
-
 dialog.user-admin-modal .field-hint {
   font-size: var(--body-size-s);
   color: var(--color-font-grey);
   margin-bottom: var(--spacing-s);
-}
-
-dialog.user-admin-modal .group-hint {
-  margin: var(--spacing-xs) 0 0;
 }
 
 dialog.user-admin-modal .field-hint a {
@@ -303,38 +283,7 @@ dialog.user-admin-modal .user-entries {
   gap: var(--spacing-m);
 }
 
-dialog.user-admin-modal .user-entry {
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: var(--spacing-m);
-}
-
-dialog.user-admin-modal .user-entry.has-error {
-  border-color: var(--red-600);
-}
-
-dialog.user-admin-modal .user-entry-header {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  margin-bottom: var(--spacing-s);
-}
-
-dialog.user-admin-modal .user-entry-remove {
-  background: none;
-  border: none;
-  font-size: var(--body-size-s);
-  cursor: pointer;
-  color: var(--color-font-grey);
-  padding: 0;
-}
-
-dialog.user-admin-modal .user-entry-remove:hover {
-  color: var(--red-600);
-  text-decoration: underline;
-}
-
-dialog.user-admin-modal .user-entry:only-child .user-entry-remove {
+dialog.user-admin-modal .user-row:only-child .user-row-remove {
   display: none;
 }
 

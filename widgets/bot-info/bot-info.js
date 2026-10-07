@@ -1,14 +1,13 @@
 import { toClassName, loadCSS } from '../../scripts/aem.js';
 import admin from '../../scripts/helix-admin.js';
 import decorateConsole, { logResponse, logMessage } from '../../blocks/console/console.js';
-import { parseUsersFromAccessConfig, buildAccessConfig, userEmailErrors } from '../../tools/user-admin/utils.js';
+import { parseUsersFromAccessConfig, buildAccessConfig } from '../../utils/users/users.js';
+import { createUserRow, collectUsers, userRowErrors } from '../../utils/users/user-row.js';
 import {
   CONTENT_SOURCE_KINDS,
   detectContentSourceKind,
   buildContentSource,
   diffOrgUsers,
-  createUserRow,
-  collectUsers,
   validateContentSelection,
   usersError,
 } from './wizard.js';
@@ -165,9 +164,9 @@ function renderForm(widget, config, {
   widget.querySelectorAll('.bot-info-add-user').forEach((btn) => {
     const list = btn.dataset.scope === 'org' ? orgList : siteList;
     btn.addEventListener('click', () => {
-      const row = createUserRow();
+      const row = createUserRow({ roles: ['admin'] });
       list.append(row);
-      row.querySelector('.bot-info-email').focus();
+      row.querySelector('.user-row-email').focus();
     });
   });
 
@@ -505,6 +504,7 @@ export default async function decorate(widget) {
   const consoleBlock = widget.querySelector('.console');
   loadCSS(`${window.hlx.codeBasePath}/blocks/console/console.css`);
   loadCSS(`${window.hlx.codeBasePath}/utils/roles/roles-field.css`);
+  loadCSS(`${window.hlx.codeBasePath}/utils/users/user-row.css`);
   decorateConsole(consoleBlock);
 
   const fail = (error) => {
@@ -578,11 +578,9 @@ export default async function decorate(widget) {
       }
       if (step === 'users') {
         const orgList = widget.querySelector('.bot-info-user-list[data-scope="org"]');
-        const [emailError] = userEmailErrors(
-          widget.querySelectorAll('.bot-info-email'),
-          { allowGroups: true },
-        );
-        return emailError?.message
+        const siteList = widget.querySelector('.bot-info-user-list[data-scope="site"]');
+        const [rowError] = [...userRowErrors(orgList), ...userRowErrors(siteList)];
+        return rowError?.message
           || usersError(collectUsers(orgList), ctx.newOrg);
       }
       return null;

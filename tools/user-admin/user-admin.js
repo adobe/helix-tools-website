@@ -4,9 +4,8 @@ import { logResponse } from '../../blocks/console/console.js';
 import { loadIcon, icon, showToast } from '../../utils/card-ui/card-ui.js';
 import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
-import {
-  parseUsersFromAccessConfig, buildAccessConfig, userEmailErrors, createImsGroupHint, normalizeUser,
-} from './utils.js';
+import { parseUsersFromAccessConfig, buildAccessConfig } from '../../utils/users/users.js';
+import { createUserRow, collectUsers, userRowErrors } from '../../utils/users/user-row.js';
 import { ROLE_DESCRIPTIONS } from '../../utils/roles/roles.js';
 import { createRolesField } from '../../utils/roles/roles-field.js';
 
@@ -159,64 +158,6 @@ function createRolesReference() {
   return link;
 }
 
-let entryIdCounter = 0;
-
-function createUserEntry(entriesContainer, updateSaveLabel, selectedRoles = []) {
-  entryIdCounter += 1;
-  const entryId = entryIdCounter;
-  const entry = document.createElement('div');
-  entry.className = 'user-entry';
-
-  const header = document.createElement('div');
-  header.className = 'user-entry-header';
-  const removeBtn = document.createElement('button');
-  removeBtn.type = 'button';
-  removeBtn.className = 'user-entry-remove';
-  removeBtn.textContent = 'Remove';
-  header.appendChild(removeBtn);
-
-  const emailField = document.createElement('div');
-  emailField.className = 'form-field';
-  const emailLabel = document.createElement('label');
-  emailLabel.htmlFor = `user-email-${entryId}`;
-  emailLabel.textContent = 'User';
-  const emailInput = document.createElement('input');
-  emailInput.type = 'text';
-  emailInput.className = 'user-email';
-  emailInput.id = `user-email-${entryId}`;
-  emailInput.placeholder = 'user@example.com or IMS_ORG_ID/group';
-  const groupHint = createImsGroupHint(emailInput, 'field-hint group-hint');
-  emailInput.addEventListener('input', updateSaveLabel);
-  emailField.appendChild(emailLabel);
-  emailField.appendChild(emailInput);
-  emailField.appendChild(groupHint);
-
-  const rolesFieldId = `user-roles-${entryId}`;
-  const rolesField = document.createElement('div');
-  rolesField.className = 'form-field';
-  const rolesLabel = document.createElement('label');
-  rolesLabel.id = rolesFieldId;
-  rolesLabel.textContent = 'Roles';
-  const rolesContainer = createRolesField(selectedRoles);
-  rolesContainer.setAttribute('role', 'group');
-  rolesContainer.setAttribute('aria-labelledby', rolesFieldId);
-  rolesField.appendChild(rolesLabel);
-  rolesField.appendChild(rolesContainer);
-
-  entry.appendChild(header);
-  entry.appendChild(emailField);
-  entry.appendChild(rolesField);
-
-  removeBtn.addEventListener('click', () => {
-    entry.remove();
-    updateSaveLabel();
-  });
-
-  entriesContainer.appendChild(entry);
-  updateSaveLabel();
-  return entry;
-}
-
 function showModalError(dialog, message) {
   let banner = dialog.querySelector('.modal-error');
   if (!banner) {
@@ -359,7 +300,7 @@ function openAddUsersModal(onSave) {
   footerDiv.prepend(rolesReference);
 
   setConfirmClose(async () => {
-    const emails = dialog.querySelectorAll('.user-email');
+    const emails = dialog.querySelectorAll('.user-row-email');
     const hasData = [...emails].some((input) => input.value.trim() !== '');
     const checkboxes = dialog.querySelectorAll('input[type="checkbox"]');
     const hasRoles = [...checkboxes].some((cb) => cb.checked);
@@ -380,22 +321,27 @@ function openAddUsersModal(onSave) {
 
   const updateSaveLabel = () => {
     if (saveBtn.disabled) return;
-    const count = [...entriesContainer.querySelectorAll('.user-email')]
+    const count = [...entriesContainer.querySelectorAll('.user-row-email')]
       .filter((input) => input.value.trim()).length;
     saveBtn.textContent = count ? `Add ${count} User${count !== 1 ? 's' : ''}` : 'Add Users';
   };
 
-  const firstEntry = createUserEntry(entriesContainer, updateSaveLabel);
-  firstEntry.querySelector('.user-email').focus();
+  const addEntry = (roles = []) => {
+    const entry = createUserRow({ roles }, { onChange: updateSaveLabel });
+    entriesContainer.appendChild(entry);
+    updateSaveLabel();
+    entry.querySelector('.user-row-email').focus();
+    return entry;
+  };
+
+  addEntry();
 
   addAnotherBtn.addEventListener('click', () => {
-    const previousEntries = entriesContainer.querySelectorAll('.user-entry');
-    const previousEntry = previousEntries[previousEntries.length - 1];
+    const previousEntry = entriesContainer.querySelector('.user-row:last-child');
     const previousRoles = previousEntry
       ? [...previousEntry.querySelectorAll('input[type="checkbox"]:checked')].map((cb) => cb.value)
       : [];
-    const entry = createUserEntry(entriesContainer, updateSaveLabel, previousRoles);
-    entry.querySelector('.user-email').focus();
+    const entry = addEntry(previousRoles);
     entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
 
@@ -403,61 +349,26 @@ function openAddUsersModal(onSave) {
     e.preventDefault();
     clearModalError(dialog);
 
-    const entries = entriesContainer.querySelectorAll('.user-entry');
-    const users = [];
-    let hasError = false;
+    entriesContainer.querySelectorAll('.user-row').forEach((entry) => entry.classList.remove('has-error'));
 
-    const flagError = (entry, message, focusEl) => {
-      entry.classList.add('has-error');
-      entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      if (focusEl) focusEl.focus();
-      showModalError(dialog, message);
-      hasError = true;
-    };
-
-    entries.forEach((entry) => entry.classList.remove('has-error'));
-
-    const [emailError] = userEmailErrors(
-      entriesContainer.querySelectorAll('.user-email'),
-      { allowGroups: true },
-    );
-    if (emailError) {
-      flagError(emailError.input.closest('.user-entry'), emailError.message, emailError.input);
+    const [rowError] = userRowErrors(entriesContainer, { existing: accessConfig.users });
+    if (rowError) {
+      rowError.row.classList.add('has-error');
+      rowError.row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      rowError.input.focus();
+      showModalError(dialog, rowError.message);
       return;
     }
 
-    entries.forEach((entry) => {
-      if (hasError) return;
-      const emailInput = entry.querySelector('.user-email');
-      const email = normalizeUser(emailInput.value);
-      if (!email) return;
-      const roles = [...entry.querySelectorAll('input[type="checkbox"]:checked')]
-        .map((cb) => cb.value);
-
-      if (roles.length === 0) { flagError(entry, 'Please select at least one role for each user'); return; }
-
-      const emailLower = email.toLowerCase();
-      if (users.some((u) => u.email.toLowerCase() === emailLower)) {
-        flagError(entry, `Duplicate user in batch: ${email}`);
-        return;
-      }
-      if (accessConfig.users.some((u) => u.email.toLowerCase() === emailLower)) {
-        flagError(entry, `User already exists: ${email}`);
-        return;
-      }
-
-      users.push({ email, roles });
-    });
-
-    if (hasError) return;
+    const users = collectUsers(entriesContainer);
     if (users.length === 0) {
       showModalError(dialog, 'Enter at least one user before saving.');
-      entriesContainer.querySelector('.user-email')?.focus();
+      entriesContainer.querySelector('.user-row-email')?.focus();
       return;
     }
 
-    const validEntries = [...entriesContainer.querySelectorAll('.user-entry')]
-      .filter((entry) => entry.querySelector('.user-email').value.trim());
+    const validEntries = [...entriesContainer.querySelectorAll('.user-row')]
+      .filter((entry) => entry.querySelector('.user-row-email').value.trim());
 
     saveBtn.disabled = true;
     saveBtn.textContent = 'Saving...';

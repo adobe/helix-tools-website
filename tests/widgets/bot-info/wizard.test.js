@@ -6,10 +6,7 @@ import {
   diffOrgUsers,
   validateContentSelection,
   usersError,
-  createUserRow,
-  collectUsers,
 } from '../../../widgets/bot-info/wizard.js';
-import { userEmailErrors } from '../../../tools/user-admin/utils.js';
 
 describe('bot-info:wizard.js', () => {
   describe('detectContentSourceKind', () => {
@@ -171,47 +168,6 @@ describe('bot-info:wizard.js', () => {
         validateContentSelection({ advanced: true, url: 'https://example.com' }),
         null,
       );
-    });
-  });
-
-  describe('new user rows', () => {
-    it('ignores a blank new row in validation and collection', () => {
-      const list = document.createElement('div');
-      list.append(createUserRow({ email: 'a@b.com' }), createUserRow());
-      assert.deepEqual(userEmailErrors(list.querySelectorAll('.bot-info-email')), []);
-      assert.deepEqual(collectUsers(list), [{ email: 'a@b.com', roles: ['admin'] }]);
-    });
-
-    it('accepts and normalizes IMS groups', () => {
-      const list = document.createElement('div');
-      list.append(createUserRow({ email: ' 0123456789ABCDEF01234567@AdobeOrg/authors ' }));
-      assert.deepEqual(
-        userEmailErrors(list.querySelectorAll('.bot-info-email'), { allowGroups: true }),
-        [],
-      );
-      assert.deepEqual(collectUsers(list), [{ email: '0123456789ABCDEF01234567/authors', roles: ['admin'] }]);
-    });
-
-    it('shows the IMS group hint only for group rows', () => {
-      assert.equal(createUserRow({ email: 'a@b.com' }).querySelector('.bot-info-hint').hidden, true);
-      assert.equal(createUserRow({ email: '0123456789ABCDEF01234567/authors' }).querySelector('.bot-info-hint').hidden, false);
-    });
-
-    it('does not silently remove an existing user whose email is cleared', () => {
-      const row = createUserRow({ email: 'a@b.com' });
-      const input = row.querySelector('.bot-info-email');
-      input.value = '';
-      assert.deepEqual(userEmailErrors([input]), [{
-        input,
-        message: 'Enter an email for each user, or remove the empty user.',
-      }]);
-    });
-
-    it('still requires an organization user when all new rows are blank', () => {
-      const list = document.createElement('div');
-      list.append(createUserRow());
-      assert.deepEqual(userEmailErrors(list.querySelectorAll('.bot-info-email')), []);
-      assert.equal(usersError(collectUsers(list), true), 'Add at least one organization user before saving.');
     });
   });
 
