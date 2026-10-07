@@ -4,7 +4,9 @@ import { logResponse } from '../../blocks/console/console.js';
 import { loadIcon, icon, showToast } from '../../utils/card-ui/card-ui.js';
 import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
-import { parseUsersFromAccessConfig, buildAccessConfig, userEmailErrors } from './utils.js';
+import {
+  parseUsersFromAccessConfig, buildAccessConfig, userEmailErrors, isImsGroup, normalizeUser,
+} from './utils.js';
 import { ROLE_DESCRIPTIONS } from '../../utils/roles/roles.js';
 import { createRolesField } from '../../utils/roles/roles-field.js';
 
@@ -177,15 +179,25 @@ function createUserEntry(entriesContainer, updateSaveLabel, selectedRoles = []) 
   emailField.className = 'form-field';
   const emailLabel = document.createElement('label');
   emailLabel.htmlFor = `user-email-${entryId}`;
-  emailLabel.textContent = 'Email or IMS group';
+  emailLabel.textContent = 'User';
   const emailInput = document.createElement('input');
   emailInput.type = 'text';
   emailInput.className = 'user-email';
   emailInput.id = `user-email-${entryId}`;
   emailInput.placeholder = 'user@example.com or IMS_ORG_ID/group';
-  emailInput.addEventListener('input', updateSaveLabel);
+  const groupHint = document.createElement('p');
+  groupHint.className = 'field-hint group-hint';
+  groupHint.id = `user-group-hint-${entryId}`;
+  groupHint.textContent = 'IMS groups only work on Helix 6 sites.';
+  groupHint.hidden = true;
+  emailInput.setAttribute('aria-describedby', groupHint.id);
+  emailInput.addEventListener('input', () => {
+    groupHint.hidden = !isImsGroup(emailInput.value);
+    updateSaveLabel();
+  });
   emailField.appendChild(emailLabel);
   emailField.appendChild(emailInput);
+  emailField.appendChild(groupHint);
 
   const rolesFieldId = `user-roles-${entryId}`;
   const rolesField = document.createElement('div');
@@ -425,7 +437,7 @@ function openAddUsersModal(onSave) {
     entries.forEach((entry) => {
       if (hasError) return;
       const emailInput = entry.querySelector('.user-email');
-      const email = emailInput.value.trim();
+      const email = normalizeUser(emailInput.value);
       if (!email) return;
       const roles = [...entry.querySelectorAll('input[type="checkbox"]:checked')]
         .map((cb) => cb.value);
@@ -434,7 +446,7 @@ function openAddUsersModal(onSave) {
 
       const emailLower = email.toLowerCase();
       if (users.some((u) => u.email.toLowerCase() === emailLower)) {
-        flagError(entry, `Duplicate email or IMS group in batch: ${email}`);
+        flagError(entry, `Duplicate user in batch: ${email}`);
         return;
       }
       if (accessConfig.users.some((u) => u.email.toLowerCase() === emailLower)) {
@@ -557,9 +569,9 @@ function openEditUserModal(user, onSave) {
   deleteBtn.addEventListener('click', async () => {
     clearModalError(dialog);
     // eslint-disable-next-line no-alert
-    const emailCheck = prompt(`To confirm deletion, enter the email: ${user.email}`);
-    if (emailCheck !== user.email) {
-      if (emailCheck !== null) showModalError(dialog, 'Email did not match');
+    const userCheck = prompt(`To confirm deletion, enter: ${user.email}`);
+    if (userCheck?.trim() !== user.email) {
+      if (userCheck !== null) showModalError(dialog, 'Entry did not match');
       return;
     }
 

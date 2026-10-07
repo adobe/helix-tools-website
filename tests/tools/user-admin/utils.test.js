@@ -4,9 +4,39 @@ import {
   parseUsersFromAccessConfig,
   buildAccessConfig,
   userEmailErrors,
+  isImsGroup,
+  normalizeUser,
 } from '../../../tools/user-admin/utils.js';
 
 describe('user-admin:utils.js', () => {
+  describe('normalizeUser', () => {
+    it('trims emails', () => {
+      assert.equal(normalizeUser('  a@b.com '), 'a@b.com');
+    });
+
+    it('normalizes IMS group variants to ORG_ID/group', () => {
+      [
+        '528D65B156D673FA7F000101/authors',
+        ' 528D65B156D673FA7F000101/authors ',
+        '528D65B156D673FA7F000101@AdobeOrg/authors',
+        '528D65B156D673FA7F000101@adobeorg / authors',
+      ].forEach((value) => assert.equal(normalizeUser(value), '528D65B156D673FA7F000101/authors', value));
+    });
+  });
+
+  describe('isImsGroup', () => {
+    it('detects IMS group identifiers', () => {
+      assert.equal(isImsGroup('528D65B156D673FA7F000101/azhlx6-authors'), true);
+      assert.equal(isImsGroup('  528d65b156d673fa7f000101/My Group 1  '), true);
+      assert.equal(isImsGroup('528D65B156D673FA7F000101@AdobeOrg/authors'), true);
+    });
+
+    it('rejects emails and malformed identifiers', () => {
+      ['a@b.com', '*@adobe.com', '/authors', '528D65B156D673FA7F000101/', '528D65B156D673FA7F000101@AdobeOrg/', 'not-an-org/authors', '']
+        .forEach((value) => assert.equal(isImsGroup(value), false, value));
+    });
+  });
+
   describe('userEmailErrors', () => {
     const emailFields = (...emails) => {
       const container = document.createElement('div');
@@ -63,6 +93,7 @@ describe('user-admin:utils.js', () => {
         '*@adobe.com',
         '528D65B156D673FA7F000101/azhlx6-authors',
         '  528d65b156d673fa7f000101/My Group 1  ',
+        '528D65B156D673FA7F000101@AdobeOrg/authors',
       );
       container.querySelectorAll('input').forEach((input) => { input.type = 'text'; });
       assert.deepEqual(userEmailErrors(container.querySelectorAll('input'), { allowGroups: true }), []);

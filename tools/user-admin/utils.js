@@ -1,3 +1,25 @@
+const EMAIL_PATTERN = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/i;
+const IMS_GROUP_PATTERN = /^([a-f0-9]+)(?:@adobeorg)?\s*\/\s*(.+)$/i;
+
+/**
+ * Normalize a user identifier. IMS groups become `ORG_ID/group`.
+ * @param {string} value
+ * @returns {string}
+ */
+export function normalizeUser(value) {
+  const trimmed = value.trim();
+  const match = trimmed.match(IMS_GROUP_PATTERN);
+  return match ? `${match[1]}/${match[2]}` : trimmed;
+}
+
+/**
+ * @param {string} value
+ * @returns {boolean}
+ */
+export function isImsGroup(value) {
+  return IMS_GROUP_PATTERN.test(value.trim());
+}
+
 /**
  * Return invalid email inputs, optionally allowing IMS groups, in input order.
  * Blank optional inputs represent unused new rows and are ignored.
@@ -10,10 +32,8 @@ export function userEmailErrors(inputs, { allowGroups = false } = {}) {
     const identifier = allowGroups ? 'email or IMS group' : 'email';
     let { valid } = input.validity;
     if (allowGroups) {
-      const emailInput = document.createElement('input');
-      emailInput.type = 'email';
-      emailInput.value = input.value.trim();
-      valid = valid && (emailInput.validity.valid || /^[a-f0-9]+\/[^/]+$/i.test(input.value.trim()));
+      const value = input.value.trim();
+      valid = valid && (EMAIL_PATTERN.test(value) || isImsGroup(value));
     }
     let message;
     if (!input.value.trim()) message = `Enter an ${identifier} for each user, or remove the empty user.`;
