@@ -109,3 +109,48 @@ npm run lint
 
 For a local backend, temporarily point `apiBaseUrl` and the CSP `connect-src` at the
 loopback origin. Do not commit a customer credential or local secret.
+
+## Deployment and preview
+
+This is a standalone EDS tool, so its deployed path keeps the file extension:
+`/tools/asset-sourcing-portal/index.html`. Branch previews follow the repository
+convention:
+
+```text
+https://{branch}--helix-tools-website--adobe.aem.page/tools/asset-sourcing-portal/index.html
+```
+
+A bare preview URL is not usable on its own while the checked-in `org` is empty. The
+portal fails closed and disables sign-in until an organization is supplied, so any
+preview link shared for review must carry the `org` query parameter:
+
+```text
+https://{branch}--helix-tools-website--adobe.aem.page/tools/asset-sourcing-portal/index.html?org=0123456789ABCDEF
+```
+
+The preview origin must also be registered in the backend's exact-origin CORS
+configuration before sign-in, branding, or translation requests will succeed from it.
+
+## Known gaps
+
+These are known and intentional-for-now behaviours of the current implementation.
+Treat them as follow-up work rather than as the documented contract.
+
+1. The portal header `<h1>` is never translated. `validatePortalConfig` always
+   supplies a `branding.title` default, so the `app.title.login` catalog entry is
+   unreachable and the header shows either the backend login-branding title or the
+   configured title verbatim in every locale.
+2. Upload progress drives a full view rebuild. `updateJob` calls `renderUpload`, which
+   replaces the whole upload view on every `XMLHttpRequest` progress event. Drop zones,
+   metadata forms, and the account menu are torn down and recreated throughout a batch,
+   which costs DOM work and can move focus for any batch that is not locked.
+3. Each of those re-renders also re-issues the authenticated banner request, because
+   `renderUpload` calls `renderBackendBanner` and revokes the previous object URL
+   first. A single batch can therefore refetch the upload banner many times.
+4. The forced-rotation dialog seeds the current-password field through the `value`
+   content attribute. Clearing `.value` afterwards leaves that attribute in place, so
+   the plaintext password stays readable on the input node until the form is replaced
+   or the dialog is removed. This narrows, but does not fully deliver, the
+   "raw password fields are cleared" behaviour described above.
+5. `renderBackendBanner` still carries a commented-out duplicate of its own
+   `Authorization` header. It is dead code and should be deleted.
