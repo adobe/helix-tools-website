@@ -1,5 +1,5 @@
 const EMAIL_PATTERN = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/i;
-const IMS_GROUP_PATTERN = /^([a-f0-9]+)(?:@adobeorg)?\s*\/\s*(.+)$/i;
+const IMS_GROUP_PATTERN = /^([a-f0-9]{24})(?:@adobeorg)?\s*\/\s*(.+)$/i;
 
 /**
  * Normalize a user identifier. IMS groups become `ORG_ID/group`.

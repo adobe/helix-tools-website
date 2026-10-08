@@ -32,7 +32,7 @@ describe('utils/users/users.js', () => {
     });
 
     it('rejects emails and malformed identifiers', () => {
-      ['a@b.com', '*@adobe.com', '/authors', '528D65B156D673FA7F000101/', '528D65B156D673FA7F000101@AdobeOrg/', 'not-an-org/authors', '']
+      ['a@b.com', '*@adobe.com', '/authors', '528D65B156D673FA7F000101/', '528D65B156D673FA7F000101@AdobeOrg/', 'not-an-org/authors', 'abc/foo', '528D65B156D673FA7F00010/authors', '528D65B156D673FA7F00010100/authors', '']
         .forEach((value) => assert.equal(isImsGroup(value), false, value));
     });
   });
@@ -44,7 +44,7 @@ describe('utils/users/users.js', () => {
     });
 
     it('rejects malformed identifiers', () => {
-      ['', 'not-an-email', '/authors', '528D65B156D673FA7F000101/', 'not-an-org/authors']
+      ['', 'not-an-email', '/authors', '528D65B156D673FA7F000101/', 'not-an-org/authors', 'abc/foo']
         .forEach((value) => assert.equal(isValidUser(value), false, value));
     });
   });
