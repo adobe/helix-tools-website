@@ -9,8 +9,8 @@
     "postinstall": "node vendor/vendor.js",
     "lint:js": "eslint .",
     "lint:js:fix": "eslint . --fix",
-    "lint:css": "stylelint \"blocks/**/*.css\" \"styles/*.css\" \"tools/**/*.css\" \"utils/**/*.css\"",
-    "lint:css:fix": "stylelint \"blocks/**/*.css\" \"styles/*.css\" \"tools/**/*.css\" \"utils/**/*.css\" --fix",
+    "lint:css": "stylelint \"blocks/**/*.css\" \"styles/*.css\" \"tools/**/*.css\" \"utils/**/*.css\" \"widgets/**/*.css\"",
+    "lint:css:fix": "stylelint \"blocks/**/*.css\" \"styles/*.css\" \"tools/**/*.css\" \"utils/**/*.css\" \"widgets/**/*.css\" --fix",
     "test": "TZ=Europe/Berlin node --import ./tests/install-dom.js --test --experimental-test-coverage --experimental-test-module-mocks --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=junit.xml --test-reporter=lcov --test-reporter-destination=lcov.info 'tests/**/*.test.js'",
     "lint": "npm run lint:js && npm run lint:css",
     "lint:fix": "npm run lint:js:fix && npm run lint:css:fix"
