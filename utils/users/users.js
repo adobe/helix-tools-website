@@ -1,17 +1,32 @@
+const EMAIL_PATTERN = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/i;
+const IMS_GROUP_PATTERN = /^([a-f0-9]{24})(?:@adobeorg)?\s*\/\s*(.+)$/i;
+
 /**
- * Return invalid email inputs and their error messages in input order.
- * Blank optional inputs represent unused new rows and are ignored.
- * @param {Iterable<HTMLInputElement>} inputs
- * @returns {{input: HTMLInputElement, message: string}[]}
+ * Normalize a user identifier. IMS groups become `ORG_ID/group`.
+ * @param {string} value
+ * @returns {string}
  */
-export function userEmailErrors(inputs) {
-  return [...inputs].flatMap((input) => {
-    if (!input.required && !input.value.trim()) return [];
-    let message;
-    if (!input.value.trim()) message = 'Enter an email for each user, or remove the empty user.';
-    else if (!input.validity.valid) message = 'Enter a valid email for each user.';
-    return message ? [{ input, message }] : [];
-  });
+export function normalizeUser(value) {
+  const trimmed = value.trim();
+  const match = trimmed.match(IMS_GROUP_PATTERN);
+  return match ? `${match[1]}/${match[2]}` : trimmed;
+}
+
+/**
+ * @param {string} value
+ * @returns {boolean}
+ */
+export function isImsGroup(value) {
+  return IMS_GROUP_PATTERN.test(value.trim());
+}
+
+/**
+ * @param {string} value
+ * @returns {boolean} true for an email, wildcard-domain email or IMS group
+ */
+export function isValidUser(value) {
+  const trimmed = value.trim();
+  return EMAIL_PATTERN.test(trimmed) || isImsGroup(trimmed);
 }
 
 /**
