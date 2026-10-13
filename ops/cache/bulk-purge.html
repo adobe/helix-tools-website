@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bulk Cache Purge | AEM Tools</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+  <script nonce="aem" src="/ops/cache/bulk-purge.js" type="module"></script>
+  <link rel="stylesheet" href="/ops/cache/cache.css" />
+  <link rel="stylesheet" href="/ops/cache/bulk-purge.css" />
+</head>
+<body class="cache bulk-purge">
+  <header></header>
+  <main>
+    <div>
+      <div>
+        <h1>Bulk Cache Purge</h1>
+        <p>Resolve a list of sites and purge surrogate keys, paths, or config caches across all of them.</p>
+        <p><a href="/ops/cache/debugger.html">&larr; Cache Debugger</a></p>
+
+        <div class="field">
+          <label for="hosts-input">Hosts</label>
+          <textarea id="hosts-input" placeholder="main--site--org.aem.live, one per line" rows="6"></textarea>
+          <p class="hint">
+            Only *.aem.live / *.aem.page hosts are supported. The .page and .live hosts of the
+            same site are treated as one site; both live and preview are purged.
+          </p>
+        </div>
+
+        <fieldset class="purge-type">
+          <legend>Purge type</legend>
+          <label><input type="radio" name="mode" value="keys" checked /> Surrogate keys</label>
+          <label><input type="radio" name="mode" value="paths" /> Paths</label>
+          <label><input type="radio" name="mode" value="config" /> Config</label>
+        </fieldset>
+
+        <div id="keys-panel" class="mode-panel">
+          <fieldset class="presets">
+            <legend>Surrogate key presets</legend>
+            <div id="presets-list"></div>
+          </fieldset>
+          <div class="field">
+            <label for="custom-keys-input">Custom keys</label>
+            <textarea id="custom-keys-input" placeholder="comma and/or space delimited list"></textarea>
+            <p class="hint">
+              Placeholders <code>{cbid}</code>, <code>{ref}</code>, <code>{site}</code>,
+              <code>{org}</code> are supported and added as-is (write <code>p_{cbid}_&hellip;</code>
+              for preview).
+            </p>
+          </div>
+        </div>
+
+        <div id="paths-panel" class="mode-panel" hidden>
+          <div class="field">
+            <label for="paths-input">Paths</label>
+            <textarea id="paths-input" placeholder="comma and/or space delimited list, must start with /"></textarea>
+          </div>
+        </div>
+
+        <div id="config-panel" class="mode-panel" hidden>
+          <fieldset>
+            <legend>Config options</legend>
+            <label><input type="checkbox" id="purge-org" /> Org-level config</label>
+            <label><input type="checkbox" id="purge-head" /> Include head key</label>
+          </fieldset>
+        </div>
+
+        <div class="field">
+          <label for="delay-input">Delay between sites (seconds)</label>
+          <input type="number" id="delay-input" min="0" step="0.5" value="2" />
+        </div>
+
+        <div class="form">
+          <button class="button" id="resolve-button">Resolve</button>
+          <button class="button" id="purge-button" disabled>Purge</button>
+          <button class="button" id="stop-button" hidden>Stop</button>
+          <button class="button" id="download-button" disabled>Download log</button>
+        </div>
+
+        <div id="input-messages"></div>
+        <p id="progress" aria-live="polite"></p>
+
+        <div class="results-wrapper">
+          <table id="results-table">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="select-all" checked aria-label="Select all sites" /></th>
+                <th>Site</th>
+                <th>ContentBus ID</th>
+                <th>CDN</th>
+                <th>To purge</th>
+                <th>Status</th>
+                <th>Log</th>
+              </tr>
+            </thead>
+            <tbody id="results-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+  <footer></footer>
+</body>
+</html>
