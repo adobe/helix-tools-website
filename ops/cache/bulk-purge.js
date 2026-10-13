@@ -1,5 +1,6 @@
 import { sampleRUM } from '../../scripts/aem.js';
 import { registerToolReady } from '../../scripts/scripts.js';
+import { createModal } from '../../blocks/modal/modal.js';
 import escapeHtml from '../../utils/html.js';
 import {
   parseHostList,
@@ -105,40 +106,15 @@ const purgeConfig = (liveHost, purgeOrg, purgeHead) => fetch(`${API}/purge-confi
   headers: authHeaders(),
 });
 
-const showModal = (title, content) => {
-  const modal = document.createElement('div');
-  modal.classList.add('modal-container');
-  modal.innerHTML = /* html */`
-    <div class="modal-overlay"></div>
-    <div class="modal">
-      <div class="modal-header">
-        <h3>${escapeHtml(title)}</h3>
-        <button class="modal-close" type="button">\u2715</button>
-      </div>
-      <div class="modal-content">
-          ${content}
-      </div>
-    </div>
-  `;
-  const close = () => modal.remove();
-  modal.querySelector('.modal-close').addEventListener('click', close);
-  modal.querySelector('.modal-overlay').addEventListener('click', close);
-  const onKeydown = (e) => {
-    if (e.key === 'Escape') {
-      close();
-      document.removeEventListener('keydown', onKeydown);
-    }
-  };
-  document.addEventListener('keydown', onKeydown);
-  document.body.appendChild(modal);
-  return modal;
-};
-
-const showLogModal = (liveHost, log) => {
+const showLogModal = async (liveHost, log) => {
+  const heading = document.createElement('h2');
+  heading.id = `purge-log-title-${crypto.randomUUID()}`;
+  heading.textContent = `Purge Log: ${liveHost}`;
   const content = document.createElement('pre');
   content.textContent = log;
-  const modal = showModal(`Purge Log: ${liveHost}`, '');
-  modal.querySelector('.modal-content').appendChild(content);
+  const { block, showModal } = await createModal([heading, content]);
+  block.querySelector('dialog').setAttribute('aria-labelledby', heading.id);
+  showModal();
 };
 
 /**
@@ -462,7 +438,17 @@ const addViewLogButton = (row) => {
   btn.className = 'button';
   btn.type = 'button';
   btn.textContent = 'View';
-  btn.addEventListener('click', () => showLogModal(row.liveHost, row.log ?? ''));
+  btn.addEventListener('click', async () => {
+    try {
+      await showLogModal(row.liveHost, row.log ?? '');
+    } catch (e) {
+      const p = document.createElement('p');
+      p.className = 'error';
+      p.setAttribute('role', 'alert');
+      p.textContent = `Failed to open purge log: ${e.message || 'Failed to load the dialog.'}`;
+      inputMessages.appendChild(p);
+    }
+  });
   row.el.logCell.appendChild(btn);
 };
 

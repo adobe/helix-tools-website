@@ -164,51 +164,6 @@ html[data-theme="dark"] .cache .tile {
   overflow: scroll;
 }
 
-.cache .modal-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: #000000a1;
-}
-
-.cache .modal-container {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-}
-
-.cache .modal {
-  position: absolute;
-  background-color: var(--color-background);
-  color: var(--color-text);
-  z-index: 9999;
-  left: 50vw;
-  transform: translateX(-50%);
-  top: 10vh;
-  width: min(850px, 90vw);
-  border-radius: var(--rounding-l);
-}
-
-.cache .modal-header {
-  display: flex;
-  justify-content: space-between;
-  margin: 20px;
-}
-
-.cache .modal-header h3 {
-  margin: 0 0 0 20px;
-  font-size: 1.5em;
-}
-
-.cache button.modal-close {
-  padding: 5px;
-  cursor: pointer;
-}
-
-.cache .modal-content {
-  width: 90%;
-  margin: auto auto 60px;
-}
-
 .cache .modal-content .code-panel {
   position: relative;
 }
