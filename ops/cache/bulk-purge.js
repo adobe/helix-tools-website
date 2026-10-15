@@ -12,7 +12,7 @@ import {
   summarizePurgeLog,
 } from './bulk-purge-utils.js';
 
-const API = 'https://helix-cache-debug-ci.adobeaem.workers.dev';
+const API = 'https://helix-cache-debug.adobeaem.workers.dev';
 const RESOLVE_CONCURRENCY = 4;
 
 /** @type {string} */
