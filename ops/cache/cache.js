@@ -3,7 +3,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { createModal } from '../../blocks/modal/modal.js';
 import escapeHtml from '../../utils/html.js';
 
-const API = 'https://helix-cache-debug.adobeaem.workers.dev';
+const API = 'https://helix-cache-debug-ci.adobeaem.workers.dev';
 const input = document.querySelector('input#url-input');
 /** @type {HTMLButtonElement} */
 const button = document.querySelector('button#search-button');
