@@ -14,77 +14,78 @@ import {
 describe('bulk-purge-utils.js', () => {
   describe('parseHostList', () => {
     it('parses hosts separated by mixed whitespace and commas', () => {
-      const result = parseHostList('main--site1--org.aem.live,\nmain--site2--org.aem.page  main--site3--org.aem.live');
+      const result = parseHostList('main--site1--org.aem.live,\nmain--site2--org.aem.page  www.example.com');
       assert.equal(result.sites.length, 3);
-      assert.deepEqual(result.sites.map((s) => s.liveHost), [
+      assert.deepEqual(result.sites.map((s) => s.host), [
         'main--site1--org.aem.live',
-        'main--site2--org.aem.live',
-        'main--site3--org.aem.live',
+        'main--site2--org.aem.page',
+        'www.example.com',
       ]);
       assert.deepEqual(result.rejected, []);
       assert.deepEqual(result.duplicates, []);
+    });
+
+    it('accepts a plain non-AEM hostname as-is', () => {
+      const result = parseHostList('www.example.com');
+      assert.equal(result.sites.length, 1);
+      assert.deepEqual(result.sites[0], { input: 'www.example.com', host: 'www.example.com' });
+      assert.deepEqual(result.rejected, []);
+    });
+
+    it('accepts an AEM host as-is, with no liveHost field', () => {
+      const result = parseHostList('main--site--org.aem.page');
+      assert.equal(result.sites.length, 1);
+      assert.deepEqual(result.sites[0], { input: 'main--site--org.aem.page', host: 'main--site--org.aem.page' });
+      assert.equal('liveHost' in result.sites[0], false);
     });
 
     it('extracts hostname from a full URL with a path', () => {
       const result = parseHostList('https://main--site--org.aem.page/some/path?x=1');
       assert.equal(result.sites.length, 1);
       assert.equal(result.sites[0].host, 'main--site--org.aem.page');
-      assert.equal(result.sites[0].liveHost, 'main--site--org.aem.live');
     });
 
-    it('treats the .page and .live hosts of the same site as a duplicate', () => {
-      const result = parseHostList('main--site--org.aem.page main--site--org.aem.live');
+    it('strips the path from a bare host/path token', () => {
+      const result = parseHostList('www.example.com/some/path');
       assert.equal(result.sites.length, 1);
-      assert.equal(result.sites[0].input, 'main--site--org.aem.page');
-      assert.equal(result.duplicates.length, 1);
-      assert.deepEqual(result.duplicates[0], {
-        input: 'main--site--org.aem.live',
-        liveHost: 'main--site--org.aem.live',
-      });
-    });
-
-    it('accepts hlx and -fastly/-cloudflare domain variants', () => {
-      const result = parseHostList([
-        'main--site--org.hlx.live',
-        'main--site--org.aem-fastly.page',
-        'main--site--org.hlx-cloudflare.live',
-      ].join(' '));
-      // all resolve to the same liveHost, so only the first is kept
-      assert.equal(result.sites.length, 1);
-      assert.equal(result.duplicates.length, 2);
+      assert.equal(result.sites[0].host, 'www.example.com');
     });
 
     it('lowercases uppercase hostnames', () => {
       const result = parseHostList('MAIN--SITE--ORG.AEM.LIVE');
       assert.equal(result.sites.length, 1);
-      assert.equal(result.sites[0].liveHost, 'main--site--org.aem.live');
-      assert.equal(result.sites[0].ref, 'main');
-      assert.equal(result.sites[0].site, 'site');
-      assert.equal(result.sites[0].org, 'org');
+      assert.equal(result.sites[0].host, 'main--site--org.aem.live');
     });
 
-    it('parses ref/site/org segments containing single hyphens', () => {
-      const result = parseHostList('main--my-site--my-org.aem.live');
+    it('dedupes repeated occurrences of the same host', () => {
+      const result = parseHostList('www.example.com www.example.com');
       assert.equal(result.sites.length, 1);
-      assert.deepEqual(
-        { ref: result.sites[0].ref, site: result.sites[0].site, org: result.sites[0].org },
-        { ref: 'main', site: 'my-site', org: 'my-org' },
-      );
+      assert.equal(result.sites[0].input, 'www.example.com');
+      assert.equal(result.duplicates.length, 1);
+      assert.deepEqual(result.duplicates[0], {
+        input: 'www.example.com',
+        host: 'www.example.com',
+      });
     });
 
-    it('rejects a non-AEM custom domain', () => {
-      const result = parseHostList('www.example.com');
-      assert.deepEqual(result.sites, []);
-      assert.equal(result.rejected.length, 1);
-      assert.equal(result.rejected[0].input, 'www.example.com');
-      assert.match(result.rejected[0].reason, /aem\.live|aem\.page/);
+    it('does not dedupe the .page and .live hosts of the same site anymore', () => {
+      const result = parseHostList('main--site--org.aem.page main--site--org.aem.live');
+      assert.equal(result.sites.length, 2);
+      assert.deepEqual(result.duplicates, []);
     });
 
     it('rejects a garbage URL as invalid', () => {
       const result = parseHostList('http://');
       assert.deepEqual(result.sites, []);
       assert.equal(result.rejected.length, 1);
-      assert.equal(result.rejected[0].input, 'http://');
+      assert.deepEqual(result.rejected[0], { input: 'http://', reason: 'invalid URL' });
+    });
+
+    it('rejects a token that normalizes to an empty host', () => {
+      const result = parseHostList('/foo');
+      assert.deepEqual(result.sites, []);
+      assert.equal(result.rejected.length, 1);
+      assert.deepEqual(result.rejected[0], { input: '/foo', reason: 'invalid host' });
     });
 
     it('returns empty result for empty input', () => {

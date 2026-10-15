@@ -27,10 +27,10 @@
 
         <div class="field">
           <label for="hosts-input">Hosts</label>
-          <textarea id="hosts-input" placeholder="main--site--org.aem.live, one per line" rows="6"></textarea>
+          <textarea id="hosts-input" placeholder="www.example.com or main--site--org.aem.live, one per line" rows="6"></textarea>
           <p class="hint">
-            Only *.aem.live / *.aem.page hosts are supported. The .page and .live hosts of the
-            same site are treated as one site; both live and preview are purged.
+            Any host is supported; production domains are resolved to their *.aem.live
+            host via CNAME lookup.
           </p>
         </div>
 

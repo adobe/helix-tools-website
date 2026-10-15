@@ -1,27 +1,23 @@
 /**
- * Pure helper functions for the bulk cache purge ops page. Live and preview
- * hosts of the same site are always treated as a single site identified by
- * its `ref--site--org` combination.
+ * Pure helper functions for the bulk cache purge ops page. Hosts are only
+ * normalized and deduplicated client-side; resolving a host to its
+ * `ref`/`site`/`org`/`liveHost` is done server-side by the `/resolve` API,
+ * which accepts any hostname and follows CNAMEs as needed.
  */
 
-const HOST_PATTERN = '^([a-z0-9-]+?)--([a-z0-9-]+?)--([a-z0-9-]+)\\.'
-  + '(?:aem|hlx)(?:-fastly|-cloudflare)?\\.(?:live|page)$';
-const HOST_RE = new RegExp(HOST_PATTERN);
-
 /**
- * Parses a block of pasted text into a list of unique, resolved AEM sites.
- * Tokens are split on whitespace/commas, normalized to a bare hostname, and
- * matched against the `ref--site--org.(aem|hlx)[-fastly|-cloudflare].(live|page)`
- * pattern. The `.aem.page` and `.aem.live` hosts of the same site resolve to
- * the same `liveHost` and are deduplicated (first occurrence wins).
+ * Parses a block of pasted text into a list of unique, normalized hosts.
+ * Tokens are split on whitespace/commas and normalized to a bare, lowercase
+ * hostname (extracting the hostname from URLs, stripping paths from bare
+ * `host/path` tokens). Hosts are deduplicated (first occurrence wins); no
+ * AEM-specific validation or ref/site/org/liveHost derivation happens here,
+ * that is left to the server's `/resolve` endpoint.
  * @param {string} text raw pasted text containing hostnames and/or URLs
  * @returns {{
- *   sites: Array<{
- *     input: string, host: string, ref: string, site: string, org: string, liveHost: string
- *   }>,
+ *   sites: Array<{input: string, host: string}>,
  *   rejected: Array<{input: string, reason: string}>,
- *   duplicates: Array<{input: string, liveHost: string}>,
- * }} parsed sites, rejected tokens with reasons, and duplicate tokens
+ *   duplicates: Array<{input: string, host: string}>,
+ * }} parsed hosts, rejected tokens with reasons, and duplicate tokens
  */
 export function parseHostList(text) {
   const tokens = (text || '').split(/[\s,]+/).filter((t) => t.length);
@@ -36,7 +32,7 @@ export function parseHostList(text) {
       try {
         host = new URL(token).hostname;
       } catch {
-        rejected.push({ input: token, reason: 'only *.aem.live / *.aem.page hosts are supported' });
+        rejected.push({ input: token, reason: 'invalid URL' });
         return;
       }
     } else {
@@ -45,23 +41,17 @@ export function parseHostList(text) {
     }
     host = host.toLowerCase();
 
-    const match = host.match(HOST_RE);
-    if (!match) {
-      rejected.push({ input: token, reason: 'only *.aem.live / *.aem.page hosts are supported' });
+    if (!host) {
+      rejected.push({ input: token, reason: 'invalid host' });
       return;
     }
 
-    const [, ref, site, org] = match;
-    const liveHost = `${ref}--${site}--${org}.aem.live`;
-
-    if (seen.has(liveHost)) {
-      duplicates.push({ input: token, liveHost });
+    if (seen.has(host)) {
+      duplicates.push({ input: token, host });
       return;
     }
-    seen.add(liveHost);
-    sites.push({
-      input: token, host, ref, site, org, liveHost,
-    });
+    seen.add(host);
+    sites.push({ input: token, host });
   });
 
   return { sites, rejected, duplicates };

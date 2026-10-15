@@ -191,7 +191,7 @@ const computeToPurge = (row) => {
 };
 
 const recomputeToPurge = (row) => {
-  if (row.resolveError) {
+  if (row.resolveError || row.status === 'resolving') {
     row.el.toPurgeCell.innerHTML = '';
     return;
   }
@@ -245,10 +245,10 @@ const updatePurgeButtonState = () => {
 const createRow = (site) => {
   const tr = document.createElement('tr');
   tr.innerHTML = /* html */`
-    <td><input type="checkbox" class="row-select" disabled aria-label="Select ${escapeHtml(site.liveHost)}" /></td>
+    <td><input type="checkbox" class="row-select" disabled aria-label="Select ${escapeHtml(site.input)}" /></td>
     <td>
       <div>${escapeHtml(site.input)}</div>
-      <div class="live-host">${escapeHtml(site.liveHost)}</div>
+      <div class="live-host">resolving…</div>
     </td>
     <td class="cbid-cell"></td>
     <td class="cdn-cell"></td>
@@ -259,6 +259,10 @@ const createRow = (site) => {
   resultsBody.appendChild(tr);
   const row = {
     ...site,
+    liveHost: undefined,
+    ref: undefined,
+    site: undefined,
+    org: undefined,
     contentBusId: undefined,
     cdn: undefined,
     resolveError: undefined,
@@ -267,6 +271,7 @@ const createRow = (site) => {
     el: {
       tr,
       checkbox: tr.querySelector('.row-select'),
+      liveHostCell: tr.querySelector('.live-host'),
       cbidCell: tr.querySelector('.cbid-cell'),
       cdnCell: tr.querySelector('.cdn-cell'),
       toPurgeCell: tr.querySelector('.to-purge-cell'),
@@ -287,24 +292,33 @@ const resolveRow = async (row) => {
     const resp = await resolveSite(row.host);
     if (handleAuthError(resp)) {
       row.resolveError = 'Invalid authorization, please reload the page';
+      row.el.liveHostCell.textContent = '';
       setStatus(row, 'error', row.resolveError);
       return;
     }
     if (!resp.ok) {
       row.resolveError = await errorMessage(resp);
+      row.el.liveHostCell.textContent = '';
       setStatus(row, 'error', row.resolveError);
       return;
     }
     const data = await resp.json();
+    row.liveHost = data.liveHost;
+    row.ref = data.ref;
+    row.site = data.site;
+    row.org = data.org;
     row.contentBusId = data.contentBusId;
     row.cdn = data.cdn;
+    row.el.liveHostCell.textContent = data.liveHost;
     row.el.cbidCell.textContent = data.contentBusId ?? '';
     row.el.cdnCell.textContent = data.cdn ? `${data.cdn.type} (${data.cdn.host})` : '';
+    row.el.checkbox.setAttribute('aria-label', `Select ${data.liveHost}`);
     row.el.checkbox.disabled = false;
     row.el.checkbox.checked = true;
     setStatus(row, 'ready');
   } catch (e) {
     row.resolveError = e.message;
+    row.el.liveHostCell.textContent = '';
     setStatus(row, 'error', row.resolveError);
   } finally {
     recomputeToPurge(row);
