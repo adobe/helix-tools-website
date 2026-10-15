@@ -169,8 +169,14 @@ function createAdmin(defaults = {}) {
         return request(init);
       },
       remove: (path, opts) => request({ method: 'DELETE', url: join(path), params: opts?.params }),
-      // H6 bulk jobs need forceAsync to run past the small synchronous limit.
-      bulk: (payload, opts) => all.update('/*', JSON.stringify({ ...payload, forceAsync: true }), opts),
+      // H6 rejects `/*`: bulk must POST to the operation root. forceAsync lifts the sync limit.
+      bulk: (payload, opts) => request({
+        method: 'POST',
+        url: `${baseUrl}/`,
+        body: JSON.stringify({ ...payload, forceAsync: true }),
+        contentType: opts?.contentType ?? 'application/json',
+        params: opts?.params,
+      }),
     };
     return { ...Object.fromEntries(caps.map((c) => [c, all[c]])), url: baseUrl };
   }
