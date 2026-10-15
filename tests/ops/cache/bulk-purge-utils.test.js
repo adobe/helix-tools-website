@@ -106,7 +106,7 @@ describe('bulk-purge-utils.js', () => {
     it('defines the expected preset ids', () => {
       assert.deepEqual(
         KEY_PRESETS.map((p) => p.id),
-        ['metadata', 'content', 'media', 'head', '404', 'code', 'site'],
+        ['metadata', 'content', 'head', '404', 'code', 'site'],
       );
     });
   });
@@ -125,7 +125,7 @@ describe('bulk-purge-utils.js', () => {
     });
 
     it('throws when {cbid} is used but contentBusId is missing', () => {
-      assert.throws(() => expandTemplate('{cbid}_media', { ref: 'main', site: 's', org: 'o' }), /contentBusId/);
+      assert.throws(() => expandTemplate('{cbid}_metadata', { ref: 'main', site: 's', org: 'o' }), /contentBusId/);
     });
 
     it('does not throw when {cbid} is absent and contentBusId is missing', () => {
@@ -150,11 +150,6 @@ describe('bulk-purge-utils.js', () => {
     it('expands the content preset with its preview variant', () => {
       const keys = buildKeys({ presetIds: ['content'] }, siteInfo);
       assert.deepEqual(keys, ['abc123', 'p_abc123']);
-    });
-
-    it('expands the media preset with no preview variant', () => {
-      const keys = buildKeys({ presetIds: ['media'] }, siteInfo);
-      assert.deepEqual(keys, ['abc123_media']);
     });
 
     it('expands the head preset with no preview variant', () => {

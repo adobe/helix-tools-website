@@ -60,8 +60,8 @@ export function parseHostList(text) {
 /**
  * Surrogate key presets available for bulk purging. Keys are templates
  * resolved via {@link expandTemplate}. When `preview` is true, both the live
- * form `{key}` and preview form `p_{key}` are purged; media keys have no
- * preview form.
+ * form `{key}` and preview form `p_{key}` are purged; otherwise only the
+ * live form is purged.
  * @type {ReadonlyArray<{id: string, label: string, template: string, preview: boolean}>}
  */
 export const KEY_PRESETS = Object.freeze([
@@ -70,9 +70,6 @@ export const KEY_PRESETS = Object.freeze([
   },
   {
     id: 'content', label: 'All content', template: '{cbid}', preview: true,
-  },
-  {
-    id: 'media', label: 'All media', template: '{cbid}_media', preview: false,
   },
   {
     id: 'head', label: 'Head', template: '{ref}--{site}--{org}_head', preview: false,
