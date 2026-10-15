@@ -2,7 +2,8 @@
  * Pure helper functions for the bulk cache purge ops page. Hosts are only
  * normalized and deduplicated client-side; resolving a host to its
  * `ref`/`site`/`org`/`liveHost` is done server-side by the `/resolve` API,
- * which accepts any hostname and follows CNAMEs as needed.
+ * which accepts any hostname and, for non-AEM hosts, uses probe requests
+ * to determine the underlying site.
  */
 
 /**
@@ -59,9 +60,10 @@ export function parseHostList(text) {
 
 /**
  * Surrogate key presets available for bulk purging. Keys are templates
- * resolved via {@link expandTemplate}. When `preview` is true, both the live
- * form `{key}` and preview form `p_{key}` are purged; otherwise only the
- * live form is purged.
+ * resolved via {@link expandTemplate}. When `preview` is true, an additional
+ * `p_`-prefixed surrogate key is generated alongside the unprefixed key;
+ * when `false`, no additional preview-prefixed key is generated (the
+ * unprefixed key can still cover resources in both environments).
  * @type {ReadonlyArray<{id: string, label: string, template: string, preview: boolean}>}
  */
 export const KEY_PRESETS = Object.freeze([

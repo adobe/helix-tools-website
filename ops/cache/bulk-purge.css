@@ -98,6 +98,15 @@
   color: light-dark(red, #ff6b6b);
 }
 
+.bulk-purge #results-table .resolve-error {
+  max-width: 240px;
+  overflow-wrap: anywhere;
+}
+
+.bulk-purge #results-table .resolve-error:empty {
+  display: none;
+}
+
 .bulk-purge .modal-content pre {
   max-height: 60vh;
   overflow: auto;

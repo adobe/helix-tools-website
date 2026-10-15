@@ -48,7 +48,8 @@ const progress = document.querySelector('#progress');
 const resultsBody = document.querySelector('#results-body');
 const selectAllInput = document.querySelector('#select-all');
 
-/** @type {Array<object>} row state, one per resolved site */
+/** @type {Array<object>} row state, one per input host (including rows pending or failed
+ * resolution) */
 let rows = [];
 let resolving = false;
 let running = false;
@@ -176,8 +177,7 @@ const computeToPurge = (row) => {
       return { html: keys.map((k) => `<span class="pill">${escapeHtml(k)}</span>`).join('') };
     }
     if (mode === 'paths') {
-      const { paths, invalid } = parsePaths(pathsInput.value);
-      renderInvalidPaths(invalid);
+      const { paths } = parsePaths(pathsInput.value);
       if (!paths.length) return { html: '' };
       return { html: paths.map((p) => `<span class="pill">${escapeHtml(p)}</span>`).join('') };
     }
@@ -204,33 +204,30 @@ const recomputeToPurge = (row) => {
 };
 
 const recomputeAllToPurge = () => {
-  if (getMode() === 'paths') renderInvalidPaths(parsePaths(pathsInput.value).invalid);
+  renderInvalidPaths(getMode() === 'paths' ? parsePaths(pathsInput.value).invalid : []);
   rows.forEach(recomputeToPurge);
 };
 
-const STATUS_LABELS = {
-  resolving: { text: 'resolving', cls: '' },
-  ready: { text: 'ready', cls: 'good' },
-  error: { text: 'error', cls: 'bad' },
-  purging: { text: 'purging', cls: 'warn' },
-  ok: { text: 'ok', cls: 'good' },
-  partial: { text: 'partial', cls: 'warn' },
-  failed: { text: 'failed', cls: 'bad' },
-  skipped: { text: 'skipped', cls: '' },
+const STATUS_CLASSES = {
+  resolving: '',
+  ready: 'good',
+  error: 'bad',
+  purging: 'warn',
+  ok: 'good',
+  partial: 'warn',
+  failed: 'bad',
+  skipped: '',
 };
 
 const setStatus = (row, status, title) => {
   row.status = status;
-  const { text, cls } = STATUS_LABELS[status] ?? { text: status, cls: '' };
-  const pill = row.el.statusCell.querySelector('.pill') ?? (() => {
-    const span = document.createElement('span');
-    row.el.statusCell.appendChild(span);
-    return span;
-  })();
+  const cls = STATUS_CLASSES[status] ?? '';
+  const { pill, errorEl } = row.el;
   pill.className = `pill${cls ? ` ${cls}` : ''}`;
-  pill.textContent = text;
+  pill.textContent = status;
   if (title) pill.title = title;
   else pill.removeAttribute('title');
+  errorEl.textContent = status === 'error' ? (row.resolveError ?? '') : '';
 };
 
 /**
@@ -253,7 +250,7 @@ const createRow = (site) => {
     <td class="cbid-cell"></td>
     <td class="cdn-cell"></td>
     <td class="to-purge-cell"></td>
-    <td class="status-cell"></td>
+    <td class="status-cell"><span class="pill"></span><div class="error resolve-error"></div></td>
     <td class="log-cell"></td>
   `;
   resultsBody.appendChild(tr);
@@ -269,13 +266,14 @@ const createRow = (site) => {
     status: 'resolving',
     log: undefined,
     el: {
-      tr,
       checkbox: tr.querySelector('.row-select'),
       liveHostCell: tr.querySelector('.live-host'),
       cbidCell: tr.querySelector('.cbid-cell'),
       cdnCell: tr.querySelector('.cdn-cell'),
       toPurgeCell: tr.querySelector('.to-purge-cell'),
       statusCell: tr.querySelector('.status-cell'),
+      pill: tr.querySelector('.status-cell .pill'),
+      errorEl: tr.querySelector('.resolve-error'),
       logCell: tr.querySelector('.log-cell'),
     },
   };
@@ -394,7 +392,7 @@ const onResolveClick = async () => {
 };
 
 /**
- * Validates the current mode's options against resolvable rows.
+ * Validates the current mode's key/path options.
  * @returns {string|null} an error message, or null if valid
  */
 const validateSelection = () => {
@@ -438,7 +436,7 @@ const setFormDisabled = (disabled) => {
   document.querySelectorAll('input[name="mode"]').forEach((el) => { el.disabled = disabled; });
   presetsList.querySelectorAll('input[type="checkbox"]').forEach((el) => { el.disabled = disabled; });
   rows.forEach((row) => { row.el.checkbox.disabled = disabled || !!row.resolveError; });
-  purgeButton.disabled = disabled || resolving || running;
+  updatePurgeButtonState();
 };
 
 const sleep = (ms) => new Promise((resolve) => {
