@@ -49,8 +49,14 @@ describe('bot-info:wizard.js', () => {
       );
     });
 
-    it('builds a markup source for AEM and BYOM', () => {
-      assert.equal(buildContentSource('https://x.adobeaemcloud.com', 'aem').type, 'markup');
+    it('builds a source connector for built-in AEM', () => {
+      assert.deepEqual(
+        buildContentSource('https://api.aem.live/org/sites/site/source', 'aem'),
+        { type: 'source', url: 'https://api.aem.live/org/sites/site/source' },
+      );
+    });
+
+    it('builds a markup source for BYOM', () => {
       assert.equal(buildContentSource('https://x.example.com', 'byom').type, 'markup');
     });
 
