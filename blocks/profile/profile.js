@@ -202,8 +202,8 @@ function updateButtons(dialog, orgs, focusedOrg) {
       form.action = '#';
       form.innerHTML = `
         <p>Add a new project:</p>
-        <input type="text" id="profile-add-org" placeholder="org" mandatory="true" value="${orgs[0] || ''}">
-        <input type="text" id="profile-add-site" placeholder="site" mandatory="true">
+        <input type="text" id="profile-add-org" placeholder="org" required value="${orgs[0] || ''}">
+        <input type="text" id="profile-add-site" placeholder="site" required>
         <div class="button-wrapper">
           <button class="button " type="submit" id="profile-add-save">Save</button>
           <button class="button outline" type="reset" id="profile-add-cancel">Cancel</button>
@@ -226,17 +226,18 @@ function updateButtons(dialog, orgs, focusedOrg) {
       }
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        form.querySelectorAll('button, input').forEach((control) => {
-          control.disabled = true;
-        });
-        const org = form.querySelector('#profile-add-org').value;
-        const site = form.querySelector('#profile-add-site').value;
+        const org = form.querySelector('#profile-add-org').value.trim();
+        const site = form.querySelector('#profile-add-site').value.trim();
         const opsMode = isOpsMode(target);
 
         if (!org || !site) {
           alert('Please provide an org and site.');
           return;
         }
+
+        form.querySelectorAll('button, input').forEach((control) => {
+          control.disabled = true;
+        });
 
         if (await addSite(org, site, opsMode)) {
           setTimeout(async () => {
@@ -250,7 +251,7 @@ function updateButtons(dialog, orgs, focusedOrg) {
         } else {
           resetForm();
         }
-      }, { once: true });
+      });
       form.addEventListener('reset', resetForm);
     });
     wrapper.append(addButton);
