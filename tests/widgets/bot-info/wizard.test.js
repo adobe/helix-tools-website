@@ -49,10 +49,21 @@ describe('bot-info:wizard.js', () => {
       );
     });
 
-    it('builds a source connector for built-in AEM', () => {
+    it('builds a sourcebus connector without a URL for built-in AEM', () => {
       assert.deepEqual(
         buildContentSource('https://api.aem.live/org/sites/site/source', 'aem'),
-        { type: 'source', url: 'https://api.aem.live/org/sites/site/source' },
+        { type: 'sourcebus' },
+      );
+    });
+
+    it('omits the URL and suffix for built-in AEM even when supplied', () => {
+      assert.deepEqual(
+        buildContentSource('https://api.aem.live/org/sites/site/source', 'aem', '.html'),
+        { type: 'sourcebus' },
+      );
+      assert.deepEqual(
+        buildContentSource('', 'aem'),
+        { type: 'sourcebus' },
       );
     });
 

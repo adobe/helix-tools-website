@@ -217,7 +217,10 @@ function renderForm(widget, config, {
   };
 
   // prefill from the existing content source, opening "advanced" for non-DA
-  const loadedUrl = config.siteConfig.content?.source?.url || url || '';
+  const loadedSource = config.siteConfig.content?.source;
+  const loadedUrl = loadedSource?.type === 'sourcebus'
+    ? aemContentUrl(org, site)
+    : loadedSource?.url || url || '';
   const loadedKind = detectContentSourceKind(loadedUrl);
   if (loadedUrl && loadedKind !== 'da') {
     advancedCheck.checked = true;
