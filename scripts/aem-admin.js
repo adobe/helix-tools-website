@@ -187,6 +187,7 @@ function createAdmin(defaults = {}) {
   function code(coords) { return bindOperation(opBase('code', coords), ['get', 'update', 'remove']); }
   function log(coords) { return bindOperation(opBase('log', coords), ['get', 'update']); }
   function index(coords) { return bindOperation(opBase('index', coords), ['get', 'update', 'remove']); }
+  function cache(coords) { return bindOperation(opBase('cache', coords), ['update']); }
   function sitemap(coords) { return bindOperation(opBase('sitemap', coords), ['update']); }
   // H6 serves jobs under the plural `jobs` segment: /{org}/sites/{site}/jobs
   function job(coords) { return bindOperation(opBase('jobs', coords), ['get', 'remove']); }
@@ -254,6 +255,7 @@ function createAdmin(defaults = {}) {
     code,
     log,
     index,
+    cache,
     sitemap,
     job,
     psi,

@@ -212,6 +212,14 @@ describe('aem-admin.js — H6 URL contract', () => {
     });
   });
 
+  describe('admin.cache(coords) URLs', () => {
+    it('.update("/en/index") POSTs to /{org}/sites/{site}/cache/en/index', async () => {
+      await admin.cache({ org: 'adobe', site: 'x' }).update('/en/index');
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/cache/en/index');
+      assert.equal(calls[0].init.method, 'POST');
+    });
+  });
+
   describe('admin.sitemap(coords) URLs', () => {
     it('.update("/sitemap.xml") hits /{org}/sites/{site}/sitemap/sitemap.xml', async () => {
       await admin.sitemap({ org: 'adobe', site: 'x' }).update('/sitemap.xml');
