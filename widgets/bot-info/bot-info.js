@@ -200,6 +200,8 @@ function renderForm(widget, config, {
   // AEM sources use a fixed, non-editable URL derived from the org/site
   const updateUrlField = () => {
     const isAem = typeSelect.value === 'aem';
+    setHidden(urlInput.closest('.bot-info-field'), isAem);
+    urlInput.required = advancedCheck.checked && !isAem;
     urlInput.readOnly = isAem;
     if (isAem) urlInput.value = aemContentUrl(org, site);
     else if (urlInput.value === aemContentUrl(org, site)) urlInput.value = '';
@@ -213,7 +215,7 @@ function renderForm(widget, config, {
   const setAdvanced = (on) => {
     setHidden(advanced, !on);
     setHidden(daDefault, on);
-    urlInput.required = on;
+    updateUrlField();
   };
 
   // prefill from the existing content source, opening "advanced" for non-DA
