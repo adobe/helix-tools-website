@@ -734,7 +734,7 @@
 }
 
 .site-modal .form-field {
-  margin-bottom: var(--spacing-m);
+  margin: 0 0 var(--spacing-m);
 }
 
 .site-modal .form-field:last-child {
@@ -935,6 +935,7 @@
 
 .site-modal .form-field input[type="checkbox"] {
   width: auto;
+  margin: 0;
   padding: 0;
 }
 

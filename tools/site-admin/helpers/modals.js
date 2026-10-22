@@ -49,6 +49,21 @@ const setupModal = async (className, headerHtml) => {
   return { dialog, container, showModal };
 };
 
+const setupContentSourceFields = (container, contentSourceType) => {
+  const checkbox = container.querySelector('.content-sourcebus');
+  const urlField = container.querySelector('.content-url-field');
+  const input = urlField.querySelector('input');
+  const update = () => {
+    urlField.setAttribute('aria-hidden', String(checkbox.checked));
+    input.required = !checkbox.checked;
+    input.disabled = checkbox.checked;
+  };
+  checkbox.checked = contentSourceType === 'sourcebus';
+  checkbox.addEventListener('change', update);
+  update();
+  return checkbox;
+};
+
 export const saveSiteAndRefresh = async (
   orgValue,
   siteName,
@@ -59,9 +74,16 @@ export const saveSiteAndRefresh = async (
   logFn = null,
   action = 'update',
   byogit = null,
+  contentSourceType = '',
 ) => {
   const admin = await getAdminClient();
-  const siteConfig = buildSiteConfig(existingConfig, codeSrc, contentSrc, byogit);
+  const siteConfig = buildSiteConfig(
+    existingConfig,
+    codeSrc,
+    contentSrc,
+    byogit,
+    contentSourceType,
+  );
   const saveResult = await executeAdminRequest(
     () => admin.config({ org: orgValue, site: siteName }).update(JSON.stringify(siteConfig)),
     { org: orgValue, site: siteName },
@@ -182,6 +204,7 @@ export const openEditSourceModal = async (
   contentUrl,
   logFn = null,
   byogitDefaults = null,
+  contentSourceType = '',
 ) => {
   const admin = await getAdminClient();
   const isByogit = !!byogitDefaults;
@@ -218,9 +241,16 @@ export const openEditSourceModal = async (
                  ${isByogit ? 'required ' : ''}value="${byogitRepo}" />
         </div>
       </div>
-      <div class="form-field">
+      <div class="form-field content-url-field">
         <label for="edit-content">Content Source URL</label>
         <input type="url" id="edit-content" required value="${contentUrl}" placeholder="DA, SharePoint or Google Drive URL" />
+      </div>
+      <div class="form-field">
+        <label class="checkbox-label">
+          <input type="checkbox" class="content-sourcebus" />
+          Built-in (api.aem.live)
+        </label>
+        <p class="field-hint">No content source URL is required.</p>
       </div>
       <div class="form-actions">
         <button type="button" class="button outline cancel-btn">Cancel</button>
@@ -231,6 +261,7 @@ export const openEditSourceModal = async (
 
   container.querySelector('.cancel-btn').addEventListener('click', () => dialog.close());
 
+  const sourcebusCheckbox = setupContentSourceFields(container, contentSourceType);
   const byogitCheckbox = container.querySelector('#edit-byogit');
   const codeUrlField = container.querySelector('.code-url-field');
   const byogitFieldsEl = container.querySelector('.byogit-fields');
@@ -288,6 +319,7 @@ export const openEditSourceModal = async (
       logFn,
       'update',
       byogit,
+      sourcebusCheckbox.checked ? 'sourcebus' : '',
     );
 
     if (!success) {
@@ -804,6 +836,7 @@ export const openAddSiteModal = async (
   defaultContent = '',
   logFn = null,
   byogitDefaults = null,
+  contentSourceType = '',
 ) => {
   const isByogit = !!byogitDefaults;
   const byogitOwner = escapeHtml(byogitDefaults?.owner || '');
@@ -846,10 +879,17 @@ export const openAddSiteModal = async (
                  ${isByogit ? 'required ' : ''}value="${byogitRepo}" />
         </div>
       </div>
-      <div class="form-field">
+      <div class="form-field content-url-field">
         <label for="new-site-content">Content Source URL</label>
         <input type="url" id="new-site-content" required value="${defaultContent}"
                placeholder="DA, SharePoint or Google Drive URL" />
+      </div>
+      <div class="form-field">
+        <label class="checkbox-label">
+          <input type="checkbox" class="content-sourcebus" />
+          Built-in (api.aem.live)
+        </label>
+        <p class="field-hint">No content source URL is required.</p>
       </div>
       <div class="form-actions">
         <button type="button" class="button outline cancel-btn">Cancel</button>
@@ -876,6 +916,7 @@ export const openAddSiteModal = async (
 
   container.querySelector('.cancel-btn').addEventListener('click', () => dialog.close());
 
+  const sourcebusCheckbox = setupContentSourceFields(container, contentSourceType);
   const byogitCheckbox = container.querySelector('#new-site-byogit');
   const codeUrlField = container.querySelector('.code-url-field');
   const byogitFieldsEl = container.querySelector('.byogit-fields');
@@ -1018,6 +1059,7 @@ export const openAddSiteModal = async (
       logFn,
       'add',
       byogit,
+      sourcebusCheckbox.checked ? 'sourcebus' : '',
     );
 
     if (success && byogit) {
