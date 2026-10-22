@@ -35,7 +35,7 @@ export const getContentSourceType = (contentUrl, contentSourceType, isLoading = 
   const sourceTypeLookup = {
     google: { type: 'google', label: 'Google Drive' },
     onedrive: { type: 'sharepoint', label: 'Sharepoint' },
-    sourcebus: { type: 'sourcebus', label: 'Built-in (api.aem.live)' },
+    sourcebus: { type: 'aem', label: 'AEM' },
   };
 
   if (sourceTypeLookup[contentSourceType]) {

@@ -31,10 +31,10 @@ describe('site-admin:utils.js', () => {
       assert.deepEqual(getContentSourceType('', 'onedrive'), { type: 'sharepoint', label: 'Sharepoint' });
     });
 
-    it('recognizes sourcebus without a content URL', () => {
+    it('displays sourcebus as AEM without a content URL', () => {
       assert.deepEqual(
         getContentSourceType(undefined, 'sourcebus'),
-        { type: 'sourcebus', label: 'Built-in (api.aem.live)' },
+        { type: 'aem', label: 'AEM' },
       );
     });
 
