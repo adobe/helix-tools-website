@@ -340,7 +340,7 @@
   margin-top: 12px;
 }
 
-.bot-info-suffix-field[aria-hidden="true"] {
+.bot-info-field[aria-hidden="true"] {
   display: none;
 }
 

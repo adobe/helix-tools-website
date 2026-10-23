@@ -4,13 +4,13 @@
  */
 
 // UI-facing content-source kinds. `configType` is what the admin API stores in
-// `content.source.type`; the granular DA/AEM/BYOM kinds all map to `markup`.
+// `content.source.type`; DA/BYOM map to `markup`, and AEM maps to `sourcebus`.
 // `suffix: true` marks kinds whose markup is addressed with a path suffix.
 export const CONTENT_SOURCE_KINDS = [
   { value: 'da', label: 'Document Authoring (DA)', configType: 'markup' },
   { value: 'onedrive', label: 'SharePoint', configType: 'onedrive' },
   { value: 'google', label: 'Google Drive', configType: 'google' },
-  { value: 'aem', label: 'Built-in (api.aem.live)', configType: 'markup' },
+  { value: 'aem', label: 'Built-in (api.aem.live)', configType: 'sourcebus' },
   {
     value: 'byom', label: 'Other (bring your own markup)', configType: 'markup', suffix: true,
   },
@@ -37,16 +37,17 @@ export function detectContentSourceKind(url) {
 /**
  * Build a `content.source` object for the site config from a URL and the chosen
  * UI kind. Google Drive URLs carry their folder id in the trailing path
- * segment.
+ * segment. Built-in AEM sources only carry their type, without a URL.
  *
  * @param {string} url
  * @param {string} kind one of {@link CONTENT_SOURCE_KINDS} values
  * @param {string} [suffix] path suffix, applied only to suffix-capable kinds
- * @returns {{type: string, url: string, id?: string, suffix?: string}}
+ * @returns {{type: string, url?: string, id?: string, suffix?: string}}
  */
 export function buildContentSource(url, kind, suffix) {
   const entry = CONTENT_SOURCE_KINDS.find((k) => k.value === kind);
   const type = entry ? entry.configType : 'markup';
+  if (type === 'sourcebus') return { type };
   const source = { type, url };
   if (type === 'google') {
     try {

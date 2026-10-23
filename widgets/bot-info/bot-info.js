@@ -200,6 +200,8 @@ function renderForm(widget, config, {
   // AEM sources use a fixed, non-editable URL derived from the org/site
   const updateUrlField = () => {
     const isAem = typeSelect.value === 'aem';
+    setHidden(urlInput.closest('.bot-info-field'), isAem);
+    urlInput.required = advancedCheck.checked && !isAem;
     urlInput.readOnly = isAem;
     if (isAem) urlInput.value = aemContentUrl(org, site);
     else if (urlInput.value === aemContentUrl(org, site)) urlInput.value = '';
@@ -213,11 +215,14 @@ function renderForm(widget, config, {
   const setAdvanced = (on) => {
     setHidden(advanced, !on);
     setHidden(daDefault, on);
-    urlInput.required = on;
+    updateUrlField();
   };
 
   // prefill from the existing content source, opening "advanced" for non-DA
-  const loadedUrl = config.siteConfig.content?.source?.url || url || '';
+  const loadedSource = config.siteConfig.content?.source;
+  const loadedUrl = loadedSource?.type === 'sourcebus'
+    ? aemContentUrl(org, site)
+    : loadedSource?.url || url || '';
   const loadedKind = detectContentSourceKind(loadedUrl);
   if (loadedUrl && loadedKind !== 'da') {
     advancedCheck.checked = true;
@@ -378,7 +383,10 @@ function renderDidList(widget, { org, site }, summary) {
   const sn = summary.siteUsers.length;
   addUsers(`Configured ${sn} site user${sn === 1 ? '' : 's'}`, summary.siteUsers);
   const kind = CONTENT_SOURCE_KINDS.find((k) => k.value === summary.contentKind);
-  addItem(`Set the content source to ${summary.contentUrl}${kind ? ` (${kind.label})` : ''}.`);
+  const contentSource = summary.contentKind === 'aem'
+    ? kind.label
+    : `${summary.contentUrl}${kind ? ` (${kind.label})` : ''}`;
+  addItem(`Set the content source to ${contentSource}.`);
   addItem('Started AEM Code Sync for your GitHub repository.');
 }
 
@@ -434,7 +442,7 @@ function renderReview(widget, { org, site, newOrg }) {
   codeLi.append(codeType);
   addLink(codeLi, `https://github.com/${org}/${site}`);
 
-  // 2. Content — type on its own line, then the URL
+  // 2. Content — type on its own line, then the URL for external sources
   const { kind, contentUrl } = readContentSelection(widget, org, site);
   const entry = CONTENT_SOURCE_KINDS.find((k) => k.value === kind);
   const contentLi = addItem('Content', 1);
@@ -443,7 +451,7 @@ function renderReview(widget, { org, site, newOrg }) {
     type.textContent = entry.label;
     contentLi.append(type);
   }
-  addLink(contentLi, contentUrl);
+  if (kind !== 'aem') addLink(contentLi, contentUrl);
 
   // 3. Users — organization (new org only) and site users
   const usersLi = addItem('Users', 2);
