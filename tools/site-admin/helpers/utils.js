@@ -124,14 +124,16 @@ export const buildSiteConfig = (site, codeSrc, contentSrc, byogit = null, conten
       : { type: 'markup', url: contentSrc },
   };
 
-  if (contentSourceType !== 'sourcebus' && contentSrc.startsWith('https://drive.google.com/drive')) {
-    const contentURL = new URL(contentSrc);
-    content.source.type = 'google';
-    content.source.id = contentURL.pathname.split('/').pop();
-  }
+  if (contentSourceType !== 'sourcebus') {
+    if (contentSrc.startsWith('https://drive.google.com/drive')) {
+      const contentURL = new URL(contentSrc);
+      content.source.type = 'google';
+      content.source.id = contentURL.pathname.split('/').pop();
+    }
 
-  if (contentSourceType !== 'sourcebus' && contentSrc.includes('sharepoint.com/')) {
-    content.source.type = 'onedrive';
+    if (contentSrc.includes('sharepoint.com/')) {
+      content.source.type = 'onedrive';
+    }
   }
 
   return { ...site, content, code };
