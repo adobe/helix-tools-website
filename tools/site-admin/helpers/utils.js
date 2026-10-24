@@ -33,8 +33,9 @@ export const getContentSourceType = (contentUrl, contentSourceType, isLoading = 
   if (!contentSourceType && !contentUrl) return { type: 'unknown', label: '?' };
 
   const sourceTypeLookup = {
-    google: { type: 'google', label: 'GDrive' },
+    google: { type: 'google', label: 'Google Drive' },
     onedrive: { type: 'sharepoint', label: 'Sharepoint' },
+    sourcebus: { type: 'aem', label: 'AEM' },
   };
 
   if (sourceTypeLookup[contentSourceType]) {
@@ -96,7 +97,7 @@ export const isExpired = (expirationDate) => {
   return new Date(expirationDate) < new Date();
 };
 
-export const buildSiteConfig = (site, codeSrc, contentSrc, byogit = null) => {
+export const buildSiteConfig = (site, codeSrc, contentSrc, byogit = null, contentSourceType = '') => {
   let code;
   if (byogit) {
     code = {
@@ -116,16 +117,23 @@ export const buildSiteConfig = (site, codeSrc, contentSrc, byogit = null) => {
     const [, owner, repo] = codeURL.pathname.split('/');
     code = { owner, repo, source: { type: 'github', url: codeSrc } };
   }
-  const content = { source: { type: 'markup', url: contentSrc } };
+  const content = {
+    ...site.content,
+    source: contentSourceType === 'sourcebus'
+      ? { type: 'sourcebus' }
+      : { type: 'markup', url: contentSrc },
+  };
 
-  if (contentSrc.startsWith('https://drive.google.com/drive')) {
-    const contentURL = new URL(contentSrc);
-    content.source.type = 'google';
-    content.source.id = contentURL.pathname.split('/').pop();
-  }
+  if (contentSourceType !== 'sourcebus') {
+    if (contentSrc.startsWith('https://drive.google.com/drive')) {
+      const contentURL = new URL(contentSrc);
+      content.source.type = 'google';
+      content.source.id = contentURL.pathname.split('/').pop();
+    }
 
-  if (contentSrc.includes('sharepoint.com/')) {
-    content.source.type = 'onedrive';
+    if (contentSrc.includes('sharepoint.com/')) {
+      content.source.type = 'onedrive';
+    }
   }
 
   return { ...site, content, code };
