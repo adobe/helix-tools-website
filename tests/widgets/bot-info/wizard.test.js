@@ -75,7 +75,7 @@ describe('bot-info:wizard.js', () => {
     it('builds an onedrive source for sharepoint', () => {
       assert.deepEqual(
         buildContentSource('https://x.sharepoint.com/sites/y', 'onedrive'),
-        { type: 'onedrive', url: 'https://x.sharepoint.com/sites/y/' },
+        { type: 'onedrive', url: 'https://x.sharepoint.com/sites/y' },
       );
     });
 
@@ -85,15 +85,21 @@ describe('bot-info:wizard.js', () => {
       assert.equal(result.id, 'FOLDER_ID');
     });
 
-    it('adds a trailing slash for every URL-based content kind without duplicating it', () => {
+    it('adds a trailing slash for DA without duplicating it', () => {
+      const url = 'https://content.da.live/org/site';
+      assert.equal(buildContentSource(url, 'da').url, `${url}/`);
+      assert.deepEqual(buildContentSource(`${url}/`, 'da'), buildContentSource(url, 'da'));
+    });
+
+    it('preserves non-DA URLs with or without a trailing slash', () => {
       [
-        ['https://content.da.live/org/site', 'da'],
         ['https://x.sharepoint.com/sites/y', 'onedrive'],
         ['https://drive.google.com/drive/folders/FOLDER_ID', 'google'],
         ['https://example.com/content', 'byom'],
+        ['https://example.com/content', 'bogus'],
       ].forEach(([url, kind]) => {
-        assert.equal(buildContentSource(url, kind).url, `${url}/`);
-        assert.deepEqual(buildContentSource(`${url}/`, kind), buildContentSource(url, kind));
+        assert.equal(buildContentSource(url, kind).url, url);
+        assert.equal(buildContentSource(`${url}/`, kind).url, `${url}/`);
       });
     });
 

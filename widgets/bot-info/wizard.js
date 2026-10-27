@@ -36,7 +36,7 @@ export function detectContentSourceKind(url) {
 
 /**
  * Build a `content.source` object for the site config from a URL and the chosen
- * UI kind, ensuring the URL has a trailing slash. Google Drive URLs carry their
+ * UI kind, ensuring DA URLs have a trailing slash. Google Drive URLs carry their
  * folder id in the trailing path segment. Built-in AEM sources only carry their
  * type, without a URL.
  *
@@ -49,7 +49,7 @@ export function buildContentSource(url, kind, suffix) {
   const entry = CONTENT_SOURCE_KINDS.find((k) => k.value === kind);
   const type = entry ? entry.configType : 'markup';
   if (type === 'sourcebus') return { type };
-  const source = { type, url: url.endsWith('/') ? url : `${url}/` };
+  const source = { type, url: kind === 'da' && !url.endsWith('/') ? `${url}/` : url };
   if (type === 'google') {
     try {
       source.id = new URL(url).pathname.split('/').filter(Boolean).pop();
