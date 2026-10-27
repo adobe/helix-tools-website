@@ -60,6 +60,18 @@ export function buildContentSource(url, kind, suffix) {
   return source;
 }
 
+/**
+ * Compare the source fields managed by the wizard, ignoring other site options.
+ * A missing original source needs to be saved.
+ *
+ * @param {object|undefined} original
+ * @param {object} source
+ * @returns {boolean}
+ */
+export function contentSourceChanged(original, source) {
+  return ['type', 'url', 'id', 'suffix'].some((key) => original?.[key] !== source[key]);
+}
+
 const sameRoles = (a = [], b = []) => a.length === b.length
   && [...a].sort().join(',') === [...b].sort().join(',');
 

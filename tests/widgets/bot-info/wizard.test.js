@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   detectContentSourceKind,
   buildContentSource,
+  contentSourceChanged,
   diffOrgUsers,
   validateContentSelection,
   usersError,
@@ -107,6 +108,47 @@ describe('bot-info:wizard.js', () => {
 
     it('omits the suffix when none is provided', () => {
       assert.equal(buildContentSource('https://x.example.com', 'byom').suffix, undefined);
+    });
+  });
+
+  describe('contentSourceChanged', () => {
+    it('skips an unchanged source for every content kind', () => {
+      [
+        ['https://content.da.live/org/site', 'da'],
+        ['https://api.aem.live/org/sites/site/source', 'aem'],
+        ['https://x.sharepoint.com/sites/y', 'onedrive'],
+        ['https://drive.google.com/drive/folders/FOLDER_ID', 'google'],
+        ['https://example.com/content', 'byom', '.html'],
+      ].forEach(([url, kind, suffix]) => {
+        const original = buildContentSource(url, kind, suffix);
+        assert.equal(contentSourceChanged(original, buildContentSource(url, kind, suffix)), false);
+      });
+    });
+
+    it('ignores source options not managed by the wizard', () => {
+      const source = buildContentSource('https://content.da.live/org/site', 'da');
+      assert.equal(contentSourceChanged({ ...source, extra: true }, source), false);
+    });
+
+    it('saves when the site has no content source', () => {
+      const source = buildContentSource('https://content.da.live/org/site', 'da');
+      assert.equal(contentSourceChanged(undefined, source), true);
+      assert.equal(contentSourceChanged({}, source), true);
+    });
+
+    it('saves a changed URL, type or Google folder id', () => {
+      const source = buildContentSource('https://drive.google.com/drive/folders/FOLDER_ID', 'google');
+      ['url', 'type', 'id'].forEach((key) => {
+        assert.equal(contentSourceChanged({ ...source, [key]: 'different' }, source), true);
+      });
+    });
+
+    it('saves an added, changed or removed suffix', () => {
+      const source = buildContentSource('https://example.com/content', 'byom');
+      const withSuffix = { ...source, suffix: '.html' };
+      assert.equal(contentSourceChanged(source, withSuffix), true);
+      assert.equal(contentSourceChanged(withSuffix, { ...source, suffix: '.md' }), true);
+      assert.equal(contentSourceChanged(withSuffix, source), true);
     });
   });
 

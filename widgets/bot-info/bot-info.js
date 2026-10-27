@@ -7,6 +7,7 @@ import {
   CONTENT_SOURCE_KINDS,
   detectContentSourceKind,
   buildContentSource,
+  contentSourceChanged,
   diffOrgUsers,
   validateContentSelection,
   usersError,
@@ -304,13 +305,15 @@ async function submitConfig(api, widget, config, { org, site, newOrg }, consoleB
   );
 
   const source = buildContentSource(contentUrl, kind, suffix);
-  // update only the content sub-config; POSTing the whole site config would
-  // overwrite the access.json we just wrote with the stale copy read on load
-  const content = { source };
-  await must(
-    logged(consoleBlock, api.config({ org, site }).select('content.json').update(JSON.stringify(content))),
-    'Saving content source',
-  );
+  if (contentSourceChanged(config.siteConfig.content?.source, source)) {
+    // update only the content sub-config; POSTing the whole site config would
+    // overwrite the access.json we just wrote with the stale copy read on load
+    const content = { source };
+    await must(
+      logged(consoleBlock, api.config({ org, site }).select('content.json').update(JSON.stringify(content))),
+      'Saving content source',
+    );
+  }
 
   return {
     orgUsers, siteUsers, contentUrl, contentKind: kind,
