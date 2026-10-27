@@ -173,7 +173,7 @@ function renderForm(widget, config, {
 
   // content source — DA is the default with a fixed, read-only URL; the
   // "use a different content source" checkbox reveals the non-DA options.
-  widget.querySelector('.bot-info-da-url').value = `https://content.da.live/${org}/${site}`;
+  widget.querySelector('.bot-info-da-url').value = `https://content.da.live/${org}/${site}/`;
 
   const typeSelect = widget.querySelector('.bot-info-content-type');
   CONTENT_SOURCE_KINDS.filter((k) => k.value !== 'da').forEach(({ value, label }) => {
@@ -259,7 +259,7 @@ function readContentSelection(widget, org, site) {
   const kind = useDifferent ? widget.querySelector('.bot-info-content-type').value : 'da';
   const contentUrl = useDifferent
     ? widget.querySelector('.bot-info-content-url').value.trim()
-    : `https://content.da.live/${org}/${site}`;
+    : `https://content.da.live/${org}/${site}/`;
   const suffix = widget.querySelector('.bot-info-content-suffix').value.trim();
   return { kind, contentUrl, suffix };
 }
@@ -483,7 +483,7 @@ function showConfirmation(widget, ctx, summary) {
     renderDidList(widget, ctx, summary);
     setCreateContentLink(widget, org, site, summary.contentKind, summary.contentUrl);
   } else {
-    setCreateContentLink(widget, org, site, 'da', `https://content.da.live/${org}/${site}`);
+    setCreateContentLink(widget, org, site, 'da', `https://content.da.live/${org}/${site}/`);
   }
 
   // setup is done, so the step hash is no longer meaningful — drop it

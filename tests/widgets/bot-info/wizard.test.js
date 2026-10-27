@@ -46,7 +46,7 @@ describe('bot-info:wizard.js', () => {
     it('builds a markup source for DA', () => {
       assert.deepEqual(
         buildContentSource('https://content.da.live/org/site', 'da'),
-        { type: 'markup', url: 'https://content.da.live/org/site' },
+        { type: 'markup', url: 'https://content.da.live/org/site/' },
       );
     });
 
@@ -75,7 +75,7 @@ describe('bot-info:wizard.js', () => {
     it('builds an onedrive source for sharepoint', () => {
       assert.deepEqual(
         buildContentSource('https://x.sharepoint.com/sites/y', 'onedrive'),
-        { type: 'onedrive', url: 'https://x.sharepoint.com/sites/y' },
+        { type: 'onedrive', url: 'https://x.sharepoint.com/sites/y/' },
       );
     });
 
@@ -83,6 +83,18 @@ describe('bot-info:wizard.js', () => {
       const result = buildContentSource('https://drive.google.com/drive/folders/FOLDER_ID', 'google');
       assert.equal(result.type, 'google');
       assert.equal(result.id, 'FOLDER_ID');
+    });
+
+    it('adds a trailing slash for every URL-based content kind without duplicating it', () => {
+      [
+        ['https://content.da.live/org/site', 'da'],
+        ['https://x.sharepoint.com/sites/y', 'onedrive'],
+        ['https://drive.google.com/drive/folders/FOLDER_ID', 'google'],
+        ['https://example.com/content', 'byom'],
+      ].forEach(([url, kind]) => {
+        assert.equal(buildContentSource(url, kind).url, `${url}/`);
+        assert.deepEqual(buildContentSource(`${url}/`, kind), buildContentSource(url, kind));
+      });
     });
 
     it('leaves google id unset for an unparseable url', () => {
@@ -112,6 +124,12 @@ describe('bot-info:wizard.js', () => {
   });
 
   describe('contentSourceChanged', () => {
+    it('skips saving when the original DA URL already has a trailing slash', () => {
+      const original = { type: 'markup', url: 'https://content.da.live/org/site/' };
+      const source = buildContentSource('https://content.da.live/org/site', 'da');
+      assert.equal(contentSourceChanged(original, source), false);
+    });
+
     it('skips an unchanged source for every content kind', () => {
       [
         ['https://content.da.live/org/site', 'da'],
