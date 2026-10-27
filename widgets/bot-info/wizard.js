@@ -36,8 +36,9 @@ export function detectContentSourceKind(url) {
 
 /**
  * Build a `content.source` object for the site config from a URL and the chosen
- * UI kind. Google Drive URLs carry their folder id in the trailing path
- * segment. Built-in AEM sources only carry their type, without a URL.
+ * UI kind, ensuring DA URLs have a trailing slash. Google Drive URLs carry their
+ * folder id in the trailing path segment. Built-in AEM sources only carry their
+ * type, without a URL.
  *
  * @param {string} url
  * @param {string} kind one of {@link CONTENT_SOURCE_KINDS} values
@@ -48,7 +49,7 @@ export function buildContentSource(url, kind, suffix) {
   const entry = CONTENT_SOURCE_KINDS.find((k) => k.value === kind);
   const type = entry ? entry.configType : 'markup';
   if (type === 'sourcebus') return { type };
-  const source = { type, url };
+  const source = { type, url: kind === 'da' && !url.endsWith('/') ? `${url}/` : url };
   if (type === 'google') {
     try {
       source.id = new URL(url).pathname.split('/').filter(Boolean).pop();
@@ -58,6 +59,18 @@ export function buildContentSource(url, kind, suffix) {
   }
   if (entry?.suffix && suffix) source.suffix = suffix;
   return source;
+}
+
+/**
+ * Compare the source fields managed by the wizard, ignoring other site options.
+ * A missing original source needs to be saved.
+ *
+ * @param {object|undefined} original
+ * @param {object} source
+ * @returns {boolean}
+ */
+export function contentSourceChanged(original, source) {
+  return ['type', 'url', 'id', 'suffix'].some((key) => original?.[key] !== source[key]);
 }
 
 const sameRoles = (a = [], b = []) => a.length === b.length
