@@ -199,7 +199,7 @@ describe('Claude verdict', () => {
 
 function harness(pr = pullRequest(), reviews = [], latest = pr, statuses = [claudeStatus()]) {
   const calls = {
-    approvals: [], dismissals: [], failures: [], notices: [], statuses: [], refs: [],
+    approvals: [], dismissals: [], failures: [], notices: [], statuses: [], refs: [], checks: [],
   };
   let gets = 0;
   const pulls = {
@@ -229,7 +229,9 @@ function harness(pr = pullRequest(), reviews = [], latest = pr, statuses = [clau
     calls,
     args: {
       github: {
-        rest: { pulls, repos },
+        rest: {
+          pulls, repos, checks: { create: async (args) => calls.checks.push(args) },
+        },
         paginate: async (method, args) => {
           if (method === pulls.listFiles) return [file()];
           if (method === repos.listCommitStatusesForRef) {
@@ -274,6 +276,26 @@ describe('PR review approval orchestration', () => {
     assert.equal(calls.approvals[0].event, 'APPROVE');
     assert.equal(calls.approvals[0].commit_id, SHA);
     assert.equal(calls.statuses.length, 0);
+    assert.equal(calls.checks.length, 1);
+    assert.equal(calls.checks[0].name, 'auto-approval');
+    assert.equal(calls.checks[0].head_sha, SHA);
+    assert.equal(calls.checks[0].conclusion, 'success');
+    assert.equal(calls.checks[0].output.title, 'Auto-approved');
+  });
+
+  it('reports why human review is required', async () => {
+    const { args, calls } = harness(pullRequest({ user: { login: 'other', type: 'User' } }), [], undefined, []);
+    await run(args);
+    assert.equal(calls.checks.length, 1);
+    assert.equal(calls.checks[0].conclusion, 'neutral');
+    assert.equal(calls.checks[0].output.title, 'Human review required: Author is not on the trusted-contributor list. (+1 more)');
+    assert.match(calls.checks[0].output.summary, /^- Author is not.*\n- Claude review/);
+  });
+
+  it('does not report on closed PRs', async () => {
+    const { args, calls } = harness(pullRequest({ state: 'closed' }));
+    await run(args);
+    assert.equal(calls.checks.length, 0);
   });
 
   it('uses the newest Claude status for the head', async () => {
@@ -303,6 +325,7 @@ describe('PR review approval orchestration', () => {
     await run(args);
     assert.equal(calls.approvals.length, 1);
     assert.deepEqual(calls.dismissals.map((item) => item.review_id), [99]);
+    assert.deepEqual(calls.checks.map((item) => item.conclusion), ['neutral']);
   });
 
   it('does not duplicate a current approval', async () => {

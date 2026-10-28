@@ -13,6 +13,7 @@ jobs:
       pull-requests: write
       issues: write
       statuses: write
+      checks: write
     outputs:
       sha: ${{ steps.pr.outputs.sha }}
     steps:
@@ -105,6 +106,7 @@ jobs:
       contents: read
       pull-requests: write
       statuses: write
+      checks: write
     steps:
       - uses: actions/checkout@v7
         with:

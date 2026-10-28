@@ -1,6 +1,7 @@
 import evaluatePullRequest, { STATUS_CONTEXT } from './policy.js';
 
 const MARKER = '<!-- ai-pr-review -->';
+const CHECK_NAME = 'auto-approval';
 
 export default async function run({
   github, context, core, config, pullNumber,
@@ -43,6 +44,24 @@ export default async function run({
     review_id: reviewId,
     message: 'Automated approval no longer applies. Human review or renewed eligibility required.',
   });
+  const report = async (eligible, reasons) => {
+    if (pr.state !== 'open') return;
+    const more = reasons.length > 1 ? ` (+${reasons.length - 1} more)` : '';
+    const title = eligible ? 'Auto-approved' : `Human review required: ${reasons[0]}${more}`;
+    await github.rest.checks.create({
+      ...context.repo,
+      name: CHECK_NAME,
+      head_sha: pr.head.sha,
+      status: 'completed',
+      conclusion: eligible ? 'success' : 'neutral',
+      output: {
+        title: title.length > 255 ? `${title.slice(0, 254)}…` : title,
+        summary: eligible
+          ? `${result.tool}: ${result.lines} changed lines, trusted author, Claude found no BLOCKING issues. CI and other merge requirements still apply.`
+          : reasons.map((reason) => `- ${reason}`).join('\n'),
+      },
+    });
+  };
   const approvals = reviews.filter((review) => review.user.login === 'github-actions[bot]'
     && review.state === 'APPROVED' && review.body?.includes(MARKER));
   await Promise.all(approvals
@@ -60,14 +79,18 @@ export default async function run({
       const recheck = await currentClaudeStatus(pr.head.sha);
       if (recheck?.id !== claudeStatus.id) {
         await dismiss(created.id);
-        core.notice('Claude review status changed during approval; approval withdrawn.');
+        const reason = 'Claude review status changed during approval; approval withdrawn.';
+        await report(false, [reason]);
+        core.notice(reason);
         await core.summary.write();
         return;
       }
     }
+    await report(true, []);
     core.summary.addHeading('Eligible for automated approval')
       .addRaw(`${result.tool}: ${result.lines} added/deleted lines. Existing CI remains required.`);
   } else {
+    await report(false, result.reasons);
     core.summary.addHeading('Human review required')
       .addList(result.reasons);
     core.notice(result.reasons.join(' '));

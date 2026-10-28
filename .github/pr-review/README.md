@@ -11,6 +11,7 @@ Auto-approves small PRs from trusted contributors once Claude finds no BLOCKING 
    - `error`: Claude failed or returned no verdict
    - `pending`: review running, or not yet requested
 3. If the PR is eligible, `github-actions[bot]` approves it. CI and other merge rules still apply.
+4. Check `auto-approval` shows the outcome: `success` (auto-approved) or `neutral` (human review required, with reasons).
 
 New pushes or new `/claude-review` requests reset the status to pending and revoke the bot approval. `pr-review.yml` re-checks eligibility on PR events (open, push, edit, draft/ready).
 
@@ -39,6 +40,6 @@ All of:
 ## Files
 
 - `policy.js`: eligibility rules and Claude verdict parsing
-- `run.js`: evaluates a PR, sets the pending status, approves or dismisses bot approvals
+- `run.js`: evaluates a PR, sets the pending status, approves or dismisses bot approvals, reports the `auto-approval` check
 - `policy-config.json`: settings above
 - Tests: `tests/github/pr-review.test.js`
