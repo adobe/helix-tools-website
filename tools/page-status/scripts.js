@@ -10,8 +10,10 @@ import {
   fetchHosts,
   fetchContentSourceType,
   hasSourceListing,
+  needsSourceLookup,
 } from './utils.js';
 import { collectResources } from './browse.js';
+import { lookupSource, lookupAll } from './source-lookup.js';
 
 const FORM = document.getElementById('status-form');
 const TABLE = document.querySelector('table');
@@ -21,6 +23,9 @@ const ERROR = TABLE.querySelector('.error');
 const FILTER = document.getElementById('status-filter');
 const DOWNLOADCSV = document.getElementById('download-csv');
 const DIFFMODE = document.getElementById('diff-mode');
+const CHECKSOURCES = document.getElementById('check-sources');
+const ACTION_BUTTONS = [DOWNLOADCSV, DIFFMODE, CHECKSOURCES];
+let sourceLookup = null;
 let intervalId;
 const randomLoadingMessage = () => loadingMessages[
   Math.floor(Math.random() * loadingMessages.length)
@@ -179,6 +184,10 @@ function enableActionButtons(diff = true) {
 function disableActionButtons() {
   DOWNLOADCSV.disabled = true;
   DIFFMODE.disabled = true;
+  CHECKSOURCES.disabled = true;
+  CHECKSOURCES.hidden = true;
+  if (sourceLookup) sourceLookup.signal.aborted = true;
+  sourceLookup = null;
 }
 
 /**
@@ -203,7 +212,7 @@ function disableForm(form, button) {
 function enableForm(form, button) {
   resetLoadingButton(button);
   [...form.elements].forEach((el) => {
-    if (el !== DOWNLOADCSV && el !== DIFFMODE) el.disabled = false;
+    if (!ACTION_BUTTONS.includes(el)) el.disabled = false;
   });
   // Note: Action buttons (CSV, Diff Mode) are enabled separately
   // only when results are successfully displayed
@@ -349,6 +358,31 @@ function publishCellFallback(opts) {
 }
 
 /**
+ * Builds a button that triggers a source lookup for its row.
+ * @param {string} label
+ * @param {string} [title]
+ * @returns {HTMLButtonElement}
+ */
+function buildCheckSourceButton(label, title) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'button quiet check-source';
+  button.textContent = label;
+  if (title) button.title = title;
+  return button;
+}
+
+/**
+ * @param {Object} resource
+ * @param {Object} [opts] - Classification options.
+ * @returns {string|HTMLElement} Source cell content.
+ */
+function buildSourceCell(resource, opts) {
+  if (opts?.sourceKnown === false) return buildCheckSourceButton('Check');
+  return resource.sourceLastModified ? toUTCDate(resource.sourceLastModified) : '-';
+}
+
+/**
  * Builds row (`<tr>`) element with resource path, status, and modification timestamps.
  * @param {Object} resource - Resource object containing metadata.
  * @param {string} live - Base URL for live links.
@@ -379,7 +413,7 @@ function buildResource(resource, live, preview, opts) {
       path,
       buildRedirectIcon(publishConfigRedirectLocation || previewConfigRedirectLocation),
       status,
-      sourceLastModified ? toUTCDate(sourceLastModified) : '-',
+      buildSourceCell(resource, opts),
       previewLastModified ? buildLink(previewLastModified, preview, path) : '-',
       publishLastModified ? buildLink(publishLastModified, live, path) : publishCellFallback(opts),
     ];
@@ -389,6 +423,10 @@ function buildResource(resource, live, preview, opts) {
       else cell.append(col);
       row.append(cell);
     });
+    if (opts?.sourceKnown === false) {
+      row.dataset.source = 'pending';
+      sourceLookup?.rows.set(row, resource);
+    }
 
     return row;
   }
@@ -407,6 +445,105 @@ function displayResources(resources, live, preview, opts) {
     const row = buildResource(resource, live, preview, opts);
     if (row) RESULTS.append(row);
   });
+}
+
+// source lookups
+const STATUS_CELL = 2;
+const SOURCE_CELL = 3;
+
+/**
+ * Sets a row's source lookup state and updates its status and source cells.
+ * @param {HTMLTableRowElement} row
+ * @param {'pending'|'checking'|'done'|'error'} state
+ * @param {Object} [result] - Lookup result.
+ * @param {Error} [error] - Lookup error.
+ */
+function setRowSource(row, state, result, error) {
+  const resource = sourceLookup?.rows.get(row);
+  if (!resource) return;
+  row.dataset.source = state;
+  const sourceCell = row.children[SOURCE_CELL];
+  sourceCell.textContent = '';
+  if (state === 'pending') {
+    sourceCell.append(buildCheckSourceButton('Check'));
+  } else if (state === 'checking') {
+    sourceCell.textContent = 'Checking…';
+  } else if (state === 'error') {
+    sourceCell.append(buildCheckSourceButton('Retry', `Source lookup failed (${error?.status || 'error'})`));
+  } else {
+    resource.sourceLastModified = result.lastModified;
+    sourceCell.textContent = result.lastModified ? toUTCDate(result.lastModified) : '-';
+    const status = buildSequenceStatus(
+      resource.sourceLastModified,
+      resource.previewLastModified,
+      resource.publishLastModified,
+      { ...sourceLookup.opts, sourceKnown: true },
+    );
+    row.children[STATUS_CELL].replaceChildren(status);
+  }
+}
+
+/**
+ * Looks up the source of a single row.
+ * @param {HTMLTableRowElement} row
+ */
+async function checkRowSource(row) {
+  const lookup = sourceLookup;
+  const resource = lookup?.rows.get(row);
+  if (!resource) return;
+  setRowSource(row, 'checking');
+  try {
+    const result = await lookupSource(lookup.admin, lookup.org, lookup.site, resource.path);
+    if (lookup === sourceLookup) setRowSource(row, 'done', result);
+  } catch (error) {
+    if (lookup === sourceLookup) setRowSource(row, 'error', undefined, error);
+  }
+}
+
+/**
+ * Updates the Check All Sources button for the current lookup state.
+ */
+function updateCheckSourcesButton() {
+  if (!sourceLookup) return;
+  const rows = [...sourceLookup.rows.keys()];
+  const done = rows.filter((r) => r.dataset.source === 'done').length;
+  if (sourceLookup.running) {
+    CHECKSOURCES.textContent = `Stop Checking (${done}/${rows.length})`;
+  } else {
+    CHECKSOURCES.textContent = 'Check All Sources';
+    CHECKSOURCES.disabled = done === rows.length;
+  }
+}
+
+/**
+ * Looks up the sources of all unchecked rows, or stops a running check.
+ */
+async function checkAllSources() {
+  const lookup = sourceLookup;
+  if (!lookup) return;
+  if (lookup.running) {
+    lookup.signal.aborted = true;
+    return;
+  }
+  const rows = [...lookup.rows.keys()]
+    .filter((r) => r.dataset.source === 'pending' || r.dataset.source === 'error');
+  const byPath = new Map(rows.map((r) => [lookup.rows.get(r).path, r]));
+  rows.forEach((r) => setRowSource(r, 'checking'));
+  lookup.running = true;
+  lookup.signal = { aborted: false };
+  updateCheckSourcesButton();
+  await lookupAll(lookup.admin, lookup.org, lookup.site, [...byPath.keys()], {
+    signal: lookup.signal,
+    onResult: (path, result, error) => {
+      if (lookup !== sourceLookup) return;
+      setRowSource(byPath.get(path), error ? 'error' : 'done', result, error);
+      updateCheckSourcesButton();
+    },
+  });
+  if (lookup !== sourceLookup) return;
+  rows.filter((r) => r.dataset.source === 'checking').forEach((r) => setRowSource(r, 'pending'));
+  lookup.running = false;
+  updateCheckSourcesButton();
 }
 
 // data fetching
@@ -529,15 +666,32 @@ async function runAndDisplayBrowse(admin, org, site, path, hosts, sourceType) {
     throw error;
   }
   updateTableCaption(startTime);
+  const lookup = needsSourceLookup(sourceType, true);
+  const notices = [];
   if (liveForbidden) {
-    CAPTION.querySelector('.caption-notice').textContent = 'Publish status unknown: insufficient permissions to list published content.';
+    notices.push('Publish status unknown: insufficient permissions to list published content.');
   }
-  displayResources(resources, hosts.live, hosts.preview, {
-    sourceExpected: hasSourceListing(sourceType, true),
+  if (lookup) {
+    notices.push('Source status unknown: check pages individually or use Check All Sources.');
+  }
+  CAPTION.querySelector('.caption-notice').textContent = notices.join(' ');
+  const opts = {
+    sourceExpected: lookup || hasSourceListing(sourceType, true),
     publishKnown: !liveForbidden,
-  });
+  };
+  if (lookup) {
+    sourceLookup = {
+      admin, org, site, opts, rows: new Map(), signal: { aborted: false }, running: false,
+    };
+  }
+  const displayOpts = lookup ? { ...opts, sourceKnown: false } : opts;
+  displayResources(resources, hosts.live, hosts.preview, displayOpts);
   updateTableDisplay('results');
   enableActionButtons(false);
+  if (lookup) {
+    CHECKSOURCES.hidden = false;
+    updateCheckSourcesButton();
+  }
 }
 
 /**
@@ -621,6 +775,12 @@ async function init() {
   FORM.addEventListener('reset', () => {
     clearTable(RESULTS);
     disableActionButtons();
+  });
+
+  CHECKSOURCES.addEventListener('click', checkAllSources);
+  RESULTS.addEventListener('click', (e) => {
+    const button = e.target.closest('.check-source');
+    if (button) checkRowSource(button.closest('tr'));
   });
 
   FORM.addEventListener('submit', async (e) => {

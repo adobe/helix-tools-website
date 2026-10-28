@@ -87,6 +87,10 @@
   display: none;
 }
 
+.page-status .check-sources[hidden] {
+  display: none;
+}
+
 .page-status table tbody[aria-hidden='true'],
 .page-status table tbody.results tr[aria-hidden='true'] {
   display: none;
