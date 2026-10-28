@@ -521,6 +521,29 @@ export const openAuthModal = async (siteName, orgValue) => {
     return true;
   };
 
+  let busy = false;
+  const runExclusive = async (fn) => {
+    if (busy) return;
+    busy = true;
+    const buttons = container.querySelectorAll('.auth-form button, .auth-tokens button');
+    buttons.forEach((b) => { b.disabled = true; });
+    let keepLocked = false;
+    try {
+      keepLocked = await fn();
+    } finally {
+      if (!keepLocked) {
+        busy = false;
+        container.querySelectorAll('.auth-form button, .auth-tokens button')
+          .forEach((b) => { b.disabled = false; });
+      }
+    }
+  };
+
+  const deleteSecret = (id) => executeAdminRequest(
+    () => admin.config(coords).select(`secrets/${encodeURIComponent(id)}.json`).remove(),
+    coords,
+  );
+
   const tokensList = authTokens.querySelector('.items-list');
   let secrets = [];
   const renderTokens = () => {
@@ -554,31 +577,28 @@ export const openAuthModal = async (siteName, orgValue) => {
     });
   }
 
-  tokensList.addEventListener('click', async (e) => {
+  tokensList.addEventListener('click', (e) => {
     const btn = e.target.closest('.revoke-btn');
-    if (!btn) return;
+    if (!btn || busy) return;
     const { id } = btn.closest('.item-row').dataset;
     if (!confirm(`Revoke access token "${id}"? Anything using it (e.g. your CDN) will lose access.`)) return;
-    btn.disabled = true;
-    if (!await updateAccess((a) => removeAccessSecretId(a, id))) {
-      btn.disabled = false;
-      showToast('Failed to revoke access token', 'error');
-      return;
-    }
-    await executeAdminRequest(
-      () => admin.config(coords).select(`secrets/${encodeURIComponent(id)}.json`).remove(),
-      coords,
-    );
-    secrets = secrets.filter((s) => s.id !== id);
-    renderTokens();
-    showToast('Access token revoked', 'success');
+    runExclusive(async () => {
+      if (!await updateAccess((a) => removeAccessSecretId(a, id))) {
+        showToast('Failed to revoke access token', 'error');
+        return;
+      }
+      await deleteSecret(id);
+      secrets = secrets.filter((s) => s.id !== id);
+      renderTokens();
+      showToast('Access token revoked', 'success');
+    });
   });
 
   const tokenNameInput = authTokens.querySelector('#token-name');
   const tokenNameError = authTokens.querySelector('.token-name-error');
   tokenNameInput.addEventListener('input', () => tokenNameError.classList.remove('visible'));
 
-  authTokens.querySelector('.add-token-btn').addEventListener('click', async (e) => {
+  authTokens.querySelector('.add-token-btn').addEventListener('click', (e) => runExclusive(async () => {
     const btn = e.currentTarget;
     const name = tokenNameInput.value.trim();
     const error = validateSecretName(name, secrets.map((s) => s.id));
@@ -588,16 +608,13 @@ export const openAuthModal = async (siteName, orgValue) => {
       tokenNameInput.focus();
       return;
     }
-    btn.disabled = true;
     btn.textContent = 'Adding...';
     const secret = await createSiteSecret(admin, orgValue, siteName, name);
     const added = secret?.id && await updateAccess((a) => addAccessSecretId(a, secret.id));
-    btn.disabled = false;
     btn.textContent = 'Add Token';
     if (!added) {
-      showToast(secret?.id
-        ? `Created secret "${secret.id}" but failed to grant it site access`
-        : 'Failed to create access token', 'error');
+      if (secret?.id) await deleteSecret(secret.id);
+      showToast('Failed to create access token', 'error');
       return;
     }
     tokenNameInput.value = '';
@@ -609,7 +626,7 @@ export const openAuthModal = async (siteName, orgValue) => {
     } else {
       showToast('Access token added', 'success');
     }
-  });
+  }));
 
   container.querySelector('.auth-loading').setAttribute('aria-hidden', 'true');
   container.querySelector('.auth-content').classList.add('visible');
@@ -635,7 +652,7 @@ export const openAuthModal = async (siteName, orgValue) => {
 
   authForm.querySelector('.cancel-btn').addEventListener('click', () => dialog.close());
 
-  authForm.querySelector('.save-auth-btn').addEventListener('click', async (e) => {
+  authForm.querySelector('.save-auth-btn').addEventListener('click', (e) => runExclusive(async () => {
     const btn = e.target;
     const scope = scopeSelect.value;
     const patterns = usersInput.value.split(',').map((p) => p.trim()).filter((p) => p);
@@ -643,10 +660,9 @@ export const openAuthModal = async (siteName, orgValue) => {
     if (scope !== 'none' && patterns.length === 0) {
       usersInput.focus();
       showError();
-      return;
+      return false;
     }
 
-    btn.disabled = true;
     btn.textContent = 'Saving...';
 
     let newSecret = null;
@@ -659,16 +675,18 @@ export const openAuthModal = async (siteName, orgValue) => {
       if (newSecret?.id && !ids.includes(newSecret.id)) ids.push(newSecret.id);
       return buildAccess(a, scope, patterns, ids);
     });
-    btn.disabled = false;
+    if (!success && newSecret?.id) await deleteSecret(newSecret.id);
     btn.textContent = success ? 'Saved!' : 'Save';
     if (success) {
       if (newSecret?.value) {
         showTokenResult(newSecret.value, () => dialog.close());
       } else {
         setTimeout(() => dialog.close(), 1000);
+        return true;
       }
     }
-  });
+    return false;
+  }));
 
   showModal();
 };
@@ -676,7 +694,7 @@ export const openAuthModal = async (siteName, orgValue) => {
 const openManageItemsModal = async (siteName, orgValue, config) => {
   const {
     title, itemName, itemNamePlural, iconName, fetchFn, createFn, deleteFn, showExpiration,
-    formHtml, onFormInit, getCreateBody,
+    formHtml, onFormInit, getCreateBody, introHtml,
   } = config;
 
   const { dialog, container, showModal } = await setupModal('manage-modal', `
@@ -684,6 +702,7 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
       <h2>${title}</h2>
       <p class="site-name">${siteName}</p>
     </div>
+    ${introHtml || ''}
     <div class="existing-items">
       <h4>Existing ${itemNamePlural}</h4>
       <div class="items-list loading">Loading...</div>
@@ -692,7 +711,7 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
       <h4>Add New ${itemName}</h4>
       ${formHtml ? `<div class="create-form">${formHtml}</div>` : ''}
       <div class="section-actions">
-        <button type="button" class="button outline cancel-btn">Cancel</button>
+        <button type="button" class="button outline cancel-btn">Close</button>
         <button type="button" class="button create-btn">Create ${itemName}</button>
       </div>
       <div class="new-item-result">
@@ -730,10 +749,12 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
     `;
   };
 
+  let currentItems = [];
   const loadItems = async () => {
     itemsList.classList.add('loading');
     itemsList.textContent = 'Loading...';
     const items = await fetchFn(orgValue, siteName) || [];
+    currentItems = items;
     itemsList.classList.remove('loading');
 
     if (items.length === 0) {
@@ -779,7 +800,7 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
     btn.disabled = true;
     btn.textContent = 'Creating...';
 
-    const body = getCreateBody ? getCreateBody(container) : undefined;
+    const body = getCreateBody ? getCreateBody(container, currentItems) : undefined;
     if (body === null) {
       btn.disabled = false;
       btn.textContent = `Create ${itemName}`;
@@ -790,6 +811,11 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
       container.querySelector('.item-value').value = result.value;
       container.querySelector('.new-item-result').classList.add('visible');
       btn.setAttribute('aria-hidden', 'true');
+      createForm?.setAttribute('aria-hidden', 'true');
+      resetCreateForm();
+      const closeBtn = container.querySelector('.cancel-btn');
+      closeBtn.textContent = 'Done';
+      closeBtn.classList.remove('outline');
       loadItems();
     } else if (result) {
       loadItems();
@@ -816,34 +842,10 @@ export const openSecretModal = (siteName, orgValue) => openManageItemsModal(site
   itemName: 'Secret',
   itemNamePlural: 'Secrets',
   iconName: 'lock',
-  fetchFn: async (org, site) => {
-    const admin = await getAdminClient();
-    const resp = await executeAdminRequest(
-      () => admin.config({ org, site }).select('secrets.json').read(),
-      { org, site },
-    );
-    if (resp?.ok) return Object.values(await resp.json());
-    if (resp?.status === 404) return [];
-    return null;
-  },
+  fetchFn: async (org, site) => fetchSiteSecrets(await getAdminClient(), org, site),
   createFn: async (org, site, body) => {
     const admin = await getAdminClient();
-    if (body?.name) {
-      const handle = admin.config({ org, site })
-        .select(`secrets/${encodeURIComponent(body.name)}.json`);
-      const secretBody = body.value ? JSON.stringify({ value: body.value }) : null;
-      const resp = await executeAdminRequest(() => handle.update(secretBody), { org, site });
-      if (!resp?.ok) return null;
-      let data;
-      try { data = await resp.json(); } catch { data = { id: body.name }; }
-      if (data && body.value) delete data.value;
-      return data;
-    }
-    const resp = await executeAdminRequest(
-      () => admin.config({ org, site }).select('secrets.json').update(null),
-      { org, site },
-    );
-    return resp?.ok ? resp.json() : null;
+    return createSiteSecret(admin, org, site, body?.name, body?.value);
   },
   deleteFn: async (org, site, secretId) => {
     const admin = await getAdminClient();
@@ -853,25 +855,33 @@ export const openSecretModal = (siteName, orgValue) => openManageItemsModal(site
     return resp?.ok ?? false;
   },
   showExpiration: false,
+  introHtml: `
+    <p class="field-hint manage-intro">Secrets do not grant site access on their own.
+      To give a CDN or test suite access to a protected site, use <strong>Authentication &rarr; Access Tokens</strong>.</p>
+  `,
   formHtml: `
     <div class="form-field">
       <label for="secret-name">Name (optional)</label>
       <input type="text" id="secret-name" placeholder="e.g. my-secret-name" pattern="[a-z0-9_\\-]+" />
-      <p class="field-hint">Lowercase letters, numbers, hyphens, and underscores only. Required when a value is provided.</p>
+      <p class="field-hint">Lowercase letters, numbers, hyphens, and underscores. Leave blank to generate one.</p>
       <p class="field-error secret-name-error"></p>
     </div>
-    <div class="form-field">
-      <label for="secret-value">Secret Value (optional)</label>
-      <input type="password" id="secret-value" placeholder="e.g. secret from external service" />
-      <p class="field-hint">See <a href="https://www.aem.live/docs/admin.html#tag/siteConfig/operation/createSiteSecret">create site secret docs</a> for more details. Remember this value, it won't be shown again.</p>
-    </div>
+    <details class="secret-value-details">
+      <summary>Use a value from an external service</summary>
+      <div class="form-field">
+        <label for="secret-value">Secret Value</label>
+        <input type="password" id="secret-value" placeholder="e.g. secret from external service" />
+        <p class="field-hint">Requires a name. Leave empty to have a value generated.
+          See <a href="https://www.aem.live/docs/admin.html#tag/siteConfig/operation/createSiteSecret">create site secret docs</a>.</p>
+      </div>
+    </details>
   `,
   onFormInit: (el) => {
     const nameInput = el.querySelector('#secret-name');
     const nameError = el.querySelector('.secret-name-error');
     nameInput.addEventListener('input', () => nameError.classList.remove('visible'));
   },
-  getCreateBody: (el) => {
+  getCreateBody: (el, existing) => {
     const nameInput = el.querySelector('#secret-name');
     const valueInput = el.querySelector('#secret-value');
     const nameError = el.querySelector('.secret-name-error');
@@ -886,8 +896,9 @@ export const openSecretModal = (siteName, orgValue) => openManageItemsModal(site
       showNameError('Name is required when a value is provided');
       return null;
     }
-    if (name && !/^[a-z0-9_-]+$/.test(name)) {
-      showNameError('Name must contain only lowercase letters, numbers, hyphens, and underscores');
+    const error = validateSecretName(name, existing.map((s) => s.id));
+    if (error) {
+      showNameError(error);
       return null;
     }
     nameError.classList.remove('visible');

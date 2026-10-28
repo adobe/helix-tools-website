@@ -975,6 +975,17 @@
   margin-bottom: var(--spacing-s);
 }
 
+.manage-modal .manage-intro {
+  margin: 0 0 var(--spacing-m);
+}
+
+.manage-modal .secret-value-details summary {
+  cursor: pointer;
+  font-size: var(--body-size-s);
+  color: var(--color-font-grey);
+  margin-block: var(--spacing-s);
+}
+
 .manage-modal .add-new-section .section-actions {
   display: flex;
   gap: var(--spacing-s);
