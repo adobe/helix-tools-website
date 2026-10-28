@@ -1,18 +1,30 @@
-const ATTESTATION = /^- \[x\] Independent AI review: different model, fresh context, all findings resolved\.\s*$/im;
-
-function field(body, name) {
-  return body.match(new RegExp(`^${name}:[ \\t]*([^\\r\\n]*)$`, 'im'))?.[1].trim() || '';
-}
+export const STATUS_CONTEXT = 'claude-review';
+export const STATUS_CREATOR = 'github-actions[bot]';
 
 function toolForPath(path) {
   return path.match(/^(?:tests\/)?((?:tools|blocks)\/[^/]+)\/[^/].*$/)?.[1];
 }
 
-export default function evaluatePullRequest(pr, files, trustedContributors) {
+export function claudeVerdict(conclusion, output) {
+  if (conclusion !== 'success') {
+    return { state: 'error', description: 'Claude review did not complete.' };
+  }
+  let blocking;
+  try {
+    ({ blocking } = JSON.parse(output));
+  } catch {
+    blocking = undefined;
+  }
+  if (!Number.isSafeInteger(blocking) || blocking < 0) {
+    return { state: 'error', description: 'Claude review returned no verdict.' };
+  }
+  return blocking
+    ? { state: 'failure', description: `Claude found ${blocking} BLOCKING issue(s).` }
+    : { state: 'success', description: 'Claude found no BLOCKING issues.' };
+}
+
+export default function evaluatePullRequest(pr, files, trustedContributors, claudeStatus) {
   const reasons = [];
-  const body = (pr.body || '').replace(/\r\n?/g, '\n').replace(/<!--[\s\S]*?-->/g, '');
-  const authoringModel = field(body, 'Authoring model').toLowerCase();
-  const reviewModel = field(body, 'Review model').toLowerCase();
   const lines = pr.additions + pr.deletions;
   const paths = files.flatMap((file) => [file.filename, file.previous_filename].filter(Boolean));
   const tools = new Set(paths.map(toolForPath));
@@ -36,11 +48,8 @@ export default function evaluatePullRequest(pr, files, trustedContributors) {
     || files.reduce((sum, file) => sum + file.additions + file.deletions, 0) !== lines) {
     reasons.push('Complete, countable text changes are required.');
   }
-  if (!ATTESTATION.test(body)
-    || !/^[a-f0-9]{40}$/i.test(field(body, 'AI review head'))
-    || field(body, 'AI review head') !== pr.head.sha
-    || !authoringModel || !reviewModel || authoringModel === reviewModel) {
-    reasons.push('Independent AI review must attest to the current head SHA and name different models.');
+  if (claudeStatus?.state !== 'success' || claudeStatus.creator?.login !== STATUS_CREATOR) {
+    reasons.push('Claude review of the current head must pass with no BLOCKING issues. Comment /claude-review to run it.');
   }
 
   return {

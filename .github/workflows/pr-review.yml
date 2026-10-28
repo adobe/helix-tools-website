@@ -11,6 +11,7 @@ concurrency:
 permissions:
   contents: read
   pull-requests: write
+  statuses: write
 
 jobs:
   eligibility:
@@ -29,4 +30,6 @@ jobs:
             const path = `${process.env.GITHUB_WORKSPACE}/.github/pr-review`;
             const { default: run } = await import(pathToFileURL(`${path}/run.js`).href);
             const trustedContributors = JSON.parse(await readFile(`${path}/trusted-contributors.json`, 'utf8'));
-            await run({ github, context, core, trustedContributors });
+            await run({
+              github, context, core, trustedContributors, pullNumber: context.payload.pull_request.number,
+            });

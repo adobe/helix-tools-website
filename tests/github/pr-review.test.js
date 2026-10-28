@@ -1,14 +1,19 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import evaluatePullRequest from '../../.github/pr-review/policy.js';
+import evaluatePullRequest, { claudeVerdict } from '../../.github/pr-review/policy.js';
 import run from '../../.github/pr-review/run.js';
 
 const SHA = 'a'.repeat(40);
 const OTHER_SHA = 'b'.repeat(40);
-const BODY = `- [x] Independent AI review: different model, fresh context, all findings resolved.
-Authoring model: GPT-6
-Review model: Claude
-AI review head: ${SHA}`;
+
+function claudeStatus(overrides = {}) {
+  return {
+    context: 'claude-review',
+    state: 'success',
+    creator: { login: 'github-actions[bot]' },
+    ...overrides,
+  };
+}
 
 function pullRequest(overrides = {}) {
   return {
@@ -20,7 +25,6 @@ function pullRequest(overrides = {}) {
     additions: 100,
     deletions: 99,
     changed_files: 1,
-    body: BODY,
     ...overrides,
   };
 }
@@ -31,8 +35,8 @@ function file(filename = 'tools/bulk/utils.js', overrides = {}) {
   };
 }
 
-function evaluate(pr = {}, files = [file()]) {
-  return evaluatePullRequest(pullRequest(pr), files, ['shsteimer']);
+function evaluate(pr = {}, files = [file()], status = claudeStatus()) {
+  return evaluatePullRequest(pullRequest(pr), files, ['shsteimer'], status);
 }
 
 describe('PR review eligibility', () => {
@@ -68,6 +72,7 @@ describe('PR review eligibility', () => {
   [
     'scripts/shared.js', '.github/workflows/pr-review.yml', 'package.json',
     'tools/bulk', 'ops/bulk/index.html', 'tests/scripts/shared.test.js',
+    '.claude/skills/code-review/SKILL.md',
   ].forEach((filename) => {
     it(`requires human review for ${filename}`, () => {
       assert.equal(evaluate({}, [file(filename)]).eligible, false);
@@ -94,24 +99,29 @@ describe('PR review eligibility', () => {
     { user: { login: 'other', type: 'User' } },
     { user: { login: 'shsteimer', type: 'Bot' } },
     { additions: undefined }, { deletions: -1 }, { changed_files: 2 },
-    { body: null }, { body: BODY.replace('[x]', '[ ]') },
-    { body: BODY.replace(SHA, OTHER_SHA) },
-    { body: BODY.replace('Review model: Claude', 'Review model: gpt-6') },
-    { body: BODY.replace('Authoring model: GPT-6', 'Authoring model:') },
-    { body: BODY.replace('Review model: Claude', 'Review model:') },
-    { body: `<!-- ${BODY} -->` },
   ].forEach((overrides) => {
     it(`rejects unmet gates: ${JSON.stringify(overrides)}`, () => {
       assert.equal(evaluate(overrides).eligible, false);
     });
   });
 
-  it('matches GitHub usernames case-insensitively', () => {
-    assert.equal(evaluate({ user: { login: 'SHSTEIMER', type: 'User' } }).eligible, true);
+  [
+    null,
+    claudeStatus({ state: 'pending' }),
+    claudeStatus({ state: 'failure' }),
+    claudeStatus({ state: 'error' }),
+    claudeStatus({ creator: { login: 'shsteimer' } }),
+    claudeStatus({ creator: undefined }),
+  ].forEach((status) => {
+    it(`requires a passing Claude review: ${JSON.stringify(status)}`, () => {
+      const result = evaluate({}, [file()], status);
+      assert.equal(result.eligible, false);
+      assert.match(result.reasons.join(' '), /\/claude-review/);
+    });
   });
 
-  it('accepts CRLF attestation text from GitHub', () => {
-    assert.equal(evaluate({ body: BODY.replaceAll('\n', '\r\n') }).eligible, true);
+  it('matches GitHub usernames case-insensitively', () => {
+    assert.equal(evaluate({ user: { login: 'SHSTEIMER', type: 'User' } }).eligible, true);
   });
 
   it('rejects empty, incomplete, binary, and uncountable file lists', () => {
@@ -125,9 +135,31 @@ describe('PR review eligibility', () => {
   });
 });
 
-function harness(pr = pullRequest(), reviews = [], latest = pr) {
+describe('Claude verdict', () => {
+  it('passes with no BLOCKING issues', () => {
+    assert.equal(claudeVerdict('success', '{"blocking":0,"summary":"ok"}').state, 'success');
+  });
+
+  it('fails with BLOCKING issues', () => {
+    assert.deepEqual(claudeVerdict('success', '{"blocking":2,"summary":"bad"}'), {
+      state: 'failure', description: 'Claude found 2 BLOCKING issue(s).',
+    });
+  });
+
+  [
+    ['failure', '{"blocking":0}'], ['skipped', ''], ['success', ''], ['success', 'nope'],
+    ['success', '{}'], ['success', '{"blocking":-1}'], ['success', '{"blocking":"0"}'],
+    ['success', 'null'],
+  ].forEach(([conclusion, output]) => {
+    it(`errors without a valid verdict: ${conclusion} ${output}`, () => {
+      assert.equal(claudeVerdict(conclusion, output).state, 'error');
+    });
+  });
+});
+
+function harness(pr = pullRequest(), reviews = [], latest = pr, statuses = [claudeStatus()]) {
   const calls = {
-    approvals: [], dismissals: [], failures: [], notices: [],
+    approvals: [], dismissals: [], failures: [], notices: [], statuses: [], refs: [],
   };
   let gets = 0;
   const pulls = {
@@ -140,6 +172,10 @@ function harness(pr = pullRequest(), reviews = [], latest = pr) {
     createReview: async (args) => calls.approvals.push(args),
     dismissReview: async (args) => calls.dismissals.push(args),
   };
+  const repos = {
+    listCommitStatusesForRef: Symbol('listCommitStatusesForRef'),
+    createCommitStatus: async (args) => calls.statuses.push(args),
+  };
   const summary = {
     addHeading: () => summary,
     addRaw: () => summary,
@@ -150,12 +186,19 @@ function harness(pr = pullRequest(), reviews = [], latest = pr) {
     calls,
     args: {
       github: {
-        rest: { pulls },
-        paginate: async (method) => (method === pulls.listFiles ? [file()] : reviews),
+        rest: { pulls, repos },
+        paginate: async (method, args) => {
+          if (method === pulls.listFiles) return [file()];
+          if (method === repos.listCommitStatusesForRef) {
+            calls.refs.push(args.ref);
+            return statuses;
+          }
+          return reviews;
+        },
       },
       context: {
         repo: { owner: 'adobe', repo: 'helix-tools-website' },
-        payload: { pull_request: { number: 1 }, repository: { default_branch: 'main' } },
+        payload: { repository: { default_branch: 'main' } },
       },
       core: {
         summary,
@@ -163,6 +206,7 @@ function harness(pr = pullRequest(), reviews = [], latest = pr) {
         notice: (message) => calls.notices.push(message),
       },
       trustedContributors: ['shsteimer'],
+      pullNumber: 1,
     },
   };
 }
@@ -182,9 +226,31 @@ describe('PR review approval orchestration', () => {
   it('approves only the evaluated SHA', async () => {
     const { args, calls } = harness();
     await run(args);
+    assert.deepEqual(calls.refs, [SHA]);
     assert.equal(calls.approvals.length, 1);
     assert.equal(calls.approvals[0].event, 'APPROVE');
     assert.equal(calls.approvals[0].commit_id, SHA);
+    assert.equal(calls.statuses.length, 0);
+  });
+
+  it('uses the newest Claude status for the head', async () => {
+    const { args, calls } = harness(pullRequest(), [], undefined, [
+      { context: 'other', state: 'success' },
+      claudeStatus({ state: 'failure' }),
+      claudeStatus(),
+    ]);
+    await run(args);
+    assert.equal(calls.approvals.length, 0);
+  });
+
+  it('marks an unreviewed head as pending without approving', async () => {
+    const { args, calls } = harness(pullRequest(), [], undefined, []);
+    await run(args);
+    assert.equal(calls.approvals.length, 0);
+    assert.equal(calls.statuses.length, 1);
+    assert.equal(calls.statuses[0].sha, SHA);
+    assert.equal(calls.statuses[0].context, 'claude-review');
+    assert.equal(calls.statuses[0].state, 'pending');
   });
 
   it('does not duplicate a current approval', async () => {
@@ -201,7 +267,7 @@ describe('PR review approval orchestration', () => {
     assert.equal(calls.approvals.length, 1);
   });
 
-  [{ body: '' }, { draft: true }].forEach((overrides) => {
+  [{ draft: true }, { user: { login: 'other', type: 'User' } }].forEach((overrides) => {
     it('revokes approval when eligibility is withdrawn, without failing human review', async () => {
       const { args, calls } = harness(pullRequest(overrides), [
         approval(),
@@ -216,15 +282,25 @@ describe('PR review approval orchestration', () => {
     });
   });
 
+  it('revokes approval when Claude finds BLOCKING issues', async () => {
+    const { args, calls } = harness(pullRequest(), [approval()], undefined, [
+      claudeStatus({ state: 'failure' }),
+    ]);
+    await run(args);
+    assert.equal(calls.dismissals.length, 1);
+    assert.equal(calls.approvals.length, 0);
+  });
+
   [
-    { head: { sha: OTHER_SHA } }, { body: '' }, { draft: true },
+    { head: { sha: OTHER_SHA } }, { draft: true },
     { state: 'closed' }, { base: { ref: 'main', sha: SHA } },
   ].forEach((overrides) => {
     it('does not act on a PR that changed during evaluation', async () => {
-      const { args, calls } = harness(pullRequest(), [], pullRequest(overrides));
+      const { args, calls } = harness(pullRequest(), [], pullRequest(overrides), []);
       await run(args);
       assert.equal(calls.approvals.length, 0);
       assert.equal(calls.dismissals.length, 0);
+      assert.equal(calls.statuses.length, 0);
       assert.equal(calls.failures.length, 1);
     });
   });
