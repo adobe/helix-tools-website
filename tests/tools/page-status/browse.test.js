@@ -43,7 +43,7 @@ describe('sourceToWebPath', () => {
   it('maps index.html to folder', () => assert.equal(sourceToWebPath('/a/index.html'), '/a/'));
   it('strips .html', () => assert.equal(sourceToWebPath('/a/b.html'), '/a/b'));
   it('keeps .json', () => assert.equal(sourceToWebPath('/a/b.json'), '/a/b.json'));
-  it('ignores media', () => assert.equal(sourceToWebPath('/a/b.png'), null));
+  it('keeps other files as-is', () => assert.equal(sourceToWebPath('/a/b.pdf'), '/a/b.pdf'));
 });
 
 describe('walkTree', () => {
@@ -89,7 +89,8 @@ describe('collectResources', () => {
   it('merges preview, live and source listings by web path', async () => {
     const admin = mockAdmin({
       '/o/sites/s/preview/': json(200, {
-        children: [child('preview', '/index.md', T2), child('preview', '/blog/', null)],
+        children: [child('preview', '/index.md', T2), child('preview', '/blog/', null),
+          child('preview', '/doc.pdf', T2)],
       }),
       '/o/sites/s/preview/blog/': json(200, {
         children: [child('preview', '/blog/post.md', T2)],
@@ -103,6 +104,7 @@ describe('collectResources', () => {
         { name: 'blog/', 'content-type': 'application/folder' },
         { name: 'index.html', 'last-modified': T1 },
         { name: 'logo.png', 'last-modified': T1 },
+        { name: 'doc.pdf', 'last-modified': T1 },
       ]),
       '/o/sites/s/source/blog/': json(200, [
         { name: 'post.html', 'last-modified': T1 },
@@ -121,6 +123,7 @@ describe('collectResources', () => {
       { path: '/blog/data.json', previewLastModified: T2 },
       { path: '/blog/draft', sourceLastModified: T1 },
       { path: '/blog/post', previewLastModified: T2, sourceLastModified: T1 },
+      { path: '/doc.pdf', previewLastModified: T2, sourceLastModified: T1 },
     ]);
     assert.ok(admin.calls.every((c) => !c.path.includes('/preview') || c.limit === 1000));
   });

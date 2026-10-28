@@ -14,16 +14,14 @@ export function contentToWebPath(path) {
 }
 
 /**
- * Converts a source bus path to its web path. Returns null for source files
- * that are not documents or sheets.
+ * Converts a source bus path to its web path.
  * @param {string} path
- * @returns {string|null}
+ * @returns {string}
  */
 export function sourceToWebPath(path) {
   if (path.endsWith('/index.html')) return path.slice(0, -'index.html'.length);
   if (path.endsWith('.html')) return path.slice(0, -'.html'.length);
-  if (path.endsWith('.json')) return path;
-  return null;
+  return path;
 }
 
 function statusError(res) {
@@ -159,7 +157,8 @@ export async function collectResources(admin, {
   });
   sourceFiles.forEach(({ path, lastModified }) => {
     const webPath = sourceToWebPath(path);
-    if (webPath) getOrCreate(webPath).sourceLastModified = lastModified;
+    const isPage = path.endsWith('.html') || path.endsWith('.json');
+    if (isPage || resources.has(webPath)) getOrCreate(webPath).sourceLastModified = lastModified;
   });
 
   return [...resources.values()].sort((a, b) => a.path.localeCompare(b.path));
