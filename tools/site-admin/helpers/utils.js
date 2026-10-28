@@ -139,6 +139,53 @@ export const buildSiteConfig = (site, codeSrc, contentSrc, byogit = null, conten
   return { ...site, content, code };
 };
 
+const ACCESS_SCOPES = ['site', 'preview', 'live'];
+
+export const getAccessScope = (access) => ACCESS_SCOPES.find((s) => access?.[s]) || 'none';
+
+export const getAccessSecretIds = (access) => [...new Set(
+  ACCESS_SCOPES.flatMap((s) => access?.[s]?.secretId || []),
+)];
+
+export const buildAccess = (access, scope, allow, secretIds) => {
+  const result = {};
+  Object.entries(access || {}).forEach(([key, value]) => {
+    if (!ACCESS_SCOPES.includes(key)) result[key] = value;
+  });
+  if (scope === 'none') return result;
+  const current = access?.[getAccessScope(access)] || {};
+  const entry = { ...current };
+  delete entry.allow;
+  delete entry.secretId;
+  if (allow.length) entry.allow = allow;
+  if (secretIds.length) entry.secretId = secretIds;
+  result[scope] = entry;
+  return result;
+};
+
+const mapAccessSecretIds = (access, fn) => {
+  const result = { ...access };
+  ACCESS_SCOPES.forEach((s) => {
+    if (!result[s]) return;
+    const entry = { ...result[s] };
+    const ids = fn(entry.secretId || []);
+    if (ids.length) entry.secretId = ids;
+    else delete entry.secretId;
+    result[s] = entry;
+  });
+  return result;
+};
+
+export const addAccessSecretId = (access, id) => mapAccessSecretIds(
+  access,
+  (ids) => (ids.includes(id) ? ids : [...ids, id]),
+);
+
+export const removeAccessSecretId = (access, id) => mapAccessSecretIds(
+  access,
+  (ids) => ids.filter((i) => i !== id),
+);
+
 export const compareSites = (a, b, selectedSite, favorites) => {
   if (selectedSite) {
     if (a.name === selectedSite) return -1;

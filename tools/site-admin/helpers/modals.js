@@ -5,7 +5,41 @@ import { executeAdminRequest } from '../../../utils/admin-request.js';
 import escapeHtml from '../../../utils/html.js';
 import {
   icon, showToast, formatDate, isExpired, buildSiteConfig,
+  getAccessScope, getAccessSecretIds, buildAccess, addAccessSecretId, removeAccessSecretId,
 } from './utils.js';
+
+const SECRET_NAME_PATTERN = /^[a-z0-9_-]+$/;
+
+const fetchSiteSecrets = async (admin, org, site) => {
+  const resp = await executeAdminRequest(
+    () => admin.config({ org, site }).select('secrets.json').read(),
+    { org, site },
+  );
+  if (resp?.ok) return Object.values(await resp.json());
+  if (resp?.status === 404) return [];
+  return null;
+};
+
+const createSiteSecret = async (admin, org, site, name, value) => {
+  const handle = admin.config({ org, site })
+    .select(name ? `secrets/${encodeURIComponent(name)}.json` : 'secrets.json');
+  const body = value ? JSON.stringify({ value }) : null;
+  const resp = await executeAdminRequest(() => handle.update(body), { org, site });
+  if (!resp?.ok) return null;
+  let data;
+  try { data = await resp.json(); } catch { data = { id: name }; }
+  if (data && value) delete data.value;
+  return data;
+};
+
+const validateSecretName = (name, existingIds) => {
+  if (!name) return '';
+  if (!SECRET_NAME_PATTERN.test(name)) {
+    return 'Name must contain only lowercase letters, numbers, hyphens, and underscores';
+  }
+  if (existingIds?.includes(name)) return `A secret named "${name}" already exists`;
+  return '';
+};
 
 /* eslint-disable no-alert, no-restricted-globals */
 
@@ -349,14 +383,9 @@ export const openAuthModal = async (siteName, orgValue) => {
     () => admin.config({ org: orgValue, site: siteName }).read(),
     { org: orgValue, site: siteName },
   );
-  const access = accessResult?.ok ? ((await accessResult.json()).access || {}) : {};
-
-  let currentScope = 'none';
-  if (access.site) currentScope = 'site';
-  else if (access.preview) currentScope = 'preview';
-  else if (access.live) currentScope = 'live';
-
-  const currentAccess = access.site || access.preview || access.live || {};
+  let access = accessResult?.ok ? ((await accessResult.json()).access || {}) : {};
+  const currentScope = getAccessScope(access);
+  const currentAccess = access[currentScope] || {};
   const allowPatterns = currentAccess.allow || [];
   const statusInfo = getAuthStatusInfo(currentScope);
 
@@ -402,12 +431,32 @@ export const openAuthModal = async (siteName, orgValue) => {
     </div>
   `;
 
+  const authTokens = document.createElement('div');
+  authTokens.className = 'auth-tokens';
+  authTokens.innerHTML = `
+    <h4>Access Tokens</h4>
+    <p class="field-hint">Tokens let your CDN or automated tools (e.g. test suites) access the protected site without logging in.
+      Create one token per consumer so each can be revoked on its own.</p>
+    <div class="items-list loading">Loading...</div>
+    <div class="form-field">
+      <label for="token-name">New Token Name (optional)</label>
+      <input type="text" id="token-name" placeholder="e.g. qa-automation" />
+      <p class="field-hint">Lowercase letters, numbers, hyphens, and underscores. Leave blank to generate one.</p>
+      <p class="field-error token-name-error"></p>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="button outline add-token-btn">Add Token</button>
+    </div>
+  `;
+  if (currentScope === 'none') authTokens.setAttribute('aria-hidden', 'true');
+  authForm.after(authTokens);
+
   const authTokenResult = document.createElement('div');
   authTokenResult.className = 'auth-token-result';
   authTokenResult.setAttribute('aria-hidden', 'true');
   authTokenResult.innerHTML = `
-    <h4>Site Token Created</h4>
-    <p class="field-hint">Pass this token as an <code>Authorization</code> header from your CDN to access your protected site:<br/>
+    <h4>Access Token Created</h4>
+    <p class="field-hint">Send this token in an <code>Authorization</code> header (e.g. from your CDN or test runner) to access your protected site:<br/>
       <code>authorization: token &lt;value&gt;</code></p>
     <p class="field-hint"><a href="https://www.aem.live/docs/authentication-setup-site#make-your-cdn-pass-the-right-authorization-header" target="_blank" rel="noopener noreferrer">Learn more about CDN authorization setup</a></p>
     <div class="token-copy-row">
@@ -428,7 +477,8 @@ export const openAuthModal = async (siteName, orgValue) => {
 
   const tokenInput = authTokenResult.querySelector('.auth-token-value');
 
-  authTokenResult.querySelector('.copy-token-btn').addEventListener('click', async (e) => {
+  const copyTokenBtn = authTokenResult.querySelector('.copy-token-btn');
+  copyTokenBtn.addEventListener('click', async (e) => {
     const button = e.currentTarget;
     try {
       await navigator.clipboard.writeText(tokenInput.value);
@@ -438,7 +488,128 @@ export const openAuthModal = async (siteName, orgValue) => {
     }
   });
 
-  authTokenResult.querySelector('.close-auth-btn').addEventListener('click', () => dialog.close());
+  const mainViews = [authStatusCard, authForm, authTokens];
+  let onTokenDone = () => dialog.close();
+  const showTokenResult = (value, onDone) => {
+    tokenInput.value = value;
+    copyTokenBtn.innerHTML = `${icon('copy')} Copy`;
+    onTokenDone = onDone;
+    mainViews.forEach((el) => el.setAttribute('aria-hidden', 'true'));
+    authTokenResult.removeAttribute('aria-hidden');
+  };
+  const showMainView = () => {
+    authTokenResult.setAttribute('aria-hidden', 'true');
+    mainViews.forEach((el) => el.removeAttribute('aria-hidden'));
+  };
+
+  authTokenResult.querySelector('.close-auth-btn').addEventListener('click', () => onTokenDone());
+
+  const coords = { org: orgValue, site: siteName };
+  const siteHandle = admin.config(coords);
+  const updateAccess = async (fn) => {
+    const readResult = await executeAdminRequest(() => siteHandle.read(), coords);
+    if (!readResult?.ok) return false;
+    const siteConfig = await readResult.json();
+    siteConfig.access = fn(siteConfig.access || {});
+    const writeResult = await executeAdminRequest(
+      () => siteHandle.update(JSON.stringify(siteConfig)),
+      coords,
+    );
+    if (!writeResult?.ok) return false;
+    access = siteConfig.access;
+    siteUpdated = true;
+    return true;
+  };
+
+  const tokensList = authTokens.querySelector('.items-list');
+  let secrets = [];
+  const renderTokens = () => {
+    const ids = getAccessSecretIds(access);
+    tokensList.classList.remove('loading');
+    if (!ids.length) {
+      tokensList.innerHTML = '<p class="empty-state">No access tokens</p>';
+      return;
+    }
+    tokensList.innerHTML = ids.map((id) => {
+      const created = secrets.find((s) => s.id === id)?.created;
+      return `
+        <div class="item-row" data-id="${escapeHtml(id)}">
+          <div class="item-info">
+            <span class="item-icon">${icon('lock')}</span>
+            <span class="item-id">${escapeHtml(id)}</span>
+            ${created ? `<span class="item-dates">Created ${formatDate(created)}</span>` : ''}
+          </div>
+          <div class="item-actions">
+            <button type="button" class="icon-btn revoke-btn" title="Revoke" aria-label="Revoke ${escapeHtml(id)}">${icon('trash')}</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  };
+
+  if (currentScope !== 'none') {
+    fetchSiteSecrets(admin, orgValue, siteName).then((result) => {
+      secrets = result || [];
+      renderTokens();
+    });
+  }
+
+  tokensList.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.revoke-btn');
+    if (!btn) return;
+    const { id } = btn.closest('.item-row').dataset;
+    if (!confirm(`Revoke access token "${id}"? Anything using it (e.g. your CDN) will lose access.`)) return;
+    btn.disabled = true;
+    if (!await updateAccess((a) => removeAccessSecretId(a, id))) {
+      btn.disabled = false;
+      showToast('Failed to revoke access token', 'error');
+      return;
+    }
+    await executeAdminRequest(
+      () => admin.config(coords).select(`secrets/${encodeURIComponent(id)}.json`).remove(),
+      coords,
+    );
+    secrets = secrets.filter((s) => s.id !== id);
+    renderTokens();
+    showToast('Access token revoked', 'success');
+  });
+
+  const tokenNameInput = authTokens.querySelector('#token-name');
+  const tokenNameError = authTokens.querySelector('.token-name-error');
+  tokenNameInput.addEventListener('input', () => tokenNameError.classList.remove('visible'));
+
+  authTokens.querySelector('.add-token-btn').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    const name = tokenNameInput.value.trim();
+    const error = validateSecretName(name, secrets.map((s) => s.id));
+    if (error) {
+      tokenNameError.textContent = error;
+      tokenNameError.classList.add('visible');
+      tokenNameInput.focus();
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Adding...';
+    const secret = await createSiteSecret(admin, orgValue, siteName, name);
+    const added = secret?.id && await updateAccess((a) => addAccessSecretId(a, secret.id));
+    btn.disabled = false;
+    btn.textContent = 'Add Token';
+    if (!added) {
+      showToast(secret?.id
+        ? `Created secret "${secret.id}" but failed to grant it site access`
+        : 'Failed to create access token', 'error');
+      return;
+    }
+    tokenNameInput.value = '';
+    const { value, ...meta } = secret;
+    secrets.push(meta);
+    renderTokens();
+    if (value) {
+      showTokenResult(value, showMainView);
+    } else {
+      showToast('Access token added', 'success');
+    }
+  });
 
   container.querySelector('.auth-loading').setAttribute('aria-hidden', 'true');
   container.querySelector('.auth-content').classList.add('visible');
@@ -478,55 +649,21 @@ export const openAuthModal = async (siteName, orgValue) => {
     btn.disabled = true;
     btn.textContent = 'Saving...';
 
-    const newAccess = {};
-    let tokenId = currentAccess.secretId?.[0] || '';
-    let newTokenValue = null;
-
-    if (scope !== 'none' && !tokenId) {
-      const secretResp = await executeAdminRequest(
-        () => admin.config({ org: orgValue, site: siteName }).select('secrets.json').update(null),
-        { org: orgValue, site: siteName },
-      );
-      const newSecret = secretResp?.ok ? await secretResp.json() : null;
-      if (newSecret) {
-        tokenId = newSecret.id;
-        newTokenValue = newSecret.value;
-      }
+    let newSecret = null;
+    if (scope !== 'none' && !getAccessSecretIds(access).length) {
+      newSecret = await createSiteSecret(admin, orgValue, siteName);
     }
 
-    if (scope !== 'none') {
-      const entry = {};
-      if (patterns.length) entry.allow = patterns;
-      if (tokenId) entry.secretId = [tokenId];
-      newAccess[scope] = entry;
-    }
-
-    if (access.admin) newAccess.admin = access.admin;
-
-    const siteHandle = admin.config({ org: orgValue, site: siteName });
-    const readResult = await executeAdminRequest(
-      () => siteHandle.read(),
-      { org: orgValue, site: siteName },
-    );
-    let success = false;
-    if (readResult?.ok) {
-      const siteConfig = await readResult.json();
-      siteConfig.access = newAccess;
-      const writeResult = await executeAdminRequest(
-        () => siteHandle.update(JSON.stringify(siteConfig)),
-        { org: orgValue, site: siteName },
-      );
-      success = writeResult?.ok ?? false;
-    }
+    const success = await updateAccess((a) => {
+      const ids = getAccessSecretIds(a);
+      if (newSecret?.id && !ids.includes(newSecret.id)) ids.push(newSecret.id);
+      return buildAccess(a, scope, patterns, ids);
+    });
     btn.disabled = false;
     btn.textContent = success ? 'Saved!' : 'Save';
     if (success) {
-      siteUpdated = true;
-      if (newTokenValue) {
-        tokenInput.value = newTokenValue;
-        authStatusCard.setAttribute('aria-hidden', 'true');
-        authForm.setAttribute('aria-hidden', 'true');
-        authTokenResult.removeAttribute('aria-hidden');
+      if (newSecret?.value) {
+        showTokenResult(newSecret.value, () => dialog.close());
       } else {
         setTimeout(() => dialog.close(), 1000);
       }

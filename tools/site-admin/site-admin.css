@@ -982,19 +982,19 @@
   margin-top: var(--spacing-s);
 }
 
-.manage-modal .items-list {
+.site-modal .items-list {
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--layer-elevated);
 }
 
-.manage-modal .items-list.loading {
+.site-modal .items-list.loading {
   padding: var(--spacing-m);
   color: var(--color-font-grey);
   text-align: center;
 }
 
-.manage-modal .item-row {
+.site-modal .item-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1002,15 +1002,15 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-.manage-modal .item-row:last-child {
+.site-modal .item-row:last-child {
   border-bottom: none;
 }
 
-.manage-modal .item-row.expired {
+.site-modal .item-row.expired {
   opacity: 0.6;
 }
 
-.manage-modal .item-info {
+.site-modal .item-info {
   display: flex;
   align-items: center;
   gap: var(--spacing-s);
@@ -1018,19 +1018,19 @@
   flex: 1;
 }
 
-.manage-modal .item-icon {
+.site-modal .item-icon {
   width: 16px;
   height: 16px;
   color: var(--color-font-grey);
   flex-shrink: 0;
 }
 
-.manage-modal .item-icon svg {
+.site-modal .item-icon svg {
   width: 100%;
   height: 100%;
 }
 
-.manage-modal .item-id {
+.site-modal .item-id {
   font-family: monospace;
   font-size: var(--body-size-xs);
   color: var(--color-text);
@@ -1039,20 +1039,21 @@
   white-space: nowrap;
 }
 
-.manage-modal .item-date,
-.manage-modal .item-dates {
+.site-modal .item-date,
+.site-modal .item-dates {
   font-size: var(--body-size-xs);
   color: var(--color-font-grey);
   white-space: nowrap;
 }
 
-.manage-modal .item-actions {
+.site-modal .item-actions {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
 }
 
-.manage-modal .icon-btn {
+.manage-modal .icon-btn,
+.auth-modal .icon-btn {
   background: none;
   border: none;
   padding: 4px;
@@ -1065,12 +1066,14 @@
   flex-shrink: 0;
 }
 
-.manage-modal .icon-btn:hover {
+.manage-modal .icon-btn:hover,
+.auth-modal .icon-btn:hover {
   color: light-dark(var(--red-600), var(--red-500));
   background: light-dark(var(--red-50), var(--red-1200));
 }
 
-.manage-modal .icon-btn svg {
+.manage-modal .icon-btn svg,
+.auth-modal .icon-btn svg {
   width: 100%;
   height: 100%;
 }
@@ -1112,7 +1115,8 @@
   height: 14px;
 }
 
-.manage-modal .empty-state {
+.manage-modal .empty-state,
+.auth-modal .empty-state {
   padding: var(--spacing-m);
   color: var(--color-font-grey);
   font-style: italic;
@@ -1243,7 +1247,18 @@
   height: 14px;
 }
 
-.auth-modal .auth-form h4 {
+.auth-modal .auth-tokens {
+  margin-top: var(--spacing-l);
+  padding-top: var(--spacing-m);
+  border-top: 1px solid var(--color-border);
+}
+
+.auth-modal .auth-tokens .items-list {
+  margin: var(--spacing-s) 0 var(--spacing-m);
+}
+
+.auth-modal .auth-form h4,
+.auth-modal .auth-tokens h4 {
   margin: 0 0 var(--spacing-s);
   font-size: var(--body-size-s);
   font-weight: 600;
