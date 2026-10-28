@@ -113,6 +113,41 @@ describe('classifySequenceStatus', () => {
       assert.equal(r.label, 'Pending changes');
     });
   });
+
+  describe('with unknown publish state', () => {
+    const opts = { publishKnown: false };
+
+    it('Publish unknown / notice when previewed after edit', () => {
+      const r = classifySequenceStatus(OLD, MID, undefined, opts);
+      assert.equal(r.label, 'Publish unknown');
+      assert.equal(r.modifier, 'notice');
+    });
+
+    it('Publish unknown / notice when previewed without source listing', () => {
+      const r = classifySequenceStatus(undefined, MID, undefined, {
+        ...opts, sourceExpected: false,
+      });
+      assert.equal(r.label, 'Publish unknown');
+      assert.equal(r.modifier, 'notice');
+    });
+
+    it('Pending changes when edit is newer than preview', () => {
+      const r = classifySequenceStatus(NEW, MID, undefined, opts);
+      assert.equal(r.label, 'Pending changes');
+      assert.equal(r.modifier, 'positive');
+    });
+
+    it('Not previewed when only edit exists', () => {
+      const r = classifySequenceStatus(OLD, undefined, undefined, opts);
+      assert.equal(r.label, 'Not previewed');
+    });
+
+    it('No source when source is expected and missing', () => {
+      const r = classifySequenceStatus(undefined, MID, undefined, opts);
+      assert.equal(r.label, 'No source');
+      assert.equal(r.modifier, 'negative');
+    });
+  });
 });
 
 describe('hasSourceListing', () => {

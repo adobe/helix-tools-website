@@ -249,6 +249,7 @@ function updateTableDisplay(show) {
  */
 function clearTable(table) {
   CAPTION.setAttribute('aria-hidden', true);
+  CAPTION.querySelector('.caption-notice').textContent = '';
   table.innerHTML = '';
   updateTableDisplay('no-results');
 }
@@ -340,6 +341,14 @@ function buildRedirectIcon(redirectLocation) {
 }
 
 /**
+ * @param {{publishKnown?: boolean}} [opts]
+ * @returns {string} Publish cell text when there is no publish date.
+ */
+function publishCellFallback(opts) {
+  return opts?.publishKnown === false ? 'Unknown' : '-';
+}
+
+/**
  * Builds row (`<tr>`) element with resource path, status, and modification timestamps.
  * @param {Object} resource - Resource object containing metadata.
  * @param {string} live - Base URL for live links.
@@ -372,7 +381,7 @@ function buildResource(resource, live, preview, opts) {
       status,
       sourceLastModified ? toUTCDate(sourceLastModified) : '-',
       previewLastModified ? buildLink(previewLastModified, preview, path) : '-',
-      publishLastModified ? buildLink(publishLastModified, live, path) : '-',
+      publishLastModified ? buildLink(publishLastModified, live, path) : publishCellFallback(opts),
     ];
     cols.forEach((col) => {
       const cell = document.createElement('td');
@@ -511,7 +520,7 @@ async function runAndDisplayJob(org, site, jobName, live, preview, opts) {
 async function runAndDisplayBrowse(admin, org, site, path, hosts, sourceType) {
   const folder = validatePath(path).slice(0, -1);
   const startTime = new Date().toISOString();
-  const resources = await collectResources(admin, {
+  const { resources, liveForbidden } = await collectResources(admin, {
     org, site, folder, source: sourceType === 'sourcebus',
   });
   if (resources.length === 0) {
@@ -520,8 +529,12 @@ async function runAndDisplayBrowse(admin, org, site, path, hosts, sourceType) {
     throw error;
   }
   updateTableCaption(startTime);
+  if (liveForbidden) {
+    CAPTION.querySelector('.caption-notice').textContent = 'Publish status unknown: insufficient permissions to list published content.';
+  }
   displayResources(resources, hosts.live, hosts.preview, {
     sourceExpected: hasSourceListing(sourceType, true),
+    publishKnown: !liveForbidden,
   });
   updateTableDisplay('results');
   enableActionButtons(false);

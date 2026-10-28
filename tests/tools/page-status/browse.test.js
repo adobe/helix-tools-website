@@ -112,10 +112,11 @@ describe('collectResources', () => {
       ]),
     });
 
-    const resources = await collectResources(admin, {
+    const { resources, liveForbidden } = await collectResources(admin, {
       org: 'o', site: 's', folder: '/', source: true,
     });
 
+    assert.equal(liveForbidden, false);
     assert.deepEqual(resources, [
       {
         path: '/', previewLastModified: T2, publishLastModified: T3, sourceLastModified: T1,
@@ -132,20 +133,42 @@ describe('collectResources', () => {
     const admin = mockAdmin({
       '/o/sites/s/preview/a/': json(200, { children: [child('preview', '/a/b.md', T1)] }),
     });
-    const resources = await collectResources(admin, {
+    const { resources } = await collectResources(admin, {
       org: 'o', site: 's', folder: '/a/', source: false,
     });
     assert.deepEqual(resources, [{ path: '/a/b', previewLastModified: T1 }]);
     assert.ok(admin.calls.every((c) => !c.path.includes('/source')));
   });
 
-  it('throws with status when a listing is forbidden', async () => {
+  it('throws with status when preview listing is forbidden', async () => {
     const admin = mockAdmin({ '/o/sites/s/preview/': json(403) });
     await assert.rejects(
       collectResources(admin, {
         org: 'o', site: 's', folder: '/', source: false,
       }),
       (e) => e.status === 403,
+    );
+  });
+
+  it('omits live data when live listing is forbidden', async () => {
+    const admin = mockAdmin({
+      '/o/sites/s/preview/': json(200, { children: [child('preview', '/a.md', T1)] }),
+      '/o/sites/s/live/': json(403),
+    });
+    const { resources, liveForbidden } = await collectResources(admin, {
+      org: 'o', site: 's', folder: '/', source: false,
+    });
+    assert.equal(liveForbidden, true);
+    assert.deepEqual(resources, [{ path: '/a', previewLastModified: T1 }]);
+  });
+
+  it('throws when live listing fails otherwise', async () => {
+    const admin = mockAdmin({ '/o/sites/s/live/': json(500) });
+    await assert.rejects(
+      collectResources(admin, {
+        org: 'o', site: 's', folder: '/', source: false,
+      }),
+      (e) => e.status === 500,
     );
   });
 });

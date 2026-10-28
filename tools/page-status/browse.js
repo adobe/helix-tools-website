@@ -131,17 +131,24 @@ export async function listSourceFolder(admin, org, site, folder) {
  * @param {string} opts.site
  * @param {string} opts.folder - Root folder (ending with `/`).
  * @param {boolean} opts.source - Whether to list the source bus.
- * @returns {Promise<Object[]>} Resources sorted by path.
+ * @returns {Promise<{resources: Object[], liveForbidden: boolean}>} Resources sorted by
+ * path; `liveForbidden` when live could not be listed (missing `live:list` permission).
  */
 export async function collectResources(admin, {
   org, site, folder, source,
 }) {
+  let liveForbidden = false;
   const [sourceFiles, previewFiles, liveFiles] = await Promise.all([
     source
       ? walkTree(folder, (f) => listSourceFolder(admin, org, site, f))
       : [],
     walkTree(folder, (f) => listPartitionFolder(admin, org, site, 'preview', f)),
-    walkTree(folder, (f) => listPartitionFolder(admin, org, site, 'live', f)),
+    walkTree(folder, (f) => listPartitionFolder(admin, org, site, 'live', f))
+      .catch((error) => {
+        if (error.status !== 403) throw error;
+        liveForbidden = true;
+        return [];
+      }),
   ]);
 
   const resources = new Map();
@@ -161,5 +168,8 @@ export async function collectResources(admin, {
     if (isPage || resources.has(webPath)) getOrCreate(webPath).sourceLastModified = lastModified;
   });
 
-  return [...resources.values()].sort((a, b) => a.path.localeCompare(b.path));
+  return {
+    resources: [...resources.values()].sort((a, b) => a.path.localeCompare(b.path)),
+    liveForbidden,
+  };
 }

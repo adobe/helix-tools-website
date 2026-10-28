@@ -87,24 +87,30 @@ export function hasSourceListing(contentSourceType, h6) {
 
 /**
  * Classifies three last-modified dates into a human-readable label and a
- * CSS modifier ('positive' or 'negative') for the status-light indicator.
+ * CSS modifier ('positive', 'notice' or 'negative') for the status-light indicator.
  * @param {string} edit
  * @param {string} preview
  * @param {string} publish
- * @param {{sourceExpected?: boolean}} [opts] - `sourceExpected: false` when the
- * content source has no listing, so a missing edit date is not flagged.
- * @returns {{label: string, modifier: 'positive'|'negative'}}
+ * @param {{sourceExpected?: boolean, publishKnown?: boolean}} [opts] - `sourceExpected: false`
+ * when the content source has no listing, so a missing edit date is not flagged.
+ * `publishKnown: false` when live state could not be read.
+ * @returns {{label: string, modifier: 'positive'|'notice'|'negative'}}
  */
-export function classifySequenceStatus(edit, preview, publish, { sourceExpected = true } = {}) {
+export function classifySequenceStatus(edit, preview, publish, {
+  sourceExpected = true,
+  publishKnown = true,
+} = {}) {
   const valid = (d) => !Number.isNaN(d.getTime());
   const editDate = new Date(edit ?? NaN);
   const previewDate = new Date(preview ?? NaN);
   const publishDate = new Date(publish ?? NaN);
+  const publishUnknown = { label: 'Publish unknown', modifier: 'notice' };
 
   if (!valid(editDate)) {
     if (sourceExpected || (!valid(previewDate) && !valid(publishDate))) {
       return { label: 'No source', modifier: 'negative' };
     }
+    if (!publishKnown) return publishUnknown;
     if (!valid(publishDate)) {
       return { label: 'Not published', modifier: 'positive' };
     }
@@ -115,6 +121,10 @@ export function classifySequenceStatus(edit, preview, publish, { sourceExpected 
   }
   if (!valid(previewDate) && !valid(publishDate)) {
     return { label: 'Not previewed', modifier: 'positive' };
+  }
+  if (!publishKnown) {
+    if (editDate <= previewDate) return publishUnknown;
+    return { label: 'Pending changes', modifier: 'positive' };
   }
   if (valid(previewDate) && !valid(publishDate) && editDate <= previewDate) {
     return { label: 'Not published', modifier: 'positive' };
