@@ -30,7 +30,7 @@ function statusError(res) {
   return error;
 }
 
-function createLimiter(max) {
+export function createLimiter(max) {
   let active = 0;
   const waiting = [];
   return async (fn) => {

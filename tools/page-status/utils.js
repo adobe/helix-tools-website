@@ -86,6 +86,17 @@ export function hasSourceListing(contentSourceType, h6) {
 }
 
 /**
+ * Whether source dates must be looked up per page: H6 has no source listing
+ * for Google Drive or OneDrive (or when the source type is unknown).
+ * @param {string} [contentSourceType]
+ * @param {boolean} h6 - Site runs on the Helix 6 API.
+ * @returns {boolean}
+ */
+export function needsSourceLookup(contentSourceType, h6) {
+  return h6 && !['sourcebus', 'markup'].includes(contentSourceType);
+}
+
+/**
  * Classifies three last-modified dates into a human-readable label and a
  * CSS modifier ('positive', 'notice' or 'negative') for the status-light indicator.
  * @param {string} edit
@@ -94,12 +105,15 @@ export function hasSourceListing(contentSourceType, h6) {
  * @param {{sourceExpected?: boolean, publishKnown?: boolean}} [opts] - `sourceExpected: false`
  * when the content source has no listing, so a missing edit date is not flagged.
  * `publishKnown: false` when live state could not be read.
+ * `sourceKnown: false` when the source has not been looked up yet.
  * @returns {{label: string, modifier: 'positive'|'notice'|'negative'}}
  */
 export function classifySequenceStatus(edit, preview, publish, {
   sourceExpected = true,
   publishKnown = true,
+  sourceKnown = true,
 } = {}) {
+  if (!sourceKnown) return { label: 'Unknown', modifier: 'notice' };
   const valid = (d) => !Number.isNaN(d.getTime());
   const editDate = new Date(edit ?? NaN);
   const previewDate = new Date(preview ?? NaN);

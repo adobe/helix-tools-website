@@ -4,6 +4,7 @@ import {
   validatePath,
   classifySequenceStatus,
   hasSourceListing,
+  needsSourceLookup,
   fetchContentSourceType,
 } from '../../../tools/page-status/utils.js';
 
@@ -170,6 +171,34 @@ describe('hasSourceListing', () => {
   it('defaults to listed when type is unknown', () => {
     assert.equal(hasSourceListing(undefined, false), true);
     assert.equal(hasSourceListing(undefined, true), true);
+  });
+});
+
+describe('needsSourceLookup', () => {
+  it('H6 google, onedrive and unknown need lookups', () => {
+    assert.equal(needsSourceLookup('google', true), true);
+    assert.equal(needsSourceLookup('onedrive', true), true);
+    assert.equal(needsSourceLookup(undefined, true), true);
+  });
+
+  it('H6 sourcebus and markup do not', () => {
+    assert.equal(needsSourceLookup('sourcebus', true), false);
+    assert.equal(needsSourceLookup('markup', true), false);
+  });
+
+  it('H5 never does', () => {
+    assert.equal(needsSourceLookup('google', false), false);
+    assert.equal(needsSourceLookup(undefined, false), false);
+  });
+});
+
+describe('classifySequenceStatus with unknown source', () => {
+  it('Unknown / notice before the source is checked', () => {
+    const r = classifySequenceStatus(undefined, '2024-01-01T00:00:00Z', undefined, {
+      sourceKnown: false,
+    });
+    assert.equal(r.label, 'Unknown');
+    assert.equal(r.modifier, 'notice');
   });
 });
 
