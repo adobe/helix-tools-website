@@ -1,8 +1,12 @@
 export const STATUS_CONTEXT = 'claude-review';
 export const STATUS_CREATOR = 'github-actions[bot]';
 
-function toolForPath(path) {
-  return path.match(/^(?:tests\/)?((?:tools|blocks)\/[^/]+)\/[^/].*$/)?.[1];
+function scopeForPath(path, { sourceDirs, testsDir }) {
+  const [first, ...rest] = path.split('/');
+  const parts = first === testsDir ? rest : [first, ...rest];
+  return parts.length > 2 && sourceDirs.includes(parts[0]) && parts.every(Boolean)
+    ? `${parts[0]}/${parts[1]}`
+    : undefined;
 }
 
 export function claudeVerdict(conclusion, output) {
@@ -23,23 +27,33 @@ export function claudeVerdict(conclusion, output) {
     : { state: 'success', description: 'Claude found no BLOCKING issues.' };
 }
 
-export default function evaluatePullRequest(pr, files, trustedContributors, claudeStatus) {
+export default function evaluatePullRequest(pr, files, config, claudeStatus) {
+  const {
+    trustedContributors, maxLines, maxFiles, maxScopes, sourceDirs, testsDir, excludedPaths,
+  } = config;
   const reasons = [];
   const lines = pr.additions + pr.deletions;
   const paths = files.flatMap((file) => [file.filename, file.previous_filename].filter(Boolean));
-  const tools = new Set(paths.map(toolForPath));
+  const scopes = new Set(paths.map((path) => scopeForPath(path, config)));
 
   if (pr.state !== 'open' || pr.draft) reasons.push('PR must be open and non-draft.');
   if (pr.user.type !== 'User'
     || !trustedContributors.some((login) => login.toLowerCase() === pr.user.login.toLowerCase())) {
     reasons.push('Author is not on the trusted-contributor list.');
   }
-  if (!files.length || tools.size !== 1 || tools.has(undefined)) {
-    reasons.push('Changes must stay within one tools/ or blocks/ directory and its mirrored tests.');
+  if (!files.length || scopes.has(undefined) || scopes.size > maxScopes) {
+    reasons.push(`Changes must stay within at most ${maxScopes} ${sourceDirs.map((dir) => `${dir}/`).join(' or ')} director${maxScopes === 1 ? 'y' : 'ies'} and mirrored ${testsDir}/.`);
+  }
+  const excluded = paths.filter((path) => excludedPaths.some((prefix) => path.startsWith(prefix)));
+  if (excluded.length) {
+    reasons.push(`Excluded paths changed: ${excluded.join(', ')}.`);
+  }
+  if (files.length > maxFiles) {
+    reasons.push(`At most ${maxFiles} changed files allowed.`);
   }
   if (!Number.isSafeInteger(pr.additions) || !Number.isSafeInteger(pr.deletions)
-    || pr.additions < 0 || pr.deletions < 0 || lines >= 300) {
-    reasons.push('Additions + deletions must be less than 300.');
+    || pr.additions < 0 || pr.deletions < 0 || lines > maxLines) {
+    reasons.push(`Additions + deletions must be at most ${maxLines}.`);
   }
   if (files.length !== pr.changed_files
     || files.some((file) => !file.patch
@@ -56,6 +70,6 @@ export default function evaluatePullRequest(pr, files, trustedContributors, clau
     eligible: reasons.length === 0,
     reasons,
     lines,
-    tool: tools.size === 1 ? [...tools][0] : undefined,
+    tool: scopes.has(undefined) ? undefined : [...scopes].join(', '),
   };
 }

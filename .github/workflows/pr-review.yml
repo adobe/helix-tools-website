@@ -29,7 +29,7 @@ jobs:
             const { pathToFileURL } = await import('node:url');
             const path = `${process.env.GITHUB_WORKSPACE}/.github/pr-review`;
             const { default: run } = await import(pathToFileURL(`${path}/run.js`).href);
-            const trustedContributors = JSON.parse(await readFile(`${path}/trusted-contributors.json`, 'utf8'));
+            const config = JSON.parse(await readFile(`${path}/policy-config.json`, 'utf8'));
             await run({
-              github, context, core, trustedContributors, pullNumber: context.payload.pull_request.number,
+              github, context, core, config, pullNumber: context.payload.pull_request.number,
             });

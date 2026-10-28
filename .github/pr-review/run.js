@@ -3,7 +3,7 @@ import evaluatePullRequest, { STATUS_CONTEXT } from './policy.js';
 const MARKER = '<!-- ai-pr-review -->';
 
 export default async function run({
-  github, context, core, trustedContributors, pullNumber,
+  github, context, core, config, pullNumber,
 }) {
   const params = { ...context.repo, pull_number: pullNumber };
   const { data: pr } = await github.rest.pulls.get(params);
@@ -12,7 +12,7 @@ export default async function run({
     ...context.repo, ref: pr.head.sha, per_page: 100,
   });
   const claudeStatus = statuses.find((status) => status.context === STATUS_CONTEXT);
-  const result = evaluatePullRequest(pr, files, trustedContributors, claudeStatus);
+  const result = evaluatePullRequest(pr, files, config, claudeStatus);
   if (pr.base.ref !== context.payload.repository.default_branch) {
     result.eligible = false;
     result.reasons.push('PR must target the default branch.');

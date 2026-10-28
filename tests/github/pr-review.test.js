@@ -1,10 +1,20 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import evaluatePullRequest, { claudeVerdict } from '../../.github/pr-review/policy.js';
 import run from '../../.github/pr-review/run.js';
 
 const SHA = 'a'.repeat(40);
 const OTHER_SHA = 'b'.repeat(40);
+const CONFIG = {
+  trustedContributors: ['shsteimer'],
+  maxLines: 299,
+  maxFiles: 10,
+  maxScopes: 1,
+  sourceDirs: ['tools', 'blocks'],
+  testsDir: 'tests',
+  excludedPaths: ['ops/', '.github/', '.claude/'],
+};
 
 function claudeStatus(overrides = {}) {
   return {
@@ -35,8 +45,8 @@ function file(filename = 'tools/bulk/utils.js', overrides = {}) {
   };
 }
 
-function evaluate(pr = {}, files = [file()], status = claudeStatus()) {
-  return evaluatePullRequest(pullRequest(pr), files, ['shsteimer'], status);
+function evaluate(pr = {}, files = [file()], status = claudeStatus(), config = CONFIG) {
+  return evaluatePullRequest(pullRequest(pr), files, config, status);
 }
 
 describe('PR review eligibility', () => {
@@ -124,6 +134,39 @@ describe('PR review eligibility', () => {
     assert.equal(evaluate({ user: { login: 'SHSTEIMER', type: 'User' } }).eligible, true);
   });
 
+  it('limits changed files', () => {
+    const files = (count) => Array.from({ length: count }, (_, i) => file(`tools/bulk/f${i}.js`, {
+      additions: 1, deletions: 0,
+    }));
+    const pr = (count) => ({ additions: count, deletions: 0, changed_files: count });
+    assert.equal(evaluate(pr(10), files(10)).eligible, true);
+    assert.equal(evaluate(pr(11), files(11)).eligible, false);
+  });
+
+  it('applies config limits, scopes and exclusions', () => {
+    const files = [
+      file(undefined, { additions: 50, deletions: 49 }),
+      file('blocks/other/other.js', { additions: 50, deletions: 50 }),
+    ];
+    const pr = { changed_files: 2 };
+    assert.equal(evaluate(pr, files).eligible, false);
+    assert.equal(evaluate(pr, files, undefined, { ...CONFIG, maxScopes: 2 }).eligible, true);
+    assert.equal(evaluate(pr, files, undefined, {
+      ...CONFIG, maxScopes: 2, excludedPaths: ['blocks/other/'],
+    }).eligible, false);
+    assert.equal(evaluate({}, [file()], undefined, { ...CONFIG, maxLines: 198 }).eligible, false);
+    assert.equal(evaluate({}, [file()], undefined, { ...CONFIG, sourceDirs: ['blocks'] }).eligible, false);
+    assert.equal(evaluate({}, [file('src/bulk/x.js')], undefined, {
+      ...CONFIG, sourceDirs: ['src'],
+    }).eligible, true);
+  });
+
+  it('ships a complete policy config', async () => {
+    const config = JSON.parse(await readFile(new URL('../../.github/pr-review/policy-config.json', import.meta.url), 'utf8'));
+    assert.deepEqual(Object.keys(config).sort(), Object.keys(CONFIG).sort());
+    assert.ok(config.trustedContributors.length);
+  });
+
   it('rejects empty, incomplete, binary, and uncountable file lists', () => {
     [
       [], [file(undefined, { patch: undefined })],
@@ -205,7 +248,7 @@ function harness(pr = pullRequest(), reviews = [], latest = pr, statuses = [clau
         setFailed: (message) => calls.failures.push(message),
         notice: (message) => calls.notices.push(message),
       },
-      trustedContributors: ['shsteimer'],
+      config: CONFIG,
       pullNumber: 1,
     },
   };
