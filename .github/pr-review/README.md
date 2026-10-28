@@ -23,7 +23,7 @@ All of:
 - PR is open, non-draft, and targets the default branch
 - Author is in `trustedContributors`
 - Changes stay within the size and path limits below
-- Newest `claude-review` status on the head commit is `success`
+- Claude found no BLOCKING issues on the head commit (newest `claude-review` status is `success`)
 
 ## `policy-config.json`
 
