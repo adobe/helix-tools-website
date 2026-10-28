@@ -581,7 +581,7 @@ export const openAuthModal = async (siteName, orgValue) => {
     const btn = e.target.closest('.revoke-btn');
     if (!btn || busy) return;
     const { id } = btn.closest('.item-row').dataset;
-    if (!confirm(`Revoke access token "${id}"? Anything using it (e.g. your CDN) will lose access.`)) return;
+    if (!confirm(`Revoke access token "${id}"? Anything using it (e.g. your CDN or test suite) will lose access to the site. The token's secret is also deleted. This cannot be undone.`)) return;
     runExclusive(async () => {
       if (!await updateAccess((a) => removeAccessSecretId(a, id))) {
         showToast('Failed to revoke access token', 'error');
@@ -770,9 +770,9 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
         const row = btn.closest('.item-row');
         const itemId = row.dataset.id;
         const accessWarning = items.find((i) => i.id === itemId)?.siteAccess
-          ? ' It grants site access; anything using it (e.g. your CDN) will lose access.'
+          ? ' It grants site access: it will also be removed from the site\'s access settings, and anything using it (e.g. your CDN or test suite) will lose access.'
           : '';
-        if (confirm(`Delete ${itemName.toLowerCase()} "${itemId}"?${accessWarning}`)) {
+        if (confirm(`Delete ${itemName.toLowerCase()} "${itemId}"?${accessWarning} This cannot be undone.`)) {
           btn.disabled = true;
           const success = await deleteFn(orgValue, siteName, itemId);
           if (success) {
@@ -863,9 +863,21 @@ export const openSecretModal = (siteName, orgValue) => openManageItemsModal(site
   },
   deleteFn: async (org, site, secretId) => {
     const admin = await getAdminClient();
-    const handle = admin.config({ org, site })
-      .select(`secrets/${encodeURIComponent(secretId)}.json`);
-    const resp = await executeAdminRequest(() => handle.remove(), { org, site });
+    const coords = { org, site };
+    const siteHandle = admin.config(coords);
+    const readResp = await executeAdminRequest(() => siteHandle.read(), coords);
+    if (!readResp?.ok) return false;
+    const siteConfig = await readResp.json();
+    if (getAccessSecretIds(siteConfig.access).includes(secretId)) {
+      siteConfig.access = removeAccessSecretId(siteConfig.access, secretId);
+      const writeResp = await executeAdminRequest(
+        () => siteHandle.update(JSON.stringify(siteConfig)),
+        coords,
+      );
+      if (!writeResp?.ok) return false;
+    }
+    const handle = siteHandle.select(`secrets/${encodeURIComponent(secretId)}.json`);
+    const resp = await executeAdminRequest(() => handle.remove(), coords);
     return resp?.ok ?? false;
   },
   showExpiration: false,
