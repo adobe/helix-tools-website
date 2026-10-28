@@ -186,6 +186,16 @@ export const removeAccessSecretId = (access, id) => mapAccessSecretIds(
   (ids) => ids.filter((i) => i !== id),
 );
 
+export const validateSecretName = (name, existingIds) => {
+  if (!name) return '';
+  if (!/^[a-z0-9_-]+$/.test(name)) {
+    return 'Name must contain only lowercase letters, numbers, hyphens, and underscores';
+  }
+  if (!existingIds) return 'Existing secrets could not be loaded. Reopen this dialog or leave the name blank.';
+  if (existingIds.includes(name)) return `A secret named "${name}" already exists`;
+  return '';
+};
+
 export const compareSites = (a, b, selectedSite, favorites) => {
   if (selectedSite) {
     if (a.name === selectedSite) return -1;

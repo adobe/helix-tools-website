@@ -6,9 +6,8 @@ import escapeHtml from '../../../utils/html.js';
 import {
   icon, showToast, formatDate, isExpired, buildSiteConfig,
   getAccessScope, getAccessSecretIds, buildAccess, addAccessSecretId, removeAccessSecretId,
+  validateSecretName,
 } from './utils.js';
-
-const SECRET_NAME_PATTERN = /^[a-z0-9_-]+$/;
 
 const fetchSiteSecrets = async (admin, org, site) => {
   const resp = await executeAdminRequest(
@@ -30,15 +29,6 @@ const createSiteSecret = async (admin, org, site, name, value) => {
   try { data = await resp.json(); } catch { data = { id: name }; }
   if (data && value) delete data.value;
   return data;
-};
-
-const validateSecretName = (name, existingIds) => {
-  if (!name) return '';
-  if (!SECRET_NAME_PATTERN.test(name)) {
-    return 'Name must contain only lowercase letters, numbers, hyphens, and underscores';
-  }
-  if (existingIds?.includes(name)) return `A secret named "${name}" already exists`;
-  return '';
 };
 
 /* eslint-disable no-alert, no-restricted-globals */
@@ -545,7 +535,7 @@ export const openAuthModal = async (siteName, orgValue) => {
   );
 
   const tokensList = authTokens.querySelector('.items-list');
-  let secrets = [];
+  let secrets = null;
   const renderTokens = () => {
     const ids = getAccessSecretIds(access);
     tokensList.classList.remove('loading');
@@ -554,7 +544,7 @@ export const openAuthModal = async (siteName, orgValue) => {
       return;
     }
     tokensList.innerHTML = ids.map((id) => {
-      const created = secrets.find((s) => s.id === id)?.created;
+      const created = secrets?.find((s) => s.id === id)?.created;
       return `
         <div class="item-row" data-id="${escapeHtml(id)}">
           <div class="item-info">
@@ -572,7 +562,7 @@ export const openAuthModal = async (siteName, orgValue) => {
 
   if (currentScope !== 'none') {
     fetchSiteSecrets(admin, orgValue, siteName).then((result) => {
-      secrets = result || [];
+      secrets = result;
       renderTokens();
     });
   }
@@ -587,10 +577,14 @@ export const openAuthModal = async (siteName, orgValue) => {
         showToast('Failed to revoke access token', 'error');
         return;
       }
-      await deleteSecret(id);
-      secrets = secrets.filter((s) => s.id !== id);
+      const deleted = await deleteSecret(id);
+      secrets = secrets?.filter((s) => s.id !== id) ?? null;
       renderTokens();
-      showToast('Access token revoked', 'success');
+      if (deleted?.ok) {
+        showToast('Access token revoked', 'success');
+      } else {
+        showToast(`Access revoked, but failed to delete secret "${id}". Delete it in Manage Secrets.`, 'error');
+      }
     });
   });
 
@@ -601,7 +595,7 @@ export const openAuthModal = async (siteName, orgValue) => {
   authTokens.querySelector('.add-token-btn').addEventListener('click', (e) => runExclusive(async () => {
     const btn = e.currentTarget;
     const name = tokenNameInput.value.trim();
-    const error = validateSecretName(name, secrets.map((s) => s.id));
+    const error = validateSecretName(name, secrets?.map((s) => s.id) ?? null);
     if (error) {
       tokenNameError.textContent = error;
       tokenNameError.classList.add('visible');
@@ -619,7 +613,7 @@ export const openAuthModal = async (siteName, orgValue) => {
     }
     tokenNameInput.value = '';
     const { value, ...meta } = secret;
-    secrets.push(meta);
+    secrets?.push(meta);
     renderTokens();
     if (value) {
       showTokenResult(value, showMainView);
@@ -750,13 +744,18 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
     `;
   };
 
-  let currentItems = [];
+  let currentItems = null;
   const loadItems = async () => {
     itemsList.classList.add('loading');
     itemsList.textContent = 'Loading...';
-    const items = await fetchFn(orgValue, siteName) || [];
-    currentItems = items;
+    currentItems = await fetchFn(orgValue, siteName);
+    const items = currentItems || [];
     itemsList.classList.remove('loading');
+
+    if (!currentItems) {
+      itemsList.innerHTML = `<p class="empty-state">Failed to load ${itemNamePlural.toLowerCase()}</p>`;
+      return;
+    }
 
     if (items.length === 0) {
       itemsList.innerHTML = `<p class="empty-state">No ${itemNamePlural.toLowerCase()} configured</p>`;
@@ -779,7 +778,7 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
             await loadItems();
             showToast(`${itemName} deleted successfully`, 'success');
           } else {
-            btn.disabled = false;
+            await loadItems();
             showToast(`Failed to delete ${itemName.toLowerCase()}`, 'error');
           }
         }
@@ -922,7 +921,7 @@ export const openSecretModal = (siteName, orgValue) => openManageItemsModal(site
       showNameError('Name is required when a value is provided');
       return null;
     }
-    const error = validateSecretName(name, existing.map((s) => s.id));
+    const error = validateSecretName(name, existing?.map((s) => s.id) ?? null);
     if (error) {
       showNameError(error);
       return null;

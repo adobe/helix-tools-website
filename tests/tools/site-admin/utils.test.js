@@ -12,6 +12,7 @@ import {
   buildAccess,
   addAccessSecretId,
   removeAccessSecretId,
+  validateSecretName,
 } from '../../../tools/site-admin/helpers/utils.js';
 
 describe('site-admin:utils.js', () => {
@@ -383,6 +384,27 @@ describe('site-admin:utils.js', () => {
         site: { allow: ['*@x.com'], secretId: ['cdn'] },
         live: {},
       });
+    });
+  });
+  describe('validateSecretName', () => {
+    it('accepts a blank name even when existing secrets are unknown', () => {
+      assert.equal(validateSecretName('', null), '');
+    });
+
+    it('accepts a valid unused name', () => {
+      assert.equal(validateSecretName('qa-automation_1', ['cdn']), '');
+    });
+
+    it('rejects invalid characters', () => {
+      assert.match(validateSecretName('QA token', []), /lowercase letters/);
+    });
+
+    it('rejects an existing name', () => {
+      assert.match(validateSecretName('cdn', ['cdn']), /already exists/);
+    });
+
+    it('rejects a name when existing secrets could not be loaded', () => {
+      assert.match(validateSecretName('qa', null), /could not be loaded/);
     });
   });
 });
