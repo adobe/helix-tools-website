@@ -27,23 +27,30 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-            const { data: { permission } } = await github.rest.repos.getCollaboratorPermissionLevel({
-              ...context.repo, username: context.payload.comment.user.login,
-            });
-            if (!['admin', 'write'].includes(permission)) {
-              core.setFailed('Only users with write access can request a Claude review.');
-              return;
-            }
-            const { data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: context.issue.number });
-            if (pr.state !== 'open' || pr.head.repo?.full_name !== `${context.repo.owner}/${context.repo.repo}`) {
-              core.setFailed('Claude review runs only on open, same-repository PRs.');
-              return;
-            }
             const { readFile } = await import('node:fs/promises');
             const { pathToFileURL } = await import('node:url');
             const path = `${process.env.GITHUB_WORKSPACE}/.github/pr-review`;
-            const { STATUS_CONTEXT } = await import(pathToFileURL(`${path}/policy.js`).href);
+            const { STATUS_CONTEXT, reviewRequestSkipReason } = await import(pathToFileURL(`${path}/policy.js`).href);
             const { default: run } = await import(pathToFileURL(`${path}/run.js`).href);
+            const commenter = context.payload.comment.user.login;
+            const { data: { permission } } = await github.rest.repos.getCollaboratorPermissionLevel({
+              ...context.repo, username: commenter,
+            });
+            const { data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: context.issue.number });
+            const statuses = await github.paginate(github.rest.repos.listCommitStatusesForRef, {
+              ...context.repo, ref: pr.head.sha, per_page: 100,
+            });
+            const skip = reviewRequestSkipReason({
+              commenter,
+              permission,
+              pr,
+              repo: `${context.repo.owner}/${context.repo.repo}`,
+              claudeStatus: statuses.find((status) => status.context === STATUS_CONTEXT),
+            });
+            if (skip) {
+              core.notice(skip);
+              return;
+            }
             await github.rest.reactions.createForIssueComment({
               ...context.repo, comment_id: context.payload.comment.id, content: 'eyes',
             });

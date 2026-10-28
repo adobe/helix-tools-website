@@ -4,7 +4,7 @@ Auto-approves small PRs from trusted contributors once Claude finds no BLOCKING 
 
 ## Flow
 
-1. Comment `/claude-review` on a PR (write access, same-repo branch only).
+1. The PR author or a committer comments `/claude-review` (same-repo branches only). Ignored if the current head was already reviewed or a review is running.
 2. `claude-code-review.yml` runs Claude on the current head and sets commit status `claude-review`:
    - `success`: no BLOCKING issues
    - `failure`: BLOCKING issues found

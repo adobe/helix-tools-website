@@ -1,5 +1,26 @@
 export const STATUS_CONTEXT = 'claude-review';
 export const STATUS_CREATOR = 'github-actions[bot]';
+const RUNNING_TIMEOUT_MS = 60 * 60 * 1000;
+
+export function reviewRequestSkipReason({
+  commenter, permission, pr, repo, claudeStatus, now = Date.now(),
+}) {
+  if (pr.state !== 'open' || pr.head.repo?.full_name !== repo) {
+    return 'Claude review runs only on open, same-repository PRs.';
+  }
+  if (commenter.toLowerCase() !== pr.user.login.toLowerCase()
+    && !['admin', 'write'].includes(permission)) {
+    return 'Only the PR author or committers can request a Claude review.';
+  }
+  if (['success', 'failure'].includes(claudeStatus?.state)) {
+    return 'Current head already reviewed; push changes to review again.';
+  }
+  if (claudeStatus?.state === 'pending' && claudeStatus.target_url
+    && now - Date.parse(claudeStatus.created_at) < RUNNING_TIMEOUT_MS) {
+    return 'Claude review already running for the current head.';
+  }
+  return undefined;
+}
 
 function scopeForPath(path, { sourceDirs, testsDir }) {
   const [first, ...rest] = path.split('/');

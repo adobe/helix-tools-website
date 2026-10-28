@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import evaluatePullRequest, { claudeVerdict } from '../../.github/pr-review/policy.js';
+import evaluatePullRequest, { claudeVerdict, reviewRequestSkipReason } from '../../.github/pr-review/policy.js';
 import run from '../../.github/pr-review/run.js';
 
 const SHA = 'a'.repeat(40);
@@ -172,6 +172,59 @@ describe('PR review eligibility', () => {
     ].forEach((files) => {
       assert.equal(evaluate({}, files).eligible, false);
     });
+  });
+});
+
+describe('Claude review request', () => {
+  const REPO = 'adobe/helix-tools-website';
+  const NOW = Date.parse('2026-01-01T12:00:00Z');
+  const request = (overrides = {}) => reviewRequestSkipReason({
+    commenter: 'someone',
+    permission: 'write',
+    pr: pullRequest({ head: { sha: SHA, repo: { full_name: REPO } } }),
+    repo: REPO,
+    claudeStatus: undefined,
+    now: NOW,
+    ...overrides,
+  });
+
+  it('runs for committers and the PR author', () => {
+    assert.equal(request(), undefined);
+    assert.equal(request({ permission: 'admin' }), undefined);
+    assert.equal(request({ commenter: 'SHSTEIMER', permission: 'read' }), undefined);
+  });
+
+  it('ignores drive-by commenters', () => {
+    ['read', 'triage', 'none'].forEach((permission) => {
+      assert.match(request({ permission }), /author or committers/);
+    });
+  });
+
+  it('ignores closed and fork PRs', () => {
+    assert.match(request({ pr: pullRequest({ state: 'closed', head: { sha: SHA, repo: { full_name: REPO } } }) }), /same-repository/);
+    assert.match(request({ pr: pullRequest({ head: { sha: SHA, repo: { full_name: 'fork/helix-tools-website' } } }) }), /same-repository/);
+    assert.match(request({ pr: pullRequest({ head: { sha: SHA, repo: null } }) }), /same-repository/);
+  });
+
+  it('skips a head that was already reviewed', () => {
+    ['success', 'failure'].forEach((state) => {
+      assert.match(request({ claudeStatus: claudeStatus({ state }) }), /already reviewed/);
+    });
+  });
+
+  it('reruns after an error or when only prompted', () => {
+    assert.equal(request({ claudeStatus: claudeStatus({ state: 'error' }) }), undefined);
+    assert.equal(request({ claudeStatus: claudeStatus({ state: 'pending' }) }), undefined);
+  });
+
+  it('skips while a review is running, unless it is stuck', () => {
+    const running = (minutes) => claudeStatus({
+      state: 'pending',
+      target_url: 'https://github.com/run',
+      created_at: new Date(NOW - minutes * 60 * 1000).toISOString(),
+    });
+    assert.match(request({ claudeStatus: running(5) }), /already running/);
+    assert.equal(request({ claudeStatus: running(61) }), undefined);
   });
 });
 
