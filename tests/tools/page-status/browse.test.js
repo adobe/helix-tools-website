@@ -47,9 +47,9 @@ describe('sourceToWebPath', () => {
 });
 
 describe('walkTree', () => {
-  it('walks nested folders and skips .helix and .snapshots', async () => {
+  it('walks nested folders and skips .helix, .snapshots, .trash and .da', async () => {
     const tree = {
-      '/': { folders: ['/a/', '/.helix/', '/.snapshots/'], files: [{ path: '/x' }] },
+      '/': { folders: ['/a/', '/.helix/', '/.snapshots/', '/.trash/', '/.da/'], files: [{ path: '/x' }] },
       '/a/': { folders: ['/a/b/'], files: [{ path: '/a/y' }] },
       '/a/b/': { folders: [], files: [{ path: '/a/b/z' }] },
     };

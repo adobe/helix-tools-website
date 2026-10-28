@@ -1,6 +1,6 @@
 const PAGE_LIMIT = 1000;
 const CONCURRENCY = 8;
-const EXCLUDED = ['/.helix/', '/.snapshots/'];
+const EXCLUDED = ['/.helix/', '/.snapshots/', '/.trash/', '/.da/'];
 
 /**
  * Converts a content bus resource path to its web path.
