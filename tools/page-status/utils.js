@@ -6,12 +6,13 @@ import { executeAdminRequest } from '../../utils/admin-request.js';
  * Returns null if the user cancels login; throws on invalid config.
  * @param {string} org
  * @param {string} site
+ * @param {Object} [client] - Admin client; defaults to the global one.
  * @returns {Promise<{live: string, preview: string}|null>}
  */
-export async function fetchHosts(org, site) {
-  const admin = await getAdminClient();
+export async function fetchHosts(org, site, client) {
+  const admin = client || await getAdminClient();
   const res = await executeAdminRequest(
-    () => admin.status({ org, site }).get(),
+    () => admin.status({ org, site }).get('/index'),
     { org, site },
   );
   if (!res) return null;
@@ -49,6 +50,25 @@ export function validatePath(path) {
     str += '/';
   }
   return `${str}*`;
+}
+
+/**
+ * Fetches the site's content source type from its sidekick config.
+ * @param {Object} admin - Admin client for the site.
+ * @param {string} org
+ * @param {string} site
+ * @param {boolean} h6 - Site runs on the Helix 6 API.
+ * @returns {Promise<string|undefined>}
+ */
+export async function fetchContentSourceType(admin, org, site, h6) {
+  try {
+    const res = await admin.sidekick({ org, site }).get(h6 ? '' : 'config.json');
+    if (!res.ok) return undefined;
+    const { contentSourceType } = await res.json();
+    return contentSourceType;
+  } catch {
+    return undefined;
+  }
 }
 
 /**

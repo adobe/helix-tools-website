@@ -1,10 +1,17 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import getAdminClient from '../../scripts/admin-compat.js';
+import getAdminClient, { getAdminClientForSite, isHelix6 } from '../../scripts/admin-compat.js';
 import { decorateIcons } from '../../scripts/aem.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import loadingMessages from './loading-messages.js';
-import { validatePath, classifySequenceStatus, fetchHosts } from './utils.js';
+import {
+  validatePath,
+  classifySequenceStatus,
+  fetchHosts,
+  fetchContentSourceType,
+  hasSourceListing,
+} from './utils.js';
+import { collectResources } from './browse.js';
 
 const FORM = document.getElementById('status-form');
 const TABLE = document.querySelector('table');
@@ -159,10 +166,11 @@ function getFormData(form) {
 /**
  * Enables the action buttons (Download CSV and Diff Mode).
  * Should only be called when results are successfully displayed.
+ * @param {boolean} [diff=true] - Whether Diff Mode is available.
  */
-function enableActionButtons() {
+function enableActionButtons(diff = true) {
   DOWNLOADCSV.disabled = false;
-  DIFFMODE.disabled = false;
+  DIFFMODE.disabled = !diff;
 }
 
 /**
@@ -195,7 +203,7 @@ function disableForm(form, button) {
 function enableForm(form, button) {
   resetLoadingButton(button);
   [...form.elements].forEach((el) => {
-    el.disabled = false;
+    if (el !== DOWNLOADCSV && el !== DIFFMODE) el.disabled = false;
   });
   // Note: Action buttons (CSV, Diff Mode) are enabled separately
   // only when results are successfully displayed
@@ -291,10 +299,11 @@ function buildLink(text, url, path) {
  * @param {string} edit
  * @param {string} preview
  * @param {string} publish
+ * @param {{sourceExpected?: boolean}} [opts]
  * @returns {HTMLSpanElement}
  */
-function buildSequenceStatus(edit, preview, publish) {
-  const { label, modifier } = classifySequenceStatus(edit, preview, publish);
+function buildSequenceStatus(edit, preview, publish, opts) {
+  const { label, modifier } = classifySequenceStatus(edit, preview, publish, opts);
   const span = document.createElement('span');
   span.className = `status-light ${modifier}`;
   span.textContent = label;
@@ -336,9 +345,10 @@ function buildRedirectIcon(redirectLocation) {
  * @param {string} live - Base URL for live links.
  * @param {string} preview - Base URL for preview links.
  * @param {string} resource.path - The resource's path.
+ * @param {{sourceExpected?: boolean}} [opts] - Classification options.
  * @returns {HTMLTableRowElement|null} `<tr>` element for resource, or `null` if no `path`.
  */
-function buildResource(resource, live, preview) {
+function buildResource(resource, live, preview, opts) {
   const {
     path,
     sourceLastModified,
@@ -354,6 +364,7 @@ function buildResource(resource, live, preview) {
       sourceLastModified,
       previewLastModified,
       publishLastModified,
+      opts,
     );
     const cols = [
       path,
@@ -380,10 +391,11 @@ function buildResource(resource, live, preview) {
  * @param {Object[]} resources - Array of resource objects.
  * @param {string} live - Base URL for live links.
  * @param {string} preview - Base URL for preview links.
+ * @param {{sourceExpected?: boolean}} [opts] - Classification options.
  */
-function displayResources(resources, live, preview) {
+function displayResources(resources, live, preview, opts) {
   resources.forEach((resource) => {
-    const row = buildResource(resource, live, preview);
+    const row = buildResource(resource, live, preview, opts);
     if (row) RESULTS.append(row);
   });
 }
@@ -391,6 +403,22 @@ function displayResources(resources, live, preview) {
 // data fetching
 let jobAdmin;
 let statusAdmin;
+
+/**
+ * Resolves the admin client, backend and status options for a site.
+ * @param {string} org
+ * @param {string} site
+ * @returns {Promise<{admin: Object, h6: boolean, hosts: Object|null, sourceType: string}>}
+ */
+async function resolveSite(org, site) {
+  const h6 = await isHelix6({ org, site });
+  const admin = await getAdminClientForSite({ org, site });
+  const hosts = await fetchHosts(org, site, admin);
+  const sourceType = hosts ? await fetchContentSourceType(admin, org, site, h6) : undefined;
+  return {
+    admin, h6, hosts, sourceType,
+  };
+}
 
 /**
  * Submits a status job for the given org/site/path.
@@ -459,15 +487,44 @@ async function runJob(org, site, jobName, retry = 10000) {
  * @param {string} jobName
  * @param {string} live - Base URL for live resources.
  * @param {string} preview - Base URL for preview resources.
+ * @param {{sourceExpected?: boolean}} [opts] - Classification options.
  */
-async function runAndDisplayJob(org, site, jobName, live, preview) {
+async function runAndDisplayJob(org, site, jobName, live, preview, opts) {
   const paths = await runJob(org, site, jobName);
   if (!paths || paths.length === 0) {
     throw new Error('No page status data found.');
   }
-  displayResources(paths, live, preview);
+  displayResources(paths, live, preview, opts);
   updateTableDisplay('results');
   enableActionButtons();
+}
+
+/**
+ * Collects status via the Helix 6 browse API and displays results.
+ * @param {Object} admin - H6 admin client.
+ * @param {string} org
+ * @param {string} site
+ * @param {string} path - Raw user-entered path.
+ * @param {Object} hosts - Live and preview hosts.
+ * @param {string|undefined} sourceType - Content source type.
+ */
+async function runAndDisplayBrowse(admin, org, site, path, hosts, sourceType) {
+  const folder = validatePath(path).slice(0, -1);
+  const startTime = new Date().toISOString();
+  const resources = await collectResources(admin, {
+    org, site, folder, source: sourceType === 'sourcebus',
+  });
+  if (resources.length === 0) {
+    const error = new Error('No page status data found.');
+    error.status = 'Resource';
+    throw error;
+  }
+  updateTableCaption(startTime);
+  displayResources(resources, hosts.live, hosts.preview, {
+    sourceExpected: hasSourceListing(sourceType, true),
+  });
+  updateTableDisplay('results');
+  enableActionButtons(false);
 }
 
 /**
@@ -511,11 +568,18 @@ async function runFromParams(search) {
       let preview;
       try {
         setupJob(FORM, FORM.querySelector('button'));
-        const hosts = await fetchHosts(org, site);
+        const { h6, hosts, sourceType } = await resolveSite(org, site);
         if (!hosts) return;
+        if (h6) {
+          const error = new Error();
+          error.status = 'Job';
+          throw error;
+        }
         ({ preview } = hosts);
         const { live } = hosts;
-        await runAndDisplayJob(org, site, job, live, preview);
+        await runAndDisplayJob(org, site, job, live, preview, {
+          sourceExpected: hasSourceListing(sourceType, false),
+        });
         updateJobParam(job);
       } catch (error) {
         updateTableError(error.status || 'Job', preview, site);
@@ -555,13 +619,22 @@ async function init() {
     let preview;
     try {
       setupJob(target, submitter);
-      const hosts = await fetchHosts(org, site);
+      const {
+        admin: siteAdmin, h6, hosts, sourceType,
+      } = await resolveSite(org, site);
       if (!hosts) return;
       ({ preview } = hosts);
+      if (h6) {
+        removeJobParam();
+        await runAndDisplayBrowse(siteAdmin, org, site, path, hosts, sourceType);
+        return;
+      }
       const { live } = hosts;
       const jobName = await submitStatusJob(org, site, path);
       if (!jobName) return;
-      await runAndDisplayJob(org, site, jobName, live, preview);
+      await runAndDisplayJob(org, site, jobName, live, preview, {
+        sourceExpected: hasSourceListing(sourceType, false),
+      });
     } catch (error) {
       updateTableError(error.status || 'Job', preview, site);
       removeJobParam();

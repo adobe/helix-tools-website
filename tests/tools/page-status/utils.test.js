@@ -4,6 +4,7 @@ import {
   validatePath,
   classifySequenceStatus,
   hasSourceListing,
+  fetchContentSourceType,
 } from '../../../tools/page-status/utils.js';
 
 describe('validatePath', () => {
@@ -134,5 +135,44 @@ describe('hasSourceListing', () => {
   it('defaults to listed when type is unknown', () => {
     assert.equal(hasSourceListing(undefined, false), true);
     assert.equal(hasSourceListing(undefined, true), true);
+  });
+});
+
+describe('fetchContentSourceType', () => {
+  const mockAdmin = (res) => {
+    const calls = [];
+    return {
+      calls,
+      sidekick: (coords) => ({
+        get: async (path) => {
+          calls.push({ coords, path });
+          if (res instanceof Error) throw res;
+          return res;
+        },
+      }),
+    };
+  };
+  const ok = (body) => ({ ok: true, status: 200, json: async () => body });
+
+  it('reads H5 sidekick config.json', async () => {
+    const admin = mockAdmin(ok({ contentSourceType: 'markup' }));
+    assert.equal(await fetchContentSourceType(admin, 'o', 's', false), 'markup');
+    assert.deepEqual(admin.calls, [{ coords: { org: 'o', site: 's' }, path: 'config.json' }]);
+  });
+
+  it('reads H6 sidekick root', async () => {
+    const admin = mockAdmin(ok({ contentSourceType: 'sourcebus' }));
+    assert.equal(await fetchContentSourceType(admin, 'o', 's', true), 'sourcebus');
+    assert.equal(admin.calls[0].path, '');
+  });
+
+  it('returns undefined on error response', async () => {
+    const admin = mockAdmin({ ok: false, status: 401 });
+    assert.equal(await fetchContentSourceType(admin, 'o', 's', false), undefined);
+  });
+
+  it('returns undefined when the request throws', async () => {
+    const admin = mockAdmin(new Error('boom'));
+    assert.equal(await fetchContentSourceType(admin, 'o', 's', false), undefined);
   });
 });
