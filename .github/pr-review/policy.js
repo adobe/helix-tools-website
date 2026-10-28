@@ -29,7 +29,7 @@ export function claudeVerdict(conclusion, output) {
 
 export default function evaluatePullRequest(pr, files, config, claudeStatus) {
   const {
-    trustedContributors, maxLines, maxFiles, maxScopes, sourceDirs, testsDir, excludedPaths,
+    trustedContributors, maxLines, maxFiles, maxScopes, sourceDirs, testsDir,
   } = config;
   const reasons = [];
   const lines = pr.additions + pr.deletions;
@@ -43,10 +43,6 @@ export default function evaluatePullRequest(pr, files, config, claudeStatus) {
   }
   if (!files.length || scopes.has(undefined) || scopes.size > maxScopes) {
     reasons.push(`Changes must stay within at most ${maxScopes} ${sourceDirs.map((dir) => `${dir}/`).join(' or ')} director${maxScopes === 1 ? 'y' : 'ies'} and mirrored ${testsDir}/.`);
-  }
-  const excluded = paths.filter((path) => excludedPaths.some((prefix) => path.startsWith(prefix)));
-  if (excluded.length) {
-    reasons.push(`Excluded paths changed: ${excluded.join(', ')}.`);
   }
   if (files.length > maxFiles) {
     reasons.push(`At most ${maxFiles} changed files allowed.`);

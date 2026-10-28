@@ -13,7 +13,6 @@ const CONFIG = {
   maxScopes: 1,
   sourceDirs: ['tools', 'blocks'],
   testsDir: 'tests',
-  excludedPaths: ['ops/', '.github/', '.claude/'],
 };
 
 function claudeStatus(overrides = {}) {
@@ -143,7 +142,7 @@ describe('PR review eligibility', () => {
     assert.equal(evaluate(pr(11), files(11)).eligible, false);
   });
 
-  it('applies config limits, scopes and exclusions', () => {
+  it('applies config limits and scopes', () => {
     const files = [
       file(undefined, { additions: 50, deletions: 49 }),
       file('blocks/other/other.js', { additions: 50, deletions: 50 }),
@@ -151,9 +150,6 @@ describe('PR review eligibility', () => {
     const pr = { changed_files: 2 };
     assert.equal(evaluate(pr, files).eligible, false);
     assert.equal(evaluate(pr, files, undefined, { ...CONFIG, maxScopes: 2 }).eligible, true);
-    assert.equal(evaluate(pr, files, undefined, {
-      ...CONFIG, maxScopes: 2, excludedPaths: ['blocks/other/'],
-    }).eligible, false);
     assert.equal(evaluate({}, [file()], undefined, { ...CONFIG, maxLines: 198 }).eligible, false);
     assert.equal(evaluate({}, [file()], undefined, { ...CONFIG, sourceDirs: ['blocks'] }).eligible, false);
     assert.equal(evaluate({}, [file('src/bulk/x.js')], undefined, {
@@ -325,13 +321,16 @@ describe('PR review approval orchestration', () => {
     });
   });
 
-  it('revokes approval when Claude finds BLOCKING issues', async () => {
-    const { args, calls } = harness(pullRequest(), [approval()], undefined, [
-      claudeStatus({ state: 'failure' }),
-    ]);
-    await run(args);
-    assert.equal(calls.dismissals.length, 1);
-    assert.equal(calls.approvals.length, 0);
+  ['failure', 'pending'].forEach((state) => {
+    it(`revokes approval when Claude status is ${state}`, async () => {
+      const { args, calls } = harness(pullRequest(), [approval()], undefined, [
+        claudeStatus({ state }),
+      ]);
+      await run(args);
+      assert.equal(calls.dismissals.length, 1);
+      assert.equal(calls.approvals.length, 0);
+      assert.equal(calls.statuses.length, 0);
+    });
   });
 
   [

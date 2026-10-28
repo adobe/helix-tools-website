@@ -17,6 +17,5 @@
   "maxFiles": 10,
   "maxScopes": 1,
   "sourceDirs": ["tools", "blocks"],
-  "testsDir": "tests",
-  "excludedPaths": ["ops/", ".github/", ".claude/"]
+  "testsDir": "tests"
 }

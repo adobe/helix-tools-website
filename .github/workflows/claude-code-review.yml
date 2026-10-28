@@ -4,12 +4,8 @@ on:
   issue_comment:
     types: [created]
 
-concurrency:
-  group: claude-review-${{ github.event.issue.number }}-${{ startsWith(github.event.comment.body, '/claude-review') && 'run' || github.run_id }}
-  cancel-in-progress: true
-
 jobs:
-  review:
+  authorize:
     if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/claude-review')
     runs-on: ubuntu-latest
     permissions:
@@ -17,13 +13,15 @@ jobs:
       pull-requests: write
       issues: write
       statuses: write
-      id-token: write
     outputs:
       sha: ${{ steps.pr.outputs.sha }}
-      conclusion: ${{ steps.claude.outcome }}
-      verdict: ${{ steps.claude.outputs.structured_output }}
     steps:
-      - name: Resolve PR
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: .github/pr-review
+      - name: Authorize and mark pending
         id: pr
         uses: actions/github-script@v8
         with:
@@ -40,23 +38,48 @@ jobs:
               core.setFailed('Claude review runs only on open, same-repository PRs.');
               return;
             }
+            const { readFile } = await import('node:fs/promises');
+            const { pathToFileURL } = await import('node:url');
+            const path = `${process.env.GITHUB_WORKSPACE}/.github/pr-review`;
+            const { STATUS_CONTEXT } = await import(pathToFileURL(`${path}/policy.js`).href);
+            const { default: run } = await import(pathToFileURL(`${path}/run.js`).href);
             await github.rest.reactions.createForIssueComment({
               ...context.repo, comment_id: context.payload.comment.id, content: 'eyes',
             });
             await github.rest.repos.createCommitStatus({
               ...context.repo,
               sha: pr.head.sha,
-              context: 'claude-review',
+              context: STATUS_CONTEXT,
               state: 'pending',
               description: 'Claude review running.',
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             });
+            const config = JSON.parse(await readFile(`${path}/policy-config.json`, 'utf8'));
+            await run({
+              github, context, core, config, pullNumber: context.issue.number,
+            });
             core.setOutput('sha', pr.head.sha);
 
+  review:
+    needs: authorize
+    if: needs.authorize.outputs.sha
+    concurrency:
+      group: claude-review-${{ github.event.issue.number }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    outputs:
+      conclusion: ${{ steps.claude.outcome }}
+      verdict: ${{ steps.claude.outputs.structured_output }}
+    steps:
       - name: Checkout PR head
         uses: actions/checkout@v7
         with:
-          ref: ${{ steps.pr.outputs.sha }}
+          ref: ${{ needs.authorize.outputs.sha }}
           fetch-depth: 1
           persist-credentials: false
 
@@ -69,7 +92,7 @@ jobs:
             --allowedTools "Bash(gh *)" "Bash(git *)" "Read" "Write" "Glob" "Grep" "LS" "Skill"
             --json-schema '{"type":"object","properties":{"blocking":{"type":"integer","minimum":0},"summary":{"type":"string"}},"required":["blocking","summary"],"additionalProperties":false}'
           prompt: |
-            Use the Skill tool to invoke the `code-review` skill for PR #${{ github.event.issue.number }} at commit ${{ steps.pr.outputs.sha }}.
+            Use the Skill tool to invoke the `code-review` skill for PR #${{ github.event.issue.number }} at commit ${{ needs.authorize.outputs.sha }}.
 
             When running `gh pr view` and `gh pr diff`, add `--repo ${{ github.repository }}`.
             Substitute `{owner}/{repo}` with `${{ github.repository }}` in all commands.
@@ -78,8 +101,8 @@ jobs:
             Return `blocking` as the number of BLOCKING issues found and `summary` as one sentence.
 
   result:
-    needs: review
-    if: ${{ !cancelled() && needs.review.outputs.sha }}
+    needs: [authorize, review]
+    if: ${{ !cancelled() && needs.authorize.outputs.sha && needs.review.result != 'cancelled' && needs.review.result != 'skipped' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -93,7 +116,7 @@ jobs:
           sparse-checkout: .github/pr-review
       - uses: actions/github-script@v8
         env:
-          SHA: ${{ needs.review.outputs.sha }}
+          SHA: ${{ needs.authorize.outputs.sha }}
           CONCLUSION: ${{ needs.review.outputs.conclusion }}
           VERDICT: ${{ needs.review.outputs.verdict }}
         with:
@@ -104,13 +127,21 @@ jobs:
             const { claudeVerdict, STATUS_CONTEXT } = await import(pathToFileURL(`${path}/policy.js`).href);
             const { default: run } = await import(pathToFileURL(`${path}/run.js`).href);
             const { state, description } = claudeVerdict(process.env.CONCLUSION, process.env.VERDICT);
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const statuses = await github.paginate(github.rest.repos.listCommitStatusesForRef, {
+              ...context.repo, ref: process.env.SHA, per_page: 100,
+            });
+            if (statuses.find((status) => status.context === STATUS_CONTEXT)?.target_url !== runUrl) {
+              core.notice('Superseded by a newer Claude review request.');
+              return;
+            }
             await github.rest.repos.createCommitStatus({
               ...context.repo,
               sha: process.env.SHA,
               context: STATUS_CONTEXT,
               state,
               description,
-              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              target_url: runUrl,
             });
             const config = JSON.parse(await readFile(`${path}/policy-config.json`, 'utf8'));
             await run({
