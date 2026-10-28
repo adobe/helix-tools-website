@@ -46,7 +46,7 @@ const applyDetailsToCard = (card, details) => {
   if (badge) {
     badge.textContent = sourceType.label;
     badge.className = `source-badge source-${sourceType.type}`;
-    badge.title = sourceType.type.toUpperCase();
+    badge.title = contentSourceType === 'sourcebus' ? sourceType.label : sourceType.type.toUpperCase();
   }
 
   const codeSource = card.querySelector('.site-card-source[data-type="code"]');
@@ -59,13 +59,16 @@ const applyDetailsToCard = (card, details) => {
     else codeSource.removeAttribute('href');
   }
   if (contentSource) {
-    contentSource.title = contentUrl || 'Not configured';
+    contentSource.title = contentSourceType === 'sourcebus'
+      ? sourceType.label
+      : contentUrl || 'Not configured';
     if (contentEditorUrl) contentSource.href = contentEditorUrl;
     else contentSource.removeAttribute('href');
   }
 
   card.dataset.codeUrl = codeUrl;
   card.dataset.contentUrl = contentUrl;
+  card.dataset.contentSourceType = contentSourceType;
 
   const isByogit = details.code?.source?.type === 'byogit'
     || codeUrl.includes('cm-repo.adobe.io');

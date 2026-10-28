@@ -24,11 +24,18 @@ describe('site-admin:utils.js', () => {
     });
 
     it('recognizes google source type', () => {
-      assert.deepEqual(getContentSourceType('', 'google'), { type: 'google', label: 'GDrive' });
+      assert.deepEqual(getContentSourceType('', 'google'), { type: 'google', label: 'Google Drive' });
     });
 
     it('recognizes onedrive source type', () => {
       assert.deepEqual(getContentSourceType('', 'onedrive'), { type: 'sharepoint', label: 'Sharepoint' });
+    });
+
+    it('displays sourcebus as AEM without a content URL', () => {
+      assert.deepEqual(
+        getContentSourceType(undefined, 'sourcebus'),
+        { type: 'aem', label: 'AEM' },
+      );
     });
 
     it('recognizes DA content URL with markup type', () => {
@@ -162,6 +169,36 @@ describe('site-admin:utils.js', () => {
     });
 
     describe('content source type detection', () => {
+      it('creates a sourcebus source without a URL', () => {
+        const result = buildSiteConfig({}, 'https://github.com/o/r', '', null, 'sourcebus');
+        assert.deepEqual(result.content, { source: { type: 'sourcebus' } });
+      });
+
+      it('removes the old source URL and id when switching to sourcebus', () => {
+        const url = 'https://drive.google.com/drive/folders/OLD_FOLDER';
+        const existing = { content: { source: { type: 'google', url, id: 'OLD_FOLDER' } } };
+        const result = buildSiteConfig(existing, 'https://github.com/o/r', url, null, 'sourcebus');
+        assert.deepEqual(result.content, { source: { type: 'sourcebus' } });
+      });
+
+      it('ignores a stale SharePoint URL when sourcebus is selected', () => {
+        const result = buildSiteConfig({}, 'https://github.com/o/r', 'https://company.sharepoint.com/site', null, 'sourcebus');
+        assert.deepEqual(result.content.source, { type: 'sourcebus' });
+      });
+
+      it('supports sourcebus together with BYOGIT', () => {
+        const result = buildSiteConfig({}, '', undefined, { owner: 'o', repo: 'r' }, 'sourcebus');
+        assert.deepEqual(result.content.source, { type: 'sourcebus' });
+        assert.equal(result.code.source.type, 'byogit');
+      });
+
+      it('switches from sourcebus back to a URL-based source', () => {
+        const existing = { content: { source: { type: 'sourcebus' } } };
+        const url = 'https://content.da.live/org/repo';
+        const result = buildSiteConfig(existing, 'https://github.com/o/r', url);
+        assert.deepEqual(result.content.source, { type: 'markup', url });
+      });
+
       it('sets type to google and extracts folder id for Google Drive URLs', () => {
         const result = buildSiteConfig({}, 'https://github.com/o/r', 'https://drive.google.com/drive/folders/FOLDER_ID_123');
         assert.equal(result.content.source.type, 'google');
@@ -186,6 +223,35 @@ describe('site-admin:utils.js', () => {
     });
 
     describe('existing site config merging', () => {
+      it('preserves contentBusId and content settings when switching to sourcebus', () => {
+        const existing = {
+          content: {
+            contentBusId: 'existing-content-bus',
+            overlay: { url: 'https://example.com/overlay' },
+            source: { type: 'google', url: 'https://drive.google.com/drive/folders/OLD', id: 'OLD' },
+          },
+        };
+        const result = buildSiteConfig(existing, 'https://github.com/o/r', '', null, 'sourcebus');
+        assert.deepEqual(result.content, {
+          contentBusId: 'existing-content-bus',
+          overlay: { url: 'https://example.com/overlay' },
+          source: { type: 'sourcebus' },
+        });
+        assert.equal(existing.content.source.type, 'google');
+      });
+
+      it('preserves contentBusId when switching from sourcebus to a URL-based source', () => {
+        const existing = {
+          content: { contentBusId: 'existing-content-bus', source: { type: 'sourcebus' } },
+        };
+        const url = 'https://content.da.live/org/repo';
+        const result = buildSiteConfig(existing, 'https://github.com/o/r', url);
+        assert.deepEqual(result.content, {
+          contentBusId: 'existing-content-bus',
+          source: { type: 'markup', url },
+        });
+      });
+
       it('preserves existing site fields', () => {
         const result = buildSiteConfig({ name: 'my-site', extra: 'preserved' }, 'https://github.com/o/r', 'https://content.da.live/org/repo');
         assert.equal(result.name, 'my-site');
