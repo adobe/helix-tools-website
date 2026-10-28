@@ -1098,6 +1098,16 @@
   font-weight: 500;
 }
 
+.manage-modal .access-label {
+  font-size: var(--body-size-xs);
+  color: light-dark(var(--blue-700), var(--blue-400));
+  background: light-dark(var(--blue-100), var(--blue-1200));
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 .manage-modal .new-item-result {
   margin-top: var(--spacing-m);
   padding: var(--spacing-m);

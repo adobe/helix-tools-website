@@ -743,6 +743,7 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
         </div>
         <div class="item-actions">
           ${expired ? '<span class="expired-label">Expired</span>' : ''}
+          ${item.siteAccess ? '<span class="access-label" title="Grants access to the protected site">Site access</span>' : ''}
           <button type="button" class="icon-btn delete-btn" title="Delete">${icon('trash')}</button>
         </div>
       </div>
@@ -768,7 +769,10 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
       btn.addEventListener('click', async () => {
         const row = btn.closest('.item-row');
         const itemId = row.dataset.id;
-        if (confirm(`Delete ${itemName.toLowerCase()} "${itemId}"?`)) {
+        const accessWarning = items.find((i) => i.id === itemId)?.siteAccess
+          ? ' It grants site access; anything using it (e.g. your CDN) will lose access.'
+          : '';
+        if (confirm(`Delete ${itemName.toLowerCase()} "${itemId}"?${accessWarning}`)) {
           btn.disabled = true;
           const success = await deleteFn(orgValue, siteName, itemId);
           if (success) {
@@ -842,7 +846,17 @@ export const openSecretModal = (siteName, orgValue) => openManageItemsModal(site
   itemName: 'Secret',
   itemNamePlural: 'Secrets',
   iconName: 'lock',
-  fetchFn: async (org, site) => fetchSiteSecrets(await getAdminClient(), org, site),
+  fetchFn: async (org, site) => {
+    const admin = await getAdminClient();
+    const [secrets, configResp] = await Promise.all([
+      fetchSiteSecrets(admin, org, site),
+      executeAdminRequest(() => admin.config({ org, site }).read(), { org, site }),
+    ]);
+    if (!secrets) return null;
+    const access = configResp?.ok ? ((await configResp.json()).access || {}) : {};
+    const accessIds = getAccessSecretIds(access);
+    return secrets.map((s) => ({ ...s, siteAccess: accessIds.includes(s.id) }));
+  },
   createFn: async (org, site, body) => {
     const admin = await getAdminClient();
     return createSiteSecret(admin, org, site, body?.name, body?.value);
