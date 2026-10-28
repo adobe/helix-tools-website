@@ -1,6 +1,10 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { validatePath, classifySequenceStatus } from '../../../tools/page-status/utils.js';
+import {
+  validatePath,
+  classifySequenceStatus,
+  hasSourceListing,
+} from '../../../tools/page-status/utils.js';
 
 describe('validatePath', () => {
   it('returns /* for empty input', () => assert.equal(validatePath(''), '/*'));
@@ -59,5 +63,76 @@ describe('classifySequenceStatus', () => {
     const r = classifySequenceStatus(NEW, MID, OLD);
     assert.equal(r.label, 'Pending changes');
     assert.equal(r.modifier, 'positive');
+  });
+
+  [undefined, null].forEach((edit) => {
+    it(`No source / negative when edit is ${edit} and source is expected`, () => {
+      const r = classifySequenceStatus(edit, MID, NEW);
+      assert.equal(r.label, 'No source');
+      assert.equal(r.modifier, 'negative');
+    });
+  });
+
+  describe('without source listing', () => {
+    const opts = { sourceExpected: false };
+    [undefined, null].forEach((edit) => {
+      it(`Not published when only preview exists [edit=${edit}]`, () => {
+        const r = classifySequenceStatus(edit, MID, undefined, opts);
+        assert.equal(r.label, 'Not published');
+        assert.equal(r.modifier, 'positive');
+      });
+
+      it(`Current when only publish exists [edit=${edit}]`, () => {
+        const r = classifySequenceStatus(edit, undefined, MID, opts);
+        assert.equal(r.label, 'Current');
+        assert.equal(r.modifier, 'positive');
+      });
+
+      it(`Current when preview ≤ publish [edit=${edit}]`, () => {
+        const r = classifySequenceStatus(edit, MID, NEW, opts);
+        assert.equal(r.label, 'Current');
+        assert.equal(r.modifier, 'positive');
+      });
+
+      it(`Pending changes when preview > publish [edit=${edit}]`, () => {
+        const r = classifySequenceStatus(edit, NEW, MID, opts);
+        assert.equal(r.label, 'Pending changes');
+        assert.equal(r.modifier, 'positive');
+      });
+
+      it(`No source when nothing exists [edit=${edit}]`, () => {
+        const r = classifySequenceStatus(edit, undefined, undefined, opts);
+        assert.equal(r.label, 'No source');
+        assert.equal(r.modifier, 'negative');
+      });
+    });
+
+    it('still uses edit date when present', () => {
+      const r = classifySequenceStatus(NEW, MID, OLD, opts);
+      assert.equal(r.label, 'Pending changes');
+    });
+  });
+});
+
+describe('hasSourceListing', () => {
+  it('H5 lists google and onedrive', () => {
+    assert.equal(hasSourceListing('google', false), true);
+    assert.equal(hasSourceListing('onedrive', false), true);
+  });
+
+  it('H5 does not list markup', () => {
+    assert.equal(hasSourceListing('markup', false), false);
+  });
+
+  it('H6 lists sourcebus only', () => {
+    assert.equal(hasSourceListing('sourcebus', true), true);
+    assert.equal(hasSourceListing('google', true), false);
+    assert.equal(hasSourceListing('onedrive', true), false);
+    assert.equal(hasSourceListing('markup', true), false);
+  });
+
+  it('defaults to listed when type is unknown', () => {
+    assert.equal(hasSourceListing(undefined, false), true);
+    assert.equal(hasSourceListing(undefined, true), true);
   });
 });

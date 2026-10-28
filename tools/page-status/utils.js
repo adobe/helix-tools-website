@@ -52,21 +52,46 @@ export function validatePath(path) {
 }
 
 /**
+ * Whether the admin API reports source last-modified dates for a bulk status
+ * listing of the given content source type. Without a listing, a missing
+ * source date does not mean the document was deleted from the source.
+ * @param {string} [contentSourceType]
+ * @param {boolean} h6 - Site runs on the Helix 6 API.
+ * @returns {boolean}
+ */
+export function hasSourceListing(contentSourceType, h6) {
+  if (!contentSourceType) return true;
+  if (h6) return contentSourceType === 'sourcebus';
+  return ['google', 'onedrive'].includes(contentSourceType);
+}
+
+/**
  * Classifies three last-modified dates into a human-readable label and a
  * CSS modifier ('positive' or 'negative') for the status-light indicator.
  * @param {string} edit
  * @param {string} preview
  * @param {string} publish
+ * @param {{sourceExpected?: boolean}} [opts] - `sourceExpected: false` when the
+ * content source has no listing, so a missing edit date is not flagged.
  * @returns {{label: string, modifier: 'positive'|'negative'}}
  */
-export function classifySequenceStatus(edit, preview, publish) {
+export function classifySequenceStatus(edit, preview, publish, { sourceExpected = true } = {}) {
   const valid = (d) => !Number.isNaN(d.getTime());
-  const editDate = new Date(edit);
-  const previewDate = new Date(preview);
-  const publishDate = new Date(publish);
+  const editDate = new Date(edit ?? NaN);
+  const previewDate = new Date(preview ?? NaN);
+  const publishDate = new Date(publish ?? NaN);
 
   if (!valid(editDate)) {
-    return { label: 'No source', modifier: 'negative' };
+    if (sourceExpected || (!valid(previewDate) && !valid(publishDate))) {
+      return { label: 'No source', modifier: 'negative' };
+    }
+    if (!valid(publishDate)) {
+      return { label: 'Not published', modifier: 'positive' };
+    }
+    if (!valid(previewDate) || previewDate <= publishDate) {
+      return { label: 'Current', modifier: 'positive' };
+    }
+    return { label: 'Pending changes', modifier: 'positive' };
   }
   if (!valid(previewDate) && !valid(publishDate)) {
     return { label: 'Not previewed', modifier: 'positive' };
