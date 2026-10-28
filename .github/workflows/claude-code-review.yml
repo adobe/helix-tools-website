@@ -63,9 +63,6 @@ jobs:
   review:
     needs: authorize
     if: needs.authorize.outputs.sha
-    concurrency:
-      group: claude-review-${{ github.event.issue.number }}
-      cancel-in-progress: true
     runs-on: ubuntu-latest
     permissions:
       contents: read

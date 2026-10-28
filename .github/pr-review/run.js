@@ -6,12 +6,13 @@ export default async function run({
   github, context, core, config, pullNumber,
 }) {
   const params = { ...context.repo, pull_number: pullNumber };
+  const currentClaudeStatus = async (ref) => (await github.paginate(
+    github.rest.repos.listCommitStatusesForRef,
+    { ...context.repo, ref, per_page: 100 },
+  )).find((status) => status.context === STATUS_CONTEXT);
   const { data: pr } = await github.rest.pulls.get(params);
   const files = await github.paginate(github.rest.pulls.listFiles, { ...params, per_page: 100 });
-  const statuses = await github.paginate(github.rest.repos.listCommitStatusesForRef, {
-    ...context.repo, ref: pr.head.sha, per_page: 100,
-  });
-  const claudeStatus = statuses.find((status) => status.context === STATUS_CONTEXT);
+  const claudeStatus = await currentClaudeStatus(pr.head.sha);
   const result = evaluatePullRequest(pr, files, config, claudeStatus);
   if (pr.base.ref !== context.payload.repository.default_branch) {
     result.eligible = false;
@@ -37,24 +38,32 @@ export default async function run({
     });
   }
 
+  const dismiss = (reviewId) => github.rest.pulls.dismissReview({
+    ...params,
+    review_id: reviewId,
+    message: 'Automated approval no longer applies. Human review or renewed eligibility required.',
+  });
   const approvals = reviews.filter((review) => review.user.login === 'github-actions[bot]'
     && review.state === 'APPROVED' && review.body?.includes(MARKER));
   await Promise.all(approvals
     .filter((review) => !result.eligible || review.commit_id !== pr.head.sha)
-    .map((review) => github.rest.pulls.dismissReview({
-      ...params,
-      review_id: review.id,
-      message: 'Automated approval no longer applies. Human review or renewed eligibility required.',
-    })));
+    .map((review) => dismiss(review.id)));
 
   if (result.eligible) {
     if (!approvals.some((review) => review.commit_id === pr.head.sha)) {
-      await github.rest.pulls.createReview({
+      const { data: created } = await github.rest.pulls.createReview({
         ...params,
         commit_id: pr.head.sha,
         event: 'APPROVE',
         body: `${MARKER}\nEligible: ${result.tool}, ${result.lines} changed lines, trusted author, Claude review passed for ${pr.head.sha}. CI and other merge requirements still apply.`,
       });
+      const recheck = await currentClaudeStatus(pr.head.sha);
+      if (recheck?.id !== claudeStatus.id) {
+        await dismiss(created.id);
+        core.notice('Claude review status changed during approval; approval withdrawn.');
+        await core.summary.write();
+        return;
+      }
     }
     core.summary.addHeading('Eligible for automated approval')
       .addRaw(`${result.tool}: ${result.lines} added/deleted lines. Existing CI remains required.`);

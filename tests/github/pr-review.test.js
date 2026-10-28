@@ -17,6 +17,7 @@ const CONFIG = {
 
 function claudeStatus(overrides = {}) {
   return {
+    id: 1,
     context: 'claude-review',
     state: 'success',
     creator: { login: 'github-actions[bot]' },
@@ -208,7 +209,10 @@ function harness(pr = pullRequest(), reviews = [], latest = pr, statuses = [clau
     },
     listFiles: Symbol('listFiles'),
     listReviews: Symbol('listReviews'),
-    createReview: async (args) => calls.approvals.push(args),
+    createReview: async (args) => {
+      calls.approvals.push(args);
+      return { data: { id: 99 } };
+    },
     dismissReview: async (args) => calls.dismissals.push(args),
   };
   const repos = {
@@ -230,7 +234,7 @@ function harness(pr = pullRequest(), reviews = [], latest = pr, statuses = [clau
           if (method === pulls.listFiles) return [file()];
           if (method === repos.listCommitStatusesForRef) {
             calls.refs.push(args.ref);
-            return statuses;
+            return typeof statuses === 'function' ? statuses(calls.refs.length) : statuses;
           }
           return reviews;
         },
@@ -265,7 +269,7 @@ describe('PR review approval orchestration', () => {
   it('approves only the evaluated SHA', async () => {
     const { args, calls } = harness();
     await run(args);
-    assert.deepEqual(calls.refs, [SHA]);
+    assert.deepEqual(calls.refs, [SHA, SHA]);
     assert.equal(calls.approvals.length, 1);
     assert.equal(calls.approvals[0].event, 'APPROVE');
     assert.equal(calls.approvals[0].commit_id, SHA);
@@ -290,6 +294,15 @@ describe('PR review approval orchestration', () => {
     assert.equal(calls.statuses[0].sha, SHA);
     assert.equal(calls.statuses[0].context, 'claude-review');
     assert.equal(calls.statuses[0].state, 'pending');
+  });
+
+  it('withdraws its approval if the Claude status changed meanwhile', async () => {
+    const { args, calls } = harness(pullRequest(), [], undefined, (call) => [
+      call === 1 ? claudeStatus() : claudeStatus({ id: 2, state: 'pending' }),
+    ]);
+    await run(args);
+    assert.equal(calls.approvals.length, 1);
+    assert.deepEqual(calls.dismissals.map((item) => item.review_id), [99]);
   });
 
   it('does not duplicate a current approval', async () => {
