@@ -8,6 +8,8 @@ import {
   detectContentSourceKind,
   buildContentSource,
   contentSourceChanged,
+  installsContent,
+  describeContentInstall,
   diffOrgUsers,
   validateContentSelection,
   usersError,
@@ -321,6 +323,25 @@ async function submitConfig(api, widget, config, { org, site, newOrg }, consoleB
 }
 
 /**
+ * Install the initial content for the site. Must run before the setup api key
+ * is revoked, as it authenticates with it. Best-effort: a failure is logged but
+ * does not fail the setup.
+ *
+ * @returns {Promise<object|null>} the parsed response, or null on failure
+ */
+async function installContent(api, { org, site }, consoleBlock) {
+  const res = await logged(consoleBlock, api.raw('POST', `/hook/github/install-content/${org}/${site}`));
+  if (!res?.ok) {
+    logMessage(consoleBlock, 'warning', ['setup', `Could not install content: ${res?.error || res?.status || 'network error'}`, '']);
+    return null;
+  }
+  const result = await res.json().catch(() => ({}));
+  const files = result.files?.length ? ` (${result.files.join(', ')})` : '';
+  logMessage(consoleBlock, 'info', ['setup', `Content installation: ${result.status || 'done'}${files}`, '']);
+  return result;
+}
+
+/**
  * Revoke the one-time setup api key once the config has been saved. The key
  * lives at org level for new orgs, otherwise at site level. Best-effort: a
  * failure is logged but does not fail the setup (the config is already saved).
@@ -390,6 +411,10 @@ function renderDidList(widget, { org, site }, summary) {
     ? kind.label
     : `${summary.contentUrl}${kind ? ` (${kind.label})` : ''}`;
   addItem(`Set the content source to ${contentSource}.`);
+  if (summary.contentInstall) {
+    const li = addItem(describeContentInstall(summary.contentInstall.result));
+    if (!summary.contentInstall.result) li.classList.add('bot-info-did-warning');
+  }
   addItem('Started AEM Code Sync for your GitHub repository.');
 }
 
@@ -697,6 +722,11 @@ export default async function decorate(widget) {
       logMessage(consoleBlock, 'info', ['setup', 'Saving configuration…', '']);
       try {
         const summary = await submitConfig(api, widget, config, ctx, consoleBlock);
+        if (installsContent(summary.contentKind)) {
+          submitBtn.textContent = 'Installing content…';
+          logMessage(consoleBlock, 'info', ['setup', 'Installing content…', '']);
+          summary.contentInstall = { result: await installContent(api, ctx, consoleBlock) };
+        }
         // revoke the one-time setup key now that the config is saved, then
         // drop the stored credentials
         await deleteApiKey(api, ctx, tokenId, consoleBlock);
