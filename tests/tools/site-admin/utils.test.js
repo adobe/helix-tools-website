@@ -7,6 +7,12 @@ import {
   getDAEditorURL,
   compareSites,
   buildSiteConfig,
+  getAccessScope,
+  getAccessSecretIds,
+  buildAccess,
+  addAccessSecretId,
+  removeAccessSecretId,
+  validateSecretName,
 } from '../../../tools/site-admin/helpers/utils.js';
 
 describe('site-admin:utils.js', () => {
@@ -295,6 +301,110 @@ describe('site-admin:utils.js', () => {
         getDAEditorURL('https://docs.google.com/spreadsheets/d/abc'),
         'https://docs.google.com/spreadsheets/d/abc',
       );
+    });
+  });
+  describe('getAccessScope', () => {
+    it('returns none for empty access', () => {
+      assert.equal(getAccessScope({}), 'none');
+      assert.equal(getAccessScope(undefined), 'none');
+    });
+
+    it('prefers site over preview and live', () => {
+      assert.equal(getAccessScope({ site: {}, preview: {} }), 'site');
+      assert.equal(getAccessScope({ preview: {} }), 'preview');
+      assert.equal(getAccessScope({ live: {} }), 'live');
+    });
+  });
+
+  describe('getAccessSecretIds', () => {
+    it('returns empty array when unprotected', () => {
+      assert.deepEqual(getAccessSecretIds({ admin: { role: {} } }), []);
+    });
+
+    it('collects unique ids across scopes', () => {
+      assert.deepEqual(
+        getAccessSecretIds({ preview: { secretId: ['a', 'b'] }, live: { secretId: ['b', 'c'] } }),
+        ['a', 'b', 'c'],
+      );
+    });
+  });
+
+  describe('buildAccess', () => {
+    it('keeps every existing secretId', () => {
+      const access = { site: { allow: ['*@x.com'], secretId: ['cdn', 'qa'] } };
+      assert.deepEqual(
+        buildAccess(access, 'site', ['*@y.com'], ['cdn', 'qa']),
+        { site: { allow: ['*@y.com'], secretId: ['cdn', 'qa'] } },
+      );
+    });
+
+    it('preserves admin and unrelated entry fields', () => {
+      const access = {
+        admin: { role: { admin: ['a@x.com'] } },
+        site: { allow: ['*@x.com'], secretId: ['cdn'], apiKeyId: ['k'] },
+      };
+      assert.deepEqual(buildAccess(access, 'preview', ['*@x.com'], ['cdn']), {
+        admin: { role: { admin: ['a@x.com'] } },
+        preview: { allow: ['*@x.com'], secretId: ['cdn'], apiKeyId: ['k'] },
+      });
+    });
+
+    it('drops scope entries when switching to none', () => {
+      const access = { admin: { role: {} }, live: { allow: ['*@x.com'], secretId: ['cdn'] } };
+      assert.deepEqual(buildAccess(access, 'none', [], ['cdn']), { admin: { role: {} } });
+    });
+
+    it('omits empty allow and secretId', () => {
+      assert.deepEqual(buildAccess({}, 'site', [], []), { site: {} });
+    });
+
+    it('does not mutate input', () => {
+      const access = { site: { allow: ['*@x.com'], secretId: ['cdn'] } };
+      buildAccess(access, 'live', [], []);
+      assert.deepEqual(access, { site: { allow: ['*@x.com'], secretId: ['cdn'] } });
+    });
+  });
+
+  describe('addAccessSecretId', () => {
+    it('appends to every protected scope without duplicates', () => {
+      const access = { admin: {}, preview: { secretId: ['cdn'] }, live: { allow: ['*@x.com'] } };
+      assert.deepEqual(addAccessSecretId(access, 'qa'), {
+        admin: {},
+        preview: { secretId: ['cdn', 'qa'] },
+        live: { allow: ['*@x.com'], secretId: ['qa'] },
+      });
+      assert.deepEqual(addAccessSecretId({ site: { secretId: ['qa'] } }, 'qa'), { site: { secretId: ['qa'] } });
+    });
+  });
+
+  describe('removeAccessSecretId', () => {
+    it('removes the id and drops empty secretId lists', () => {
+      const access = { site: { allow: ['*@x.com'], secretId: ['cdn', 'qa'] }, live: { secretId: ['qa'] } };
+      assert.deepEqual(removeAccessSecretId(access, 'qa'), {
+        site: { allow: ['*@x.com'], secretId: ['cdn'] },
+        live: {},
+      });
+    });
+  });
+  describe('validateSecretName', () => {
+    it('accepts a blank name even when existing secrets are unknown', () => {
+      assert.equal(validateSecretName('', null), '');
+    });
+
+    it('accepts a valid unused name', () => {
+      assert.equal(validateSecretName('qa-automation_1', ['cdn']), '');
+    });
+
+    it('rejects invalid characters', () => {
+      assert.match(validateSecretName('QA token', []), /lowercase letters/);
+    });
+
+    it('rejects an existing name', () => {
+      assert.match(validateSecretName('cdn', ['cdn']), /already exists/);
+    });
+
+    it('rejects a name when existing secrets could not be loaded', () => {
+      assert.match(validateSecretName('qa', null), /could not be loaded/);
     });
   });
 });
