@@ -1,5 +1,6 @@
 import { sampleRUM } from '../../scripts/aem.js';
 import { registerToolReady } from '../../scripts/scripts.js';
+import { createModal } from '../../blocks/modal/modal.js';
 import escapeHtml from '../../utils/html.js';
 
 const API = 'https://helix-cache-debug.adobeaem.workers.dev';
@@ -103,25 +104,32 @@ const fetchDetails = async (url) => {
   return resp;
 };
 
-const showModal = (title, content) => {
-  const modal = document.createElement('div');
-  modal.classList.add('modal-container');
-  modal.innerHTML = /* html */`
-    <div class="modal-overlay"></div>
-    <div class="modal">
-      <div class="modal-header">
-        <h3>${escapeHtml(title)}</h3>
-        <button class="modal-close">\u2715</button>
-      </div>
-      <div class="modal-content">
-          ${content}
-      </div>
-    </div>
-  `;
-  const closeBtn = modal.querySelector('.modal-close');
-  closeBtn.addEventListener('click', () => modal.remove());
-  document.body.appendChild(modal);
-  return modal;
+const showModal = async (title, content) => {
+  const heading = document.createElement('h2');
+  heading.id = `cache-modal-title-${crypto.randomUUID()}`;
+  heading.textContent = title;
+  const container = document.createElement('div');
+  container.innerHTML = content;
+  const { block, showModal: openModal } = await createModal([heading, ...container.childNodes]);
+  block.querySelector('dialog').setAttribute('aria-labelledby', heading.id);
+  openModal();
+  return block;
+};
+
+const showError = (message) => {
+  const p = document.createElement('p');
+  p.className = 'error';
+  p.setAttribute('role', 'alert');
+  p.textContent = message;
+  resultsContainer.prepend(p);
+};
+
+const showPurgeError = async (message) => {
+  try {
+    await showModal('Purge Error', `<p>${escapeHtml(message)}</p>`);
+  } catch (e) {
+    showError(`${message} Unable to open error dialog: ${e.message || 'Failed to load the dialog.'}`);
+  }
 };
 
 /**
@@ -275,7 +283,7 @@ const showCodeModal = async (language, title, text) => {
     `;
   }
 
-  const modal = showModal(title, content);
+  const modal = await showModal(title, content);
 
   if (useJsonViewer) {
     const data = JSON.parse(text);
@@ -286,13 +294,18 @@ const showCodeModal = async (language, title, text) => {
     container.appendChild(tree);
   } else {
     const host = modal.querySelector('.code-viewer');
-    const createEditor = await loadCreateEditor();
-    createEditor({
-      parent: host,
-      doc: text,
-      language: toEditorLanguage(language),
-      readOnly: true,
-    });
+    try {
+      const createEditor = await loadCreateEditor();
+      createEditor({
+        parent: host,
+        doc: text,
+        language: toEditorLanguage(language),
+        readOnly: true,
+      });
+    } catch (e) {
+      modal.querySelector('dialog').close();
+      throw e;
+    }
   }
 
   const copyBtn = modal.querySelector('.code-actions .copy');
@@ -465,7 +478,7 @@ const renderPurgeSection = (container, data) => {
       .filter((p) => p.length))];
 
     if (!keys.length && !paths.length) {
-      showModal('Purge Error', '<p>At least one of Cache Keys or Paths is required</p>');
+      await showPurgeError('At least one of Cache Keys or Paths is required');
       return;
     }
 
@@ -478,7 +491,7 @@ const renderPurgeSection = (container, data) => {
       const text = await response.text();
       await showCodeModal('log', 'Purge Result', text);
     } catch (e) {
-      showModal('Purge Error', /* html */`<p>${escapeHtml(e.message)}</p>`);
+      await showPurgeError(e.message || 'Failed to display the purge result.');
     }
   });
 };
@@ -507,8 +520,13 @@ const renderDetails = (data) => {
     </div>
   `;
   const seeAllBtn = resultsContainer.querySelector('.see-all a');
-  seeAllBtn.addEventListener('click', () => {
-    showCodeModal('json', 'Probe Details', JSON.stringify(data, undefined, 2));
+  seeAllBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    try {
+      await showCodeModal('json', 'Probe Details', JSON.stringify(data, undefined, 2));
+    } catch (error) {
+      showError(`Failed to open probe details: ${error.message || 'Failed to load the dialog.'}`);
+    }
   });
 
   // add settings section
