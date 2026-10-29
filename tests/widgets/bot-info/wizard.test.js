@@ -302,6 +302,7 @@ describe('bot-info:wizard.js', () => {
 
     it('handles an install without files', () => {
       assert.equal(describeContentInstall({ status: 'installed' }), 'Installed the initial content.');
+      assert.equal(describeContentInstall({ status: 'installed', files: 'index.html' }), 'Installed the initial content.');
     });
 
     it('reports other statuses', () => {
