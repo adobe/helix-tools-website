@@ -96,6 +96,7 @@ export function describeContentInstall(result) {
   if (!result) return 'Could not install the initial content; check the request log for details.';
   const { status } = result;
   const files = Array.isArray(result.files) ? result.files : [];
+  if (status === 'skipped') return 'Skipped installing the initial content because content already exists.';
   if (status !== 'installed') return `Content installation: ${status || 'unknown status'}.`;
   if (!files.length) return 'Installed the initial content.';
   let text = `Installed ${files.length} file${files.length === 1 ? '' : 's'} of initial content: ${files.join(', ')}`;

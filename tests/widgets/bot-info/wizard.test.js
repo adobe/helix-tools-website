@@ -306,8 +306,15 @@ describe('bot-info:wizard.js', () => {
     });
 
     it('reports other statuses', () => {
-      assert.equal(describeContentInstall({ status: 'skipped' }), 'Content installation: skipped.');
+      assert.equal(describeContentInstall({ status: 'no-content' }), 'Content installation: no-content.');
       assert.equal(describeContentInstall({}), 'Content installation: unknown status.');
+    });
+
+    it('explains a skipped installation', () => {
+      assert.equal(
+        describeContentInstall({ status: 'skipped' }),
+        'Skipped installing the initial content because content already exists.',
+      );
     });
 
     it('reports a failed request', () => {
