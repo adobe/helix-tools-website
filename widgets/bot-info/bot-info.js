@@ -9,7 +9,6 @@ import {
   buildContentSource,
   contentSourceChanged,
   installsContent,
-  isEmptySourceListing,
   describeContentInstall,
   diffOrgUsers,
   validateContentSelection,
@@ -324,33 +323,27 @@ async function submitConfig(api, widget, config, { org, site, newOrg }, consoleB
 }
 
 /**
- * Check whether the built-in (sourcebus) source root is empty.
- *
- * @returns {Promise<boolean|null>} null when the source root could not be listed
- */
-async function isSourceRootEmpty(api, { org, site }, consoleBlock) {
-  const res = await logged(consoleBlock, api.raw('GET', `${aemContentUrl(org, site)}/`));
-  const items = res?.ok ? await res.json().catch(() => null) : null;
-  return isEmptySourceListing(res?.status, items);
-}
-
-/**
- * Install the initial content for the site, unless a built-in (sourcebus)
- * source root already has content. DA sources are checked by the
- * install-content hook. Must run before the setup api key is revoked, as it
- * authenticates with it. Best-effort: never throws, so the api key is always
- * revoked afterwards, even when the installation failed.
+ * Install the initial content for the site. A dry run first checks whether the
+ * content already exists, in which case the installation is skipped. Must run
+ * before the setup api key is revoked, as it authenticates with it.
+ * Best-effort: never throws, so the api key is always revoked afterwards, even
+ * when the installation failed.
  *
  * @returns {Promise<object|null>} the parsed response, or null on failure
  */
-async function installContent(api, { org, site }, kind, consoleBlock) {
+async function installContent(api, { org, site }, consoleBlock) {
   const warn = (detail) => logMessage(consoleBlock, 'warning', ['setup', `Could not install content: ${detail}`, '']);
+  const hook = `/hook/github/install-content/${org}/${site}`;
   try {
-    if (kind === 'aem' && await isSourceRootEmpty(api, { org, site }, consoleBlock) === false) {
-      logMessage(consoleBlock, 'info', ['setup', 'Content source is not empty, skipping content installation', '']);
-      return { status: 'skipped' };
+    const dryRun = await logged(consoleBlock, api.raw('POST', hook, null, { params: { dryRun: 'true' } }));
+    if (dryRun?.status === 200) {
+      const dryRunResult = await dryRun.json().catch(() => ({}));
+      if (dryRunResult.status === 'skipped') {
+        logMessage(consoleBlock, 'info', ['setup', 'Content already exists, skipping content installation', '']);
+        return dryRunResult;
+      }
     }
-    const res = await logged(consoleBlock, api.raw('POST', `/hook/github/install-content/${org}/${site}`));
+    const res = await logged(consoleBlock, api.raw('POST', hook));
     if (!res?.ok) {
       warn(res?.error || res?.status || 'network error');
       return null;
@@ -749,8 +742,7 @@ export default async function decorate(widget) {
         if (installsContent(summary.contentKind)) {
           submitBtn.textContent = 'Installing content…';
           logMessage(consoleBlock, 'info', ['setup', 'Installing content…', '']);
-          const result = await installContent(api, ctx, summary.contentKind, consoleBlock);
-          summary.contentInstall = { result };
+          summary.contentInstall = { result: await installContent(api, ctx, consoleBlock) };
         }
         // revoke the one-time setup key now that the config is saved, then
         // drop the stored credentials

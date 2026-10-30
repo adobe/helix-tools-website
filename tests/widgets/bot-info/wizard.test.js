@@ -4,7 +4,6 @@ import {
   detectContentSourceKind,
   buildContentSource,
   contentSourceChanged,
-  isEmptySourceListing,
   installsContent,
   describeContentInstall,
   diffOrgUsers,
@@ -314,30 +313,12 @@ describe('bot-info:wizard.js', () => {
     it('explains a skipped installation', () => {
       assert.equal(
         describeContentInstall({ status: 'skipped' }),
-        'Skipped installing the initial content because the content source is not empty.',
+        'Skipped installing the initial content because content already exists.',
       );
     });
 
     it('reports a failed request', () => {
       assert.match(describeContentInstall(null), /^Could not install/);
-    });
-  });
-
-  describe('isEmptySourceListing', () => {
-    it('treats a missing source root as empty', () => {
-      assert.equal(isEmptySourceListing(404), true);
-    });
-
-    it('detects an empty and a non-empty listing', () => {
-      assert.equal(isEmptySourceListing(200, []), true);
-      assert.equal(isEmptySourceListing(200, [{ name: 'index.html' }]), false);
-      assert.equal(isEmptySourceListing(200, [{ name: 'drafts/', 'content-type': 'application/folder' }]), false);
-    });
-
-    it('returns null when the listing could not be read', () => {
-      assert.equal(isEmptySourceListing(500), null);
-      assert.equal(isEmptySourceListing(0), null);
-      assert.equal(isEmptySourceListing(200, {}), null);
     });
   });
 });
