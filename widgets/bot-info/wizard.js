@@ -73,6 +73,39 @@ export function contentSourceChanged(original, source) {
   return ['type', 'url', 'id', 'suffix'].some((key) => original?.[key] !== source[key]);
 }
 
+/**
+ * Whether the initial content should be installed for a content-source kind.
+ * Only DA and the built-in AEM (sourcebus) sources support content installation.
+ *
+ * @param {string} kind one of {@link CONTENT_SOURCE_KINDS} values
+ * @returns {boolean}
+ */
+export function installsContent(kind) {
+  return kind === 'da' || kind === 'aem';
+}
+
+/**
+ * Describe the result of the install-content request for the "What we did"
+ * list.
+ *
+ * @param {{status?: string, files?: string[], preview?: boolean, publish?: boolean}|null} result
+ *   the parsed response, or null when the request failed
+ * @returns {string}
+ */
+export function describeContentInstall(result) {
+  if (!result) return 'Could not install the initial content; check the request log for details.';
+  const { status } = result;
+  const files = Array.isArray(result.files) ? result.files : [];
+  if (status === 'skipped') return 'Skipped installing the initial content because content already exists.';
+  if (status !== 'installed') return `Content installation: ${status || 'unknown status'}.`;
+  if (!files.length) return 'Installed the initial content.';
+  let text = `Installed ${files.length} file${files.length === 1 ? '' : 's'} of initial content: ${files.join(', ')}`;
+  const pronoun = files.length === 1 ? 'it' : 'them';
+  if (result.preview && result.publish) text += ` and previewed and published ${pronoun}`;
+  else if (result.preview) text += ` and previewed ${pronoun}`;
+  return `${text}.`;
+}
+
 const sameRoles = (a = [], b = []) => a.length === b.length
   && [...a].sort().join(',') === [...b].sort().join(',');
 

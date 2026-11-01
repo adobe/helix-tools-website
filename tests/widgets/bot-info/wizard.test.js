@@ -4,6 +4,8 @@ import {
   detectContentSourceKind,
   buildContentSource,
   contentSourceChanged,
+  installsContent,
+  describeContentInstall,
   diffOrgUsers,
   validateContentSelection,
   usersError,
@@ -270,6 +272,53 @@ describe('bot-info:wizard.js', () => {
 
     it('passes when a new org has an org user', () => {
       assert.equal(usersError(someUsers, true), null);
+    });
+  });
+
+  describe('installsContent', () => {
+    it('installs content for DA and built-in AEM sources only', () => {
+      assert.equal(installsContent('da'), true);
+      assert.equal(installsContent('aem'), true);
+      ['onedrive', 'google', 'byom'].forEach((kind) => assert.equal(installsContent(kind), false));
+    });
+  });
+
+  describe('describeContentInstall', () => {
+    it('lists installed files that were previewed and published', () => {
+      assert.equal(
+        describeContentInstall({
+          status: 'installed', source: 'sourcebus', files: ['footer.html', 'index.html', 'nav.html'], preview: true, publish: true,
+        }),
+        'Installed 3 files of initial content: footer.html, index.html, nav.html and previewed and published them.',
+      );
+    });
+
+    it('mentions preview only when not published', () => {
+      assert.equal(
+        describeContentInstall({ status: 'installed', files: ['index.html'], preview: true }),
+        'Installed 1 file of initial content: index.html and previewed it.',
+      );
+    });
+
+    it('handles an install without files', () => {
+      assert.equal(describeContentInstall({ status: 'installed' }), 'Installed the initial content.');
+      assert.equal(describeContentInstall({ status: 'installed', files: 'index.html' }), 'Installed the initial content.');
+    });
+
+    it('reports other statuses', () => {
+      assert.equal(describeContentInstall({ status: 'no-content' }), 'Content installation: no-content.');
+      assert.equal(describeContentInstall({}), 'Content installation: unknown status.');
+    });
+
+    it('explains a skipped installation', () => {
+      assert.equal(
+        describeContentInstall({ status: 'skipped' }),
+        'Skipped installing the initial content because content already exists.',
+      );
+    });
+
+    it('reports a failed request', () => {
+      assert.match(describeContentInstall(null), /^Could not install/);
     });
   });
 });
