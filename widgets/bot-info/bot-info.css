@@ -37,6 +37,13 @@
   font-weight: 700;
 }
 
+.bot-info-did > li.bot-info-did-warning::before {
+  content: "!";
+  text-align: center;
+  color: light-dark(var(--yellow-100), var(--yellow-1200));
+  background-color: light-dark(var(--yellow-900), var(--yellow-500));
+}
+
 .bot-info-user-summary {
   margin: 2px 0 6px;
   padding-left: 1.5em;
@@ -340,7 +347,7 @@
   margin-top: 12px;
 }
 
-.bot-info-suffix-field[aria-hidden="true"] {
+.bot-info-field[aria-hidden="true"] {
   display: none;
 }
 

@@ -7,6 +7,9 @@ import {
   CONTENT_SOURCE_KINDS,
   detectContentSourceKind,
   buildContentSource,
+  contentSourceChanged,
+  installsContent,
+  describeContentInstall,
   diffOrgUsers,
   validateContentSelection,
   usersError,
@@ -172,7 +175,7 @@ function renderForm(widget, config, {
 
   // content source — DA is the default with a fixed, read-only URL; the
   // "use a different content source" checkbox reveals the non-DA options.
-  widget.querySelector('.bot-info-da-url').value = `https://content.da.live/${org}/${site}`;
+  widget.querySelector('.bot-info-da-url').value = `https://content.da.live/${org}/${site}/`;
 
   const typeSelect = widget.querySelector('.bot-info-content-type');
   CONTENT_SOURCE_KINDS.filter((k) => k.value !== 'da').forEach(({ value, label }) => {
@@ -200,6 +203,8 @@ function renderForm(widget, config, {
   // AEM sources use a fixed, non-editable URL derived from the org/site
   const updateUrlField = () => {
     const isAem = typeSelect.value === 'aem';
+    setHidden(urlInput.closest('.bot-info-field'), isAem);
+    urlInput.required = advancedCheck.checked && !isAem;
     urlInput.readOnly = isAem;
     if (isAem) urlInput.value = aemContentUrl(org, site);
     else if (urlInput.value === aemContentUrl(org, site)) urlInput.value = '';
@@ -213,11 +218,14 @@ function renderForm(widget, config, {
   const setAdvanced = (on) => {
     setHidden(advanced, !on);
     setHidden(daDefault, on);
-    urlInput.required = on;
+    updateUrlField();
   };
 
   // prefill from the existing content source, opening "advanced" for non-DA
-  const loadedUrl = config.siteConfig.content?.source?.url || url || '';
+  const loadedSource = config.siteConfig.content?.source;
+  const loadedUrl = loadedSource?.type === 'sourcebus'
+    ? aemContentUrl(org, site)
+    : loadedSource?.url || url || '';
   const loadedKind = detectContentSourceKind(loadedUrl);
   if (loadedUrl && loadedKind !== 'da') {
     advancedCheck.checked = true;
@@ -253,7 +261,7 @@ function readContentSelection(widget, org, site) {
   const kind = useDifferent ? widget.querySelector('.bot-info-content-type').value : 'da';
   const contentUrl = useDifferent
     ? widget.querySelector('.bot-info-content-url').value.trim()
-    : `https://content.da.live/${org}/${site}`;
+    : `https://content.da.live/${org}/${site}/`;
   const suffix = widget.querySelector('.bot-info-content-suffix').value.trim();
   return { kind, contentUrl, suffix };
 }
@@ -299,17 +307,55 @@ async function submitConfig(api, widget, config, { org, site, newOrg }, consoleB
   );
 
   const source = buildContentSource(contentUrl, kind, suffix);
-  // update only the content sub-config; POSTing the whole site config would
-  // overwrite the access.json we just wrote with the stale copy read on load
-  const content = { source };
-  await must(
-    logged(consoleBlock, api.config({ org, site }).select('content.json').update(JSON.stringify(content))),
-    'Saving content source',
-  );
+  if (contentSourceChanged(config.siteConfig.content?.source, source)) {
+    // update only the content sub-config; POSTing the whole site config would
+    // overwrite the access.json we just wrote with the stale copy read on load
+    const content = { source };
+    await must(
+      logged(consoleBlock, api.config({ org, site }).select('content.json').update(JSON.stringify(content))),
+      'Saving content source',
+    );
+  }
 
   return {
     orgUsers, siteUsers, contentUrl, contentKind: kind,
   };
+}
+
+/**
+ * Install the initial content for the site. A dry run first checks whether the
+ * content already exists, in which case the installation is skipped. Must run
+ * before the setup api key is revoked, as it authenticates with it.
+ * Best-effort: never throws, so the api key is always revoked afterwards, even
+ * when the installation failed.
+ *
+ * @returns {Promise<object|null>} the parsed response, or null on failure
+ */
+async function installContent(api, { org, site }, consoleBlock) {
+  const warn = (detail) => logMessage(consoleBlock, 'warning', ['setup', `Could not install content: ${detail}`, '']);
+  const hook = `/hook/github/install-content/${org}/${site}`;
+  try {
+    const dryRun = await logged(consoleBlock, api.raw('POST', hook, null, { params: { dryRun: 'true' } }));
+    if (dryRun?.status === 200) {
+      const dryRunResult = await dryRun.json().catch(() => ({}));
+      if (dryRunResult.status === 'skipped') {
+        logMessage(consoleBlock, 'info', ['setup', 'Content already exists, skipping content installation', '']);
+        return dryRunResult;
+      }
+    }
+    const res = await logged(consoleBlock, api.raw('POST', hook));
+    if (!res?.ok) {
+      warn(res?.error || res?.status || 'network error');
+      return null;
+    }
+    const result = await res.json().catch(() => ({}));
+    const files = Array.isArray(result.files) && result.files.length ? ` (${result.files.join(', ')})` : '';
+    logMessage(consoleBlock, 'info', ['setup', `Content installation: ${result.status || 'done'}${files}`, '']);
+    return result;
+  } catch (error) {
+    warn(error.message);
+    return null;
+  }
 }
 
 /**
@@ -378,7 +424,14 @@ function renderDidList(widget, { org, site }, summary) {
   const sn = summary.siteUsers.length;
   addUsers(`Configured ${sn} site user${sn === 1 ? '' : 's'}`, summary.siteUsers);
   const kind = CONTENT_SOURCE_KINDS.find((k) => k.value === summary.contentKind);
-  addItem(`Set the content source to ${summary.contentUrl}${kind ? ` (${kind.label})` : ''}.`);
+  const contentSource = summary.contentKind === 'aem'
+    ? kind.label
+    : `${summary.contentUrl}${kind ? ` (${kind.label})` : ''}`;
+  addItem(`Set the content source to ${contentSource}.`);
+  if (summary.contentInstall) {
+    const li = addItem(describeContentInstall(summary.contentInstall.result));
+    if (!summary.contentInstall.result) li.classList.add('bot-info-did-warning');
+  }
   addItem('Started AEM Code Sync for your GitHub repository.');
 }
 
@@ -434,7 +487,7 @@ function renderReview(widget, { org, site, newOrg }) {
   codeLi.append(codeType);
   addLink(codeLi, `https://github.com/${org}/${site}`);
 
-  // 2. Content — type on its own line, then the URL
+  // 2. Content — type on its own line, then the URL for external sources
   const { kind, contentUrl } = readContentSelection(widget, org, site);
   const entry = CONTENT_SOURCE_KINDS.find((k) => k.value === kind);
   const contentLi = addItem('Content', 1);
@@ -443,7 +496,7 @@ function renderReview(widget, { org, site, newOrg }) {
     type.textContent = entry.label;
     contentLi.append(type);
   }
-  addLink(contentLi, contentUrl);
+  if (kind !== 'aem') addLink(contentLi, contentUrl);
 
   // 3. Users — organization (new org only) and site users
   const usersLi = addItem('Users', 2);
@@ -472,7 +525,7 @@ function showConfirmation(widget, ctx, summary) {
     renderDidList(widget, ctx, summary);
     setCreateContentLink(widget, org, site, summary.contentKind, summary.contentUrl);
   } else {
-    setCreateContentLink(widget, org, site, 'da', `https://content.da.live/${org}/${site}`);
+    setCreateContentLink(widget, org, site, 'da', `https://content.da.live/${org}/${site}/`);
   }
 
   // setup is done, so the step hash is no longer meaningful — drop it
@@ -686,6 +739,11 @@ export default async function decorate(widget) {
       logMessage(consoleBlock, 'info', ['setup', 'Saving configuration…', '']);
       try {
         const summary = await submitConfig(api, widget, config, ctx, consoleBlock);
+        if (installsContent(summary.contentKind)) {
+          submitBtn.textContent = 'Installing content…';
+          logMessage(consoleBlock, 'info', ['setup', 'Installing content…', '']);
+          summary.contentInstall = { result: await installContent(api, ctx, consoleBlock) };
+        }
         // revoke the one-time setup key now that the config is saved, then
         // drop the stored credentials
         await deleteApiKey(api, ctx, tokenId, consoleBlock);

@@ -33,8 +33,9 @@ export const getContentSourceType = (contentUrl, contentSourceType, isLoading = 
   if (!contentSourceType && !contentUrl) return { type: 'unknown', label: '?' };
 
   const sourceTypeLookup = {
-    google: { type: 'google', label: 'GDrive' },
+    google: { type: 'google', label: 'Google Drive' },
     onedrive: { type: 'sharepoint', label: 'Sharepoint' },
+    sourcebus: { type: 'aem', label: 'AEM' },
   };
 
   if (sourceTypeLookup[contentSourceType]) {
@@ -96,7 +97,7 @@ export const isExpired = (expirationDate) => {
   return new Date(expirationDate) < new Date();
 };
 
-export const buildSiteConfig = (site, codeSrc, contentSrc, byogit = null) => {
+export const buildSiteConfig = (site, codeSrc, contentSrc, byogit = null, contentSourceType = '') => {
   let code;
   if (byogit) {
     code = {
@@ -116,19 +117,83 @@ export const buildSiteConfig = (site, codeSrc, contentSrc, byogit = null) => {
     const [, owner, repo] = codeURL.pathname.split('/');
     code = { owner, repo, source: { type: 'github', url: codeSrc } };
   }
-  const content = { source: { type: 'markup', url: contentSrc } };
+  const content = {
+    ...site.content,
+    source: contentSourceType === 'sourcebus'
+      ? { type: 'sourcebus' }
+      : { type: 'markup', url: contentSrc },
+  };
 
-  if (contentSrc.startsWith('https://drive.google.com/drive')) {
-    const contentURL = new URL(contentSrc);
-    content.source.type = 'google';
-    content.source.id = contentURL.pathname.split('/').pop();
-  }
+  if (contentSourceType !== 'sourcebus') {
+    if (contentSrc.startsWith('https://drive.google.com/drive')) {
+      const contentURL = new URL(contentSrc);
+      content.source.type = 'google';
+      content.source.id = contentURL.pathname.split('/').pop();
+    }
 
-  if (contentSrc.includes('sharepoint.com/')) {
-    content.source.type = 'onedrive';
+    if (contentSrc.includes('sharepoint.com/')) {
+      content.source.type = 'onedrive';
+    }
   }
 
   return { ...site, content, code };
+};
+
+const ACCESS_SCOPES = ['site', 'preview', 'live'];
+
+export const getAccessScope = (access) => ACCESS_SCOPES.find((s) => access?.[s]) || 'none';
+
+export const getAccessSecretIds = (access) => [...new Set(
+  ACCESS_SCOPES.flatMap((s) => access?.[s]?.secretId || []),
+)];
+
+export const buildAccess = (access, scope, allow, secretIds) => {
+  const result = {};
+  Object.entries(access || {}).forEach(([key, value]) => {
+    if (!ACCESS_SCOPES.includes(key)) result[key] = value;
+  });
+  if (scope === 'none') return result;
+  const current = access?.[getAccessScope(access)] || {};
+  const entry = { ...current };
+  delete entry.allow;
+  delete entry.secretId;
+  if (allow.length) entry.allow = allow;
+  if (secretIds.length) entry.secretId = secretIds;
+  result[scope] = entry;
+  return result;
+};
+
+const mapAccessSecretIds = (access, fn) => {
+  const result = { ...access };
+  ACCESS_SCOPES.forEach((s) => {
+    if (!result[s]) return;
+    const entry = { ...result[s] };
+    const ids = fn(entry.secretId || []);
+    if (ids.length) entry.secretId = ids;
+    else delete entry.secretId;
+    result[s] = entry;
+  });
+  return result;
+};
+
+export const addAccessSecretId = (access, id) => mapAccessSecretIds(
+  access,
+  (ids) => (ids.includes(id) ? ids : [...ids, id]),
+);
+
+export const removeAccessSecretId = (access, id) => mapAccessSecretIds(
+  access,
+  (ids) => ids.filter((i) => i !== id),
+);
+
+export const validateSecretName = (name, existingIds) => {
+  if (!name) return '';
+  if (!/^[a-z0-9_-]+$/.test(name)) {
+    return 'Name must contain only lowercase letters, numbers, hyphens, and underscores';
+  }
+  if (!existingIds) return 'Existing secrets could not be loaded. Reopen this dialog or leave the name blank.';
+  if (existingIds.includes(name)) return `A secret named "${name}" already exists`;
+  return '';
 };
 
 export const compareSites = (a, b, selectedSite, favorites) => {

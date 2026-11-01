@@ -5,7 +5,31 @@ import { executeAdminRequest } from '../../../utils/admin-request.js';
 import escapeHtml from '../../../utils/html.js';
 import {
   icon, showToast, formatDate, isExpired, buildSiteConfig,
+  getAccessScope, getAccessSecretIds, buildAccess, addAccessSecretId, removeAccessSecretId,
+  validateSecretName,
 } from './utils.js';
+
+const fetchSiteSecrets = async (admin, org, site) => {
+  const resp = await executeAdminRequest(
+    () => admin.config({ org, site }).select('secrets.json').read(),
+    { org, site },
+  );
+  if (resp?.ok) return Object.values(await resp.json());
+  if (resp?.status === 404) return [];
+  return null;
+};
+
+const createSiteSecret = async (admin, org, site, name, value) => {
+  const handle = admin.config({ org, site })
+    .select(name ? `secrets/${encodeURIComponent(name)}.json` : 'secrets.json');
+  const body = value ? JSON.stringify({ value }) : null;
+  const resp = await executeAdminRequest(() => handle.update(body), { org, site });
+  if (!resp?.ok) return null;
+  let data;
+  try { data = await resp.json(); } catch { data = { id: name }; }
+  if (data && value) delete data.value;
+  return data;
+};
 
 /* eslint-disable no-alert, no-restricted-globals */
 
@@ -49,6 +73,21 @@ const setupModal = async (className, headerHtml) => {
   return { dialog, container, showModal };
 };
 
+const setupContentSourceFields = (container, contentSourceType) => {
+  const checkbox = container.querySelector('.content-sourcebus');
+  const urlField = container.querySelector('.content-url-field');
+  const input = urlField.querySelector('input');
+  const update = () => {
+    urlField.setAttribute('aria-hidden', String(checkbox.checked));
+    input.required = !checkbox.checked;
+    input.disabled = checkbox.checked;
+  };
+  checkbox.checked = contentSourceType === 'sourcebus';
+  checkbox.addEventListener('change', update);
+  update();
+  return checkbox;
+};
+
 export const saveSiteAndRefresh = async (
   orgValue,
   siteName,
@@ -59,9 +98,16 @@ export const saveSiteAndRefresh = async (
   logFn = null,
   action = 'update',
   byogit = null,
+  contentSourceType = '',
 ) => {
   const admin = await getAdminClient();
-  const siteConfig = buildSiteConfig(existingConfig, codeSrc, contentSrc, byogit);
+  const siteConfig = buildSiteConfig(
+    existingConfig,
+    codeSrc,
+    contentSrc,
+    byogit,
+    contentSourceType,
+  );
   const saveResult = await executeAdminRequest(
     () => admin.config({ org: orgValue, site: siteName }).update(JSON.stringify(siteConfig)),
     { org: orgValue, site: siteName },
@@ -182,6 +228,7 @@ export const openEditSourceModal = async (
   contentUrl,
   logFn = null,
   byogitDefaults = null,
+  contentSourceType = '',
 ) => {
   const admin = await getAdminClient();
   const isByogit = !!byogitDefaults;
@@ -218,9 +265,16 @@ export const openEditSourceModal = async (
                  ${isByogit ? 'required ' : ''}value="${byogitRepo}" />
         </div>
       </div>
-      <div class="form-field">
+      <div class="form-field content-url-field">
         <label for="edit-content">Content Source URL</label>
         <input type="url" id="edit-content" required value="${contentUrl}" placeholder="DA, SharePoint or Google Drive URL" />
+      </div>
+      <div class="form-field">
+        <label class="checkbox-label">
+          <input type="checkbox" class="content-sourcebus" />
+          Built-in (api.aem.live)
+        </label>
+        <p class="field-hint">No content source URL is required.</p>
       </div>
       <div class="form-actions">
         <button type="button" class="button outline cancel-btn">Cancel</button>
@@ -231,6 +285,7 @@ export const openEditSourceModal = async (
 
   container.querySelector('.cancel-btn').addEventListener('click', () => dialog.close());
 
+  const sourcebusCheckbox = setupContentSourceFields(container, contentSourceType);
   const byogitCheckbox = container.querySelector('#edit-byogit');
   const codeUrlField = container.querySelector('.code-url-field');
   const byogitFieldsEl = container.querySelector('.byogit-fields');
@@ -288,6 +343,7 @@ export const openEditSourceModal = async (
       logFn,
       'update',
       byogit,
+      sourcebusCheckbox.checked ? 'sourcebus' : '',
     );
 
     if (!success) {
@@ -317,14 +373,9 @@ export const openAuthModal = async (siteName, orgValue) => {
     () => admin.config({ org: orgValue, site: siteName }).read(),
     { org: orgValue, site: siteName },
   );
-  const access = accessResult?.ok ? ((await accessResult.json()).access || {}) : {};
-
-  let currentScope = 'none';
-  if (access.site) currentScope = 'site';
-  else if (access.preview) currentScope = 'preview';
-  else if (access.live) currentScope = 'live';
-
-  const currentAccess = access.site || access.preview || access.live || {};
+  let access = accessResult?.ok ? ((await accessResult.json()).access || {}) : {};
+  const currentScope = getAccessScope(access);
+  const currentAccess = access[currentScope] || {};
   const allowPatterns = currentAccess.allow || [];
   const statusInfo = getAuthStatusInfo(currentScope);
 
@@ -370,12 +421,32 @@ export const openAuthModal = async (siteName, orgValue) => {
     </div>
   `;
 
+  const authTokens = document.createElement('div');
+  authTokens.className = 'auth-tokens';
+  authTokens.innerHTML = `
+    <h4>Access Tokens</h4>
+    <p class="field-hint">Tokens let your CDN or automated tools (e.g. test suites) access the protected site without logging in.
+      Create one token per consumer so each can be revoked on its own.</p>
+    <div class="items-list loading">Loading...</div>
+    <div class="form-field">
+      <label for="token-name">New Token Name (optional)</label>
+      <input type="text" id="token-name" placeholder="e.g. qa-automation" />
+      <p class="field-hint">Lowercase letters, numbers, hyphens, and underscores. Leave blank to generate one.</p>
+      <p class="field-error token-name-error"></p>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="button outline add-token-btn">Add Token</button>
+    </div>
+  `;
+  if (currentScope === 'none') authTokens.setAttribute('aria-hidden', 'true');
+  authForm.after(authTokens);
+
   const authTokenResult = document.createElement('div');
   authTokenResult.className = 'auth-token-result';
   authTokenResult.setAttribute('aria-hidden', 'true');
   authTokenResult.innerHTML = `
-    <h4>Site Token Created</h4>
-    <p class="field-hint">Pass this token as an <code>Authorization</code> header from your CDN to access your protected site:<br/>
+    <h4>Access Token Created</h4>
+    <p class="field-hint">Send this token in an <code>Authorization</code> header (e.g. from your CDN or test runner) to access your protected site:<br/>
       <code>authorization: token &lt;value&gt;</code></p>
     <p class="field-hint"><a href="https://www.aem.live/docs/authentication-setup-site#make-your-cdn-pass-the-right-authorization-header" target="_blank" rel="noopener noreferrer">Learn more about CDN authorization setup</a></p>
     <div class="token-copy-row">
@@ -396,7 +467,8 @@ export const openAuthModal = async (siteName, orgValue) => {
 
   const tokenInput = authTokenResult.querySelector('.auth-token-value');
 
-  authTokenResult.querySelector('.copy-token-btn').addEventListener('click', async (e) => {
+  const copyTokenBtn = authTokenResult.querySelector('.copy-token-btn');
+  copyTokenBtn.addEventListener('click', async (e) => {
     const button = e.currentTarget;
     try {
       await navigator.clipboard.writeText(tokenInput.value);
@@ -406,7 +478,149 @@ export const openAuthModal = async (siteName, orgValue) => {
     }
   });
 
-  authTokenResult.querySelector('.close-auth-btn').addEventListener('click', () => dialog.close());
+  const mainViews = [authStatusCard, authForm, authTokens];
+  let onTokenDone = () => dialog.close();
+  const showTokenResult = (value, onDone) => {
+    tokenInput.value = value;
+    copyTokenBtn.innerHTML = `${icon('copy')} Copy`;
+    onTokenDone = onDone;
+    mainViews.forEach((el) => el.setAttribute('aria-hidden', 'true'));
+    authTokenResult.removeAttribute('aria-hidden');
+  };
+  const showMainView = () => {
+    authTokenResult.setAttribute('aria-hidden', 'true');
+    mainViews.forEach((el) => el.removeAttribute('aria-hidden'));
+  };
+
+  authTokenResult.querySelector('.close-auth-btn').addEventListener('click', () => onTokenDone());
+
+  const coords = { org: orgValue, site: siteName };
+  const siteHandle = admin.config(coords);
+  const updateAccess = async (fn) => {
+    const readResult = await executeAdminRequest(() => siteHandle.read(), coords);
+    if (!readResult?.ok) return false;
+    const siteConfig = await readResult.json();
+    siteConfig.access = fn(siteConfig.access || {});
+    const writeResult = await executeAdminRequest(
+      () => siteHandle.update(JSON.stringify(siteConfig)),
+      coords,
+    );
+    if (!writeResult?.ok) return false;
+    access = siteConfig.access;
+    siteUpdated = true;
+    return true;
+  };
+
+  let busy = false;
+  const runExclusive = async (fn) => {
+    if (busy) return;
+    busy = true;
+    const buttons = container.querySelectorAll('.auth-form button, .auth-tokens button');
+    buttons.forEach((b) => { b.disabled = true; });
+    let keepLocked = false;
+    try {
+      keepLocked = await fn();
+    } finally {
+      if (!keepLocked) {
+        busy = false;
+        container.querySelectorAll('.auth-form button, .auth-tokens button')
+          .forEach((b) => { b.disabled = false; });
+      }
+    }
+  };
+
+  const deleteSecret = (id) => executeAdminRequest(
+    () => admin.config(coords).select(`secrets/${encodeURIComponent(id)}.json`).remove(),
+    coords,
+  );
+
+  const tokensList = authTokens.querySelector('.items-list');
+  let secrets = null;
+  const renderTokens = () => {
+    const ids = getAccessSecretIds(access);
+    tokensList.classList.remove('loading');
+    if (!ids.length) {
+      tokensList.innerHTML = '<p class="empty-state">No access tokens</p>';
+      return;
+    }
+    tokensList.innerHTML = ids.map((id) => {
+      const created = secrets?.find((s) => s.id === id)?.created;
+      return `
+        <div class="item-row" data-id="${escapeHtml(id)}">
+          <div class="item-info">
+            <span class="item-icon">${icon('lock')}</span>
+            <span class="item-id">${escapeHtml(id)}</span>
+            ${created ? `<span class="item-dates">Created ${formatDate(created)}</span>` : ''}
+          </div>
+          <div class="item-actions">
+            <button type="button" class="icon-btn revoke-btn" title="Revoke" aria-label="Revoke ${escapeHtml(id)}">${icon('trash')}</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  };
+
+  if (currentScope !== 'none') {
+    fetchSiteSecrets(admin, orgValue, siteName).then((result) => {
+      secrets = result;
+      renderTokens();
+    });
+  }
+
+  tokensList.addEventListener('click', (e) => {
+    const btn = e.target.closest('.revoke-btn');
+    if (!btn || busy) return;
+    const { id } = btn.closest('.item-row').dataset;
+    if (!confirm(`Revoke access token "${id}"? Anything using it (e.g. your CDN or test suite) will lose access to the site. The token's secret is also deleted. This cannot be undone.`)) return;
+    runExclusive(async () => {
+      if (!await updateAccess((a) => removeAccessSecretId(a, id))) {
+        showToast('Failed to revoke access token', 'error');
+        return;
+      }
+      const deleted = await deleteSecret(id);
+      secrets = secrets?.filter((s) => s.id !== id) ?? null;
+      renderTokens();
+      if (deleted?.ok) {
+        showToast('Access token revoked', 'success');
+      } else {
+        showToast(`Access revoked, but failed to delete secret "${id}". Delete it in Manage Secrets.`, 'error');
+      }
+    });
+  });
+
+  const tokenNameInput = authTokens.querySelector('#token-name');
+  const tokenNameError = authTokens.querySelector('.token-name-error');
+  tokenNameInput.addEventListener('input', () => tokenNameError.classList.remove('visible'));
+
+  authTokens.querySelector('.add-token-btn').addEventListener('click', (e) => runExclusive(async () => {
+    const btn = e.currentTarget;
+    const name = tokenNameInput.value.trim();
+    const error = validateSecretName(name, secrets?.map((s) => s.id) ?? null);
+    if (error) {
+      tokenNameError.textContent = error;
+      tokenNameError.classList.add('visible');
+      tokenNameInput.focus();
+      return;
+    }
+    btn.textContent = 'Adding...';
+    const secret = await createSiteSecret(admin, orgValue, siteName, name);
+    const added = secret?.id && await updateAccess((a) => addAccessSecretId(a, secret.id));
+    btn.textContent = 'Add Token';
+    if (!added) {
+      if (secret?.id) await deleteSecret(secret.id);
+      showToast('Failed to create access token', 'error');
+      return;
+    }
+    tokenNameInput.value = '';
+    const { value, ...meta } = secret;
+    secrets?.push(meta);
+    renderTokens();
+    if (value) {
+      showTokenResult(value, showMainView);
+    } else {
+      showToast('Access token added', 'success');
+    }
+  }));
 
   container.querySelector('.auth-loading').setAttribute('aria-hidden', 'true');
   container.querySelector('.auth-content').classList.add('visible');
@@ -432,7 +646,7 @@ export const openAuthModal = async (siteName, orgValue) => {
 
   authForm.querySelector('.cancel-btn').addEventListener('click', () => dialog.close());
 
-  authForm.querySelector('.save-auth-btn').addEventListener('click', async (e) => {
+  authForm.querySelector('.save-auth-btn').addEventListener('click', (e) => runExclusive(async () => {
     const btn = e.target;
     const scope = scopeSelect.value;
     const patterns = usersInput.value.split(',').map((p) => p.trim()).filter((p) => p);
@@ -440,66 +654,33 @@ export const openAuthModal = async (siteName, orgValue) => {
     if (scope !== 'none' && patterns.length === 0) {
       usersInput.focus();
       showError();
-      return;
+      return false;
     }
 
-    btn.disabled = true;
     btn.textContent = 'Saving...';
 
-    const newAccess = {};
-    let tokenId = currentAccess.secretId?.[0] || '';
-    let newTokenValue = null;
-
-    if (scope !== 'none' && !tokenId) {
-      const secretResp = await executeAdminRequest(
-        () => admin.config({ org: orgValue, site: siteName }).select('secrets.json').update(null),
-        { org: orgValue, site: siteName },
-      );
-      const newSecret = secretResp?.ok ? await secretResp.json() : null;
-      if (newSecret) {
-        tokenId = newSecret.id;
-        newTokenValue = newSecret.value;
-      }
+    let newSecret = null;
+    if (scope !== 'none' && !getAccessSecretIds(access).length) {
+      newSecret = await createSiteSecret(admin, orgValue, siteName);
     }
 
-    if (scope !== 'none') {
-      const entry = {};
-      if (patterns.length) entry.allow = patterns;
-      if (tokenId) entry.secretId = [tokenId];
-      newAccess[scope] = entry;
-    }
-
-    if (access.admin) newAccess.admin = access.admin;
-
-    const siteHandle = admin.config({ org: orgValue, site: siteName });
-    const readResult = await executeAdminRequest(
-      () => siteHandle.read(),
-      { org: orgValue, site: siteName },
-    );
-    let success = false;
-    if (readResult?.ok) {
-      const siteConfig = await readResult.json();
-      siteConfig.access = newAccess;
-      const writeResult = await executeAdminRequest(
-        () => siteHandle.update(JSON.stringify(siteConfig)),
-        { org: orgValue, site: siteName },
-      );
-      success = writeResult?.ok ?? false;
-    }
-    btn.disabled = false;
+    const success = await updateAccess((a) => {
+      const ids = getAccessSecretIds(a);
+      if (newSecret?.id && !ids.includes(newSecret.id)) ids.push(newSecret.id);
+      return buildAccess(a, scope, patterns, ids);
+    });
+    if (!success && newSecret?.id) await deleteSecret(newSecret.id);
     btn.textContent = success ? 'Saved!' : 'Save';
     if (success) {
-      siteUpdated = true;
-      if (newTokenValue) {
-        tokenInput.value = newTokenValue;
-        authStatusCard.setAttribute('aria-hidden', 'true');
-        authForm.setAttribute('aria-hidden', 'true');
-        authTokenResult.removeAttribute('aria-hidden');
+      if (newSecret?.value) {
+        showTokenResult(newSecret.value, () => dialog.close());
       } else {
         setTimeout(() => dialog.close(), 1000);
+        return true;
       }
     }
-  });
+    return false;
+  }));
 
   showModal();
 };
@@ -507,7 +688,7 @@ export const openAuthModal = async (siteName, orgValue) => {
 const openManageItemsModal = async (siteName, orgValue, config) => {
   const {
     title, itemName, itemNamePlural, iconName, fetchFn, createFn, deleteFn, showExpiration,
-    formHtml, onFormInit, getCreateBody,
+    formHtml, onFormInit, getCreateBody, introHtml,
   } = config;
 
   const { dialog, container, showModal } = await setupModal('manage-modal', `
@@ -515,6 +696,7 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
       <h2>${title}</h2>
       <p class="site-name">${siteName}</p>
     </div>
+    ${introHtml || ''}
     <div class="existing-items">
       <h4>Existing ${itemNamePlural}</h4>
       <div class="items-list loading">Loading...</div>
@@ -523,7 +705,7 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
       <h4>Add New ${itemName}</h4>
       ${formHtml ? `<div class="create-form">${formHtml}</div>` : ''}
       <div class="section-actions">
-        <button type="button" class="button outline cancel-btn">Cancel</button>
+        <button type="button" class="button outline cancel-btn">Close</button>
         <button type="button" class="button create-btn">Create ${itemName}</button>
       </div>
       <div class="new-item-result">
@@ -555,17 +737,25 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
         </div>
         <div class="item-actions">
           ${expired ? '<span class="expired-label">Expired</span>' : ''}
+          ${item.siteAccess ? '<span class="access-label" title="Grants access to the protected site">Site access</span>' : ''}
           <button type="button" class="icon-btn delete-btn" title="Delete">${icon('trash')}</button>
         </div>
       </div>
     `;
   };
 
+  let currentItems = null;
   const loadItems = async () => {
     itemsList.classList.add('loading');
     itemsList.textContent = 'Loading...';
-    const items = await fetchFn(orgValue, siteName) || [];
+    currentItems = await fetchFn(orgValue, siteName);
+    const items = currentItems || [];
     itemsList.classList.remove('loading');
+
+    if (!currentItems) {
+      itemsList.innerHTML = `<p class="empty-state">Failed to load ${itemNamePlural.toLowerCase()}</p>`;
+      return;
+    }
 
     if (items.length === 0) {
       itemsList.innerHTML = `<p class="empty-state">No ${itemNamePlural.toLowerCase()} configured</p>`;
@@ -578,14 +768,17 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
       btn.addEventListener('click', async () => {
         const row = btn.closest('.item-row');
         const itemId = row.dataset.id;
-        if (confirm(`Delete ${itemName.toLowerCase()} "${itemId}"?`)) {
+        const accessWarning = items.find((i) => i.id === itemId)?.siteAccess
+          ? ' It grants site access: it will also be removed from the site\'s access settings, and anything using it (e.g. your CDN or test suite) will lose access.'
+          : '';
+        if (confirm(`Delete ${itemName.toLowerCase()} "${itemId}"?${accessWarning} This cannot be undone.`)) {
           btn.disabled = true;
           const success = await deleteFn(orgValue, siteName, itemId);
           if (success) {
             await loadItems();
             showToast(`${itemName} deleted successfully`, 'success');
           } else {
-            btn.disabled = false;
+            await loadItems();
             showToast(`Failed to delete ${itemName.toLowerCase()}`, 'error');
           }
         }
@@ -610,7 +803,7 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
     btn.disabled = true;
     btn.textContent = 'Creating...';
 
-    const body = getCreateBody ? getCreateBody(container) : undefined;
+    const body = getCreateBody ? getCreateBody(container, currentItems) : undefined;
     if (body === null) {
       btn.disabled = false;
       btn.textContent = `Create ${itemName}`;
@@ -621,6 +814,11 @@ const openManageItemsModal = async (siteName, orgValue, config) => {
       container.querySelector('.item-value').value = result.value;
       container.querySelector('.new-item-result').classList.add('visible');
       btn.setAttribute('aria-hidden', 'true');
+      createForm?.setAttribute('aria-hidden', 'true');
+      resetCreateForm();
+      const closeBtn = container.querySelector('.cancel-btn');
+      closeBtn.textContent = 'Done';
+      closeBtn.classList.remove('outline');
       loadItems();
     } else if (result) {
       loadItems();
@@ -649,60 +847,66 @@ export const openSecretModal = (siteName, orgValue) => openManageItemsModal(site
   iconName: 'lock',
   fetchFn: async (org, site) => {
     const admin = await getAdminClient();
-    const resp = await executeAdminRequest(
-      () => admin.config({ org, site }).select('secrets.json').read(),
-      { org, site },
-    );
-    if (resp?.ok) return Object.values(await resp.json());
-    if (resp?.status === 404) return [];
-    return null;
+    const [secrets, configResp] = await Promise.all([
+      fetchSiteSecrets(admin, org, site),
+      executeAdminRequest(() => admin.config({ org, site }).read(), { org, site }),
+    ]);
+    if (!secrets) return null;
+    const access = configResp?.ok ? ((await configResp.json()).access || {}) : {};
+    const accessIds = getAccessSecretIds(access);
+    return secrets.map((s) => ({ ...s, siteAccess: accessIds.includes(s.id) }));
   },
   createFn: async (org, site, body) => {
     const admin = await getAdminClient();
-    if (body?.name) {
-      const handle = admin.config({ org, site })
-        .select(`secrets/${encodeURIComponent(body.name)}.json`);
-      const secretBody = body.value ? JSON.stringify({ value: body.value }) : null;
-      const resp = await executeAdminRequest(() => handle.update(secretBody), { org, site });
-      if (!resp?.ok) return null;
-      let data;
-      try { data = await resp.json(); } catch { data = { id: body.name }; }
-      if (data && body.value) delete data.value;
-      return data;
-    }
-    const resp = await executeAdminRequest(
-      () => admin.config({ org, site }).select('secrets.json').update(null),
-      { org, site },
-    );
-    return resp?.ok ? resp.json() : null;
+    return createSiteSecret(admin, org, site, body?.name, body?.value);
   },
   deleteFn: async (org, site, secretId) => {
     const admin = await getAdminClient();
-    const handle = admin.config({ org, site })
-      .select(`secrets/${encodeURIComponent(secretId)}.json`);
-    const resp = await executeAdminRequest(() => handle.remove(), { org, site });
+    const coords = { org, site };
+    const siteHandle = admin.config(coords);
+    const readResp = await executeAdminRequest(() => siteHandle.read(), coords);
+    if (!readResp?.ok) return false;
+    const siteConfig = await readResp.json();
+    if (getAccessSecretIds(siteConfig.access).includes(secretId)) {
+      siteConfig.access = removeAccessSecretId(siteConfig.access, secretId);
+      const writeResp = await executeAdminRequest(
+        () => siteHandle.update(JSON.stringify(siteConfig)),
+        coords,
+      );
+      if (!writeResp?.ok) return false;
+    }
+    const handle = siteHandle.select(`secrets/${encodeURIComponent(secretId)}.json`);
+    const resp = await executeAdminRequest(() => handle.remove(), coords);
     return resp?.ok ?? false;
   },
   showExpiration: false,
+  introHtml: `
+    <p class="field-hint manage-intro">Secrets do not grant site access on their own.
+      To give a CDN or test suite access to a protected site, use <strong>Authentication &rarr; Access Tokens</strong>.</p>
+  `,
   formHtml: `
     <div class="form-field">
       <label for="secret-name">Name (optional)</label>
       <input type="text" id="secret-name" placeholder="e.g. my-secret-name" pattern="[a-z0-9_\\-]+" />
-      <p class="field-hint">Lowercase letters, numbers, hyphens, and underscores only. Required when a value is provided.</p>
+      <p class="field-hint">Lowercase letters, numbers, hyphens, and underscores. Leave blank to generate one.</p>
       <p class="field-error secret-name-error"></p>
     </div>
-    <div class="form-field">
-      <label for="secret-value">Secret Value (optional)</label>
-      <input type="password" id="secret-value" placeholder="e.g. secret from external service" />
-      <p class="field-hint">See <a href="https://www.aem.live/docs/admin.html#tag/siteConfig/operation/createSiteSecret">create site secret docs</a> for more details. Remember this value, it won't be shown again.</p>
-    </div>
+    <details class="secret-value-details">
+      <summary>Use a value from an external service</summary>
+      <div class="form-field">
+        <label for="secret-value">Secret Value</label>
+        <input type="password" id="secret-value" placeholder="e.g. secret from external service" />
+        <p class="field-hint">Requires a name. Leave empty to have a value generated.
+          See <a href="https://www.aem.live/docs/admin.html#tag/siteConfig/operation/createSiteSecret">create site secret docs</a>.</p>
+      </div>
+    </details>
   `,
   onFormInit: (el) => {
     const nameInput = el.querySelector('#secret-name');
     const nameError = el.querySelector('.secret-name-error');
     nameInput.addEventListener('input', () => nameError.classList.remove('visible'));
   },
-  getCreateBody: (el) => {
+  getCreateBody: (el, existing) => {
     const nameInput = el.querySelector('#secret-name');
     const valueInput = el.querySelector('#secret-value');
     const nameError = el.querySelector('.secret-name-error');
@@ -717,8 +921,9 @@ export const openSecretModal = (siteName, orgValue) => openManageItemsModal(site
       showNameError('Name is required when a value is provided');
       return null;
     }
-    if (name && !/^[a-z0-9_-]+$/.test(name)) {
-      showNameError('Name must contain only lowercase letters, numbers, hyphens, and underscores');
+    const error = validateSecretName(name, existing?.map((s) => s.id) ?? null);
+    if (error) {
+      showNameError(error);
       return null;
     }
     nameError.classList.remove('visible');
@@ -804,6 +1009,7 @@ export const openAddSiteModal = async (
   defaultContent = '',
   logFn = null,
   byogitDefaults = null,
+  contentSourceType = '',
 ) => {
   const isByogit = !!byogitDefaults;
   const byogitOwner = escapeHtml(byogitDefaults?.owner || '');
@@ -846,10 +1052,17 @@ export const openAddSiteModal = async (
                  ${isByogit ? 'required ' : ''}value="${byogitRepo}" />
         </div>
       </div>
-      <div class="form-field">
+      <div class="form-field content-url-field">
         <label for="new-site-content">Content Source URL</label>
         <input type="url" id="new-site-content" required value="${defaultContent}"
                placeholder="DA, SharePoint or Google Drive URL" />
+      </div>
+      <div class="form-field">
+        <label class="checkbox-label">
+          <input type="checkbox" class="content-sourcebus" />
+          Built-in (api.aem.live)
+        </label>
+        <p class="field-hint">No content source URL is required.</p>
       </div>
       <div class="form-actions">
         <button type="button" class="button outline cancel-btn">Cancel</button>
@@ -876,6 +1089,7 @@ export const openAddSiteModal = async (
 
   container.querySelector('.cancel-btn').addEventListener('click', () => dialog.close());
 
+  const sourcebusCheckbox = setupContentSourceFields(container, contentSourceType);
   const byogitCheckbox = container.querySelector('#new-site-byogit');
   const codeUrlField = container.querySelector('.code-url-field');
   const byogitFieldsEl = container.querySelector('.byogit-fields');
@@ -1018,6 +1232,7 @@ export const openAddSiteModal = async (
       logFn,
       'add',
       byogit,
+      sourcebusCheckbox.checked ? 'sourcebus' : '',
     );
 
     if (success && byogit) {

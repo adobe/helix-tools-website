@@ -1,0 +1,21 @@
+{
+  "trustedContributors": [
+    "amol-anand",
+    "asthabh23",
+    "davidnuescheler",
+    "dylandepass",
+    "fkakatie",
+    "kptdobe",
+    "rofe",
+    "shsteimer",
+    "stefan-guggisberg",
+    "trieloff",
+    "tripodsan",
+    "usman-khalid"
+  ],
+  "maxLines": 299,
+  "maxFiles": 10,
+  "maxScopes": 1,
+  "sourceDirs": ["tools", "blocks"],
+  "testsDir": "tests"
+}
