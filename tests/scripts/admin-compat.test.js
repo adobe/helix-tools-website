@@ -41,8 +41,8 @@ describe('getAdminClient()', () => {
   });
 });
 
-// getAdminClientForSite() is the only public entry point for per-site H5/H6
-// selection — the underlying probe (isHelix6) is private, so its behavior
+// getAdminClientForSite() is the main entry point for per-site H5/H6
+// selection; the underlying probe (isHelix6) behavior
 // (caching, override, error handling) is exercised indirectly here via which
 // client module ends up loaded and whether a network call was made at all.
 describe('getAdminClientForSite()', () => {
