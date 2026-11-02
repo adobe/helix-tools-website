@@ -252,18 +252,22 @@ function clearTable(table) {
 }
 
 /**
- * Handles admin button clicks: fetches via requestFn and shows a JSON modal.
- * @param {Function} requestFn - Admin API call returning a Response.
+ * Handles detail button clicks: shows a JSON modal, either from an admin API
+ * response or from data already contained in the log entry.
+ * @param {Function|Object} source - Admin API call returning a Response, or JSON data.
  * @param {HTMLButtonElement} button - The button that triggered the click.
  */
-async function onAdminClick(requestFn, button) {
+async function onAdminClick(source, button) {
   showLoadingButton(button);
   try {
     const { createModal } = await import('../../blocks/modal/modal.js');
-    const { org, site } = getFormData(FORM);
-    const res = await executeAdminRequest(requestFn, { org, site });
-    if (!res || !res.ok) throw new Error(`Failed to fetch details: ${res?.status}`);
-    const json = await res.json();
+    let json = source;
+    if (typeof source === 'function') {
+      const { org, site } = getFormData(FORM);
+      const res = await executeAdminRequest(source, { org, site });
+      if (!res || !res.ok) throw new Error(`Failed to fetch details: ${res?.status}`);
+      json = await res.json();
+    }
     const host = document.createElement('div');
     host.className = 'log-viewer-detail';
 

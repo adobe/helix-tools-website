@@ -7,6 +7,12 @@ import {
   getDAEditorURL,
   compareSites,
   buildSiteConfig,
+  getAccessScope,
+  getAccessSecretIds,
+  buildAccess,
+  addAccessSecretId,
+  removeAccessSecretId,
+  validateSecretName,
 } from '../../../tools/site-admin/helpers/utils.js';
 
 describe('site-admin:utils.js', () => {
@@ -24,11 +30,18 @@ describe('site-admin:utils.js', () => {
     });
 
     it('recognizes google source type', () => {
-      assert.deepEqual(getContentSourceType('', 'google'), { type: 'google', label: 'GDrive' });
+      assert.deepEqual(getContentSourceType('', 'google'), { type: 'google', label: 'Google Drive' });
     });
 
     it('recognizes onedrive source type', () => {
       assert.deepEqual(getContentSourceType('', 'onedrive'), { type: 'sharepoint', label: 'Sharepoint' });
+    });
+
+    it('displays sourcebus as AEM without a content URL', () => {
+      assert.deepEqual(
+        getContentSourceType(undefined, 'sourcebus'),
+        { type: 'aem', label: 'AEM' },
+      );
     });
 
     it('recognizes DA content URL with markup type', () => {
@@ -162,6 +175,36 @@ describe('site-admin:utils.js', () => {
     });
 
     describe('content source type detection', () => {
+      it('creates a sourcebus source without a URL', () => {
+        const result = buildSiteConfig({}, 'https://github.com/o/r', '', null, 'sourcebus');
+        assert.deepEqual(result.content, { source: { type: 'sourcebus' } });
+      });
+
+      it('removes the old source URL and id when switching to sourcebus', () => {
+        const url = 'https://drive.google.com/drive/folders/OLD_FOLDER';
+        const existing = { content: { source: { type: 'google', url, id: 'OLD_FOLDER' } } };
+        const result = buildSiteConfig(existing, 'https://github.com/o/r', url, null, 'sourcebus');
+        assert.deepEqual(result.content, { source: { type: 'sourcebus' } });
+      });
+
+      it('ignores a stale SharePoint URL when sourcebus is selected', () => {
+        const result = buildSiteConfig({}, 'https://github.com/o/r', 'https://company.sharepoint.com/site', null, 'sourcebus');
+        assert.deepEqual(result.content.source, { type: 'sourcebus' });
+      });
+
+      it('supports sourcebus together with BYOGIT', () => {
+        const result = buildSiteConfig({}, '', undefined, { owner: 'o', repo: 'r' }, 'sourcebus');
+        assert.deepEqual(result.content.source, { type: 'sourcebus' });
+        assert.equal(result.code.source.type, 'byogit');
+      });
+
+      it('switches from sourcebus back to a URL-based source', () => {
+        const existing = { content: { source: { type: 'sourcebus' } } };
+        const url = 'https://content.da.live/org/repo';
+        const result = buildSiteConfig(existing, 'https://github.com/o/r', url);
+        assert.deepEqual(result.content.source, { type: 'markup', url });
+      });
+
       it('sets type to google and extracts folder id for Google Drive URLs', () => {
         const result = buildSiteConfig({}, 'https://github.com/o/r', 'https://drive.google.com/drive/folders/FOLDER_ID_123');
         assert.equal(result.content.source.type, 'google');
@@ -186,6 +229,35 @@ describe('site-admin:utils.js', () => {
     });
 
     describe('existing site config merging', () => {
+      it('preserves contentBusId and content settings when switching to sourcebus', () => {
+        const existing = {
+          content: {
+            contentBusId: 'existing-content-bus',
+            overlay: { url: 'https://example.com/overlay' },
+            source: { type: 'google', url: 'https://drive.google.com/drive/folders/OLD', id: 'OLD' },
+          },
+        };
+        const result = buildSiteConfig(existing, 'https://github.com/o/r', '', null, 'sourcebus');
+        assert.deepEqual(result.content, {
+          contentBusId: 'existing-content-bus',
+          overlay: { url: 'https://example.com/overlay' },
+          source: { type: 'sourcebus' },
+        });
+        assert.equal(existing.content.source.type, 'google');
+      });
+
+      it('preserves contentBusId when switching from sourcebus to a URL-based source', () => {
+        const existing = {
+          content: { contentBusId: 'existing-content-bus', source: { type: 'sourcebus' } },
+        };
+        const url = 'https://content.da.live/org/repo';
+        const result = buildSiteConfig(existing, 'https://github.com/o/r', url);
+        assert.deepEqual(result.content, {
+          contentBusId: 'existing-content-bus',
+          source: { type: 'markup', url },
+        });
+      });
+
       it('preserves existing site fields', () => {
         const result = buildSiteConfig({ name: 'my-site', extra: 'preserved' }, 'https://github.com/o/r', 'https://content.da.live/org/repo');
         assert.equal(result.name, 'my-site');
@@ -229,6 +301,110 @@ describe('site-admin:utils.js', () => {
         getDAEditorURL('https://docs.google.com/spreadsheets/d/abc'),
         'https://docs.google.com/spreadsheets/d/abc',
       );
+    });
+  });
+  describe('getAccessScope', () => {
+    it('returns none for empty access', () => {
+      assert.equal(getAccessScope({}), 'none');
+      assert.equal(getAccessScope(undefined), 'none');
+    });
+
+    it('prefers site over preview and live', () => {
+      assert.equal(getAccessScope({ site: {}, preview: {} }), 'site');
+      assert.equal(getAccessScope({ preview: {} }), 'preview');
+      assert.equal(getAccessScope({ live: {} }), 'live');
+    });
+  });
+
+  describe('getAccessSecretIds', () => {
+    it('returns empty array when unprotected', () => {
+      assert.deepEqual(getAccessSecretIds({ admin: { role: {} } }), []);
+    });
+
+    it('collects unique ids across scopes', () => {
+      assert.deepEqual(
+        getAccessSecretIds({ preview: { secretId: ['a', 'b'] }, live: { secretId: ['b', 'c'] } }),
+        ['a', 'b', 'c'],
+      );
+    });
+  });
+
+  describe('buildAccess', () => {
+    it('keeps every existing secretId', () => {
+      const access = { site: { allow: ['*@x.com'], secretId: ['cdn', 'qa'] } };
+      assert.deepEqual(
+        buildAccess(access, 'site', ['*@y.com'], ['cdn', 'qa']),
+        { site: { allow: ['*@y.com'], secretId: ['cdn', 'qa'] } },
+      );
+    });
+
+    it('preserves admin and unrelated entry fields', () => {
+      const access = {
+        admin: { role: { admin: ['a@x.com'] } },
+        site: { allow: ['*@x.com'], secretId: ['cdn'], apiKeyId: ['k'] },
+      };
+      assert.deepEqual(buildAccess(access, 'preview', ['*@x.com'], ['cdn']), {
+        admin: { role: { admin: ['a@x.com'] } },
+        preview: { allow: ['*@x.com'], secretId: ['cdn'], apiKeyId: ['k'] },
+      });
+    });
+
+    it('drops scope entries when switching to none', () => {
+      const access = { admin: { role: {} }, live: { allow: ['*@x.com'], secretId: ['cdn'] } };
+      assert.deepEqual(buildAccess(access, 'none', [], ['cdn']), { admin: { role: {} } });
+    });
+
+    it('omits empty allow and secretId', () => {
+      assert.deepEqual(buildAccess({}, 'site', [], []), { site: {} });
+    });
+
+    it('does not mutate input', () => {
+      const access = { site: { allow: ['*@x.com'], secretId: ['cdn'] } };
+      buildAccess(access, 'live', [], []);
+      assert.deepEqual(access, { site: { allow: ['*@x.com'], secretId: ['cdn'] } });
+    });
+  });
+
+  describe('addAccessSecretId', () => {
+    it('appends to every protected scope without duplicates', () => {
+      const access = { admin: {}, preview: { secretId: ['cdn'] }, live: { allow: ['*@x.com'] } };
+      assert.deepEqual(addAccessSecretId(access, 'qa'), {
+        admin: {},
+        preview: { secretId: ['cdn', 'qa'] },
+        live: { allow: ['*@x.com'], secretId: ['qa'] },
+      });
+      assert.deepEqual(addAccessSecretId({ site: { secretId: ['qa'] } }, 'qa'), { site: { secretId: ['qa'] } });
+    });
+  });
+
+  describe('removeAccessSecretId', () => {
+    it('removes the id and drops empty secretId lists', () => {
+      const access = { site: { allow: ['*@x.com'], secretId: ['cdn', 'qa'] }, live: { secretId: ['qa'] } };
+      assert.deepEqual(removeAccessSecretId(access, 'qa'), {
+        site: { allow: ['*@x.com'], secretId: ['cdn'] },
+        live: {},
+      });
+    });
+  });
+  describe('validateSecretName', () => {
+    it('accepts a blank name even when existing secrets are unknown', () => {
+      assert.equal(validateSecretName('', null), '');
+    });
+
+    it('accepts a valid unused name', () => {
+      assert.equal(validateSecretName('qa-automation_1', ['cdn']), '');
+    });
+
+    it('rejects invalid characters', () => {
+      assert.match(validateSecretName('QA token', []), /lowercase letters/);
+    });
+
+    it('rejects an existing name', () => {
+      assert.match(validateSecretName('cdn', ['cdn']), /already exists/);
+    });
+
+    it('rejects a name when existing secrets could not be loaded', () => {
+      assert.match(validateSecretName('qa', null), /could not be loaded/);
     });
   });
 });

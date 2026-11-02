@@ -293,6 +293,19 @@
   position: relative;
 }
 
+/* Detail buttons: keep long labels from widening the column */
+.log-viewer table tbody td .button {
+  display: block;
+  max-width: 26ch;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.log-viewer table tbody td .button + .button {
+  margin-top: 0.4em;
+}
+
 .log-viewer table td i.symbol-error {
   position: absolute;
   right: 0;

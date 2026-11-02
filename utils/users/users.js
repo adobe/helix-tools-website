@@ -1,3 +1,34 @@
+const EMAIL_PATTERN = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/i;
+const IMS_GROUP_PATTERN = /^([a-f0-9]{24})(?:@adobeorg)?\s*\/\s*(.+)$/i;
+
+/**
+ * Normalize a user identifier. IMS groups become `ORG_ID/group`.
+ * @param {string} value
+ * @returns {string}
+ */
+export function normalizeUser(value) {
+  const trimmed = value.trim();
+  const match = trimmed.match(IMS_GROUP_PATTERN);
+  return match ? `${match[1]}/${match[2]}` : trimmed;
+}
+
+/**
+ * @param {string} value
+ * @returns {boolean}
+ */
+export function isImsGroup(value) {
+  return IMS_GROUP_PATTERN.test(value.trim());
+}
+
+/**
+ * @param {string} value
+ * @returns {boolean} true for an email, wildcard-domain email or IMS group
+ */
+export function isValidUser(value) {
+  const trimmed = value.trim();
+  return EMAIL_PATTERN.test(trimmed) || isImsGroup(trimmed);
+}
+
 /**
  * Convert an access config's role map into a flat user array.
  *

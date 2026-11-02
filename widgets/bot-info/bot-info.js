@@ -1,14 +1,16 @@
 import { toClassName, loadCSS } from '../../scripts/aem.js';
 import admin from '../../scripts/helix-admin.js';
 import decorateConsole, { logResponse, logMessage } from '../../blocks/console/console.js';
-import { parseUsersFromAccessConfig, buildAccessConfig } from '../../tools/user-admin/utils.js';
+import { parseUsersFromAccessConfig, buildAccessConfig } from '../../utils/users/users.js';
+import { createUserRow, collectUsers, userRowErrors } from '../../utils/users/user-row.js';
 import {
   CONTENT_SOURCE_KINDS,
   detectContentSourceKind,
   buildContentSource,
+  contentSourceChanged,
+  installsContent,
+  describeContentInstall,
   diffOrgUsers,
-  createUserRow,
-  collectUsers,
   validateContentSelection,
   usersError,
 } from './wizard.js';
@@ -165,15 +167,15 @@ function renderForm(widget, config, {
   widget.querySelectorAll('.bot-info-add-user').forEach((btn) => {
     const list = btn.dataset.scope === 'org' ? orgList : siteList;
     btn.addEventListener('click', () => {
-      const row = createUserRow();
+      const row = createUserRow({ roles: ['admin'] });
       list.append(row);
-      row.querySelector('.bot-info-email').focus();
+      row.querySelector('.user-row-email').focus();
     });
   });
 
   // content source — DA is the default with a fixed, read-only URL; the
   // "use a different content source" checkbox reveals the non-DA options.
-  widget.querySelector('.bot-info-da-url').value = `https://content.da.live/${org}/${site}`;
+  widget.querySelector('.bot-info-da-url').value = `https://content.da.live/${org}/${site}/`;
 
   const typeSelect = widget.querySelector('.bot-info-content-type');
   CONTENT_SOURCE_KINDS.filter((k) => k.value !== 'da').forEach(({ value, label }) => {
@@ -201,6 +203,8 @@ function renderForm(widget, config, {
   // AEM sources use a fixed, non-editable URL derived from the org/site
   const updateUrlField = () => {
     const isAem = typeSelect.value === 'aem';
+    setHidden(urlInput.closest('.bot-info-field'), isAem);
+    urlInput.required = advancedCheck.checked && !isAem;
     urlInput.readOnly = isAem;
     if (isAem) urlInput.value = aemContentUrl(org, site);
     else if (urlInput.value === aemContentUrl(org, site)) urlInput.value = '';
@@ -214,11 +218,14 @@ function renderForm(widget, config, {
   const setAdvanced = (on) => {
     setHidden(advanced, !on);
     setHidden(daDefault, on);
-    urlInput.required = on;
+    updateUrlField();
   };
 
   // prefill from the existing content source, opening "advanced" for non-DA
-  const loadedUrl = config.siteConfig.content?.source?.url || url || '';
+  const loadedSource = config.siteConfig.content?.source;
+  const loadedUrl = loadedSource?.type === 'sourcebus'
+    ? aemContentUrl(org, site)
+    : loadedSource?.url || url || '';
   const loadedKind = detectContentSourceKind(loadedUrl);
   if (loadedUrl && loadedKind !== 'da') {
     advancedCheck.checked = true;
@@ -254,7 +261,7 @@ function readContentSelection(widget, org, site) {
   const kind = useDifferent ? widget.querySelector('.bot-info-content-type').value : 'da';
   const contentUrl = useDifferent
     ? widget.querySelector('.bot-info-content-url').value.trim()
-    : `https://content.da.live/${org}/${site}`;
+    : `https://content.da.live/${org}/${site}/`;
   const suffix = widget.querySelector('.bot-info-content-suffix').value.trim();
   return { kind, contentUrl, suffix };
 }
@@ -289,25 +296,66 @@ async function submitConfig(api, widget, config, { org, site, newOrg }, consoleB
 
   const siteList = widget.querySelector('.bot-info-user-list[data-scope="site"]');
   const siteUsers = collectUsers(siteList);
+  const { kind, contentUrl, suffix } = readContentSelection(widget, org, site);
   const access = buildAccessConfig(config.access, siteUsers);
+  // the built-in AEM content source serves content through the admin API, so
+  // admin access must always be authenticated (rather than the default 'auto')
+  if (kind === 'aem') access.admin.requireAuth = true;
   await must(
     logged(consoleBlock, api.config({ org, site }).select('access.json').update(JSON.stringify(access))),
     'Saving site administrators',
   );
 
-  const { kind, contentUrl, suffix } = readContentSelection(widget, org, site);
   const source = buildContentSource(contentUrl, kind, suffix);
-  // update only the content sub-config; POSTing the whole site config would
-  // overwrite the access.json we just wrote with the stale copy read on load
-  const content = { source };
-  await must(
-    logged(consoleBlock, api.config({ org, site }).select('content.json').update(JSON.stringify(content))),
-    'Saving content source',
-  );
+  if (contentSourceChanged(config.siteConfig.content?.source, source)) {
+    // update only the content sub-config; POSTing the whole site config would
+    // overwrite the access.json we just wrote with the stale copy read on load
+    const content = { source };
+    await must(
+      logged(consoleBlock, api.config({ org, site }).select('content.json').update(JSON.stringify(content))),
+      'Saving content source',
+    );
+  }
 
   return {
     orgUsers, siteUsers, contentUrl, contentKind: kind,
   };
+}
+
+/**
+ * Install the initial content for the site. A dry run first checks whether the
+ * content already exists, in which case the installation is skipped. Must run
+ * before the setup api key is revoked, as it authenticates with it.
+ * Best-effort: never throws, so the api key is always revoked afterwards, even
+ * when the installation failed.
+ *
+ * @returns {Promise<object|null>} the parsed response, or null on failure
+ */
+async function installContent(api, { org, site }, consoleBlock) {
+  const warn = (detail) => logMessage(consoleBlock, 'warning', ['setup', `Could not install content: ${detail}`, '']);
+  const hook = `/hook/github/install-content/${org}/${site}`;
+  try {
+    const dryRun = await logged(consoleBlock, api.raw('POST', hook, null, { params: { dryRun: 'true' } }));
+    if (dryRun?.status === 200) {
+      const dryRunResult = await dryRun.json().catch(() => ({}));
+      if (dryRunResult.status === 'skipped') {
+        logMessage(consoleBlock, 'info', ['setup', 'Content already exists, skipping content installation', '']);
+        return dryRunResult;
+      }
+    }
+    const res = await logged(consoleBlock, api.raw('POST', hook));
+    if (!res?.ok) {
+      warn(res?.error || res?.status || 'network error');
+      return null;
+    }
+    const result = await res.json().catch(() => ({}));
+    const files = Array.isArray(result.files) && result.files.length ? ` (${result.files.join(', ')})` : '';
+    logMessage(consoleBlock, 'info', ['setup', `Content installation: ${result.status || 'done'}${files}`, '']);
+    return result;
+  } catch (error) {
+    warn(error.message);
+    return null;
+  }
 }
 
 /**
@@ -321,16 +369,18 @@ async function deleteApiKey(api, { org, site, newOrg }, tokenId, consoleBlock) {
   const safeTokenId = tokenId.replace(/\//g, '_').replace(/\+/g, '-');
   const res = await logged(consoleBlock, node.select(`apiKeys/${safeTokenId}.json`).remove());
   if (!res?.ok) {
-    logMessage(consoleBlock, 'warning', ['setup', `Could not remove setup API key: ${res?.error || res?.status || 'network error'}`]);
+    logMessage(consoleBlock, 'warning', ['setup', `Could not remove setup API key: ${res?.error || res?.status || 'network error'}`, '']);
   }
 }
 
 /**
- * Point the "create your content" link at the DA editor for DA sources,
- * otherwise straight at the content source URL.
+ * Point the "manage your content" link at the DA editor for DA and built-in
+ * AEM sources (both are authored in DA), otherwise straight at the content
+ * source URL.
  */
 function setCreateContentLink(widget, org, site, kind, contentUrl) {
-  const editUrl = kind === 'da' ? `https://da.live/#/${org}/${site}` : contentUrl;
+  const daEdited = kind === 'da' || kind === 'aem';
+  const editUrl = daEdited ? `https://da.live/#/${org}/${site}` : contentUrl;
   const contentSource = widget.querySelector('.bot-info-content-source');
   if (!contentSource) return;
   const link = document.createElement('a');
@@ -374,7 +424,14 @@ function renderDidList(widget, { org, site }, summary) {
   const sn = summary.siteUsers.length;
   addUsers(`Configured ${sn} site user${sn === 1 ? '' : 's'}`, summary.siteUsers);
   const kind = CONTENT_SOURCE_KINDS.find((k) => k.value === summary.contentKind);
-  addItem(`Set the content source to ${summary.contentUrl}${kind ? ` (${kind.label})` : ''}.`);
+  const contentSource = summary.contentKind === 'aem'
+    ? kind.label
+    : `${summary.contentUrl}${kind ? ` (${kind.label})` : ''}`;
+  addItem(`Set the content source to ${contentSource}.`);
+  if (summary.contentInstall) {
+    const li = addItem(describeContentInstall(summary.contentInstall.result));
+    if (!summary.contentInstall.result) li.classList.add('bot-info-did-warning');
+  }
   addItem('Started AEM Code Sync for your GitHub repository.');
 }
 
@@ -430,7 +487,7 @@ function renderReview(widget, { org, site, newOrg }) {
   codeLi.append(codeType);
   addLink(codeLi, `https://github.com/${org}/${site}`);
 
-  // 2. Content — type on its own line, then the URL
+  // 2. Content — type on its own line, then the URL for external sources
   const { kind, contentUrl } = readContentSelection(widget, org, site);
   const entry = CONTENT_SOURCE_KINDS.find((k) => k.value === kind);
   const contentLi = addItem('Content', 1);
@@ -439,7 +496,7 @@ function renderReview(widget, { org, site, newOrg }) {
     type.textContent = entry.label;
     contentLi.append(type);
   }
-  addLink(contentLi, contentUrl);
+  if (kind !== 'aem') addLink(contentLi, contentUrl);
 
   // 3. Users — organization (new org only) and site users
   const usersLi = addItem('Users', 2);
@@ -468,7 +525,7 @@ function showConfirmation(widget, ctx, summary) {
     renderDidList(widget, ctx, summary);
     setCreateContentLink(widget, org, site, summary.contentKind, summary.contentUrl);
   } else {
-    setCreateContentLink(widget, org, site, 'da', `https://content.da.live/${org}/${site}`);
+    setCreateContentLink(widget, org, site, 'da', `https://content.da.live/${org}/${site}/`);
   }
 
   // setup is done, so the step hash is no longer meaningful — drop it
@@ -493,19 +550,20 @@ export default async function decorate(widget) {
   const form = widget.querySelector('.bot-info-wizard');
   const alert = widget.querySelector('.bot-info-alert');
   const errorEl = widget.querySelector('.bot-info-error');
-  // the Users step shows its error in its own slot (below the org section)
+  // the Users step shows its error in its own slot below both user lists
   const usersErrorEl = widget.querySelector('.bot-info-users-error');
 
   // build the request log console (mirrors the other admin tools)
   const consoleBlock = widget.querySelector('.console');
   loadCSS(`${window.hlx.codeBasePath}/blocks/console/console.css`);
   loadCSS(`${window.hlx.codeBasePath}/utils/roles/roles-field.css`);
+  loadCSS(`${window.hlx.codeBasePath}/utils/users/user-row.css`);
   decorateConsole(consoleBlock);
 
   const fail = (error) => {
     // eslint-disable-next-line no-console
     console.error(error);
-    if (consoleBlock) logMessage(consoleBlock, 'error', ['setup', error.message]);
+    if (consoleBlock) logMessage(consoleBlock, 'error', ['setup', error.message, '']);
     setHidden(loading, true);
     setHidden(form, true);
     setHidden(alert, false);
@@ -543,7 +601,7 @@ export default async function decorate(widget) {
     });
 
     const api = tokenClient(token);
-    logMessage(consoleBlock, 'info', ['setup', `Loading configuration for ${ctx.org}/${ctx.site}…`]);
+    logMessage(consoleBlock, 'info', ['setup', `Loading configuration for ${ctx.org}/${ctx.site}…`, '']);
     const config = await loadConfig(api, ctx, consoleBlock);
     renderForm(widget, config, ctx);
 
@@ -566,14 +624,19 @@ export default async function decorate(widget) {
     // per-step validation, reusing the wizard's pure validators
     const validateStep = (step) => {
       if (step === 'content') {
-        return validateContentSelection({
+        const message = validateContentSelection({
           advanced: widget.querySelector('.bot-info-advanced-check').checked,
           url: widget.querySelector('.bot-info-content-url').value,
         });
+        return message && { message };
       }
       if (step === 'users') {
         const orgList = widget.querySelector('.bot-info-user-list[data-scope="org"]');
-        return usersError(collectUsers(orgList), ctx.newOrg);
+        const siteList = widget.querySelector('.bot-info-user-list[data-scope="site"]');
+        const [rowError] = [...userRowErrors(orgList), ...userRowErrors(siteList)];
+        if (rowError) return { message: rowError.message, input: rowError.input };
+        const message = usersError(collectUsers(orgList), ctx.newOrg);
+        return message && { message };
       }
       return null;
     };
@@ -621,9 +684,10 @@ export default async function decorate(widget) {
         const error = validateStep(steps[i]);
         if (error) {
           const el = errorFor(steps[i]);
-          el.textContent = error;
+          el.textContent = error.message;
           setHidden(el, false);
           goToStep(i);
+          (error.input || panels[i].querySelector('input:invalid'))?.focus();
           return;
         }
       }
@@ -658,7 +722,7 @@ export default async function decorate(widget) {
     const startIndex = Number.isNaN(linkedStep)
       ? 0
       : Math.min(Math.max(linkedStep - 1, 0), steps.length - 1);
-    goToStep(startIndex);
+    goTo(startIndex);
     window.addEventListener('beforeunload', warnBeforeUnload);
 
     form.addEventListener('submit', async (e) => {
@@ -672,20 +736,25 @@ export default async function decorate(widget) {
       submitBtn.disabled = true;
       backBtn.disabled = true;
       submitBtn.textContent = 'Saving…';
-      logMessage(consoleBlock, 'info', ['setup', 'Saving configuration…']);
+      logMessage(consoleBlock, 'info', ['setup', 'Saving configuration…', '']);
       try {
         const summary = await submitConfig(api, widget, config, ctx, consoleBlock);
+        if (installsContent(summary.contentKind)) {
+          submitBtn.textContent = 'Installing content…';
+          logMessage(consoleBlock, 'info', ['setup', 'Installing content…', '']);
+          summary.contentInstall = { result: await installContent(api, ctx, consoleBlock) };
+        }
         // revoke the one-time setup key now that the config is saved, then
         // drop the stored credentials
         await deleteApiKey(api, ctx, tokenId, consoleBlock);
         clearStoredToken();
         stopWarning();
-        logMessage(consoleBlock, 'success', ['setup', 'Setup complete']);
+        logMessage(consoleBlock, 'success', ['setup', 'Setup complete', '']);
         showConfirmation(widget, ctx, summary);
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error(error);
-        logMessage(consoleBlock, 'error', ['setup', error.message]);
+        logMessage(consoleBlock, 'error', ['setup', error.message, '']);
         errorEl.textContent = error.message;
         setHidden(errorEl, false);
         submitBtn.disabled = false;

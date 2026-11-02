@@ -9,8 +9,8 @@
     "postinstall": "node vendor/vendor.js",
     "lint:js": "eslint .",
     "lint:js:fix": "eslint . --fix",
-    "lint:css": "stylelint \"blocks/**/*.css\" \"styles/*.css\" \"tools/**/*.css\"",
-    "lint:css:fix": "stylelint \"blocks/**/*.css\" \"styles/*.css\" \"tools/**/*.css\" --fix",
+    "lint:css": "stylelint \"blocks/**/*.css\" \"styles/*.css\" \"tools/**/*.css\" \"utils/**/*.css\" \"widgets/**/*.css\"",
+    "lint:css:fix": "stylelint \"blocks/**/*.css\" \"styles/*.css\" \"tools/**/*.css\" \"utils/**/*.css\" \"widgets/**/*.css\" --fix",
     "test": "TZ=Europe/Berlin node --import ./tests/install-dom.js --test --experimental-test-coverage --experimental-test-module-mocks --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=junit.xml --test-reporter=lcov --test-reporter-destination=lcov.info 'tests/**/*.test.js'",
     "lint": "npm run lint:js && npm run lint:css",
     "lint:fix": "npm run lint:js:fix && npm run lint:css:fix"
@@ -26,23 +26,23 @@
   },
   "homepage": "https://github.com/adobe/aem-boilerplate#readme",
   "devDependencies": {
-    "@babel/eslint-parser": "7.29.7",
+    "@babel/eslint-parser": "7.29.9",
     "esbuild": "0.28.2",
     "eslint": "8.57.1",
     "eslint-config-airbnb-base": "15.0.0",
     "eslint-plugin-import": "2.32.0",
     "jsdom": "^30.0.0",
-    "stylelint": "17.14.1",
+    "stylelint": "17.16.0",
     "stylelint-config-standard": "40.0.0"
   },
   "dependencies": {
-    "@adobe/rum-distiller": "1.23.0",
+    "@adobe/rum-distiller": "1.23.1",
     "@codemirror/lang-html": "6.4.12",
     "@codemirror/lang-json": "6.0.2",
     "@codemirror/lang-yaml": "6.1.3",
     "codemirror": "6.0.2",
     "diff": "9.0.0",
     "echarts": "6.1.0",
-    "yaml": "2.9.0"
+    "yaml": "2.9.1"
   }
 }

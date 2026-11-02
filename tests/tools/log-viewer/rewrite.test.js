@@ -137,30 +137,106 @@ describe('log-viewer:rewrite.js', () => {
       assert.doesNotThrow(() => rd({ ...base, changes: [{ path: '/foo', ms: 12 }] }).path());
     });
 
-    it('renders an admin button for a single change string', () => {
-      const fragment = rd({ ...base, changes: '/foo 12ms' }).path();
+    it('renders one button per affected index, labelled with the index', () => {
+      const fragment = rd({
+        ...base,
+        changes: ['/query-index.json: updated /foo', '/blog-index.json: deleted /foo'],
+      }).path();
       const buttons = [...fragment.childNodes].filter((n) => n.tagName === 'BUTTON');
-      assert.equal(buttons.length, 1);
-      assert.match(buttons[0].textContent, /\/foo/);
+      assert.deepEqual(buttons.map((b) => b.value), ['/query-index.json', '/blog-index.json']);
     });
 
-    it('renders admin buttons for each path segment', () => {
-      const instance = rd({ ...base, changes: ['/foo 100ms', '/bar 200ms'] });
-      const fragment = instance.path();
-      const buttons = [...fragment.childNodes].filter((n) => n.tagName === 'BUTTON');
-      assert.equal(buttons.length, 2);
+    it('truncates long index labels', () => {
+      const long = '/a-very-long-index-path-that-exceeds-the-limit.json';
+      const fragment = rd({ ...base, changes: [`${long}: updated /foo`] }).path();
+      const [button] = [...fragment.childNodes].filter((n) => n.tagName === 'BUTTON');
+      assert.ok(button.textContent.length <= 27); // 26 chars + ellipsis char
+      assert.equal(button.title, long);
+    });
+
+    it('passes the change log of an index to the dialog', () => {
+      let payload;
+      const spy = (data) => { payload = data; };
+      const fragment = rd({
+        ...base,
+        changes: ['default: updated /foo 120ms', 'default: deleted /bar', 'other: updated /foo'],
+      }, spy).path();
+      const [button] = [...fragment.childNodes].filter((n) => n.tagName === 'BUTTON');
+      click(button);
+      assert.deepEqual(payload, {
+        index: 'default',
+        updated: [`https://${LIVE}/foo`],
+        deleted: [`https://${LIVE}/bar`],
+      });
+    });
+
+    it('qualifies change log urls with the preview host on the preview partition', () => {
+      let payload;
+      const spy = (data) => { payload = data; };
+      const fragment = rd({ ...base, partition: 'preview', changes: ['default: updated /foo'] }, spy).path();
+      const [button] = [...fragment.childNodes].filter((n) => n.tagName === 'BUTTON');
+      click(button);
+      assert.deepEqual(payload.updated, [`https://${PREVIEW}/foo`]);
+    });
+
+    it('falls back to the raw change text when it has no path', () => {
+      const fragment = rd({ ...base, changes: ['nothing to do'] }).path();
+      assert.equal(fragment.textContent, 'nothing to do');
     });
 
     it('accumulates duration from changes when duration is missing', () => {
-      const instance = rd({ ...base, changes: ['/a 100ms', '/b 200ms'] });
+      const instance = rd({ ...base, changes: ['default: updated /a 100ms', 'default: updated /b 200ms'] });
       instance.path();
       assert.equal(instance.data.duration, 300);
     });
 
     it('does not overwrite existing duration', () => {
-      const instance = rd({ ...base, changes: ['/a 100ms'], duration: 999 });
+      const instance = rd({ ...base, changes: ['default: updated /a 100ms'], duration: 999 });
       instance.path();
       assert.equal(instance.data.duration, 999);
+    });
+
+    it('excludes internal indexes', () => {
+      const fragment = rd({
+        ...base,
+        changes: ['#internal-media: updated /foo', 'default: updated /foo'],
+      }).path();
+      const buttons = [...fragment.childNodes].filter((n) => n.tagName === 'BUTTON');
+      assert.deepEqual(buttons.map((b) => b.value), ['default']);
+    });
+
+    it('returns null when all changes are for internal indexes', () => {
+      assert.equal(rd({ ...base, changes: ['#internal-media: updated /foo'] }).path(), null);
+    });
+
+    it('still accumulates duration of internal index changes', () => {
+      const instance = rd({
+        ...base,
+        changes: ['#internal-media: updated /foo 100ms', 'default: updated /bar 200ms'],
+      });
+      instance.path();
+      assert.equal(instance.data.duration, 300);
+    });
+  });
+
+  describe('RewrittenData.path() — partition', () => {
+    it('links to preview host on the preview partition', () => {
+      const a = rd({
+        route: 'index', user: 'system', partition: 'preview',
+      }).path('/query-index.json');
+      assert.match(a.href, new RegExp(PREVIEW));
+    });
+
+    it('links to live host when no partition is present', () => {
+      const a = rd({ route: 'index', user: 'system' }).path('/query-index.json');
+      assert.match(a.href, new RegExp(LIVE));
+    });
+
+    it('links to live host on the live partition', () => {
+      const a = rd({
+        route: 'index', user: 'system', partition: 'live',
+      }).path('/query-index.json');
+      assert.match(a.href, new RegExp(LIVE));
     });
   });
 
