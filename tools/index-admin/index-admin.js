@@ -20,10 +20,6 @@ const fetchButton = document.getElementById('fetch');
 let loadedIndices;
 let YAML;
 
-function getAdmin() {
-  return getAdminClientForSite({ org: org.value, site: site.value });
-}
-
 async function ensureYaml() {
   // eslint-disable-next-line import/no-unresolved
   YAML = YAML || await import('../../vendor/yaml/yaml.js');
@@ -189,9 +185,10 @@ function displayIndexDetails(indexName, indexDef, newIndex = false) {
 
     await ensureYaml();
     const yamlText = YAML.stringify(loadedIndices);
+    const coords = { org: org.value, site: site.value };
     const result = await executeAdminRequest(
-      async () => (await getAdmin()).config({ org: org.value, site: site.value }).select('content/query.yaml').update(yamlText),
-      { org: org.value, site: site.value },
+      async () => (await getAdminClientForSite(coords)).config(coords).select('content/query.yaml').update(yamlText),
+      coords,
     );
     if (!result) return;
     const { method, url } = result.request;
@@ -249,9 +246,10 @@ function showJobStatus(jobDetails) {
 }
 
 async function reIndex(indexNames, paths) {
+  const coords = { org: org.value, site: site.value };
   const result = await executeAdminRequest(
-    async () => (await getAdmin()).index({ org: org.value, site: site.value }).update('/*', JSON.stringify({ paths, indexNames })),
-    { org: org.value, site: site.value },
+    async () => (await getAdminClientForSite(coords)).index(coords).update('/*', JSON.stringify({ paths, indexNames })),
+    coords,
   );
   if (!result) return { success: false };
   const { method, url } = result.request;
@@ -265,9 +263,10 @@ async function reIndex(indexNames, paths) {
 }
 
 async function fetchJobDetails(topic, name) {
+  const coords = { org: org.value, site: site.value };
   const result = await executeAdminRequest(
-    async () => (await getAdmin()).job({ org: org.value, site: site.value }).get(`${topic}/${name}/details`),
-    { org: org.value, site: site.value },
+    async () => (await getAdminClientForSite(coords)).job(coords).get(`${topic}/${name}/details`),
+    coords,
   );
   if (!result) return null;
   const { method, url } = result.request;
@@ -285,9 +284,10 @@ async function removeIndex(name) {
 
   await ensureYaml();
   const yamlText = YAML.stringify(loadedIndices);
+  const coords = { org: org.value, site: site.value };
   const result = await executeAdminRequest(
-    async () => (await getAdmin()).config({ org: org.value, site: site.value }).select('content/query.yaml').update(yamlText),
-    { org: org.value, site: site.value },
+    async () => (await getAdminClientForSite(coords)).config(coords).select('content/query.yaml').update(yamlText),
+    coords,
   );
   if (!result) return;
   const { method, url } = result.request;
@@ -466,9 +466,10 @@ async function init() {
 
     try {
       // Preflight on the fetch (entry point); the resulting session covers later saves.
+      const coords = { org: org.value, site: site.value };
       const result = await executeAdminRequest(
-        async () => (await getAdmin()).config({ org: org.value, site: site.value }).select('content/query.yaml').read(),
-        { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
+        async () => (await getAdminClientForSite(coords)).config(coords).select('content/query.yaml').read(),
+        { ...coords, policy: AuthMode.PREFLIGHT_AND_RETRY },
       );
       if (!result) return;
       const { method, url } = result.request;

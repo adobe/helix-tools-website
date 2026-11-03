@@ -15,10 +15,6 @@ let loadedSitemaps;
 let YAML;
 let cdnProdHost;
 
-function getAdmin() {
-  return getAdminClientForSite({ org: org.value, site: site.value });
-}
-
 function cleanupDialog(dialog) {
   dialog.close();
   dialog.remove();
@@ -50,9 +46,10 @@ function logResult(result) {
 
 async function saveSitemapYaml() {
   const yamlText = YAML.stringify(loadedSitemaps);
+  const coords = { org: org.value, site: site.value };
   return executeAdminRequest(
-    async () => (await getAdmin()).config({ org: org.value, site: site.value }).select('content/sitemap.yaml').update(yamlText),
-    { org: org.value, site: site.value },
+    async () => (await getAdminClientForSite(coords)).config(coords).select('content/sitemap.yaml').update(yamlText),
+    coords,
   );
 }
 
@@ -358,10 +355,10 @@ async function removeLanguage(sitemapName, langCode) {
 }
 
 async function generateSitemap(destination) {
+  const coords = { org: org.value, site: site.value };
   const result = await executeAdminRequest(
-    async () => (await getAdmin())
-      .sitemap({ org: org.value, site: site.value }).update(destination),
-    { org: org.value, site: site.value },
+    async () => (await getAdminClientForSite(coords)).sitemap(coords).update(destination),
+    coords,
   );
   if (!result) return;
   const { method, url } = result.request;
@@ -496,9 +493,10 @@ function populateSitemaps(sitemaps) {
 }
 
 async function fetchCdnProdHost() {
+  const coords = { org: org.value, site: site.value };
   const result = await executeAdminRequest(
-    async () => (await getAdmin()).config({ org: org.value, site: site.value }).select('cdn.json').read(),
-    { org: org.value, site: site.value },
+    async () => (await getAdminClientForSite(coords)).config(coords).select('cdn.json').read(),
+    coords,
   );
   if (!result) return;
   logResult(result);
@@ -592,9 +590,10 @@ async function init() {
     }
 
     // Preflight on the fetch (entry point); the resulting session covers later saves.
+    const coords = { org: org.value, site: site.value };
     const result = await executeAdminRequest(
-      async () => (await getAdmin()).config({ org: org.value, site: site.value }).select('content/sitemap.yaml').read(),
-      { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
+      async () => (await getAdminClientForSite(coords)).config(coords).select('content/sitemap.yaml').read(),
+      { ...coords, policy: AuthMode.PREFLIGHT_AND_RETRY },
     );
     if (!result) return;
     logResult(result);
