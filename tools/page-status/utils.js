@@ -6,12 +6,13 @@ import { executeAdminRequest } from '../../utils/admin-request.js';
  * Returns null if the user cancels login; throws on invalid config.
  * @param {string} org
  * @param {string} site
+ * @param {Object} [client] - Admin client; defaults to the global one.
  * @returns {Promise<{live: string, preview: string}|null>}
  */
-export async function fetchHosts(org, site) {
-  const admin = await getAdminClient();
+export async function fetchHosts(org, site, client) {
+  const admin = client || await getAdminClient();
   const res = await executeAdminRequest(
-    () => admin.status({ org, site }).get(),
+    () => admin.status({ org, site }).get('/index'),
     { org, site },
   );
   if (!res) return null;
@@ -52,24 +53,92 @@ export function validatePath(path) {
 }
 
 /**
+ * Fetches the site's content source type from its sidekick config.
+ * @param {Object} admin - Admin client for the site.
+ * @param {string} org
+ * @param {string} site
+ * @param {boolean} h6 - Site runs on the Helix 6 API.
+ * @returns {Promise<string|undefined>}
+ */
+export async function fetchContentSourceType(admin, org, site, h6) {
+  try {
+    const res = await admin.sidekick({ org, site }).get(h6 ? '' : 'config.json');
+    if (!res.ok) return undefined;
+    const { contentSourceType } = await res.json();
+    return contentSourceType;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Whether the admin API reports source last-modified dates for a bulk status
+ * listing of the given content source type. Without a listing, a missing
+ * source date does not mean the document was deleted from the source.
+ * @param {string} [contentSourceType]
+ * @param {boolean} h6 - Site runs on the Helix 6 API.
+ * @returns {boolean}
+ */
+export function hasSourceListing(contentSourceType, h6) {
+  if (!contentSourceType) return true;
+  if (h6) return contentSourceType === 'sourcebus';
+  return ['google', 'onedrive'].includes(contentSourceType);
+}
+
+/**
+ * Whether source dates must be looked up per page: H6 has no source listing
+ * for Google Drive or OneDrive (or when the source type is unknown).
+ * @param {string} [contentSourceType]
+ * @param {boolean} h6 - Site runs on the Helix 6 API.
+ * @returns {boolean}
+ */
+export function needsSourceLookup(contentSourceType, h6) {
+  return h6 && !['sourcebus', 'markup'].includes(contentSourceType);
+}
+
+/**
  * Classifies three last-modified dates into a human-readable label and a
- * CSS modifier ('positive' or 'negative') for the status-light indicator.
+ * CSS modifier ('positive', 'notice' or 'negative') for the status-light indicator.
  * @param {string} edit
  * @param {string} preview
  * @param {string} publish
- * @returns {{label: string, modifier: 'positive'|'negative'}}
+ * @param {{sourceExpected?: boolean, publishKnown?: boolean}} [opts] - `sourceExpected: false`
+ * when the content source has no listing, so a missing edit date is not flagged.
+ * `publishKnown: false` when live state could not be read.
+ * `sourceKnown: false` when the source has not been looked up yet.
+ * @returns {{label: string, modifier: 'positive'|'notice'|'negative'}}
  */
-export function classifySequenceStatus(edit, preview, publish) {
+export function classifySequenceStatus(edit, preview, publish, {
+  sourceExpected = true,
+  publishKnown = true,
+  sourceKnown = true,
+} = {}) {
+  if (!sourceKnown) return { label: 'Unknown', modifier: 'notice' };
   const valid = (d) => !Number.isNaN(d.getTime());
-  const editDate = new Date(edit);
-  const previewDate = new Date(preview);
-  const publishDate = new Date(publish);
+  const editDate = new Date(edit ?? NaN);
+  const previewDate = new Date(preview ?? NaN);
+  const publishDate = new Date(publish ?? NaN);
+  const publishUnknown = { label: 'Publish unknown', modifier: 'notice' };
 
   if (!valid(editDate)) {
-    return { label: 'No source', modifier: 'negative' };
+    if (sourceExpected || (!valid(previewDate) && !valid(publishDate))) {
+      return { label: 'No source', modifier: 'negative' };
+    }
+    if (!publishKnown) return publishUnknown;
+    if (!valid(publishDate)) {
+      return { label: 'Not published', modifier: 'positive' };
+    }
+    if (!valid(previewDate) || previewDate <= publishDate) {
+      return { label: 'Current', modifier: 'positive' };
+    }
+    return { label: 'Pending changes', modifier: 'positive' };
   }
   if (!valid(previewDate) && !valid(publishDate)) {
     return { label: 'Not previewed', modifier: 'positive' };
+  }
+  if (!publishKnown) {
+    if (editDate <= previewDate) return publishUnknown;
+    return { label: 'Pending changes', modifier: 'positive' };
   }
   if (valid(previewDate) && !valid(publishDate) && editDate <= previewDate) {
     return { label: 'Not published', modifier: 'positive' };
