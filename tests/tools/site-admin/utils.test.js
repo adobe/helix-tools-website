@@ -228,6 +228,50 @@ describe('site-admin:utils.js', () => {
       });
     });
 
+    describe('overlay configuration', () => {
+      it('adds an overlay for URL-based content', () => {
+        const url = 'https://example.com/overlay';
+        const result = buildSiteConfig({}, 'https://github.com/o/r', 'https://content.da.live/o/r', null, '', url);
+        assert.deepEqual(result.content.overlay, { url });
+      });
+
+      it('supports an overlay with BYOGIT and built-in content', () => {
+        const url = 'https://example.com/overlay';
+        const result = buildSiteConfig({}, '', '', { owner: 'o', repo: 'r' }, 'sourcebus', url);
+        assert.deepEqual(result.content.overlay, { url });
+        assert.deepEqual(result.content.source, { type: 'sourcebus' });
+        assert.equal(result.code.source.type, 'byogit');
+      });
+
+      it('updates the overlay URL without mutating existing settings', () => {
+        const overlay = { url: 'https://example.com/old', custom: 'preserved' };
+        const existing = { content: { overlay, contentBusId: 'existing-bus' } };
+        const url = 'https://example.com/new';
+        const result = buildSiteConfig(existing, 'https://github.com/o/r', '', null, 'sourcebus', url);
+        assert.deepEqual(result.content.overlay, { url, custom: 'preserved' });
+        assert.equal(result.content.contentBusId, 'existing-bus');
+        assert.equal(overlay.url, 'https://example.com/old');
+      });
+
+      it('removes an overlay when its URL is cleared', () => {
+        const existing = { content: { overlay: { url: 'https://example.com/overlay' } } };
+        const result = buildSiteConfig(existing, 'https://github.com/o/r', '', null, 'sourcebus', '');
+        assert.equal(Object.hasOwn(result.content, 'overlay'), false);
+        assert.equal(existing.content.overlay.url, 'https://example.com/overlay');
+      });
+
+      it('does not add an overlay for an empty optional URL', () => {
+        const result = buildSiteConfig({}, 'https://github.com/o/r', '', null, 'sourcebus', '');
+        assert.equal(Object.hasOwn(result.content, 'overlay'), false);
+      });
+
+      it('preserves an existing overlay when the argument is omitted', () => {
+        const overlay = { url: 'https://example.com/overlay' };
+        const result = buildSiteConfig({ content: { overlay } }, 'https://github.com/o/r', '', null, 'sourcebus');
+        assert.deepEqual(result.content.overlay, overlay);
+      });
+    });
+
     describe('existing site config merging', () => {
       it('preserves contentBusId and content settings when switching to sourcebus', () => {
         const existing = {
