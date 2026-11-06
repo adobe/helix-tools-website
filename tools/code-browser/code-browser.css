@@ -1,0 +1,100 @@
+.code-browser fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.code-browser legend {
+  font-weight: 600;
+  margin-bottom: var(--spacing-s);
+}
+
+.code-browser #browser-error {
+  border-left: 4px solid var(--red-900);
+  padding: var(--spacing-s);
+  background: var(--layer-depth);
+}
+
+.code-browser .browser-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--spacing-m);
+}
+
+.code-browser .browser-toolbar .form-field {
+  flex: 1 1 200px;
+}
+
+.code-browser #breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-m);
+}
+
+.code-browser .browser-layout {
+  display: grid;
+  gap: var(--spacing-l);
+  align-items: start;
+}
+
+.code-browser .browser-layout > section {
+  min-width: 0;
+}
+
+.code-browser .browser-table {
+  overflow-x: auto;
+}
+
+.code-browser table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.code-browser th,
+.code-browser td {
+  padding: var(--spacing-s);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.code-browser th {
+  background: var(--layer-depth);
+}
+
+.code-browser button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.code-browser .entry-button,
+.code-browser #breadcrumbs button {
+  background: none;
+  color: var(--color-link);
+  border: 0;
+  border-radius: 0;
+  padding: var(--spacing-xs);
+  margin: 0;
+  font: inherit;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.code-browser .entry-button:hover,
+.code-browser #breadcrumbs button:hover {
+  text-decoration: underline;
+}
+
+.code-browser #breadcrumbs button[aria-current] {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.code-browser main [hidden] {
+  display: none;
+}
