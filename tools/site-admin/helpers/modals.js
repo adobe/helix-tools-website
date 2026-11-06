@@ -241,41 +241,47 @@ export const openEditSourceModal = async (
       <p class="site-name">${siteName}</p>
     </div>
     <form class="edit-source-form">
-      <div class="form-field code-url-field"${isByogit ? ' aria-hidden="true"' : ''}>
-        <label for="edit-code">Git Repository URL</label>
-        <input type="url" id="edit-code" ${isByogit ? '' : 'required '}value="${codeUrl}" placeholder="https://github.com/owner/repo" />
-      </div>
-      <div class="form-field byogit-toggle">
-        <label class="checkbox-label">
-          <input type="checkbox" id="edit-byogit"${isByogit ? ' checked' : ''} />
-          Bring Your Own Git
-        </label>
-        <p class="field-hint">Use an external repository via Cloud Manager.
-          <a href="https://www.aem.live/developer/byo-git" target="_blank" rel="noopener noreferrer">Learn more</a></p>
-      </div>
-      <div class="byogit-fields"${isByogit ? '' : ' aria-hidden="true"'}>
-        <div class="form-field">
-          <label for="edit-byogit-owner">Owner</label>
-          <input type="text" id="edit-byogit-owner" placeholder="program ID"
-                 ${isByogit ? 'required ' : ''}value="${byogitOwner}" />
+      <fieldset class="source-section">
+        <legend>Code</legend>
+        <div class="form-field code-url-field"${isByogit ? ' aria-hidden="true"' : ''}>
+          <label for="edit-code">Git Repository URL</label>
+          <input type="url" id="edit-code" ${isByogit ? '' : 'required '}value="${codeUrl}" placeholder="https://github.com/owner/repo" />
+        </div>
+        <div class="form-field byogit-toggle">
+          <label class="checkbox-label">
+            <input type="checkbox" id="edit-byogit"${isByogit ? ' checked' : ''} />
+            Bring Your Own Git
+          </label>
+          <p class="field-hint">Use an external repository via Cloud Manager.
+            <a href="https://www.aem.live/developer/byo-git" target="_blank" rel="noopener noreferrer">Learn more</a></p>
+        </div>
+        <div class="byogit-fields"${isByogit ? '' : ' aria-hidden="true"'}>
+          <div class="form-field">
+            <label for="edit-byogit-owner">Owner</label>
+            <input type="text" id="edit-byogit-owner" placeholder="program ID"
+                   ${isByogit ? 'required ' : ''}value="${byogitOwner}" />
+          </div>
+          <div class="form-field">
+            <label for="edit-byogit-repo">Repo</label>
+            <input type="text" id="edit-byogit-repo" placeholder="repository-id"
+                   ${isByogit ? 'required ' : ''}value="${byogitRepo}" />
+          </div>
+        </div>
+      </fieldset>
+      <fieldset class="source-section">
+        <legend>Content</legend>
+        <div class="form-field content-url-field">
+          <label for="edit-content">Content Source URL</label>
+          <input type="url" id="edit-content" required value="${contentUrl}" placeholder="DA, SharePoint or Google Drive URL" />
         </div>
         <div class="form-field">
-          <label for="edit-byogit-repo">Repo</label>
-          <input type="text" id="edit-byogit-repo" placeholder="repository-id"
-                 ${isByogit ? 'required ' : ''}value="${byogitRepo}" />
+          <label class="checkbox-label">
+            <input type="checkbox" class="content-sourcebus" />
+            Built-in (api.aem.live)
+          </label>
+          <p class="field-hint">No content source URL is required.</p>
         </div>
-      </div>
-      <div class="form-field content-url-field">
-        <label for="edit-content">Content Source URL</label>
-        <input type="url" id="edit-content" required value="${contentUrl}" placeholder="DA, SharePoint or Google Drive URL" />
-      </div>
-      <div class="form-field">
-        <label class="checkbox-label">
-          <input type="checkbox" class="content-sourcebus" />
-          Built-in (api.aem.live)
-        </label>
-        <p class="field-hint">No content source URL is required.</p>
-      </div>
+      </fieldset>
       <div class="form-actions">
         <button type="button" class="button outline cancel-btn">Cancel</button>
         <button type="submit" class="button save-btn">Save Changes</button>

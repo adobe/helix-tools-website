@@ -733,6 +733,24 @@
   gap: var(--spacing-xs);
 }
 
+.site-modal .source-section {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.site-modal .source-section + .source-section {
+  margin-top: var(--spacing-l);
+}
+
+.site-modal .source-section legend {
+  padding: 0;
+  margin-bottom: var(--spacing-s);
+  font-size: var(--body-size-m);
+  font-weight: 700;
+}
+
 .site-modal .form-field {
   margin: 0 0 var(--spacing-m);
 }
