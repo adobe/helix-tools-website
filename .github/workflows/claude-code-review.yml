@@ -24,7 +24,7 @@ jobs:
           sparse-checkout: .github/pr-review
       - name: Authorize and mark pending
         id: pr
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const { readFile } = await import('node:fs/promises');
@@ -120,7 +120,7 @@ jobs:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
           sparse-checkout: .github/pr-review
-      - uses: actions/github-script@v8
+      - uses: actions/github-script@v9
         env:
           SHA: ${{ needs.authorize.outputs.sha }}
           CONCLUSION: ${{ needs.review.outputs.conclusion }}
