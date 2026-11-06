@@ -310,7 +310,7 @@ export const openEditSourceModal = async (
         <div class="form-field">
           <label for="edit-overlay">Overlay URL (optional)</label>
           <input type="url" id="edit-overlay" value="${escapeHtml(overlayUrl)}" placeholder="https://..." />
-          <p class="field-hint">Overlay content sources must be of type BYOM.
+          <p class="field-hint">Overlay content sources must be BYOM.
             <a href="https://www.aem.live/developer/byom#setup-byom-as-content-overlay" target="_blank" rel="noopener noreferrer">Learn more</a></p>
         </div>
       </fieldset>
@@ -1129,7 +1129,7 @@ export const openAddSiteModal = async (
         <div class="form-field">
           <label for="new-site-overlay">Overlay URL (optional)</label>
           <input type="url" id="new-site-overlay" value="${escapeHtml(defaultOverlay)}" placeholder="https://..." />
-          <p class="field-hint">Overlay content sources must be of type BYOM.
+          <p class="field-hint">Overlay content sources must be BYOM.
             <a href="https://www.aem.live/developer/byom#setup-byom-as-content-overlay" target="_blank" rel="noopener noreferrer">Learn more</a></p>
         </div>
       </fieldset>
