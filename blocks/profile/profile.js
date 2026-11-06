@@ -461,11 +461,13 @@ export default async function decorate(block) {
 
 /**
  * Ensures the user is logged in to a specified org/site.
- * @param {string} org The login org.
- * @param {string} site The login site.
+ * @param {string} orgInput The login org.
+ * @param {string} siteInput The login site.
  * @returns {Promise<boolean>} True if logged in, false otherwise.
  */
-export async function ensureLogin(org, site) {
+export async function ensureLogin(orgInput, siteInput) {
+  const org = orgInput.toLowerCase();
+  const site = siteInput?.toLowerCase();
   const loginInfo = await getLoginInfo();
   const loggedIn = Array.isArray(loginInfo) && loginInfo.includes(org);
   if (!loggedIn) {
