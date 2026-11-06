@@ -210,6 +210,11 @@ function updateButtons(dialog, orgs, focusedOrg) {
         </div>
       `;
       dialog.append(form);
+      form.querySelectorAll('input').forEach((input) => {
+        input.addEventListener('change', () => {
+          input.value = input.value.toLowerCase();
+        });
+      });
 
       const resetForm = () => {
         form.querySelector('button').disabled = false;
@@ -226,8 +231,8 @@ function updateButtons(dialog, orgs, focusedOrg) {
       }
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const org = form.querySelector('#profile-add-org').value.trim();
-        const site = form.querySelector('#profile-add-site').value.trim();
+        const org = form.querySelector('#profile-add-org').value.trim().toLowerCase();
+        const site = form.querySelector('#profile-add-site').value.trim().toLowerCase();
         const opsMode = isOpsMode(target);
 
         if (!org || !site) {
