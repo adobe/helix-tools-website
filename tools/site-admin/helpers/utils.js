@@ -133,7 +133,7 @@ export const buildSiteConfig = (
 
   if (overlayUrl !== undefined) {
     if (overlayUrl) {
-      content.overlay = { ...content.overlay, url: overlayUrl };
+      content.overlay = { ...content.overlay, type: 'markup', url: overlayUrl };
     } else {
       delete content.overlay;
     }

@@ -232,23 +232,23 @@ describe('site-admin:utils.js', () => {
       it('adds an overlay for URL-based content', () => {
         const url = 'https://example.com/overlay';
         const result = buildSiteConfig({}, 'https://github.com/o/r', 'https://content.da.live/o/r', null, '', url);
-        assert.deepEqual(result.content.overlay, { url });
+        assert.deepEqual(result.content.overlay, { type: 'markup', url });
       });
 
       it('supports an overlay with BYOGIT and built-in content', () => {
         const url = 'https://example.com/overlay';
         const result = buildSiteConfig({}, '', '', { owner: 'o', repo: 'r' }, 'sourcebus', url);
-        assert.deepEqual(result.content.overlay, { url });
+        assert.deepEqual(result.content.overlay, { type: 'markup', url });
         assert.deepEqual(result.content.source, { type: 'sourcebus' });
         assert.equal(result.code.source.type, 'byogit');
       });
 
       it('updates the overlay URL without mutating existing settings', () => {
-        const overlay = { url: 'https://example.com/old', custom: 'preserved' };
+        const overlay = { type: 'markup', url: 'https://example.com/old', suffix: '.html' };
         const existing = { content: { overlay, contentBusId: 'existing-bus' } };
         const url = 'https://example.com/new';
         const result = buildSiteConfig(existing, 'https://github.com/o/r', '', null, 'sourcebus', url);
-        assert.deepEqual(result.content.overlay, { url, custom: 'preserved' });
+        assert.deepEqual(result.content.overlay, { type: 'markup', url, suffix: '.html' });
         assert.equal(result.content.contentBusId, 'existing-bus');
         assert.equal(overlay.url, 'https://example.com/old');
       });
