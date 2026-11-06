@@ -14,6 +14,7 @@
  * Config shape:
  *   pkg      - npm package name used as the esbuild entry point
  *   out      - output filename under vendor/
+ *   license  - (optional) license file to include as a banner in the bundle
  *   external - (optional) bare specifiers to leave unresolved in the bundle.
  *              Use this when multiple bundles must share the same module
  *              instance at runtime (e.g. chart.js plugins externalising chart.js).
@@ -21,7 +22,9 @@
  */
 
 import { build } from 'esbuild';
-import { mkdir, readdir, rm } from 'fs/promises';
+import {
+  mkdir, readdir, readFile, rm,
+} from 'fs/promises';
 import { join } from 'path';
 
 // =============================================================================
@@ -30,6 +33,7 @@ import { join } from 'path';
 const DEPS = [
   { pkg: 'diff', out: 'diff/diff.js' },
   { pkg: 'yaml', out: 'yaml/yaml.js' },
+  { pkg: 'fflate', out: 'fflate/fflate.js', license: 'node_modules/fflate/LICENSE' },
 
   // CodeMirror 6: bundle the editor utility module so all `@codemirror/*`
   // packages share a single runtime instance (which CodeMirror requires).
@@ -80,7 +84,9 @@ await Promise.all(
   }),
 );
 
-await Promise.all(DEPS.map(async ({ pkg, out, external = [] }) => {
+await Promise.all(DEPS.map(async ({
+  pkg, out, external = [], license,
+}) => {
   await build({
     entryPoints: [pkg],
     bundle: true,
@@ -89,6 +95,7 @@ await Promise.all(DEPS.map(async ({ pkg, out, external = [] }) => {
     platform: 'browser',
     minify: true,
     external,
+    banner: license ? { js: `/*!\n${await readFile(join(root, license), 'utf8')}\n*/` } : undefined,
   });
   console.log(`vendored: ${pkg} → vendor/${out}`);
 }));

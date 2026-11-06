@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>Code Browser</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <script nonce="aem" src="/tools/code-browser/code-browser.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css">
+  <link rel="stylesheet" href="/utils/config/config.css">
+  <link rel="stylesheet" href="/tools/code-browser/code-browser.css">
+</head>
+<body class="code-browser">
+  <header></header>
+  <main>
+    <div>
+      <h1>Code Browser</h1>
+      <p>Browse codebus with the Helix 6 API. Open files and download branch ZIPs from the live URLs returned by the API.</p>
+    </div>
+    <div>
+      <form id="code-browser-form">
+        <fieldset id="config-fields">
+          <legend>Select a project</legend>
+          <section class="form-field config-field">
+            <div class="form-field org-field">
+              <label for="org">Organization</label>
+              <input name="org" id="org" list="org-list" autocomplete="off" required>
+              <datalist id="org-list"></datalist>
+            </div>
+            <div class="form-field site-field">
+              <label for="site">Site</label>
+              <input name="site" id="site" list="site-list" autocomplete="off" disabled required>
+              <datalist id="site-list"></datalist>
+            </div>
+          </section>
+          <p class="button-wrapper">
+            <button type="submit" class="button">Browse code</button>
+          </p>
+        </fieldset>
+      </form>
+      <p id="browser-error" role="alert" hidden></p>
+      <p id="browser-status" role="status" aria-live="polite"></p>
+    </div>
+    <div id="browser-workspace" hidden>
+      <h2 id="project-title"></h2>
+      <section class="browser-toolbar" aria-label="Browse controls">
+        <div class="form-field">
+          <label for="branch">Branch</label>
+          <select id="branch"></select>
+        </div>
+        <div class="form-field">
+          <label for="filter">Filter entries in this folder</label>
+          <input id="filter" type="search" placeholder="Filter by name">
+        </div>
+        <button id="refresh" class="button outline" type="button">Refresh folder</button>
+        <button id="download-zip" class="button" type="button">Download branch as ZIP</button>
+      </section>
+      <p>ZIP downloads include all non-hidden files in the selected branch, regardless of the current folder or filter. Files are fetched from their live URLs, which must allow cross-origin requests. Large branches require sufficient browser memory.</p>
+      <nav id="breadcrumbs" aria-label="Code folder"></nav>
+      <section class="browser-layout" aria-label="Code browser">
+        <section aria-label="Folder contents">
+          <p id="entry-count" role="status"></p>
+          <div class="browser-table">
+            <table>
+              <thead>
+                <tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Size</th><th scope="col">Last modified</th></tr>
+              </thead>
+              <tbody id="entries"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </div>
+  </main>
+  <footer></footer>
+</body>
+</html>
