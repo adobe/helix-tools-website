@@ -12,8 +12,10 @@
  *   2. Add an entry to DEPS below
  *
  * Config shape:
- *   pkg      - npm package name used as the esbuild entry point
- *   out      - output filename under vendor/
+ *   pkg      - npm package name used as the esbuild entry point, or an object
+ *              mapping output names to specifiers for a code-split build whose
+ *              entries share chunks (e.g. chart.js and chart.js/helpers)
+ *   out      - output filename under vendor/ (output directory when pkg is an object)
  *   external - (optional) bare specifiers to leave unresolved in the bundle.
  *              Use this when multiple bundles must share the same module
  *              instance at runtime (e.g. chart.js plugins externalising chart.js).
@@ -37,15 +39,16 @@ const DEPS = [
   // knows to preserve any DEPS entrypoint that sits under `vendor/`.
   { pkg: './vendor/codemirror/index.js', out: 'codemirror/codemirror.js' },
 
-  // Chart.js must be listed before its plugins so the output file exists when
-  // the plugins are loaded. Plugins declare chart.js as external so all bundles
-  // share the same Chart instance; the import map in each HTML file resolves it.
-  // { pkg: 'chart.js', out: 'chartjs/chartjs.js' },
-  // { pkg: 'luxon', out: 'luxon/luxon.js' },
-  // { pkg: 'chartjs-adapter-luxon', out: 'chartjs-adapter-luxon/chartjs-adapter-luxon.js', external: ['chart.js', 'luxon'] },
-  // { pkg: 'chartjs-plugin-datalabels', out: 'chartjs-plugin-datalabels/chartjs-plugin-datalabels.js', external: ['chart.js'] },
-  // { pkg: 'chartjs-chart-sankey', out: 'chartjs-chart-sankey/chartjs-chart-sankey.js', external: ['chart.js'] },
-  // { pkg: '@adobe/rum-distiller', out: 'rum-distiller/rum-distiller.js' },
+  // Plugins declare chart.js (and its chart.js/helpers subpath) as external so
+  // all bundles share the same Chart instance; the import map in each HTML file
+  // resolves them. chart.js and chart.js/helpers are code-split so they share
+  // one copy of chart.js internals.
+  { pkg: { chartjs: 'chart.js', helpers: 'chart.js/helpers' }, out: 'chartjs' },
+  { pkg: 'luxon', out: 'luxon/luxon.js' },
+  { pkg: 'chartjs-adapter-luxon', out: 'chartjs-adapter-luxon/chartjs-adapter-luxon.js', external: ['chart.js', 'luxon'] },
+  { pkg: 'chartjs-plugin-datalabels', out: 'chartjs-plugin-datalabels/chartjs-plugin-datalabels.js', external: ['chart.js'] },
+  { pkg: 'chartjs-chart-sankey', out: 'chartjs-chart-sankey/chartjs-chart-sankey.js', external: ['chart.js'] },
+  { pkg: '@adobe/rum-distiller', out: 'rum-distiller/rum-distiller.js' },
   { pkg: 'echarts', out: 'echarts/echarts.js' },
 ];
 // =============================================================================
@@ -60,7 +63,7 @@ await mkdir(vendorDir, { recursive: true });
 // away when cleaning previously-vendored subdirs.
 const preserveSources = new Set(
   DEPS
-    .filter(({ pkg }) => pkg.startsWith('./vendor/'))
+    .filter(({ pkg }) => typeof pkg === 'string' && pkg.startsWith('./vendor/'))
     .map(({ pkg }) => join(root, pkg.slice(2))),
 );
 
@@ -81,14 +84,17 @@ await Promise.all(
 );
 
 await Promise.all(DEPS.map(async ({ pkg, out, external = [] }) => {
+  const split = typeof pkg === 'object';
   await build({
-    entryPoints: [pkg],
+    entryPoints: split ? pkg : [pkg],
     bundle: true,
     format: 'esm',
-    outfile: join(vendorDir, out),
+    ...(split
+      ? { outdir: join(vendorDir, out), splitting: true }
+      : { outfile: join(vendorDir, out) }),
     platform: 'browser',
     minify: true,
     external,
   });
-  console.log(`vendored: ${pkg} → vendor/${out}`);
+  console.log(`vendored: ${split ? Object.values(pkg).join(', ') : pkg} → vendor/${out}`);
 }));
