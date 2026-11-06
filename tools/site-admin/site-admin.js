@@ -69,6 +69,7 @@ const applyDetailsToCard = (card, details) => {
   card.dataset.codeUrl = codeUrl;
   card.dataset.contentUrl = contentUrl;
   card.dataset.contentSourceType = contentSourceType;
+  card.dataset.overlayUrl = details.content?.overlay?.url || '';
 
   const isByogit = details.code?.source?.type === 'byogit'
     || codeUrl.includes('cm-repo.adobe.io');

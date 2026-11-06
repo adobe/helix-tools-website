@@ -18,6 +18,15 @@ npm i
 npm run lint
 ```
 
+## Site Admin sources
+
+The create-site and Edit Sources dialogs group settings under Code, Content, and Overlay.
+The optional Overlay URL is saved as `content.overlay.url` with the required
+`content.overlay.type` set to `markup` (BYOM), independently of the code and content
+source types. Clearing it removes the overlay. Cloning a site prefills
+its overlay URL along with its code and content sources. When no overlay is configured,
+select **Add overlay** to reveal the Overlay fieldset.
+
 ## Local development
 
 1. Create a new repository based on the `aem-boilerplate` template and add a mountpoint in the `fstab.yaml`

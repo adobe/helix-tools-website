@@ -88,6 +88,20 @@ const setupContentSourceFields = (container, contentSourceType) => {
   return checkbox;
 };
 
+const setupOverlayFields = (container, overlayUrl) => {
+  const checkbox = container.querySelector('.overlay-enabled');
+  const fieldset = container.querySelector('.overlay-fields');
+  const input = fieldset.querySelector('input');
+  const update = () => {
+    fieldset.setAttribute('aria-hidden', String(!checkbox.checked));
+    input.disabled = !checkbox.checked;
+  };
+  checkbox.checked = !!overlayUrl;
+  checkbox.addEventListener('change', update);
+  update();
+  return input;
+};
+
 export const saveSiteAndRefresh = async (
   orgValue,
   siteName,
@@ -99,6 +113,7 @@ export const saveSiteAndRefresh = async (
   action = 'update',
   byogit = null,
   contentSourceType = '',
+  overlayUrl = undefined,
 ) => {
   const admin = await getAdminClient();
   const siteConfig = buildSiteConfig(
@@ -107,6 +122,7 @@ export const saveSiteAndRefresh = async (
     contentSrc,
     byogit,
     contentSourceType,
+    overlayUrl,
   );
   const saveResult = await executeAdminRequest(
     () => admin.config({ org: orgValue, site: siteName }).update(JSON.stringify(siteConfig)),
@@ -229,6 +245,7 @@ export const openEditSourceModal = async (
   logFn = null,
   byogitDefaults = null,
   contentSourceType = '',
+  overlayUrl = '',
 ) => {
   const admin = await getAdminClient();
   const isByogit = !!byogitDefaults;
@@ -241,41 +258,62 @@ export const openEditSourceModal = async (
       <p class="site-name">${siteName}</p>
     </div>
     <form class="edit-source-form">
-      <div class="form-field code-url-field"${isByogit ? ' aria-hidden="true"' : ''}>
-        <label for="edit-code">Git Repository URL</label>
-        <input type="url" id="edit-code" ${isByogit ? '' : 'required '}value="${codeUrl}" placeholder="https://github.com/owner/repo" />
-      </div>
-      <div class="form-field byogit-toggle">
-        <label class="checkbox-label">
-          <input type="checkbox" id="edit-byogit"${isByogit ? ' checked' : ''} />
-          Bring Your Own Git
-        </label>
-        <p class="field-hint">Use an external repository via Cloud Manager.
-          <a href="https://www.aem.live/developer/byo-git" target="_blank" rel="noopener noreferrer">Learn more</a></p>
-      </div>
-      <div class="byogit-fields"${isByogit ? '' : ' aria-hidden="true"'}>
-        <div class="form-field">
-          <label for="edit-byogit-owner">Owner</label>
-          <input type="text" id="edit-byogit-owner" placeholder="program ID"
-                 ${isByogit ? 'required ' : ''}value="${byogitOwner}" />
+      <fieldset class="source-section">
+        <legend>Code</legend>
+        <div class="form-field code-url-field"${isByogit ? ' aria-hidden="true"' : ''}>
+          <label for="edit-code">Git Repository URL</label>
+          <input type="url" id="edit-code" ${isByogit ? '' : 'required '}value="${codeUrl}" placeholder="https://github.com/owner/repo" />
+        </div>
+        <div class="form-field byogit-toggle">
+          <label class="checkbox-label">
+            <input type="checkbox" id="edit-byogit"${isByogit ? ' checked' : ''} />
+            Bring Your Own Git
+          </label>
+          <p class="field-hint">Use an external repository via Cloud Manager.
+            <a href="https://www.aem.live/developer/byo-git" target="_blank" rel="noopener noreferrer">Learn more</a></p>
+        </div>
+        <div class="byogit-fields"${isByogit ? '' : ' aria-hidden="true"'}>
+          <div class="form-field">
+            <label for="edit-byogit-owner">Owner</label>
+            <input type="text" id="edit-byogit-owner" placeholder="program ID"
+                   ${isByogit ? 'required ' : ''}value="${byogitOwner}" />
+          </div>
+          <div class="form-field">
+            <label for="edit-byogit-repo">Repo</label>
+            <input type="text" id="edit-byogit-repo" placeholder="repository-id"
+                   ${isByogit ? 'required ' : ''}value="${byogitRepo}" />
+          </div>
+        </div>
+      </fieldset>
+      <fieldset class="source-section">
+        <legend>Content</legend>
+        <div class="form-field content-url-field">
+          <label for="edit-content">Content Source URL</label>
+          <input type="url" id="edit-content" required value="${contentUrl}" placeholder="DA, SharePoint or Google Drive URL" />
         </div>
         <div class="form-field">
-          <label for="edit-byogit-repo">Repo</label>
-          <input type="text" id="edit-byogit-repo" placeholder="repository-id"
-                 ${isByogit ? 'required ' : ''}value="${byogitRepo}" />
+          <label class="checkbox-label">
+            <input type="checkbox" class="content-sourcebus" />
+            Built-in (api.aem.live)
+          </label>
+          <p class="field-hint">No content source URL is required.</p>
         </div>
-      </div>
-      <div class="form-field content-url-field">
-        <label for="edit-content">Content Source URL</label>
-        <input type="url" id="edit-content" required value="${contentUrl}" placeholder="DA, SharePoint or Google Drive URL" />
-      </div>
-      <div class="form-field">
+      </fieldset>
+      <div class="form-field overlay-toggle"${overlayUrl ? ' aria-hidden="true"' : ''}>
         <label class="checkbox-label">
-          <input type="checkbox" class="content-sourcebus" />
-          Built-in (api.aem.live)
+          <input type="checkbox" class="overlay-enabled" aria-controls="edit-overlay-fields" />
+          Add overlay
         </label>
-        <p class="field-hint">No content source URL is required.</p>
       </div>
+      <fieldset class="source-section overlay-fields" id="edit-overlay-fields">
+        <legend>Overlay</legend>
+        <div class="form-field">
+          <label for="edit-overlay">Overlay URL (optional)</label>
+          <input type="url" id="edit-overlay" value="${escapeHtml(overlayUrl)}" placeholder="https://..." />
+          <p class="field-hint">Overlay content sources must be BYOM.
+            <a href="https://www.aem.live/developer/byom#setup-byom-as-content-overlay" target="_blank" rel="noopener noreferrer">Learn more</a></p>
+        </div>
+      </fieldset>
       <div class="form-actions">
         <button type="button" class="button outline cancel-btn">Cancel</button>
         <button type="submit" class="button save-btn">Save Changes</button>
@@ -286,6 +324,7 @@ export const openEditSourceModal = async (
   container.querySelector('.cancel-btn').addEventListener('click', () => dialog.close());
 
   const sourcebusCheckbox = setupContentSourceFields(container, contentSourceType);
+  const overlayInput = setupOverlayFields(container, overlayUrl);
   const byogitCheckbox = container.querySelector('#edit-byogit');
   const codeUrlField = container.querySelector('.code-url-field');
   const byogitFieldsEl = container.querySelector('.byogit-fields');
@@ -331,7 +370,14 @@ export const openEditSourceModal = async (
       () => admin.config({ org: orgValue, site: siteName }).read(),
       { org: orgValue, site: siteName },
     );
-    const siteDetails = (detailsResult?.ok ? await detailsResult.json() : null) || {};
+    if (!detailsResult?.ok) {
+      logResult(logFn, detailsResult);
+      showToast('Failed to load the current site config. Changes were not saved.', 'error');
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save Changes';
+      return;
+    }
+    const siteDetails = await detailsResult.json();
     const closeDialog = () => dialog.close();
     const success = await saveSiteAndRefresh(
       orgValue,
@@ -344,6 +390,7 @@ export const openEditSourceModal = async (
       'update',
       byogit,
       sourcebusCheckbox.checked ? 'sourcebus' : '',
+      overlayInput.disabled ? '' : overlayInput.value.trim(),
     );
 
     if (!success) {
@@ -1010,6 +1057,7 @@ export const openAddSiteModal = async (
   logFn = null,
   byogitDefaults = null,
   contentSourceType = '',
+  defaultOverlay = '',
 ) => {
   const isByogit = !!byogitDefaults;
   const byogitOwner = escapeHtml(byogitDefaults?.owner || '');
@@ -1027,43 +1075,64 @@ export const openAddSiteModal = async (
         <p class="field-error" role="alert" aria-hidden="true"></p>
         <p class="field-warning" aria-live="polite" aria-hidden="true"></p>
       </div>
-      <div class="form-field code-url-field"${isByogit ? ' aria-hidden="true"' : ''}>
-        <label for="new-site-code">GitHub Repository URL</label>
-        <input type="url" id="new-site-code" ${isByogit ? '' : 'required '}value="${defaultCode}"
-               placeholder="https://github.com/owner/repo" />
-      </div>
-      <div class="form-field byogit-toggle">
-        <label class="checkbox-label">
-          <input type="checkbox" id="new-site-byogit"${isByogit ? ' checked' : ''} />
-          Bring Your Own Git
-        </label>
-        <p class="field-hint">Use an external repository via Cloud Manager.
-          <a href="https://www.aem.live/developer/byo-git" target="_blank" rel="noopener noreferrer">Learn more</a></p>
-      </div>
-      <div class="byogit-fields"${isByogit ? '' : ' aria-hidden="true"'}>
-        <div class="form-field">
-          <label for="new-site-byogit-owner">Owner</label>
-          <input type="text" id="new-site-byogit-owner" placeholder="program ID"
-                 ${isByogit ? 'required ' : ''}value="${byogitOwner}" />
+      <fieldset class="source-section">
+        <legend>Code</legend>
+        <div class="form-field code-url-field"${isByogit ? ' aria-hidden="true"' : ''}>
+          <label for="new-site-code">GitHub Repository URL</label>
+          <input type="url" id="new-site-code" ${isByogit ? '' : 'required '}value="${defaultCode}"
+                 placeholder="https://github.com/owner/repo" />
+        </div>
+        <div class="form-field byogit-toggle">
+          <label class="checkbox-label">
+            <input type="checkbox" id="new-site-byogit"${isByogit ? ' checked' : ''} />
+            Bring Your Own Git
+          </label>
+          <p class="field-hint">Use an external repository via Cloud Manager.
+            <a href="https://www.aem.live/developer/byo-git" target="_blank" rel="noopener noreferrer">Learn more</a></p>
+        </div>
+        <div class="byogit-fields"${isByogit ? '' : ' aria-hidden="true"'}>
+          <div class="form-field">
+            <label for="new-site-byogit-owner">Owner</label>
+            <input type="text" id="new-site-byogit-owner" placeholder="program ID"
+                   ${isByogit ? 'required ' : ''}value="${byogitOwner}" />
+          </div>
+          <div class="form-field">
+            <label for="new-site-byogit-repo">Repo</label>
+            <input type="text" id="new-site-byogit-repo" placeholder="repository-id"
+                   ${isByogit ? 'required ' : ''}value="${byogitRepo}" />
+          </div>
+        </div>
+      </fieldset>
+      <fieldset class="source-section">
+        <legend>Content</legend>
+        <div class="form-field content-url-field">
+          <label for="new-site-content">Content Source URL</label>
+          <input type="url" id="new-site-content" required value="${defaultContent}"
+                 placeholder="DA, SharePoint or Google Drive URL" />
         </div>
         <div class="form-field">
-          <label for="new-site-byogit-repo">Repo</label>
-          <input type="text" id="new-site-byogit-repo" placeholder="repository-id"
-                 ${isByogit ? 'required ' : ''}value="${byogitRepo}" />
+          <label class="checkbox-label">
+            <input type="checkbox" class="content-sourcebus" />
+            Built-in (api.aem.live)
+          </label>
+          <p class="field-hint">No content source URL is required.</p>
         </div>
-      </div>
-      <div class="form-field content-url-field">
-        <label for="new-site-content">Content Source URL</label>
-        <input type="url" id="new-site-content" required value="${defaultContent}"
-               placeholder="DA, SharePoint or Google Drive URL" />
-      </div>
-      <div class="form-field">
+      </fieldset>
+      <div class="form-field overlay-toggle"${defaultOverlay ? ' aria-hidden="true"' : ''}>
         <label class="checkbox-label">
-          <input type="checkbox" class="content-sourcebus" />
-          Built-in (api.aem.live)
+          <input type="checkbox" class="overlay-enabled" aria-controls="new-site-overlay-fields" />
+          Add overlay
         </label>
-        <p class="field-hint">No content source URL is required.</p>
       </div>
+      <fieldset class="source-section overlay-fields" id="new-site-overlay-fields">
+        <legend>Overlay</legend>
+        <div class="form-field">
+          <label for="new-site-overlay">Overlay URL (optional)</label>
+          <input type="url" id="new-site-overlay" value="${escapeHtml(defaultOverlay)}" placeholder="https://..." />
+          <p class="field-hint">Overlay content sources must be BYOM.
+            <a href="https://www.aem.live/developer/byom#setup-byom-as-content-overlay" target="_blank" rel="noopener noreferrer">Learn more</a></p>
+        </div>
+      </fieldset>
       <div class="form-actions">
         <button type="button" class="button outline cancel-btn">Cancel</button>
         <button type="submit" class="button create-btn">Create Site</button>
@@ -1090,6 +1159,7 @@ export const openAddSiteModal = async (
   container.querySelector('.cancel-btn').addEventListener('click', () => dialog.close());
 
   const sourcebusCheckbox = setupContentSourceFields(container, contentSourceType);
+  const overlayInput = setupOverlayFields(container, defaultOverlay);
   const byogitCheckbox = container.querySelector('#new-site-byogit');
   const codeUrlField = container.querySelector('.code-url-field');
   const byogitFieldsEl = container.querySelector('.byogit-fields');
@@ -1233,6 +1303,7 @@ export const openAddSiteModal = async (
       'add',
       byogit,
       sourcebusCheckbox.checked ? 'sourcebus' : '',
+      overlayInput.disabled ? '' : overlayInput.value.trim(),
     );
 
     if (success && byogit) {

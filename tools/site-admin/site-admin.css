@@ -733,6 +733,32 @@
   gap: var(--spacing-xs);
 }
 
+.site-modal .source-section {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.site-modal .source-section + .source-section {
+  margin-top: var(--spacing-l);
+}
+
+.site-modal .form-field.overlay-toggle {
+  margin-top: var(--spacing-l);
+}
+
+.site-modal .overlay-toggle[aria-hidden="true"] + .source-section {
+  margin-top: var(--spacing-l);
+}
+
+.site-modal .source-section legend {
+  padding: 0;
+  margin-bottom: var(--spacing-s);
+  font-size: var(--body-size-m);
+  font-weight: 700;
+}
+
 .site-modal .form-field {
   margin: 0 0 var(--spacing-m);
 }
@@ -785,7 +811,7 @@
 
 .site-modal .label-preview {
   color: var(--color-font-grey);
-  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .site-modal .label-preview.warning .label-domain {
@@ -828,6 +854,14 @@
   border-radius: 3px;
   font-size: 0.85em;
   word-break: break-all;
+}
+
+.site-modal .label-preview code {
+  display: inline-block;
+  max-width: 100%;
+  overflow-x: auto;
+  vertical-align: bottom;
+  white-space: nowrap;
 }
 
 .site-modal .auth-loading,
@@ -896,7 +930,10 @@
   box-shadow: 0 0 0 2px var(--blue-100);
 }
 
-.add-site-modal,
+.add-site-modal {
+  min-width: 0;
+}
+
 .delete-modal {
   min-width: 400px;
 }

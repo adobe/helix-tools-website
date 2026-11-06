@@ -152,7 +152,7 @@ export default function createSiteCard(site, orgValue, options = {}) {
     const byogitDefaults = card.dataset.byogitOwner
       ? { owner: card.dataset.byogitOwner, repo: card.dataset.byogitRepo }
       : null;
-    openEditSourceModal(orgValue, site.name, card.dataset.codeUrl || '', card.dataset.contentUrl || '', null, byogitDefaults, card.dataset.contentSourceType || '');
+    openEditSourceModal(orgValue, site.name, card.dataset.codeUrl || '', card.dataset.contentUrl || '', null, byogitDefaults, card.dataset.contentSourceType || '', card.dataset.overlayUrl || '');
   };
 
   const openLogs = () => {
@@ -165,7 +165,7 @@ export default function createSiteCard(site, orgValue, options = {}) {
       const byogitDefaults = card.dataset.byogitOwner
         ? { owner: card.dataset.byogitOwner, repo: card.dataset.byogitRepo }
         : null;
-      openAddSiteModal(orgValue, card.dataset.codeUrl || '', card.dataset.contentUrl || '', null, byogitDefaults, card.dataset.contentSourceType || '');
+      openAddSiteModal(orgValue, card.dataset.codeUrl || '', card.dataset.contentUrl || '', null, byogitDefaults, card.dataset.contentSourceType || '', card.dataset.overlayUrl || '');
     },
     sitemap: () => {
       const url = `/tools/sitemap-admin/index.html?org=${encodeURIComponent(orgValue)}&site=${encodeURIComponent(site.name)}`;
