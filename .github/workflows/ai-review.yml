@@ -1,0 +1,34 @@
+name: AI Review
+
+on:
+  pull_request:
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  ai-review:
+    uses: adobe/helix-shared-workflows/.github/workflows/ai-review.yml@v1
+    secrets:
+      AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      statuses: write
+    with:
+      # node --test, writing junit.xml and lcov.info, which the reviewers get
+      test: npm test
+      browsers: true
+      base-url: https://main--helix-tools-website--adobe.aem.page/
+      review-prompt: >-
+        helix-tools-website is tools.aem.live, an AEM Edge Delivery Services site with
+        administrative and development tools for EDS. Apply the review criteria in
+        .claude/skills/code-review/SKILL.md (its criteria, not its instructions for
+        posting). `npm run lint` lints JS and CSS. A pushed branch is previewed at
+        https://<branch>--helix-tools-website--adobe.aem.page/, where <branch> is the head
+        branch in pr.json, lowercased, with every character other than a-z, 0-9 and -
+        replaced by -; it may not be available yet. Compare tools there with the base.
+        The auto-approval in .github/pr-review/ approves small pull requests by trusted
+        contributors once this review approves them.

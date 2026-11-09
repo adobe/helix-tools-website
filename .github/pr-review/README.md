@@ -1,19 +1,14 @@
 # PR review automation
 
-Auto-approves small PRs from trusted contributors once Claude finds no BLOCKING issues. Everything else needs human review.
+Auto-approves small PRs from trusted contributors once the AI review approves them. Everything else needs human review.
 
 ## Flow
 
-1. The PR author or a committer comments `/claude-review` (same-repo branches only). Ignored if the current head was already reviewed or a review is running.
-2. `claude-code-review.yml` runs Claude on the current head and sets commit status `claude-review`:
-   - `success`: no BLOCKING issues
-   - `failure`: BLOCKING issues found
-   - `error`: Claude failed or returned no verdict
-   - `pending`: review running, or not yet requested
-3. If the PR is eligible, `github-actions[bot]` approves it. CI and other merge rules still apply.
-4. Check `auto-approval` shows the outcome: `success` (auto-approved) or `neutral` (human review required, with reasons).
+1. `ai-review.yml` runs the shared AI review ([adobe/helix-shared-workflows](https://github.com/adobe/helix-shared-workflows/blob/main/docs/ai-review.md)) on every push to a same-repo PR. Claude and Codex each set a commit status on the head: `review / claude` and `review / codex`, `success` when that reviewer approved, `failure` when it denied, and `error` when it left no verdict.
+2. When the AI review finishes, `pr-review.yml` runs (`workflow_run`) and checks eligibility. If the PR is eligible, `github-actions[bot]` approves it. CI and other merge rules still apply.
+3. Check `auto-approval` shows the outcome: `success` (auto-approved) or `neutral` (human review required, with reasons).
 
-New pushes or new `/claude-review` requests reset the status to pending and revoke the bot approval. `pr-review.yml` re-checks eligibility on PR events (open, push, edit, draft/ready).
+A new push starts a new review and revokes the bot approval, since the new head has no review statuses yet. `pr-review.yml` also re-checks eligibility on PR events (open, push, edit, draft/ready).
 
 Workflows run this folder's code from the default branch only, so changes here take effect after merge.
 
@@ -24,7 +19,7 @@ All of:
 - PR is open, non-draft, and targets the default branch
 - Author is in `trustedContributors`
 - Changes stay within the size and path limits below
-- Claude found no BLOCKING issues on the head commit (newest `claude-review` status is `success`)
+- Both AI reviewers approved the head commit (the newest `review / claude` and `review / codex` statuses are `success`, set by `github-actions[bot]`)
 
 ## `policy-config.json`
 
@@ -39,7 +34,7 @@ All of:
 
 ## Files
 
-- `policy.js`: eligibility rules and Claude verdict parsing
-- `run.js`: evaluates a PR, sets the pending status, approves or dismisses bot approvals, reports the `auto-approval` check
+- `policy.js`: eligibility rules
+- `run.js`: evaluates a PR, approves or dismisses bot approvals, reports the `auto-approval` check
 - `policy-config.json`: settings above
 - Tests: `tests/github/pr-review.test.js`

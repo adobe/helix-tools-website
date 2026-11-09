@@ -1,26 +1,6 @@
-export const STATUS_CONTEXT = 'claude-review';
+// The commit statuses of the AI review (ai-review.yml), one per reviewer.
+export const REVIEW_CONTEXTS = ['review / claude', 'review / codex'];
 export const STATUS_CREATOR = 'github-actions[bot]';
-const RUNNING_TIMEOUT_MS = 60 * 60 * 1000;
-
-export function reviewRequestSkipReason({
-  commenter, permission, pr, repo, claudeStatus, now = Date.now(),
-}) {
-  if (pr.state !== 'open' || pr.head.repo?.full_name !== repo) {
-    return 'Claude review runs only on open, same-repository PRs.';
-  }
-  if (commenter.toLowerCase() !== pr.user.login.toLowerCase()
-    && !['admin', 'write'].includes(permission)) {
-    return 'Only the PR author or committers can request a Claude review.';
-  }
-  if (['success', 'failure'].includes(claudeStatus?.state)) {
-    return 'Current head already reviewed; push changes to review again.';
-  }
-  if (claudeStatus?.state === 'pending' && claudeStatus.target_url
-    && now - Date.parse(claudeStatus.created_at) < RUNNING_TIMEOUT_MS) {
-    return 'Claude review already running for the current head.';
-  }
-  return undefined;
-}
 
 function scopeForPath(path, { sourceDirs, testsDir }) {
   const [first, ...rest] = path.split('/');
@@ -30,25 +10,11 @@ function scopeForPath(path, { sourceDirs, testsDir }) {
     : undefined;
 }
 
-export function claudeVerdict(conclusion, output) {
-  if (conclusion !== 'success') {
-    return { state: 'error', description: 'Claude review did not complete.' };
-  }
-  let blocking;
-  try {
-    ({ blocking } = JSON.parse(output));
-  } catch {
-    blocking = undefined;
-  }
-  if (!Number.isSafeInteger(blocking) || blocking < 0) {
-    return { state: 'error', description: 'Claude review returned no verdict.' };
-  }
-  return blocking
-    ? { state: 'failure', description: `Claude found ${blocking} BLOCKING issue(s).` }
-    : { state: 'success', description: 'Claude found no BLOCKING issues.' };
-}
-
-export default function evaluatePullRequest(pr, files, config, claudeStatus) {
+/**
+ * @param reviewStatuses the newest commit status of the head for each of REVIEW_CONTEXTS,
+ *   in that order (undefined where there is none)
+ */
+export default function evaluatePullRequest(pr, files, config, reviewStatuses = []) {
   const {
     trustedContributors, maxLines, maxFiles, maxScopes, sourceDirs, testsDir,
   } = config;
@@ -79,8 +45,9 @@ export default function evaluatePullRequest(pr, files, config, claudeStatus) {
     || files.reduce((sum, file) => sum + file.additions + file.deletions, 0) !== lines) {
     reasons.push('Complete, countable text changes are required.');
   }
-  if (claudeStatus?.state !== 'success' || claudeStatus.creator?.login !== STATUS_CREATOR) {
-    reasons.push('Claude review of the current head must pass with no BLOCKING issues. Comment /claude-review to run it.');
+  if (REVIEW_CONTEXTS.some((context, i) => reviewStatuses[i]?.context !== context
+    || reviewStatuses[i].state !== 'success' || reviewStatuses[i].creator?.login !== STATUS_CREATOR)) {
+    reasons.push(`The AI review (${REVIEW_CONTEXTS.join(', ')}) must approve the current head. It runs on every push.`);
   }
 
   return {
