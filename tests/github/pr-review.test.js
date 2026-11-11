@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import evaluatePullRequest, { claudeVerdict, reviewRequestSkipReason } from '../../.github/pr-review/policy.js';
+import evaluatePullRequest from '../../.github/pr-review/policy.js';
 import run from '../../.github/pr-review/run.js';
 
 const SHA = 'a'.repeat(40);
@@ -15,14 +15,19 @@ const CONFIG = {
   testsDir: 'tests',
 };
 
-function claudeStatus(overrides = {}) {
+function reviewStatus(agent, overrides = {}) {
   return {
-    id: 1,
-    context: 'claude-review',
+    id: agent === 'claude' ? 1 : 2,
+    context: `review / ${agent}`,
     state: 'success',
     creator: { login: 'github-actions[bot]' },
     ...overrides,
   };
+}
+
+// the newest status of each reviewer, as run.js passes them to the policy
+function reviewStatuses(claude = {}, codex = {}) {
+  return [claude && reviewStatus('claude', claude), codex && reviewStatus('codex', codex)];
 }
 
 function pullRequest(overrides = {}) {
@@ -45,8 +50,8 @@ function file(filename = 'tools/bulk/utils.js', overrides = {}) {
   };
 }
 
-function evaluate(pr = {}, files = [file()], status = claudeStatus(), config = CONFIG) {
-  return evaluatePullRequest(pullRequest(pr), files, config, status);
+function evaluate(pr = {}, files = [file()], statuses = reviewStatuses(), config = CONFIG) {
+  return evaluatePullRequest(pullRequest(pr), files, config, statuses);
 }
 
 describe('PR review eligibility', () => {
@@ -116,17 +121,20 @@ describe('PR review eligibility', () => {
   });
 
   [
-    null,
-    claudeStatus({ state: 'pending' }),
-    claudeStatus({ state: 'failure' }),
-    claudeStatus({ state: 'error' }),
-    claudeStatus({ creator: { login: 'shsteimer' } }),
-    claudeStatus({ creator: undefined }),
-  ].forEach((status) => {
-    it(`requires a passing Claude review: ${JSON.stringify(status)}`, () => {
-      const result = evaluate({}, [file()], status);
+    [],
+    reviewStatuses(null),
+    reviewStatuses({}, null),
+    reviewStatuses({ state: 'pending' }),
+    reviewStatuses({}, { state: 'failure' }),
+    reviewStatuses({ state: 'error' }),
+    reviewStatuses({ creator: { login: 'shsteimer' } }),
+    reviewStatuses({}, { creator: undefined }),
+    reviewStatuses({ context: 'review / codex' }, { context: 'review / claude' }),
+  ].forEach((statuses) => {
+    it(`requires both AI reviewers to approve: ${JSON.stringify(statuses)}`, () => {
+      const result = evaluate({}, [file()], statuses);
       assert.equal(result.eligible, false);
-      assert.match(result.reasons.join(' '), /\/claude-review/);
+      assert.match(result.reasons.join(' '), /review \/ claude, review \/ codex/);
     });
   });
 
@@ -175,82 +183,7 @@ describe('PR review eligibility', () => {
   });
 });
 
-describe('Claude review request', () => {
-  const REPO = 'adobe/helix-tools-website';
-  const NOW = Date.parse('2026-01-01T12:00:00Z');
-  const request = (overrides = {}) => reviewRequestSkipReason({
-    commenter: 'someone',
-    permission: 'write',
-    pr: pullRequest({ head: { sha: SHA, repo: { full_name: REPO } } }),
-    repo: REPO,
-    claudeStatus: undefined,
-    now: NOW,
-    ...overrides,
-  });
-
-  it('runs for committers and the PR author', () => {
-    assert.equal(request(), undefined);
-    assert.equal(request({ permission: 'admin' }), undefined);
-    assert.equal(request({ commenter: 'SHSTEIMER', permission: 'read' }), undefined);
-  });
-
-  it('ignores drive-by commenters', () => {
-    ['read', 'triage', 'none'].forEach((permission) => {
-      assert.match(request({ permission }), /author or committers/);
-    });
-  });
-
-  it('ignores closed and fork PRs', () => {
-    assert.match(request({ pr: pullRequest({ state: 'closed', head: { sha: SHA, repo: { full_name: REPO } } }) }), /same-repository/);
-    assert.match(request({ pr: pullRequest({ head: { sha: SHA, repo: { full_name: 'fork/helix-tools-website' } } }) }), /same-repository/);
-    assert.match(request({ pr: pullRequest({ head: { sha: SHA, repo: null } }) }), /same-repository/);
-  });
-
-  it('skips a head that was already reviewed', () => {
-    ['success', 'failure'].forEach((state) => {
-      assert.match(request({ claudeStatus: claudeStatus({ state }) }), /already reviewed/);
-    });
-  });
-
-  it('reruns after an error or when only prompted', () => {
-    assert.equal(request({ claudeStatus: claudeStatus({ state: 'error' }) }), undefined);
-    assert.equal(request({ claudeStatus: claudeStatus({ state: 'pending' }) }), undefined);
-  });
-
-  it('skips while a review is running, unless it is stuck', () => {
-    const running = (minutes) => claudeStatus({
-      state: 'pending',
-      target_url: 'https://github.com/run',
-      created_at: new Date(NOW - minutes * 60 * 1000).toISOString(),
-    });
-    assert.match(request({ claudeStatus: running(5) }), /already running/);
-    assert.equal(request({ claudeStatus: running(61) }), undefined);
-  });
-});
-
-describe('Claude verdict', () => {
-  it('passes with no BLOCKING issues', () => {
-    assert.equal(claudeVerdict('success', '{"blocking":0,"summary":"ok"}').state, 'success');
-  });
-
-  it('fails with BLOCKING issues', () => {
-    assert.deepEqual(claudeVerdict('success', '{"blocking":2,"summary":"bad"}'), {
-      state: 'failure', description: 'Claude found 2 BLOCKING issue(s).',
-    });
-  });
-
-  [
-    ['failure', '{"blocking":0}'], ['skipped', ''], ['success', ''], ['success', 'nope'],
-    ['success', '{}'], ['success', '{"blocking":-1}'], ['success', '{"blocking":"0"}'],
-    ['success', 'null'],
-  ].forEach(([conclusion, output]) => {
-    it(`errors without a valid verdict: ${conclusion} ${output}`, () => {
-      assert.equal(claudeVerdict(conclusion, output).state, 'error');
-    });
-  });
-});
-
-function harness(pr = pullRequest(), reviews = [], latest = pr, statuses = [claudeStatus()]) {
+function harness(pr = pullRequest(), reviews = [], latest = pr, statuses = reviewStatuses()) {
   const calls = {
     approvals: [], dismissals: [], failures: [], notices: [], statuses: [], refs: [], checks: [],
   };
@@ -342,7 +275,7 @@ describe('PR review approval orchestration', () => {
     assert.equal(calls.checks.length, 1);
     assert.equal(calls.checks[0].conclusion, 'neutral');
     assert.equal(calls.checks[0].output.title, 'Human review required: Author is not on the trusted-contributor list. (+1 more)');
-    assert.match(calls.checks[0].output.summary, /^- Author is not.*\n- Claude review/);
+    assert.match(calls.checks[0].output.summary, /^- Author is not.*\n- The AI review/);
   });
 
   it('does not report on closed PRs', async () => {
@@ -351,30 +284,40 @@ describe('PR review approval orchestration', () => {
     assert.equal(calls.checks.length, 0);
   });
 
-  it('uses the newest Claude status for the head', async () => {
+  it('uses the newest status of each reviewer for the head', async () => {
     const { args, calls } = harness(pullRequest(), [], undefined, [
       { context: 'other', state: 'success' },
-      claudeStatus({ state: 'failure' }),
-      claudeStatus(),
+      reviewStatus('codex', { id: 3, state: 'failure' }),
+      reviewStatus('claude'),
+      reviewStatus('codex'),
     ]);
     await run(args);
     assert.equal(calls.approvals.length, 0);
   });
 
-  it('marks an unreviewed head as pending without approving', async () => {
+  it('approves once both reviewers approved, in any order', async () => {
+    const { args, calls } = harness(pullRequest(), [], undefined, [
+      { context: 'other', state: 'failure' },
+      reviewStatus('codex'),
+      reviewStatus('claude', { id: 3, state: 'success' }),
+      reviewStatus('claude', { id: 4, state: 'failure' }),
+    ]);
+    await run(args);
+    assert.equal(calls.approvals.length, 1);
+  });
+
+  it('leaves an unreviewed head alone, without approving or setting statuses', async () => {
     const { args, calls } = harness(pullRequest(), [], undefined, []);
     await run(args);
     assert.equal(calls.approvals.length, 0);
-    assert.equal(calls.statuses.length, 1);
-    assert.equal(calls.statuses[0].sha, SHA);
-    assert.equal(calls.statuses[0].context, 'claude-review');
-    assert.equal(calls.statuses[0].state, 'pending');
+    assert.equal(calls.statuses.length, 0);
+    assert.deepEqual(calls.checks.map((item) => item.conclusion), ['neutral']);
   });
 
-  it('withdraws its approval if the Claude status changed meanwhile', async () => {
-    const { args, calls } = harness(pullRequest(), [], undefined, (call) => [
-      call === 1 ? claudeStatus() : claudeStatus({ id: 2, state: 'pending' }),
-    ]);
+  it('withdraws its approval if a reviewer status changed meanwhile', async () => {
+    const { args, calls } = harness(pullRequest(), [], undefined, (call) => (
+      call === 1 ? reviewStatuses() : reviewStatuses({}, { id: 5, state: 'failure' })
+    ));
     await run(args);
     assert.equal(calls.approvals.length, 1);
     assert.deepEqual(calls.dismissals.map((item) => item.review_id), [99]);
@@ -410,11 +353,10 @@ describe('PR review approval orchestration', () => {
     });
   });
 
-  ['failure', 'pending'].forEach((state) => {
-    it(`revokes approval when Claude status is ${state}`, async () => {
-      const { args, calls } = harness(pullRequest(), [approval()], undefined, [
-        claudeStatus({ state }),
-      ]);
+  ['failure', 'error'].forEach((state) => {
+    it(`revokes approval when a reviewer's status is ${state}`, async () => {
+      const statuses = reviewStatuses({}, { state });
+      const { args, calls } = harness(pullRequest(), [approval()], undefined, statuses);
       await run(args);
       assert.equal(calls.dismissals.length, 1);
       assert.equal(calls.approvals.length, 0);
