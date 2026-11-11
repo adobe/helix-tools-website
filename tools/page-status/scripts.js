@@ -1,10 +1,19 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import getAdminClient from '../../scripts/admin-compat.js';
+import getAdminClient, { getAdminClientForSite, isHelix6 } from '../../scripts/admin-compat.js';
 import { decorateIcons } from '../../scripts/aem.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import loadingMessages from './loading-messages.js';
-import { validatePath, classifySequenceStatus, fetchHosts } from './utils.js';
+import {
+  validatePath,
+  classifySequenceStatus,
+  fetchHosts,
+  fetchContentSourceType,
+  hasSourceListing,
+  needsSourceLookup,
+} from './utils.js';
+import { collectResources } from './browse.js';
+import { lookupSource, lookupAll } from './source-lookup.js';
 
 const FORM = document.getElementById('status-form');
 const TABLE = document.querySelector('table');
@@ -14,6 +23,9 @@ const ERROR = TABLE.querySelector('.error');
 const FILTER = document.getElementById('status-filter');
 const DOWNLOADCSV = document.getElementById('download-csv');
 const DIFFMODE = document.getElementById('diff-mode');
+const CHECKSOURCES = document.getElementById('check-sources');
+const ACTION_BUTTONS = [DOWNLOADCSV, DIFFMODE, CHECKSOURCES];
+let sourceLookup = null;
 let intervalId;
 const randomLoadingMessage = () => loadingMessages[
   Math.floor(Math.random() * loadingMessages.length)
@@ -159,10 +171,11 @@ function getFormData(form) {
 /**
  * Enables the action buttons (Download CSV and Diff Mode).
  * Should only be called when results are successfully displayed.
+ * @param {boolean} [diff=true] - Whether Diff Mode is available.
  */
-function enableActionButtons() {
+function enableActionButtons(diff = true) {
   DOWNLOADCSV.disabled = false;
-  DIFFMODE.disabled = false;
+  DIFFMODE.disabled = !diff;
 }
 
 /**
@@ -171,6 +184,10 @@ function enableActionButtons() {
 function disableActionButtons() {
   DOWNLOADCSV.disabled = true;
   DIFFMODE.disabled = true;
+  CHECKSOURCES.disabled = true;
+  CHECKSOURCES.hidden = true;
+  if (sourceLookup) sourceLookup.signal.aborted = true;
+  sourceLookup = null;
 }
 
 /**
@@ -195,7 +212,7 @@ function disableForm(form, button) {
 function enableForm(form, button) {
   resetLoadingButton(button);
   [...form.elements].forEach((el) => {
-    el.disabled = false;
+    if (!ACTION_BUTTONS.includes(el)) el.disabled = false;
   });
   // Note: Action buttons (CSV, Diff Mode) are enabled separately
   // only when results are successfully displayed
@@ -241,6 +258,7 @@ function updateTableDisplay(show) {
  */
 function clearTable(table) {
   CAPTION.setAttribute('aria-hidden', true);
+  CAPTION.querySelector('.caption-notice').textContent = '';
   table.innerHTML = '';
   updateTableDisplay('no-results');
 }
@@ -291,10 +309,11 @@ function buildLink(text, url, path) {
  * @param {string} edit
  * @param {string} preview
  * @param {string} publish
+ * @param {{sourceExpected?: boolean}} [opts]
  * @returns {HTMLSpanElement}
  */
-function buildSequenceStatus(edit, preview, publish) {
-  const { label, modifier } = classifySequenceStatus(edit, preview, publish);
+function buildSequenceStatus(edit, preview, publish, opts) {
+  const { label, modifier } = classifySequenceStatus(edit, preview, publish, opts);
   const span = document.createElement('span');
   span.className = `status-light ${modifier}`;
   span.textContent = label;
@@ -331,14 +350,48 @@ function buildRedirectIcon(redirectLocation) {
 }
 
 /**
+ * @param {{publishKnown?: boolean}} [opts]
+ * @returns {string} Publish cell text when there is no publish date.
+ */
+function publishCellFallback(opts) {
+  return opts?.publishKnown === false ? 'Unknown' : '-';
+}
+
+/**
+ * Builds a button that triggers a source lookup for its row.
+ * @param {string} label
+ * @param {string} [title]
+ * @returns {HTMLButtonElement}
+ */
+function buildCheckSourceButton(label, title) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'button quiet check-source';
+  button.textContent = label;
+  if (title) button.title = title;
+  return button;
+}
+
+/**
+ * @param {Object} resource
+ * @param {Object} [opts] - Classification options.
+ * @returns {string|HTMLElement} Source cell content.
+ */
+function buildSourceCell(resource, opts) {
+  if (opts?.sourceKnown === false) return buildCheckSourceButton('Check');
+  return resource.sourceLastModified ? toUTCDate(resource.sourceLastModified) : '-';
+}
+
+/**
  * Builds row (`<tr>`) element with resource path, status, and modification timestamps.
  * @param {Object} resource - Resource object containing metadata.
  * @param {string} live - Base URL for live links.
  * @param {string} preview - Base URL for preview links.
  * @param {string} resource.path - The resource's path.
+ * @param {{sourceExpected?: boolean}} [opts] - Classification options.
  * @returns {HTMLTableRowElement|null} `<tr>` element for resource, or `null` if no `path`.
  */
-function buildResource(resource, live, preview) {
+function buildResource(resource, live, preview, opts) {
   const {
     path,
     sourceLastModified,
@@ -354,14 +407,15 @@ function buildResource(resource, live, preview) {
       sourceLastModified,
       previewLastModified,
       publishLastModified,
+      opts,
     );
     const cols = [
       path,
       buildRedirectIcon(publishConfigRedirectLocation || previewConfigRedirectLocation),
       status,
-      sourceLastModified ? toUTCDate(sourceLastModified) : '-',
+      buildSourceCell(resource, opts),
       previewLastModified ? buildLink(previewLastModified, preview, path) : '-',
-      publishLastModified ? buildLink(publishLastModified, live, path) : '-',
+      publishLastModified ? buildLink(publishLastModified, live, path) : publishCellFallback(opts),
     ];
     cols.forEach((col) => {
       const cell = document.createElement('td');
@@ -369,6 +423,10 @@ function buildResource(resource, live, preview) {
       else cell.append(col);
       row.append(cell);
     });
+    if (opts?.sourceKnown === false) {
+      row.dataset.source = 'pending';
+      sourceLookup?.rows.set(row, resource);
+    }
 
     return row;
   }
@@ -380,17 +438,133 @@ function buildResource(resource, live, preview) {
  * @param {Object[]} resources - Array of resource objects.
  * @param {string} live - Base URL for live links.
  * @param {string} preview - Base URL for preview links.
+ * @param {{sourceExpected?: boolean}} [opts] - Classification options.
  */
-function displayResources(resources, live, preview) {
+function displayResources(resources, live, preview, opts) {
   resources.forEach((resource) => {
-    const row = buildResource(resource, live, preview);
+    const row = buildResource(resource, live, preview, opts);
     if (row) RESULTS.append(row);
   });
+}
+
+// source lookups
+const STATUS_CELL = 2;
+const SOURCE_CELL = 3;
+
+/**
+ * Sets a row's source lookup state and updates its status and source cells.
+ * @param {HTMLTableRowElement} row
+ * @param {'pending'|'checking'|'done'|'error'} state
+ * @param {Object} [result] - Lookup result.
+ * @param {Error} [error] - Lookup error.
+ */
+function setRowSource(row, state, result, error) {
+  const resource = sourceLookup?.rows.get(row);
+  if (!resource) return;
+  row.dataset.source = state;
+  const sourceCell = row.children[SOURCE_CELL];
+  sourceCell.textContent = '';
+  if (state === 'pending') {
+    sourceCell.append(buildCheckSourceButton('Check'));
+  } else if (state === 'checking') {
+    sourceCell.textContent = 'Checking…';
+  } else if (state === 'error') {
+    sourceCell.append(buildCheckSourceButton('Retry', `Source lookup failed (${error?.status || 'error'})`));
+  } else {
+    resource.sourceLastModified = result.lastModified;
+    sourceCell.textContent = result.lastModified ? toUTCDate(result.lastModified) : '-';
+    const status = buildSequenceStatus(
+      resource.sourceLastModified,
+      resource.previewLastModified,
+      resource.publishLastModified,
+      { ...sourceLookup.opts, sourceKnown: true },
+    );
+    row.children[STATUS_CELL].replaceChildren(status);
+  }
+}
+
+/**
+ * Looks up the source of a single row.
+ * @param {HTMLTableRowElement} row
+ */
+async function checkRowSource(row) {
+  const lookup = sourceLookup;
+  const resource = lookup?.rows.get(row);
+  if (!resource) return;
+  setRowSource(row, 'checking');
+  try {
+    const result = await lookupSource(lookup.admin, lookup.org, lookup.site, resource.path);
+    if (lookup === sourceLookup) setRowSource(row, 'done', result);
+  } catch (error) {
+    if (lookup === sourceLookup) setRowSource(row, 'error', undefined, error);
+  }
+}
+
+/**
+ * Updates the Check All Sources button for the current lookup state.
+ */
+function updateCheckSourcesButton() {
+  if (!sourceLookup) return;
+  const rows = [...sourceLookup.rows.keys()];
+  const done = rows.filter((r) => r.dataset.source === 'done').length;
+  if (sourceLookup.running) {
+    CHECKSOURCES.textContent = `Stop Checking (${done}/${rows.length})`;
+  } else {
+    CHECKSOURCES.textContent = 'Check All Sources';
+    CHECKSOURCES.disabled = done === rows.length;
+  }
+}
+
+/**
+ * Looks up the sources of all unchecked rows, or stops a running check.
+ */
+async function checkAllSources() {
+  const lookup = sourceLookup;
+  if (!lookup) return;
+  if (lookup.running) {
+    lookup.signal.aborted = true;
+    return;
+  }
+  const rows = [...lookup.rows.keys()]
+    .filter((r) => r.dataset.source === 'pending' || r.dataset.source === 'error');
+  const byPath = new Map(rows.map((r) => [lookup.rows.get(r).path, r]));
+  rows.forEach((r) => setRowSource(r, 'checking'));
+  lookup.running = true;
+  lookup.signal = { aborted: false };
+  updateCheckSourcesButton();
+  await lookupAll(lookup.admin, lookup.org, lookup.site, [...byPath.keys()], {
+    signal: lookup.signal,
+    onResult: (path, result, error) => {
+      if (lookup !== sourceLookup) return;
+      setRowSource(byPath.get(path), error ? 'error' : 'done', result, error);
+      updateCheckSourcesButton();
+    },
+  });
+  if (lookup !== sourceLookup) return;
+  rows.filter((r) => r.dataset.source === 'checking').forEach((r) => setRowSource(r, 'pending'));
+  lookup.running = false;
+  updateCheckSourcesButton();
 }
 
 // data fetching
 let jobAdmin;
 let statusAdmin;
+
+/**
+ * Resolves the admin client, backend and status options for a site.
+ * @param {string} org
+ * @param {string} site
+ * @returns {Promise<{admin: Object, h6: boolean, hosts: Object|null, sourceType: string}>}
+ */
+async function resolveSite(org, site) {
+  const h6 = await isHelix6({ org, site });
+  const admin = await getAdminClientForSite({ org, site });
+  const hosts = await fetchHosts(org, site, admin);
+  const sourceType = hosts ? await fetchContentSourceType(admin, org, site, h6) : undefined;
+  return {
+    admin, h6, hosts, sourceType,
+  };
+}
 
 /**
  * Submits a status job for the given org/site/path.
@@ -459,15 +633,65 @@ async function runJob(org, site, jobName, retry = 10000) {
  * @param {string} jobName
  * @param {string} live - Base URL for live resources.
  * @param {string} preview - Base URL for preview resources.
+ * @param {{sourceExpected?: boolean}} [opts] - Classification options.
  */
-async function runAndDisplayJob(org, site, jobName, live, preview) {
+async function runAndDisplayJob(org, site, jobName, live, preview, opts) {
   const paths = await runJob(org, site, jobName);
   if (!paths || paths.length === 0) {
     throw new Error('No page status data found.');
   }
-  displayResources(paths, live, preview);
+  displayResources(paths, live, preview, opts);
   updateTableDisplay('results');
   enableActionButtons();
+}
+
+/**
+ * Collects status via the Helix 6 browse API and displays results.
+ * @param {Object} admin - H6 admin client.
+ * @param {string} org
+ * @param {string} site
+ * @param {string} path - Raw user-entered path.
+ * @param {Object} hosts - Live and preview hosts.
+ * @param {string|undefined} sourceType - Content source type.
+ */
+async function runAndDisplayBrowse(admin, org, site, path, hosts, sourceType) {
+  const folder = validatePath(path).slice(0, -1);
+  const startTime = new Date().toISOString();
+  const { resources, liveForbidden } = await collectResources(admin, {
+    org, site, folder, source: sourceType === 'sourcebus',
+  });
+  if (resources.length === 0) {
+    const error = new Error('No page status data found.');
+    error.status = 'Resource';
+    throw error;
+  }
+  updateTableCaption(startTime);
+  const lookup = needsSourceLookup(sourceType, true);
+  const notices = [];
+  if (liveForbidden) {
+    notices.push('Publish status unknown: insufficient permissions to list published content.');
+  }
+  if (lookup) {
+    notices.push('Source status unknown: check pages individually or use Check All Sources.');
+  }
+  CAPTION.querySelector('.caption-notice').textContent = notices.join(' ');
+  const opts = {
+    sourceExpected: lookup || hasSourceListing(sourceType, true),
+    publishKnown: !liveForbidden,
+  };
+  if (lookup) {
+    sourceLookup = {
+      admin, org, site, opts, rows: new Map(), signal: { aborted: false }, running: false,
+    };
+  }
+  const displayOpts = lookup ? { ...opts, sourceKnown: false } : opts;
+  displayResources(resources, hosts.live, hosts.preview, displayOpts);
+  updateTableDisplay('results');
+  enableActionButtons(false);
+  if (lookup) {
+    CHECKSOURCES.hidden = false;
+    updateCheckSourcesButton();
+  }
 }
 
 /**
@@ -511,11 +735,18 @@ async function runFromParams(search) {
       let preview;
       try {
         setupJob(FORM, FORM.querySelector('button'));
-        const hosts = await fetchHosts(org, site);
+        const { h6, hosts, sourceType } = await resolveSite(org, site);
         if (!hosts) return;
+        if (h6) {
+          const error = new Error();
+          error.status = 'Job';
+          throw error;
+        }
         ({ preview } = hosts);
         const { live } = hosts;
-        await runAndDisplayJob(org, site, job, live, preview);
+        await runAndDisplayJob(org, site, job, live, preview, {
+          sourceExpected: hasSourceListing(sourceType, false),
+        });
         updateJobParam(job);
       } catch (error) {
         updateTableError(error.status || 'Job', preview, site);
@@ -546,6 +777,12 @@ async function init() {
     disableActionButtons();
   });
 
+  CHECKSOURCES.addEventListener('click', checkAllSources);
+  RESULTS.addEventListener('click', (e) => {
+    const button = e.target.closest('.check-source');
+    if (button) checkRowSource(button.closest('tr'));
+  });
+
   FORM.addEventListener('submit', async (e) => {
     e.preventDefault();
     const { target, submitter } = e;
@@ -555,13 +792,22 @@ async function init() {
     let preview;
     try {
       setupJob(target, submitter);
-      const hosts = await fetchHosts(org, site);
+      const {
+        admin: siteAdmin, h6, hosts, sourceType,
+      } = await resolveSite(org, site);
       if (!hosts) return;
       ({ preview } = hosts);
+      if (h6) {
+        removeJobParam();
+        await runAndDisplayBrowse(siteAdmin, org, site, path, hosts, sourceType);
+        return;
+      }
       const { live } = hosts;
       const jobName = await submitStatusJob(org, site, path);
       if (!jobName) return;
-      await runAndDisplayJob(org, site, jobName, live, preview);
+      await runAndDisplayJob(org, site, jobName, live, preview, {
+        sourceExpected: hasSourceListing(sourceType, false),
+      });
     } catch (error) {
       updateTableError(error.status || 'Job', preview, site);
       removeJobParam();
