@@ -387,17 +387,29 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
       finish();
       return;
     }
-    const { job } = await bulkResp.json();
+    const { job, links } = await bulkResp.json();
     const { name } = job;
-    // H6 job topics differ from the operation (e.g. live -> live-publish);
-    // job.topic is echoed by H6's start response and absent on H5.
-    const jobTopic = job.topic || VERB[operation];
+    // Job URLs differ per API version (H5 /job/.../details, H6 /jobs/.../report), so
+    // follow the link the API returns instead of building it. The start response may omit
+    // `details`; the job status (`self`) response is where it is expected.
+    let detailsUrl = links?.details;
+    if (!detailsUrl && links?.self) {
+      const statusResp = await executeAdminRequest(
+        () => admin.raw('GET', links.self),
+        { org: owner, site: repo, policy: AuthMode.NONE },
+      );
+      detailsUrl = (await statusResp?.json())?.links?.details;
+    }
+    if (!detailsUrl) {
+      appendMessage(`Bulk ${operation} started (job ${name}) but the API returned no status link`);
+      finish();
+      return;
+    }
     let loggedCount = 0;
     const jobStatusPoll = window.setInterval(async () => {
       try {
         const jobResp = await executeAdminRequest(
-          () => admin.job({ org: owner, site: repo, ref: branch })
-            .get(`${jobTopic}/${name}/details`),
+          () => admin.raw('GET', detailsUrl),
           { org: owner, site: repo, policy: AuthMode.NONE },
         );
         const jobStatus = await jobResp.json();
