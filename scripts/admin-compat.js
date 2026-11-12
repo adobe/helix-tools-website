@@ -1,6 +1,8 @@
+import fetchWithRetry from '../utils/fetch-retry.js';
+
 const H6_FLAG = 'use-h6-api';
 
-// Per-site Helix 6 detection is cached (by org/site/ref) for the page lifetime.
+// Successful Helix 6 detection is cached (by org/site/ref) for the page lifetime.
 // Values are the in-flight/settled promises so concurrent callers dedupe.
 const detectionCache = new Map();
 
@@ -47,15 +49,16 @@ async function isHelix6({ org, site, ref = 'main' }) {
   if (!org || !site) return false;
   const key = `${org}/${site}/${ref}`;
   if (!detectionCache.has(key)) {
-    const probe = (async () => {
-      try {
-        const url = `https://admin.hlx.page/sidekick/${org}/${site}/${ref}/config.json`;
-        const resp = await fetch(url, { credentials: 'omit', cache: 'no-store' });
-        return resp.headers.get('x-api-upgrade-available') === 'true';
-      } catch {
-        return false;
+    const url = `https://admin.hlx.page/sidekick/${org}/${site}/${ref}/config.json`;
+    const probe = fetchWithRetry(url, { credentials: 'omit', cache: 'no-store' }).then((resp) => {
+      if (!resp.ok && resp.status !== 401) {
+        throw new Error(`Admin backend detection failed for ${key}: HTTP ${resp.status}`);
       }
-    })();
+      return resp.headers.get('x-api-upgrade-available') === 'true';
+    }).catch((error) => {
+      detectionCache.delete(key);
+      throw error;
+    });
     detectionCache.set(key, probe);
   }
   return detectionCache.get(key);
@@ -64,6 +67,8 @@ async function isHelix6({ org, site, ref = 'main' }) {
 /**
  * Get the admin client for a specific site, selecting H5 or H6 based on the
  * backend the site actually runs on.
+ * Transient detection failures use the shared GET retry policy. Permanent HTTP errors
+ * and exhausted retries reject; failures are not cached as legacy-backend results.
  *
  * @param {{org: string, site: string, ref?: string}} coords
  * @returns {Promise<object|null>}

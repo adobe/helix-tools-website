@@ -3,6 +3,7 @@ import {
   describe, it, afterEach, mock,
 } from 'node:test';
 import assert from 'node:assert/strict';
+import { setImmediate as nextTurn } from 'node:timers/promises';
 
 // Mock the two admin modules before loading admin-compat so that
 // getAdminClient()'s dynamic import picks up the stubs.
@@ -53,12 +54,13 @@ describe('getAdminClientForSite()', () => {
     global.fetch = originalFetch;
   });
 
-  const stubFetch = (headerValue, { throws = false } = {}) => {
+  const stubFetch = (headerValue) => {
     const calls = [];
     global.fetch = async (url, init) => {
       calls.push({ url, init });
-      if (throws) throw new Error('network down');
-      return { headers: { get: (name) => (name === 'x-api-upgrade-available' ? headerValue : null) } };
+      return new Response(null, {
+        headers: headerValue === null ? {} : { 'x-api-upgrade-available': headerValue },
+      });
     };
     return calls;
   };
@@ -114,9 +116,90 @@ describe('getAdminClientForSite()', () => {
     assert.equal(calls.length, 1);
   });
 
-  it('treats a network error as not-Helix6, returning the H5 client', async () => {
-    stubFetch(null, { throws: true });
-    const client = await getAdminClientForSite({ org: 'err', site: 's' });
-    assert.deepEqual(client, { clientId: 'helix-admin' });
+  it('retries a network failure after one second before selecting the backend', async (t) => {
+    t.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 0 });
+    const attempts = [];
+    t.mock.method(global, 'fetch', async (url, init) => {
+      attempts.push({
+        url, credentials: init.credentials, cache: init.cache, time: Date.now(),
+      });
+      if (attempts.length === 1) throw new TypeError('Failed to fetch');
+      return new Response(null, {
+        status: 401,
+        headers: { 'x-api-upgrade-available': 'true' },
+      });
+    });
+
+    const pending = getAdminClientForSite({ org: 'retry-network', site: 's', ref: 'dev' });
+    await nextTurn();
+    t.mock.timers.tick(999);
+    await nextTurn();
+    const attemptsBeforeDelay = attempts.length;
+    t.mock.timers.tick(1);
+    await nextTurn();
+
+    const probe = {
+      url: 'https://admin.hlx.page/sidekick/retry-network/s/dev/config.json',
+      credentials: 'omit',
+      cache: 'no-store',
+    };
+    assert.deepEqual(
+      { attemptsBeforeDelay, attempts },
+      {
+        attemptsBeforeDelay: 1,
+        attempts: [{ ...probe, time: 0 }, { ...probe, time: 1000 }],
+      },
+    );
+    assert.deepEqual(await pending, { clientId: 'aem-admin' });
+  });
+
+  [400, 403, 404, 500, 501, 505].forEach((status) => {
+    it(`fails immediately on HTTP ${status} instead of selecting a backend`, async (t) => {
+      const fetchMock = t.mock.method(global, 'fetch', async () => new Response(null, {
+        status,
+        headers: { 'x-api-upgrade-available': 'true' },
+      }));
+      await assert.rejects(
+        getAdminClientForSite({ org: `nonretry-${status}`, site: 's' }),
+        new RegExp(`HTTP ${status}`),
+      );
+      assert.equal(fetchMock.mock.callCount(), 1);
+    });
+  });
+
+  ['permanent', 'timeout'].forEach((failure) => {
+    it(`shares a ${failure} failure but allows a fresh detection afterwards`, async (t) => {
+      t.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 0 });
+      let recover = false;
+      const fetchMock = t.mock.method(global, 'fetch', async () => {
+        if (recover) {
+          return new Response(null, { headers: { 'x-api-upgrade-available': 'true' } });
+        }
+        return new Response(null, { status: failure === 'permanent' ? 500 : 503 });
+      });
+      const coords = { org: `recover-${failure}`, site: 's' };
+      const pending = Promise.allSettled([
+        getAdminClientForSite(coords),
+        getAdminClientForSite(coords),
+      ]);
+      await nextTurn();
+      if (failure === 'timeout') {
+        const delays = [1000, 2000, 4000, 8000, 8000, 7000];
+        for (let i = 0; i < delays.length; i += 1) {
+          t.mock.timers.tick(delays[i]);
+          // eslint-disable-next-line no-await-in-loop
+          await nextTurn();
+        }
+      }
+      const results = await pending;
+      assert.deepEqual(results.map(({ status }) => status), ['rejected', 'rejected']);
+      assert.equal(results[0].reason, results[1].reason);
+      const expectedAttempts = failure === 'permanent' ? 1 : 6;
+      assert.equal(fetchMock.mock.callCount(), expectedAttempts);
+      recover = true;
+      const client = await getAdminClientForSite(coords).catch((error) => error);
+      assert.deepEqual(client, { clientId: 'aem-admin' });
+      assert.equal(fetchMock.mock.callCount(), expectedAttempts + 1);
+    });
   });
 });
