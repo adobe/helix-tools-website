@@ -31,13 +31,7 @@ function deriveContentType(url) {
  * caught message. `text()` and `json()` reject on network errors and wrap the
  * underlying Response body otherwise — single-use, call one, not both.
  *
- * @typedef {object} AdminResponse
- * @property {boolean} ok
- * @property {number} status
- * @property {() => Promise<string>} text
- * @property {() => Promise<any>} json
- * @property {string} error   `x-error` header on HTTP responses; thrown message on network error
- * @property {{method: string, url: string}} request   echo for logging
+ * @typedef {import('./admin-types.js').AdminResponse} AdminResponse
  */
 
 /**

@@ -25,13 +25,7 @@ function deriveContentType(url) {
 /**
  * Normalized response envelope returned by every admin API call.
  *
- * @typedef {object} AdminResponse
- * @property {boolean} ok
- * @property {number} status
- * @property {() => Promise<string>} text
- * @property {() => Promise<any>} json
- * @property {string} error                            `x-error` header, '' if absent
- * @property {{method: string, url: string}} request   echo for logging
+ * @typedef {import('./admin-types.js').AdminResponse} AdminResponse
  */
 
 /**
