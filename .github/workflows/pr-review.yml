@@ -3,19 +3,25 @@ name: PR review eligibility
 on:
   pull_request_target:
     types: [opened, reopened, synchronize, edited, ready_for_review, converted_to_draft]
+  # once the AI review has set its statuses; runs this file from the default branch, like
+  # pull_request_target
+  workflow_run:
+    workflows: [AI Review]
+    types: [completed]
 
 concurrency:
-  group: pr-review-${{ github.event.pull_request.number }}
+  group: pr-review-${{ github.event.pull_request.number || github.event.workflow_run.pull_requests[0].number }}
   cancel-in-progress: false
 
 permissions:
   contents: read
   pull-requests: write
-  statuses: write
   checks: write
 
 jobs:
   eligibility:
+    # workflow_run lists no pull request for forks, which the AI review skips anyway
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.pull_requests[0]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -32,5 +38,9 @@ jobs:
             const { default: run } = await import(pathToFileURL(`${path}/run.js`).href);
             const config = JSON.parse(await readFile(`${path}/policy-config.json`, 'utf8'));
             await run({
-              github, context, core, config, pullNumber: context.payload.pull_request.number,
+              github,
+              context,
+              core,
+              config,
+              pullNumber: (context.payload.pull_request ?? context.payload.workflow_run.pull_requests[0]).number,
             });
