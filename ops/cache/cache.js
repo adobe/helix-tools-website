@@ -2,6 +2,8 @@ import { sampleRUM } from '../../scripts/aem.js';
 import { registerToolReady } from '../../scripts/scripts.js';
 import { createModal } from '../../blocks/modal/modal.js';
 import escapeHtml from '../../utils/html.js';
+import { createImsLogin, getImsToken, isSignedIn } from '../../utils/ims.js';
+import { authHeaders, getAuthError } from './cache-auth.js';
 
 const API = 'https://helix-cache-debug.adobeaem.workers.dev';
 const input = document.querySelector('input#url-input');
@@ -10,19 +12,8 @@ const button = document.querySelector('button#search-button');
 /** @type {HTMLDivElement} */
 const resultsContainer = document.querySelector('div#results');
 
-/** @type {string} */
-let authKey;
-
-// get key from storage or ask for it
-if (localStorage.getItem('cache-debug-key')) {
-  authKey = localStorage.getItem('cache-debug-key');
-} else {
-  // eslint-disable-next-line no-alert
-  authKey = prompt('Enter your cache superuser key');
-  if (authKey) {
-    localStorage.setItem('cache-debug-key', authKey);
-  }
-}
+// the cache superuser key is no longer used, remove any stored copy
+localStorage.removeItem('cache-debug-key');
 
 let createEditorPromise;
 function loadCreateEditor() {
@@ -85,24 +76,12 @@ const getReferenceResponse = (pops) => {
 const purge = (liveHost, keys, paths) => fetch(`${API}/purge`, {
   method: 'POST',
   body: JSON.stringify({ liveHost, keys, paths }),
-  headers: {
-    'content-type': 'application/json',
-    authorization: `Bearer ${authKey}`,
-  },
+  headers: authHeaders({ 'content-type': 'application/json' }),
 });
 
-const fetchDetails = async (url) => {
-  const resp = await fetch(`${API}?url=${encodeURIComponent(url)}`, {
-    headers: {
-      authorization: `Bearer ${authKey}`,
-    },
-  });
-  if (resp.status === 403 && resp.headers.get('x-error') === 'invalid authorization') {
-    authKey = undefined;
-    localStorage.removeItem('cache-debug-key');
-  }
-  return resp;
-};
+const fetchDetails = (url) => fetch(`${API}?url=${encodeURIComponent(url)}`, {
+  headers: authHeaders(),
+});
 
 const showModal = async (title, content) => {
   const heading = document.createElement('h2');
@@ -482,11 +461,16 @@ const renderPurgeSection = (container, data) => {
       return;
     }
 
+    if (!getImsToken()) {
+      await showPurgeError('Sign in with Adobe to purge.');
+      return;
+    }
+
     // purge
     try {
       const response = await purge(dotLiveHost, keys, paths);
       if (!response.ok) {
-        throw new Error(`Failed to purge: ${response.status}`);
+        throw new Error(getAuthError(response) ?? `Failed to purge: ${response.status}`);
       }
       const text = await response.text();
       await showCodeModal('log', 'Purge Result', text);
@@ -603,9 +587,11 @@ const renderDetails = (data) => {
 };
 
 async function init() {
-  const loc = new URL(window.location.href);
-  if (loc.searchParams.has('url')) {
-    input.value = loc.searchParams.get('url');
+  document.querySelector('main h1').after(createImsLogin());
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('url')) {
+    input.value = params.get('url');
     setTimeout(() => button.click());
   }
 
@@ -628,9 +614,16 @@ async function init() {
     }
 
     try {
+      button.disabled = true;
+      if (!await isSignedIn()) {
+        resultsContainer.innerHTML = '<p class="error">Sign in with Adobe to use the cache debugger.</p>';
+        return;
+      }
+
+      // read the location only now, after imslib removed the token from it
+      const loc = new URL(window.location.href);
       loc.searchParams.set('url', url.toString());
       window.history.replaceState({}, '', loc);
-      button.disabled = true;
 
       let count = 0;
       const interval = setInterval(() => {
@@ -641,7 +634,9 @@ async function init() {
       clearInterval(interval);
 
       if (!response.ok) {
-        resultsContainer.innerHTML = `<p class="error">Failed to fetch details: ${response.status} - ${escapeHtml(await response.text())}</p>`;
+        const message = getAuthError(response)
+          ?? `Failed to fetch details: ${response.status} - ${await response.text()}`;
+        resultsContainer.innerHTML = `<p class="error">${escapeHtml(message)}</p>`;
         return;
       }
       const data = await response.json();

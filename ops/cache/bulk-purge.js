@@ -2,6 +2,8 @@ import { sampleRUM } from '../../scripts/aem.js';
 import { registerToolReady } from '../../scripts/scripts.js';
 import { createModal } from '../../blocks/modal/modal.js';
 import escapeHtml from '../../utils/html.js';
+import { createImsLogin, getImsToken, isSignedIn } from '../../utils/ims.js';
+import { authHeaders, getAuthError } from './cache-auth.js';
 import {
   parseHostList,
   KEY_PRESETS,
@@ -15,19 +17,8 @@ import {
 const API = 'https://helix-cache-debug.adobeaem.workers.dev';
 const RESOLVE_CONCURRENCY = 4;
 
-/** @type {string} */
-let authKey;
-
-// get key from storage or ask for it
-if (localStorage.getItem('cache-debug-key')) {
-  authKey = localStorage.getItem('cache-debug-key');
-} else {
-  // eslint-disable-next-line no-alert
-  authKey = prompt('Enter your cache superuser key');
-  if (authKey) {
-    localStorage.setItem('cache-debug-key', authKey);
-  }
-}
+// the cache superuser key is no longer used, remove any stored copy
+localStorage.removeItem('cache-debug-key');
 
 const hostsInput = document.querySelector('#hosts-input');
 const customKeysInput = document.querySelector('#custom-keys-input');
@@ -57,31 +48,22 @@ let stopRequested = false;
 /** @type {(() => void)|null} aborts the current inter-site delay, if any */
 let sleepAbort = null;
 
-const authHeader = () => ['bearer', authKey].join(' ');
-
-const authHeaders = () => ({
-  'content-type': 'application/json',
-  authorization: authHeader(),
-});
+const jsonAuthHeaders = () => authHeaders({ 'content-type': 'application/json' });
 
 /**
- * Handles a 403 "invalid authorization" response by clearing the stored key.
+ * Shows the message for an authorization error response of the cache worker (once).
  * @param {Response} resp
- * @returns {boolean} true if the key was cleared because of this response
+ * @returns {string|null} the message, or null if the response is not an authorization error
  */
 const handleAuthError = (resp) => {
-  if (resp.status === 403 && resp.headers.get('x-error') === 'invalid authorization') {
-    authKey = undefined;
-    localStorage.removeItem('cache-debug-key');
-    if (!inputMessages.querySelector('.auth-error')) {
-      const p = document.createElement('p');
-      p.className = 'error auth-error';
-      p.textContent = 'Invalid authorization key. Please reload the page and re-enter your key.';
-      inputMessages.appendChild(p);
-    }
-    return true;
+  const message = getAuthError(resp);
+  if (message && !inputMessages.querySelector('.auth-error')) {
+    const p = document.createElement('p');
+    p.className = 'error auth-error';
+    p.textContent = message;
+    inputMessages.appendChild(p);
   }
-  return false;
+  return message;
 };
 
 /**
@@ -92,19 +74,19 @@ const handleAuthError = (resp) => {
 const errorMessage = async (resp) => resp.headers.get('x-error') || (await resp.text()) || `HTTP ${resp.status}`;
 
 const resolveSite = (host) => fetch(`${API}/resolve?host=${encodeURIComponent(host)}`, {
-  headers: { authorization: authHeader() },
+  headers: authHeaders(),
 });
 
 const purgeKeysOrPaths = (liveHost, keys, paths) => fetch(`${API}/purge`, {
   method: 'POST',
   body: JSON.stringify({ liveHost, keys, paths }),
-  headers: authHeaders(),
+  headers: jsonAuthHeaders(),
 });
 
 const purgeConfig = (liveHost, purgeOrg, purgeHead) => fetch(`${API}/purge-config`, {
   method: 'POST',
   body: JSON.stringify({ liveHost, purgeOrg, purgeHead }),
-  headers: authHeaders(),
+  headers: jsonAuthHeaders(),
 });
 
 const showLogModal = async (liveHost, log) => {
@@ -288,8 +270,9 @@ const createRow = (site) => {
 const resolveRow = async (row) => {
   try {
     const resp = await resolveSite(row.host);
-    if (handleAuthError(resp)) {
-      row.resolveError = 'Invalid authorization, please reload the page';
+    const authError = handleAuthError(resp);
+    if (authError) {
+      row.resolveError = authError;
       row.el.liveHostCell.textContent = '';
       setStatus(row, 'error', row.resolveError);
       return;
@@ -382,6 +365,13 @@ const onResolveClick = async () => {
   resolveButton.disabled = true;
   updatePurgeButtonState();
   try {
+    if (!await isSignedIn()) {
+      const p = document.createElement('p');
+      p.className = 'error';
+      p.textContent = 'Sign in with Adobe to use the bulk purge.';
+      inputMessages.appendChild(p);
+      return;
+    }
     rows = sites.map(createRow);
     await resolveAll(rows);
   } finally {
@@ -483,8 +473,9 @@ const purgeRow = async (row, job) => {
       const paths = job.mode === 'paths' ? job.paths : [];
       resp = await purgeKeysOrPaths(row.liveHost, keys, paths);
     }
-    if (handleAuthError(resp)) {
-      row.log = 'Invalid authorization, please reload the page';
+    const authError = handleAuthError(resp);
+    if (authError) {
+      row.log = authError;
       setStatus(row, 'failed');
       stopRequested = true;
       return;
@@ -557,6 +548,14 @@ const onPurgeClick = async () => {
     return;
   }
 
+  if (!getImsToken()) {
+    const p = document.createElement('p');
+    p.className = 'error purge-error';
+    p.textContent = 'Sign in with Adobe to purge.';
+    inputMessages.appendChild(p);
+    return;
+  }
+
   if (!confirmPurge(selected)) return;
 
   const mode = getMode();
@@ -614,6 +613,7 @@ const onStopClick = () => {
 };
 
 async function init() {
+  document.querySelector('main h1').after(createImsLogin());
   renderPresets();
   updatePanelVisibility();
 
