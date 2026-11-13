@@ -101,7 +101,7 @@ const versionedUrl = (url, h6) => (
 );
 
 function installTargetResponses(api, targets, {
-  operation, endpoint, method, bulk, operationId, rejectFirst,
+  operation, endpoint, method, bulk, operationId, rejectFirst, rejectFirstDetection,
 }) {
   const h6Fetch = global.fetch;
   const routes = new Map();
@@ -123,8 +123,11 @@ function installTargetResponses(api, targets, {
     };
     probes.push(probe.url);
     register(probe, {
-      status: 200, headers: { 'x-api-upgrade-available': String(h6) }, body: {},
+      status: rejectFirstDetection && i === 0 ? 404 : 200,
+      headers: { 'x-api-upgrade-available': String(h6) },
+      body: {},
     });
+    if (rejectFirstDetection && i === 0) return;
 
     const base = h6
       ? `https://api.aem.live/${org}/sites/${site}`
@@ -270,6 +273,44 @@ describe('bulk:scripts.js', () => {
 
   const submit = () => form.dispatchEvent(new window.Event('submit', { cancelable: true }));
   const finished = () => !run.disabled;
+
+  it('keeps a backend detection error in the run summary after another bucket succeeds', async () => {
+    const targets = targetFixtures('detection-failure').slice(0, 2);
+    window.localStorage.removeItem('use-h6-api');
+    document.getElementById('force').checked = true;
+    document.getElementById('urls').value = targets.flatMap(
+      (target) => target.paths.map((path) => inputUrl(target, path)),
+    ).join('\n');
+    const transport = installTargetResponses(api, targets, {
+      operation: 'preview',
+      endpoint: 'preview',
+      method: 'POST',
+      bulk: true,
+      operationId: 'bulkPreview',
+      rejectFirstDetection: true,
+    });
+
+    submit();
+    await waitFor(finished);
+
+    assert.deepEqual(transport.unexpected, []);
+    assert.deepEqual(
+      transport.calls.map(({ method, url, body }) => ({ method, url, body })),
+      [
+        ...transport.probes.map((url) => ({ method: 'GET', url, body: undefined })),
+        ...transport.writes,
+        ...transport.reports.map((url) => ({ method: 'GET', url, body: undefined })),
+      ],
+    );
+    const buckets = visibleBuckets();
+    assert.ok(buckets[0].textContent.includes('HTTP 404'));
+    assert.equal(buckets[0].querySelectorAll('.results-list li').length, 0);
+    assert.equal(buckets[1].querySelector('.results-list li').textContent, '/shared (200)');
+    assert.equal(
+      document.querySelector('#results-container > .run-result > summary').textContent,
+      'Preview finished with errors 1 of 3 - 0 failed, 1 succeeded',
+    );
+  });
 
   it('validates every target before backend detection or submission', async () => {
     window.localStorage.removeItem('use-h6-api');
@@ -487,6 +528,11 @@ describe('bulk:scripts.js', () => {
 
     assert.deepEqual(api.calls.map((c) => c.operationId), ['bulkPreview', 'getJob']);
     assert.ok(messages().some((m) => m.includes('API returned no status link')));
+    assert.equal(document.querySelectorAll('.results-list li').length, 0);
+    assert.equal(
+      document.querySelector('#results-container > .run-result > summary').textContent,
+      'Preview finished with errors 0 of 2 - 0 failed, 0 succeeded',
+    );
   });
 
   it('shows the API error when the bulk start is rejected', async () => {

@@ -47,6 +47,7 @@ const createRunBlock = (container, coords, onProgress) => {
 
   let successCount = 0;
   let failCount = 0;
+  let hasError = false;
 
   const updateSummary = (processed, total, label, counts) => {
     if (counts) {
@@ -54,7 +55,15 @@ const createRunBlock = (container, coords, onProgress) => {
       successCount = counts.successCount;
     }
     summary.textContent = `${targetLabel}${label} ${processed} of ${total} - ${failCount} failed, ${successCount} succeeded`;
-    onProgress?.({ processed, failCount, successCount });
+    onProgress?.({
+      processed, failCount, successCount, hasError: hasError || failCount > 0,
+    });
+  };
+
+  // A bucket error does not establish outcomes for unreported URLs.
+  const markFailed = (processed, total, label) => {
+    hasError = true;
+    updateSummary(processed, total, `${label} failed`);
   };
 
   const appendMessage = (string, status = 'unknown') => {
@@ -88,7 +97,7 @@ const createRunBlock = (container, coords, onProgress) => {
   };
 
   return {
-    appendMessage, appendResult, updateSummary, element: details,
+    appendMessage, appendResult, updateSummary, markFailed, element: details,
   };
 };
 
@@ -263,7 +272,7 @@ async function executeBucket({ coords, paths, ui }, {
     // eslint-disable-next-line no-console
     console.error(error);
     appendMessage(`Unexpected error: ${error.message}`, 500);
-    updateSummary(counter, total, `${label} failed`);
+    ui.markFailed(counter, total, label);
   };
 
   try {
@@ -308,7 +317,7 @@ async function executeBucket({ coords, paths, ui }, {
       }
       if (!detailsUrl) {
         appendMessage(`Bulk ${operation} started (job ${name}) but the API returned no status link`, 500);
-        updateSummary(0, total, `${label} failed`);
+        ui.markFailed(0, total, label);
         return true;
       }
 
@@ -471,8 +480,12 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
       processed: sum.processed + item.processed,
       failCount: sum.failCount + item.failCount,
       successCount: sum.successCount + item.successCount,
-    }), { processed: 0, failCount: 0, successCount: 0 });
-    run.updateSummary(counts.processed, total, runLabel, counts);
+      hasError: sum.hasError || item.hasError,
+    }), {
+      processed: 0, failCount: 0, successCount: 0, hasError: false,
+    });
+    const summaryLabel = counts.hasError ? `${runLabel} with errors` : runLabel;
+    run.updateSummary(counts.processed, total, summaryLabel, counts);
   };
   const planned = buckets.map((bucket) => {
     const ui = createRunBlock(runElement, bucket.coords, (counts) => {
