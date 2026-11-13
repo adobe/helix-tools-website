@@ -528,7 +528,7 @@ const onDownloadClick = () => {
 };
 
 const onPurgeClick = async () => {
-  inputMessages.querySelectorAll('.purge-error').forEach((el) => el.remove());
+  inputMessages.querySelectorAll('.purge-error, .auth-error').forEach((el) => el.remove());
 
   const validationError = validateSelection();
   if (validationError) {
