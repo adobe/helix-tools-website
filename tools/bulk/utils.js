@@ -11,6 +11,36 @@ export function extractOrgSite(url) {
 }
 
 /**
+ * Plan every target before clients are created or requests are submitted.
+ * @param {string[]} urls
+ * @returns {Array<{
+ *   coords: import('../../scripts/admin-types.js').BoundCoordinates,
+ *   paths: string[]
+ * }>}
+ */
+export function groupUrlsByTarget(urls) {
+  const buckets = new Map();
+  urls.forEach((url) => {
+    const { protocol, hostname, pathname } = new URL(url);
+    const [host, ...domain] = hostname.split('.');
+    const parts = host.split('--');
+    const [ref, site, org] = parts;
+    if (protocol !== 'https:' || parts.length !== 3 || !ref || !site || !org
+      || !['aem.page', 'aem.live', 'hlx.page', 'hlx.live'].includes(domain.join('.'))) {
+      throw new TypeError(`Unsupported AEM URL: ${url}`);
+    }
+    const key = JSON.stringify([org, site, ref]);
+    let bucket = buckets.get(key);
+    if (!bucket) {
+      bucket = { coords: { org, site, ref }, paths: [] };
+      buckets.set(key, bucket);
+    }
+    bucket.paths.push(pathname);
+  });
+  return [...buckets.values()];
+}
+
+/**
  * Analyze URLs for sanitization issues.
  * @param {string[]} rawUrls - Array of raw URL strings
  * @returns {{
