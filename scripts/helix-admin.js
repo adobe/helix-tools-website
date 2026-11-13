@@ -276,6 +276,7 @@ function createAdmin(defaults = {}) {
   function code(coords) { return bindOperation(opBase('code', coords), ['get', 'update', 'remove']); }
   function log(coords) { return bindOperation(opBase('log', coords), ['get', 'update']); }
   function index(coords) { return bindOperation(opBase('index', coords), ['get', 'update', 'remove']); }
+  function cache(coords) { return bindOperation(opBase('cache', coords), ['update']); }
   function sitemap(coords) { return bindOperation(opBase('sitemap', coords), ['update']); }
   function job(coords) { return bindOperation(opBase('job', coords), ['get', 'remove']); }
   function psi(coords) { return bindOperation(opBase('psi', coords), ['get']); }
@@ -311,6 +312,7 @@ function createAdmin(defaults = {}) {
     code,
     log,
     index,
+    cache,
     sitemap,
     job,
     psi,
