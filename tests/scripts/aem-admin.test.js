@@ -8,7 +8,7 @@ import runSharedBehaviorTests from './admin-shared-behaviors.js';
 
 // ─── Shared behavioral contract ──────────────────────────────────────────────
 describe('aem-admin.js', () => {
-  runSharedBehaviorTests(admin);
+  runSharedBehaviorTests(admin, 'aem-api-version');
 });
 
 // ─── H6-specific functional tests ────────────────────────────────────────────

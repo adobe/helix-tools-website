@@ -25,13 +25,7 @@ function deriveContentType(url) {
 /**
  * Normalized response envelope returned by every admin API call.
  *
- * @typedef {object} AdminResponse
- * @property {boolean} ok
- * @property {number} status
- * @property {() => Promise<string>} text
- * @property {() => Promise<any>} json
- * @property {string} error                            `x-error` header, '' if absent
- * @property {{method: string, url: string}} request   echo for logging
+ * @typedef {import('./admin-types.js').AdminResponse} AdminResponse
  */
 
 /**
@@ -61,6 +55,7 @@ function coordsFromURL(url) {
  * @param {RequestInit & {params?: Record<string, string>}} [defaults]
  *   `params` is merged under every call's own `opts.params` (call-site wins
  *   on key collisions); everything else is merged into every request's init.
+ *   Explicit operation methods take precedence over defaults.
  */
 function createAdmin(defaults = {}) {
   const { params: defaultParams, ...initDefaults } = defaults;
@@ -75,7 +70,7 @@ function createAdmin(defaults = {}) {
       Object.entries(mergedParams).forEach(([k, v]) => qs.set(k, v));
       finalUrl = `${url}${url.includes('?') ? '&' : '?'}${qs.toString()}`;
     }
-    const init = { method, ...initDefaults };
+    const init = { ...initDefaults, method };
     if (body !== undefined && body !== null) {
       init.body = body;
       if (contentType) {
@@ -238,12 +233,16 @@ function createAdmin(defaults = {}) {
 
   /**
    * Derive a client that pins every request to the given admin API version.
+   * Preserves other default params; no version removes only the version pin.
    * Non-mutating, like `withRequestInit` — the original client is unaffected.
    *
    * @param {string} [version]
    */
   function pinVersion(version) {
-    return withRequestInit({ params: version ? { [VERSION_PARAM_KEY]: version } : undefined });
+    const params = { ...defaultParams };
+    if (version) params[VERSION_PARAM_KEY] = version;
+    else delete params[VERSION_PARAM_KEY];
+    return withRequestInit({ params });
   }
 
   return {

@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "strict": true,
+    "target": "ES2022",
+    "module": "NodeNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": []
+  },
+  "include": [
+    "scripts/admin-types.js",
+    "scripts/admin-compat.js",
+    "utils/admin-request.js",
+    "tests/scripts/admin-types.typecheck.js"
+  ]
+}

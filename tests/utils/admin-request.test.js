@@ -69,6 +69,63 @@ beforeEach(() => {
 });
 
 describe('executeAdminRequest', () => {
+  describe('bound-client overload', () => {
+    const login = ['login', 'bound-org', 'bound-site'];
+    [
+      {
+        name: 'preflights and retries using client coordinates and the third-argument policy',
+        options: { policy: AuthMode.PREFLIGHT_AND_RETRY },
+        statuses: [401, 200],
+        events: [login, ['request', 401], login, ['request', 200]],
+      },
+      {
+        name: 'uses client coordinates for an explicit 401-retry policy',
+        options: { policy: AuthMode.RETRY_ON_401 },
+        statuses: [401, 200],
+        events: [['request', 401], login, ['request', 200]],
+      },
+      {
+        name: 'defaults to 401 retry when the third argument is omitted',
+        options: undefined,
+        statuses: [401, 200],
+        events: [['request', 401], login, ['request', 200]],
+      },
+      {
+        name: 'honors the none policy without login or retry',
+        options: { policy: AuthMode.NONE },
+        statuses: [401],
+        events: [['request', 401]],
+      },
+    ].forEach(({
+      name, options, statuses, events: expectedEvents,
+    }) => {
+      it(name, async () => {
+        const client = Object.freeze({
+          coords: Object.freeze({ org: 'bound-org', site: 'bound-site', ref: 'main' }),
+        });
+        const events = [];
+        ensureLoginStub = async (org, site) => {
+          events.push(['login', org, site]);
+          return true;
+        };
+        const responses = statuses.map((status) => ({ status, ok: status === 200 }));
+        let attempt = 0;
+        const requestFn = async () => {
+          const response = responses[Math.min(attempt, responses.length - 1)];
+          attempt += 1;
+          events.push(['request', response.status]);
+          return response;
+        };
+
+        const result = await executeAdminRequest(requestFn, client, options);
+
+        assert.deepEqual(events, expectedEvents);
+        assert.equal(result, responses[responses.length - 1]);
+        assert.equal(updateConfigCalls, result.ok ? 1 : 0);
+      });
+    });
+  });
+
   describe('policy: none', () => {
     it('calls the request fn once and returns the result without invoking ensureLogin', async () => {
       ensureLoginStub = stubReturning(true);
