@@ -26,7 +26,7 @@ export function groupUrlsByTarget(urls) {
     const parts = host.split('--');
     const [ref, site, org] = parts;
     if (protocol !== 'https:' || parts.length !== 3 || !ref || !site || !org
-      || !['aem.page', 'aem.live', 'hlx.page', 'hlx.live'].includes(domain.join('.'))) {
+      || !['aem.page', 'aem.live'].includes(domain.join('.'))) {
       throw new TypeError(`Unsupported AEM URL: ${url}`);
     }
     const key = JSON.stringify([org, site, ref]);
