@@ -26,6 +26,7 @@ The repository provides the basic structure, blocks, and configuration needed to
 - Run linting before committing: `npm run lint`
 - Auto-Fix linting issues: `npm run lint:fix`
 - Run tests: `npm test`
+- Check opted-in JavaScript API contracts: `npm run typecheck`
 
 ## Project Structure
 
@@ -146,6 +147,20 @@ Pages are progressively loaded in three phases to maximize performance. This pro
 ## Testing & Quality Assurance
 
 See `TESTING.md` for the full testing philosophy, what warrants automated CI tests vs. what to skip, and test conventions.
+
+### JavaScript Contract Checking
+
+TypeScript is used only to check selected JavaScript/JSDoc contracts during
+development, starting with shared admin clients and auth. It is not a TypeScript
+migration, transpilation step, or application build; browsers still run `.js` directly.
+
+- Keep `noEmit: true` and incremental opt-in checking (`checkJs: false`, `// @ts-check` per file).
+- When changing a checked API, update its shared JSDoc types and compile-only contract checks. Use JSDoc `import(...)` for type-only references, not runtime imports.
+- Extend checking to shared libraries as they are changed, ensuring they are reachable from `tsconfig.json`; do not convert unrelated files or enable repository-wide checking.
+- Fix contract mismatches rather than hiding them with `any` or suppressions. Keep runtime validation, guards, and tests: static types do not enforce runtime behavior.
+- Run `npm run typecheck` alongside lint and relevant runtime tests when changing checked APIs.
+
+See [Incremental JavaScript type checking](TESTING.md#incremental-javascript-type-checking) for the purpose, current scope, limitations, and negative contract checks.
 
 ### Performance
 - Follow AEM Edge Delivery performance best practices https://www.aem.live/developer/keeping-it-100
