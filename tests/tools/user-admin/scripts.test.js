@@ -293,6 +293,14 @@ describe('user-admin:user-admin.js', () => {
     ]);
   });
 
+  it('shows a load error and makes no admin calls when the org client cannot be created', async () => {
+    document.getElementById('org').value = '';
+    await load();
+
+    assert.equal(document.querySelector('.error').textContent, 'Failed to load users');
+    assert.deepEqual(api.calls, []);
+  });
+
   it('shows a load error and makes no admin calls when backend detection fails', async () => {
     document.getElementById('site').value = 'detect-fails';
     probeStatus = 404;

@@ -611,7 +611,13 @@ adminForm.addEventListener('submit', async (e) => {
     accessConfig.users = parseUsersFromAccessConfig(config);
     displayUsers(accessConfig.users);
   } else {
-    const client = await getAdminClientForOrg({ org: org.value });
+    let client;
+    try {
+      client = await getAdminClientForOrg({ org: org.value });
+    } catch {
+      usersContainer.innerHTML = '<p class="error">Failed to load users</p>';
+      return;
+    }
     const config = await getOrgConfig(client);
     if (!config) {
       usersContainer.innerHTML = '<p class="error">Failed to load users</p>';
