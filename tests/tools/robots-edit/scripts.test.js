@@ -84,7 +84,6 @@ describe('robots-edit:robots-edit.js', () => {
 
   // getAdminClientForSite caches clients per org/site, so each test uses its own site
   // to observe a fresh detection probe.
-  // Runs first: the tool's pinned client is module state, and later tests pin one by fetching.
   it('saves to the current inputs when nothing was fetched', async () => {
     api.respond('updateConfigSiteSub', { body: {} });
     document.getElementById('site').value = 'unfetchedsite';
@@ -110,55 +109,30 @@ describe('robots-edit:robots-edit.js', () => {
     assert.equal(document.getElementById('body').value, 'User-agent: *\nDisallow: /drafts/');
   });
 
-  it('saves to the fetched site even after the org/site inputs change', async () => {
-    document.getElementById('site').value = 'savesite';
+  it('saves to the org/site currently in the form', async () => {
+    document.getElementById('site').value = 'sitea';
     api.respond('getConfigSiteSub', { body: 'User-agent: *' });
     api.respond('updateConfigSiteSub', { body: {} });
     await submit('admin-form', 1);
 
-    document.getElementById('site').value = 'othersite';
+    document.getElementById('site').value = 'siteb';
     document.getElementById('body').value = 'User-agent: *\nAllow: /';
     await submit('body-form', 2);
 
     const save = api.calls.find(({ operationId }) => operationId === 'updateConfigSiteSub');
-    assert.equal(save.url, robotsUrl('savesite'));
+    assert.equal(save.url, robotsUrl('siteb'));
     assert.equal(save.body, 'User-agent: *\nAllow: /');
-    assert.deepEqual(probes, ['https://admin.hlx.page/sidekick/myorg/savesite/main/config.json']);
-  });
-
-  it('keeps saving to the last fetched site when a later fetch fails', async () => {
-    document.getElementById('site').value = 'goodsite';
-    api.respond('getConfigSiteSub', [{ body: 'User-agent: *' }, { status: 403 }]);
-    api.respond('updateConfigSiteSub', { body: {} });
-    await submit('admin-form', 1);
-
-    document.getElementById('site').value = 'forbiddensite';
-    await submit('admin-form', 2);
-    assert.equal(document.getElementById('body').value, 'User-agent: *');
-
-    await submit('body-form', 3);
-
-    const save = api.calls.find(({ operationId }) => operationId === 'updateConfigSiteSub');
-    assert.equal(save.url, robotsUrl('goodsite'));
-    assert.equal(save.body, 'User-agent: *');
   });
 
   it('treats a 404 as no custom robots.txt', async () => {
     document.getElementById('site').value = 'norobotssite';
     document.getElementById('body').value = 'User-agent: *\nDisallow: /previous/';
     api.respond('getConfigSiteSub', { status: 404 });
-    api.respond('updateConfigSiteSub', { body: {} });
 
     await submit('admin-form', 1);
 
+    assert.deepEqual(rows(), [['404', 'GET', robotsUrl('norobotssite'), '']]);
     assert.equal(document.getElementById('body').value, '');
-    document.getElementById('site').value = 'othersite';
-    document.getElementById('body').value = 'User-agent: *\nAllow: /';
-    await submit('body-form', 2);
-
-    const save = api.calls.find(({ operationId }) => operationId === 'updateConfigSiteSub');
-    assert.equal(save.url, robotsUrl('norobotssite'));
-    assert.equal(save.body, 'User-agent: *\nAllow: /');
   });
 
   it('logs a backend detection failure instead of calling the API', async () => {

@@ -11,11 +11,6 @@ const consoleBlock = document.querySelector('.console');
 const site = document.getElementById('site');
 const org = document.getElementById('org');
 
-// `client` is pinned only by a successful Fetch, until the next one: edits to the org/site
-// inputs and failed fetches don't retarget a later Save. Save without a Fetch targets the
-// current inputs each time.
-let client = null;
-
 const log = (res) => logResponse(
   consoleBlock,
   res.status,
@@ -46,9 +41,10 @@ async function init() {
       return;
     }
 
-    const target = client ?? await loadClient();
-    if (!target) return;
-    await writeRobots(target, log, body.value);
+    // The textarea is free text, so Save targets the org/site currently in the form.
+    const admin = await loadClient();
+    if (!admin) return;
+    await writeRobots(admin, log, body.value);
   });
 
   adminForm.addEventListener('submit', async (e) => {
@@ -59,12 +55,10 @@ async function init() {
       return;
     }
 
-    const loaded = await loadClient();
-    if (!loaded) return;
-    const text = await readRobots(loaded, log);
-    if (text === null) return;
-    body.value = text;
-    client = loaded;
+    const admin = await loadClient();
+    if (!admin) return;
+    const text = await readRobots(admin, log);
+    if (text !== null) body.value = text;
   });
 }
 
