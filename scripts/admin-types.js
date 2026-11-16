@@ -41,7 +41,12 @@
  * @property {(opts?: AdminRequestOptions) => Promise<AdminResponse>} read
  * @property {(body?: string|null, opts?: AdminRequestOptions) => Promise<AdminResponse>} update
  * @property {(body?: string|null, opts?: AdminRequestOptions) => Promise<AdminResponse>} create
- * @property {(opts?: AdminRequestOptions) => Promise<AdminResponse>} remove
+ */
+
+/**
+ * Site config merged with inherited values; the API offers reads only.
+ *
+ * @typedef {Pick<AdminConfigResource, 'url'|'read'>} AdminAggregatedResource
  */
 
 /**
@@ -72,6 +77,7 @@
  *
  * @typedef {object} UnboundAdminClient
  * @property {(coords: ConfigCoordinates) => AdminConfigResource} config
+ * @property {(coords: SiteCoordinates) => AdminAggregatedResource} aggregated
  * @property {(coords: SiteCoordinates) => AdminGetUpdateResource} status
  * @property {(coords: SiteCoordinates) => AdminBulkResource} preview
  * @property {(coords: SiteCoordinates) => AdminBulkResource} live
@@ -100,6 +106,7 @@
  * @typedef {object} BoundAdminClientProperties
  * @property {BoundCoordinates} coords
  * @property {() => AdminConfigResource} config
+ * @property {() => AdminAggregatedResource} aggregated
  * @property {() => AdminGetUpdateResource} status
  * @property {() => AdminBulkResource} preview
  * @property {() => AdminBulkResource} live

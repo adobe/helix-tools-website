@@ -44,6 +44,7 @@ function bindAdminClient(admin, coords) {
   return Object.freeze({
     coords,
     config: bind(admin.config),
+    aggregated: bind(admin.aggregated),
     status: bind(admin.status),
     preview: bind(admin.preview),
     live: bind(admin.live),

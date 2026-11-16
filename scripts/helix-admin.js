@@ -289,6 +289,20 @@ function createAdmin(defaults = {}) {
   }
 
   /**
+   * Read-only view of the site config merged with its inherited values.
+   * H5 URL: /config/{org}/aggregated/{site}.json
+   *
+   * @param {{org: string, site: string}} coords
+   */
+  function aggregated({ org, site }) {
+    const url = `${ADMIN_BASE}/config/${org}/aggregated/${site}.json`;
+    return {
+      read: (opts) => request({ method: 'GET', url, params: opts?.params }),
+      url,
+    };
+  }
+
+  /**
    * Derive a client that pins every request to the given admin API version.
    * Preserves other default params; no version removes only the version pin.
    * Non-mutating, like `withRequestInit` — the original client is unaffected.
@@ -304,6 +318,7 @@ function createAdmin(defaults = {}) {
 
   return {
     config,
+    aggregated,
     status,
     preview,
     live,
