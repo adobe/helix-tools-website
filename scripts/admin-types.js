@@ -41,6 +41,7 @@
  * @property {(opts?: AdminRequestOptions) => Promise<AdminResponse>} read
  * @property {(body?: string|null, opts?: AdminRequestOptions) => Promise<AdminResponse>} update
  * @property {(body?: string|null, opts?: AdminRequestOptions) => Promise<AdminResponse>} create
+ * @property {(opts?: AdminRequestOptions) => Promise<AdminResponse>} remove
  */
 
 /**
