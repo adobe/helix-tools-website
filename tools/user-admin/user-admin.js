@@ -3,7 +3,9 @@ import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { loadIcon, icon, showToast } from '../../utils/card-ui/card-ui.js';
 import { getAdminClientForOrg, getAdminClientForSite } from '../../scripts/admin-compat.js';
-import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
+import {
+  readOrgConfig, readSiteAccess, writeSiteAccess, updateOrgUser, removeOrgUser, addOrgUser,
+} from './api.js';
 import { parseUsersFromAccessConfig, buildAccessConfig } from '../../utils/users/users.js';
 import { createUserRow, collectUsers, userRowErrors } from '../../utils/users/user-row.js';
 import { ROLE_DESCRIPTIONS } from '../../utils/roles/roles.js';
@@ -21,83 +23,28 @@ const accessConfig = {
   type: 'org', users: [], originalSiteAccess: {}, client: null,
 };
 
-async function getOrgConfig(client) {
-  const result = await executeAdminRequest(
-    async () => {
-      const res = await client.config().read();
-      logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
-      return res;
-    },
-    client,
-    { policy: AuthMode.PREFLIGHT_AND_RETRY },
-  );
-  if (!result) return null;
-  return result.ok ? result.json() : null;
-}
+const log = (res) => logResponse(
+  consoleBlock,
+  res.status,
+  [res.request.method, res.request.url, res.error],
+);
 
-async function getSiteAccessConfig(client) {
-  const result = await executeAdminRequest(
-    async () => {
-      const res = await client.config().select('access.json').read();
-      logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
-      return res;
-    },
-    client,
-    { policy: AuthMode.PREFLIGHT_AND_RETRY },
-  );
-  if (!result) return null;
-  if (result.status === 404) return { admin: { role: {} } };
-  return result.ok ? result.json() : null;
-}
+const getOrgConfig = (client) => readOrgConfig(client, log);
+const getSiteAccessConfig = (client) => readSiteAccess(client, log);
 
 async function updateSiteAccess() {
   const { originalSiteAccess, users, client } = accessConfig;
-  const access = buildAccessConfig(originalSiteAccess, users);
-  const result = await executeAdminRequest(
-    async () => {
-      const res = await client.config().select('access.json').update(JSON.stringify(access));
-      logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
-      return res;
-    },
-    client,
-  );
-  return result?.ok ?? false;
+  return writeSiteAccess(client, log, buildAccessConfig(originalSiteAccess, users));
 }
 
-async function updateOrgUserRoles(user) {
-  const { client } = accessConfig;
-  const result = await executeAdminRequest(
-    async () => {
-      const res = await client.config()
-        .select(`users/${user.id}.json`)
-        .update(JSON.stringify(user));
-      logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
-      return res;
-    },
-    client,
-  );
-  return result?.ok ?? false;
-}
+const updateOrgUserRoles = (user) => updateOrgUser(accessConfig.client, log, user);
 
 async function deleteUserFromSite(user) {
   accessConfig.users = accessConfig.users.filter((u) => u.email !== user.email);
   return updateSiteAccess();
 }
 
-async function deleteUserFromOrg(user) {
-  const { client } = accessConfig;
-  const result = await executeAdminRequest(
-    async () => {
-      const res = await client.config()
-        .select(`users/${user.id}.json`)
-        .remove();
-      logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
-      return res;
-    },
-    client,
-  );
-  return result?.ok ?? false;
-}
+const deleteUserFromOrg = (user) => removeOrgUser(accessConfig.client, log, user);
 
 async function addUsersToSite(users) {
   const snapshot = [...accessConfig.users];
@@ -118,17 +65,7 @@ async function addUsersToOrg(users) {
   try {
     await users.reduce(async (prevPromise, user) => {
       await prevPromise;
-      const result = await executeAdminRequest(
-        async () => {
-          const res = await client.config()
-            .select('users.json')
-            .update(JSON.stringify(user));
-          logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
-          return res;
-        },
-        client,
-      );
-      if (result?.ok) {
+      if (await addOrgUser(client, log, user)) {
         added += 1;
         accessConfig.users.push(user);
       } else {
