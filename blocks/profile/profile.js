@@ -462,7 +462,7 @@ export default async function decorate(block) {
 /**
  * Ensures the user is logged in to a specified org/site.
  * @param {string} orgInput The login org.
- * @param {string} siteInput The login site.
+ * @param {string} [siteInput] The login site.
  * @returns {Promise<boolean>} True if logged in, false otherwise.
  */
 export async function ensureLogin(orgInput, siteInput) {
