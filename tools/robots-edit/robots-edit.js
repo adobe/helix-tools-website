@@ -1,10 +1,8 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import getAdminClient from '../../scripts/admin-compat.js';
-import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
+import { getAdminClientForSite } from '../../scripts/admin-compat.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
-
-let admin;
+import { readRobots, writeRobots } from './api.js';
 
 const adminForm = document.getElementById('admin-form');
 const bodyForm = document.getElementById('body-form');
@@ -13,13 +11,31 @@ const consoleBlock = document.querySelector('.console');
 const site = document.getElementById('site');
 const org = document.getElementById('org');
 
-function logResult(result) {
-  const { method, url } = result.request;
-  logResponse(consoleBlock, result.status, [method, url, result.error]);
+// `client` is pinned only by a successful Fetch, until the next one: edits to the org/site
+// inputs and failed fetches don't retarget a later Save. Save without a Fetch targets the
+// current inputs each time.
+let client = null;
+
+const log = (res) => logResponse(
+  consoleBlock,
+  res.status,
+  [res.request.method, res.request.url, res.error],
+);
+
+/**
+ * Detects H5 or H6 for the selected site and logs a detection failure to the console.
+ * @returns {Promise<import('../../scripts/admin-types.js').BoundAdminClient|null>}
+ */
+async function loadClient() {
+  try {
+    return await getAdminClientForSite({ org: org.value, site: site.value });
+  } catch (error) {
+    logResponse(consoleBlock, 500, ['GET', `${org.value}/${site.value}`, error.message]);
+    return null;
+  }
 }
 
 async function init() {
-  admin = await getAdminClient();
   await initConfigField();
 
   bodyForm.addEventListener('submit', async (e) => {
@@ -30,12 +46,9 @@ async function init() {
       return;
     }
 
-    const result = await executeAdminRequest(
-      () => admin.config({ org: org.value, site: site.value }).select('robots.txt').update(body.value),
-      { org: org.value, site: site.value },
-    );
-    if (!result) return; // 401 followed by cancelled login
-    logResult(result);
+    const target = client ?? await loadClient();
+    if (!target) return;
+    await writeRobots(target, log, body.value);
   });
 
   adminForm.addEventListener('submit', async (e) => {
@@ -46,15 +59,12 @@ async function init() {
       return;
     }
 
-    // Preflight on Fetch (the natural entry point: fetch → edit → save).
-    // Once the fetch succeeds, the user has an active session for any later save.
-    const result = await executeAdminRequest(
-      () => admin.config({ org: org.value, site: site.value }).select('robots.txt').read(),
-      { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
-    );
-    if (!result) return; // user cancelled login or timed out
-    if (result.ok) body.value = await result.text();
-    logResult(result);
+    const loaded = await loadClient();
+    if (!loaded) return;
+    const text = await readRobots(loaded, log);
+    if (text === null) return;
+    body.value = text;
+    client = loaded;
   });
 }
 
