@@ -8,7 +8,7 @@ import runSharedBehaviorTests from './admin-shared-behaviors.js';
 
 // ─── Shared behavioral contract ──────────────────────────────────────────────
 describe('helix-admin.js', () => {
-  runSharedBehaviorTests(admin);
+  runSharedBehaviorTests(admin, 'hlx-admin-version');
 });
 
 // ─── H5-specific functional tests ────────────────────────────────────────────

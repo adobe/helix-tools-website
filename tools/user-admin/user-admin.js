@@ -4,7 +4,8 @@ import { logResponse } from '../../blocks/console/console.js';
 import { loadIcon, icon, showToast } from '../../utils/card-ui/card-ui.js';
 import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
-import { parseUsersFromAccessConfig, buildAccessConfig } from './utils.js';
+import { parseUsersFromAccessConfig, buildAccessConfig } from '../../utils/users/users.js';
+import { createUserRow, collectUsers, userRowErrors } from '../../utils/users/user-row.js';
 import { ROLE_DESCRIPTIONS } from '../../utils/roles/roles.js';
 import { createRolesField } from '../../utils/roles/roles-field.js';
 
@@ -157,61 +158,6 @@ function createRolesReference() {
   return link;
 }
 
-let entryIdCounter = 0;
-
-function createUserEntry(entriesContainer, updateSaveLabel, selectedRoles = []) {
-  entryIdCounter += 1;
-  const entryId = entryIdCounter;
-  const entry = document.createElement('div');
-  entry.className = 'user-entry';
-
-  const header = document.createElement('div');
-  header.className = 'user-entry-header';
-  const removeBtn = document.createElement('button');
-  removeBtn.type = 'button';
-  removeBtn.className = 'user-entry-remove';
-  removeBtn.textContent = 'Remove';
-  header.appendChild(removeBtn);
-
-  const emailField = document.createElement('div');
-  emailField.className = 'form-field';
-  const emailLabel = document.createElement('label');
-  emailLabel.htmlFor = `user-email-${entryId}`;
-  emailLabel.textContent = 'Email';
-  const emailInput = document.createElement('input');
-  emailInput.type = 'email';
-  emailInput.id = `user-email-${entryId}`;
-  emailInput.required = true;
-  emailInput.placeholder = 'user@example.com';
-  emailField.appendChild(emailLabel);
-  emailField.appendChild(emailInput);
-
-  const rolesFieldId = `user-roles-${entryId}`;
-  const rolesField = document.createElement('div');
-  rolesField.className = 'form-field';
-  const rolesLabel = document.createElement('label');
-  rolesLabel.id = rolesFieldId;
-  rolesLabel.textContent = 'Roles';
-  const rolesContainer = createRolesField(selectedRoles);
-  rolesContainer.setAttribute('role', 'group');
-  rolesContainer.setAttribute('aria-labelledby', rolesFieldId);
-  rolesField.appendChild(rolesLabel);
-  rolesField.appendChild(rolesContainer);
-
-  entry.appendChild(header);
-  entry.appendChild(emailField);
-  entry.appendChild(rolesField);
-
-  removeBtn.addEventListener('click', () => {
-    entry.remove();
-    updateSaveLabel();
-  });
-
-  entriesContainer.appendChild(entry);
-  updateSaveLabel();
-  return entry;
-}
-
 function showModalError(dialog, message) {
   let banner = dialog.querySelector('.modal-error');
   if (!banner) {
@@ -354,7 +300,7 @@ function openAddUsersModal(onSave) {
   footerDiv.prepend(rolesReference);
 
   setConfirmClose(async () => {
-    const emails = dialog.querySelectorAll('input[type="email"]');
+    const emails = dialog.querySelectorAll('.user-row-email');
     const hasData = [...emails].some((input) => input.value.trim() !== '');
     const checkboxes = dialog.querySelectorAll('input[type="checkbox"]');
     const hasRoles = [...checkboxes].some((cb) => cb.checked);
@@ -374,21 +320,28 @@ function openAddUsersModal(onSave) {
   bodyDiv.appendChild(form);
 
   const updateSaveLabel = () => {
-    const count = entriesContainer.querySelectorAll('.user-entry').length;
-    saveBtn.textContent = `Add ${count} User${count !== 1 ? 's' : ''}`;
+    if (saveBtn.disabled) return;
+    const count = [...entriesContainer.querySelectorAll('.user-row-email')]
+      .filter((input) => input.value.trim()).length;
+    saveBtn.textContent = count ? `Add ${count} User${count !== 1 ? 's' : ''}` : 'Add Users';
   };
 
-  const firstEntry = createUserEntry(entriesContainer, updateSaveLabel);
-  firstEntry.querySelector('input[type="email"]').focus();
+  const addEntry = (roles = []) => {
+    const entry = createUserRow({ roles }, { onChange: updateSaveLabel });
+    entriesContainer.appendChild(entry);
+    updateSaveLabel();
+    entry.querySelector('.user-row-email').focus();
+    return entry;
+  };
+
+  addEntry();
 
   addAnotherBtn.addEventListener('click', () => {
-    const previousEntries = entriesContainer.querySelectorAll('.user-entry');
-    const previousEntry = previousEntries[previousEntries.length - 1];
+    const previousEntry = entriesContainer.querySelector('.user-row:last-child');
     const previousRoles = previousEntry
       ? [...previousEntry.querySelectorAll('input[type="checkbox"]:checked')].map((cb) => cb.value)
       : [];
-    const entry = createUserEntry(entriesContainer, updateSaveLabel, previousRoles);
-    entry.querySelector('input[type="email"]').focus();
+    const entry = addEntry(previousRoles);
     entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
 
@@ -396,48 +349,26 @@ function openAddUsersModal(onSave) {
     e.preventDefault();
     clearModalError(dialog);
 
-    const entries = entriesContainer.querySelectorAll('.user-entry');
-    const users = [];
-    let hasError = false;
+    entriesContainer.querySelectorAll('.user-row').forEach((entry) => entry.classList.remove('has-error'));
 
-    const flagError = (entry, message, focusEl) => {
-      entry.classList.add('has-error');
-      entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      if (focusEl) focusEl.focus();
-      showModalError(dialog, message);
-      hasError = true;
-    };
+    const [rowError] = userRowErrors(entriesContainer, { existing: accessConfig.users });
+    if (rowError) {
+      rowError.row.classList.add('has-error');
+      rowError.row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      rowError.input.focus();
+      showModalError(dialog, rowError.message);
+      return;
+    }
 
-    entries.forEach((entry) => entry.classList.remove('has-error'));
+    const users = collectUsers(entriesContainer);
+    if (users.length === 0) {
+      showModalError(dialog, 'Enter at least one user before saving.');
+      entriesContainer.querySelector('.user-row-email')?.focus();
+      return;
+    }
 
-    entries.forEach((entry) => {
-      if (hasError) return;
-      const emailInput = entry.querySelector('input[type="email"]');
-      const email = emailInput.value.trim();
-      const roles = [...entry.querySelectorAll('input[type="checkbox"]:checked')]
-        .map((cb) => cb.value);
-
-      if (!email) { flagError(entry, 'Please enter an email for each user', emailInput); return; }
-      if (!emailInput.validity.valid) { flagError(entry, `Invalid email: ${email}`, emailInput); return; }
-      if (roles.length === 0) { flagError(entry, 'Please select at least one role for each user'); return; }
-
-      const emailLower = email.toLowerCase();
-      if (users.some((u) => u.email.toLowerCase() === emailLower)) {
-        flagError(entry, `Duplicate email in batch: ${email}`);
-        return;
-      }
-      if (accessConfig.users.some((u) => u.email.toLowerCase() === emailLower)) {
-        flagError(entry, `User already exists: ${email}`);
-        return;
-      }
-
-      users.push({ email, roles });
-    });
-
-    if (hasError || users.length === 0) return;
-
-    const validEntries = [...entriesContainer.querySelectorAll('.user-entry')]
-      .filter((entry) => entry.querySelector('input[type="email"]').value.trim());
+    const validEntries = [...entriesContainer.querySelectorAll('.user-row')]
+      .filter((entry) => entry.querySelector('.user-row-email').value.trim());
 
     saveBtn.disabled = true;
     saveBtn.textContent = 'Saving...';
@@ -541,9 +472,9 @@ function openEditUserModal(user, onSave) {
   deleteBtn.addEventListener('click', async () => {
     clearModalError(dialog);
     // eslint-disable-next-line no-alert
-    const emailCheck = prompt(`To confirm deletion, enter the email: ${user.email}`);
-    if (emailCheck !== user.email) {
-      if (emailCheck !== null) showModalError(dialog, 'Email did not match');
+    const userCheck = prompt(`To confirm deletion, enter: ${user.email}`);
+    if (userCheck?.trim() !== user.email) {
+      if (userCheck !== null) showModalError(dialog, 'Entry did not match');
       return;
     }
 

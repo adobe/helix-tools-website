@@ -37,6 +37,13 @@
   font-weight: 700;
 }
 
+.bot-info-did > li.bot-info-did-warning::before {
+  content: "!";
+  text-align: center;
+  color: light-dark(var(--yellow-100), var(--yellow-1200));
+  background-color: light-dark(var(--yellow-900), var(--yellow-500));
+}
+
 .bot-info-user-summary {
   margin: 2px 0 6px;
   padding-left: 1.5em;
@@ -294,17 +301,6 @@
   margin-bottom: 12px;
 }
 
-.bot-info-user-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 8px 12px;
-  padding: 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background-color: var(--layer-elevated);
-}
-
 .bot-info-field {
   display: flex;
   flex-direction: column;
@@ -315,7 +311,6 @@
   font-weight: var(--weight-medium);
 }
 
-.bot-info-email,
 .bot-info-da-url,
 .bot-info-content-url,
 .bot-info-content-type,
@@ -352,32 +347,8 @@
   margin-top: 12px;
 }
 
-.bot-info-suffix-field[aria-hidden="true"] {
+.bot-info-field[aria-hidden="true"] {
   display: none;
-}
-
-/* the shared roles-field spans the full user row, below email + remove */
-.bot-info-user-row .roles-field {
-  grid-column: 1 / -1;
-}
-
-.bot-info-remove {
-  align-self: center;
-  width: 1.8em;
-  height: 1.8em;
-  padding: 0;
-  border: 1px solid var(--color-border);
-  border-radius: 50%;
-  background-color: var(--color-background);
-  color: light-dark(var(--red-900), var(--red-500));
-  font-size: 0.9em;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.bot-info-remove:hover {
-  border-color: light-dark(var(--red-900), var(--red-500));
-  background-color: light-dark(var(--red-100), var(--red-1200));
 }
 
 .bot-info-add-user {

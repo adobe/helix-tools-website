@@ -1,9 +1,61 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseUsersFromAccessConfig, buildAccessConfig } from '../../../tools/user-admin/utils.js';
+import {
+  parseUsersFromAccessConfig,
+  buildAccessConfig,
+  isImsGroup,
+  isValidUser,
+  normalizeUser,
+} from '../../../utils/users/users.js';
 
-describe('user-admin:utils.js', () => {
+describe('utils/users/users.js', () => {
+  describe('normalizeUser', () => {
+    it('trims emails', () => {
+      assert.equal(normalizeUser('  a@b.com '), 'a@b.com');
+    });
+
+    it('normalizes IMS group variants to ORG_ID/group', () => {
+      [
+        '528D65B156D673FA7F000101/authors',
+        ' 528D65B156D673FA7F000101/authors ',
+        '528D65B156D673FA7F000101@AdobeOrg/authors',
+        '528D65B156D673FA7F000101@adobeorg / authors',
+      ].forEach((value) => assert.equal(normalizeUser(value), '528D65B156D673FA7F000101/authors', value));
+    });
+  });
+
+  describe('isImsGroup', () => {
+    it('detects IMS group identifiers', () => {
+      assert.equal(isImsGroup('528D65B156D673FA7F000101/azhlx6-authors'), true);
+      assert.equal(isImsGroup('  528d65b156d673fa7f000101/My Group 1  '), true);
+      assert.equal(isImsGroup('528D65B156D673FA7F000101@AdobeOrg/authors'), true);
+    });
+
+    it('rejects emails and malformed identifiers', () => {
+      ['a@b.com', '*@adobe.com', '/authors', '528D65B156D673FA7F000101/', '528D65B156D673FA7F000101@AdobeOrg/', 'not-an-org/authors', 'abc/foo', '528D65B156D673FA7F00010/authors', '528D65B156D673FA7F00010100/authors', '']
+        .forEach((value) => assert.equal(isImsGroup(value), false, value));
+    });
+  });
+
+  describe('isValidUser', () => {
+    it('accepts emails, wildcard domains and IMS groups', () => {
+      ['a@b.com', '  c@d.com  ', '*@adobe.com', '528D65B156D673FA7F000101/azhlx6-authors', '528D65B156D673FA7F000101@AdobeOrg/authors']
+        .forEach((value) => assert.equal(isValidUser(value), true, value));
+    });
+
+    it('rejects malformed identifiers', () => {
+      ['', 'not-an-email', '/authors', '528D65B156D673FA7F000101/', 'not-an-org/authors', 'abc/foo']
+        .forEach((value) => assert.equal(isValidUser(value), false, value));
+    });
+  });
+
   describe('parseUsersFromAccessConfig', () => {
+    it('round-trips IMS group identifiers and roles without changing them', () => {
+      const group = '528D65B156D673FA7F000101/azhlx6-authors';
+      const users = [{ email: group, roles: ['author', 'publish'] }];
+      assert.deepEqual(parseUsersFromAccessConfig(buildAccessConfig({}, users)), users);
+    });
+
     it('returns [] for null config', () => {
       assert.deepEqual(parseUsersFromAccessConfig(null), []);
     });

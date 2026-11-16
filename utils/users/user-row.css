@@ -1,0 +1,59 @@
+.user-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background-color: var(--layer-elevated);
+}
+
+.user-row.has-error {
+  border-color: light-dark(var(--red-900), var(--red-500));
+}
+
+.user-row-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.user-row-email {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  font-size: inherit;
+}
+
+.user-row-hint {
+  margin: 0;
+  font-size: 0.85em;
+  color: var(--color-font-grey);
+}
+
+.user-row-remove {
+  align-self: center;
+  width: 1.8em;
+  height: 1.8em;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background-color: var(--color-background);
+  color: light-dark(var(--red-900), var(--red-500));
+  font-size: 0.9em;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.user-row-remove:hover {
+  border-color: light-dark(var(--red-900), var(--red-500));
+  background-color: light-dark(var(--red-100), var(--red-1200));
+}
+
+.user-row .roles-field {
+  grid-column: 1 / -1;
+}

@@ -1,3 +1,20 @@
+// Preview/live hostnames follow `{branch}--{site}--{org}.aem.page` and must fit
+// within the 63-character DNS label limit, same rule as site-admin site names.
+export const MAX_HOSTNAME_LENGTH = 63;
+export const BRANCH_NAME_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+export function validateBranchName(branch, site, org) {
+  if (!branch) return null;
+  if (!BRANCH_NAME_PATTERN.test(branch)) {
+    return 'Branch name may only contain lowercase letters, numbers, and single hyphens, and cannot start with a hyphen.';
+  }
+  const hostnameLength = `${branch}--${site}--${org}`.length;
+  if (hostnameLength > MAX_HOSTNAME_LENGTH) {
+    return `Branch name is too long: "${branch}--${site}--${org}" exceeds the ${MAX_HOSTNAME_LENGTH}-character domain label limit.`;
+  }
+  return null;
+}
+
 const ERROR_MESSAGES = {
   ENOTFOUND: 'Could not connect to CDN endpoint. Please verify the hostname is correct.',
   ECONNREFUSED: 'Connection refused by CDN server. Please check your endpoint configuration.',

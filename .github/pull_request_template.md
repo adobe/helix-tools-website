@@ -5,3 +5,5 @@ Fix #<gh-issue-id>
 Test URLs:
 - Before: https://main--helix-tools-website--adobe.aem.live/
 - After: https://<branch>--helix-tools-website--adobe.aem.live/
+
+The AI review (`review / claude`, `review / codex`) runs on every push; small changes by trusted contributors are auto-approved once it approves.
