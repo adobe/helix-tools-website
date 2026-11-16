@@ -2,7 +2,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { loadIcon, icon, showToast } from '../../utils/card-ui/card-ui.js';
-import getAdminClient from '../../scripts/admin-compat.js';
+import { getAdminClientForOrg, getAdminClientForSite } from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { parseUsersFromAccessConfig, buildAccessConfig } from '../../utils/users/users.js';
 import { createUserRow, collectUsers, userRowErrors } from '../../utils/users/user-row.js';
@@ -11,38 +11,39 @@ import { createRolesField } from '../../utils/roles/roles-field.js';
 
 const VIEW_STORAGE_KEY = 'user-admin-view';
 
-let admin;
-
 const adminForm = document.getElementById('admin-form');
 const site = document.getElementById('site');
 const org = document.getElementById('org');
 const consoleBlock = document.querySelector('.console');
 const usersContainer = document.getElementById('users-container');
-const accessConfig = { type: 'org', users: [], originalSiteAccess: {} };
+// `client` is pinned until the next load: edits to the form inputs don't retarget requests.
+const accessConfig = {
+  type: 'org', users: [], originalSiteAccess: {}, client: null,
+};
 
-async function getOrgConfig() {
+async function getOrgConfig(client) {
   const result = await executeAdminRequest(
     async () => {
-      const res = await admin.config({ org: org.value }).read();
+      const res = await client.config().read();
       logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
       return res;
     },
-    { org: org.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
+    client,
+    { policy: AuthMode.PREFLIGHT_AND_RETRY },
   );
   if (!result) return null;
   return result.ok ? result.json() : null;
 }
 
-async function getSiteAccessConfig() {
+async function getSiteAccessConfig(client) {
   const result = await executeAdminRequest(
     async () => {
-      const res = await admin.config({ org: org.value, site: site.value })
-        .select('access.json')
-        .read();
+      const res = await client.config().select('access.json').read();
       logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
       return res;
     },
-    { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
+    client,
+    { policy: AuthMode.PREFLIGHT_AND_RETRY },
   );
   if (!result) return null;
   if (result.status === 404) return { admin: { role: {} } };
@@ -50,31 +51,30 @@ async function getSiteAccessConfig() {
 }
 
 async function updateSiteAccess() {
-  const { originalSiteAccess, users } = accessConfig;
+  const { originalSiteAccess, users, client } = accessConfig;
   const access = buildAccessConfig(originalSiteAccess, users);
   const result = await executeAdminRequest(
     async () => {
-      const res = await admin.config({ org: org.value, site: site.value })
-        .select('access.json')
-        .update(JSON.stringify(access));
+      const res = await client.config().select('access.json').update(JSON.stringify(access));
       logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
       return res;
     },
-    { org: org.value, site: site.value },
+    client,
   );
   return result?.ok ?? false;
 }
 
 async function updateOrgUserRoles(user) {
+  const { client } = accessConfig;
   const result = await executeAdminRequest(
     async () => {
-      const res = await admin.config({ org: org.value })
+      const res = await client.config()
         .select(`users/${user.id}.json`)
         .update(JSON.stringify(user));
       logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
       return res;
     },
-    { org: org.value },
+    client,
   );
   return result?.ok ?? false;
 }
@@ -85,15 +85,16 @@ async function deleteUserFromSite(user) {
 }
 
 async function deleteUserFromOrg(user) {
+  const { client } = accessConfig;
   const result = await executeAdminRequest(
     async () => {
-      const res = await admin.config({ org: org.value })
+      const res = await client.config()
         .select(`users/${user.id}.json`)
         .remove();
       logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
       return res;
     },
-    { org: org.value },
+    client,
   );
   return result?.ok ?? false;
 }
@@ -113,18 +114,19 @@ async function addUsersToSite(users) {
 
 async function addUsersToOrg(users) {
   let added = 0;
+  const { client } = accessConfig;
   try {
     await users.reduce(async (prevPromise, user) => {
       await prevPromise;
       const result = await executeAdminRequest(
         async () => {
-          const res = await admin.config({ org: org.value })
+          const res = await client.config()
             .select('users.json')
             .update(JSON.stringify(user));
           logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
           return res;
         },
-        { org: org.value },
+        client,
       );
       if (result?.ok) {
         added += 1;
@@ -653,31 +655,40 @@ adminForm.addEventListener('submit', async (e) => {
   usersContainer.innerHTML = '<p class="loading">Loading users...</p>';
 
   if (site.value) {
-    accessConfig.type = 'site';
-    const config = await getSiteAccessConfig();
+    let client;
+    try {
+      client = await getAdminClientForSite({ org: org.value, site: site.value });
+    } catch {
+      usersContainer.innerHTML = '<p class="error">Failed to load users</p>';
+      return;
+    }
+    const config = await getSiteAccessConfig(client);
     if (!config) {
       usersContainer.innerHTML = '<p class="error">Failed to load users</p>';
       return;
     }
 
+    accessConfig.type = 'site';
+    accessConfig.client = client;
     accessConfig.originalSiteAccess = config;
     accessConfig.users = parseUsersFromAccessConfig(config);
     displayUsers(accessConfig.users);
   } else {
-    accessConfig.type = 'org';
-    const config = await getOrgConfig();
+    const client = await getAdminClientForOrg({ org: org.value });
+    const config = await getOrgConfig(client);
     if (!config) {
       usersContainer.innerHTML = '<p class="error">Failed to load users</p>';
       return;
     }
 
+    accessConfig.type = 'org';
+    accessConfig.client = client;
     accessConfig.users = config.users || [];
     displayUsers(accessConfig.users);
   }
 });
 
 async function init() {
-  admin = await getAdminClient();
   // Load required icons
   const neededIcons = ['user', 'edit', 'grid', 'list', 'trash'];
   await Promise.all(neededIcons.map(loadIcon));
