@@ -6,4 +6,4 @@ Test URLs:
 - Before: https://main--helix-tools-website--adobe.aem.live/
 - After: https://<branch>--helix-tools-website--adobe.aem.live/
 
-Comment `/claude-review` to run Claude review on the current head (required for auto-approval; rerun after new pushes).
+The AI review (`review / claude`, `review / codex`) runs on every push; small changes by trusted contributors are auto-approved once it approves.

@@ -97,7 +97,14 @@ export const isExpired = (expirationDate) => {
   return new Date(expirationDate) < new Date();
 };
 
-export const buildSiteConfig = (site, codeSrc, contentSrc, byogit = null, contentSourceType = '') => {
+export const buildSiteConfig = (
+  site,
+  codeSrc,
+  contentSrc,
+  byogit = null,
+  contentSourceType = '',
+  overlayUrl = undefined,
+) => {
   let code;
   if (byogit) {
     code = {
@@ -123,6 +130,14 @@ export const buildSiteConfig = (site, codeSrc, contentSrc, byogit = null, conten
       ? { type: 'sourcebus' }
       : { type: 'markup', url: contentSrc },
   };
+
+  if (overlayUrl !== undefined) {
+    if (overlayUrl) {
+      content.overlay = { ...content.overlay, type: 'markup', url: overlayUrl };
+    } else {
+      delete content.overlay;
+    }
+  }
 
   if (contentSourceType !== 'sourcebus') {
     if (contentSrc.startsWith('https://drive.google.com/drive')) {

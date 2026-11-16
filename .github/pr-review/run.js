@@ -1,4 +1,4 @@
-import evaluatePullRequest, { STATUS_CONTEXT } from './policy.js';
+import evaluatePullRequest, { REVIEW_CONTEXTS } from './policy.js';
 
 const MARKER = '<!-- ai-pr-review -->';
 const CHECK_NAME = 'auto-approval';
@@ -7,14 +7,18 @@ export default async function run({
   github, context, core, config, pullNumber,
 }) {
   const params = { ...context.repo, pull_number: pullNumber };
-  const currentClaudeStatus = async (ref) => (await github.paginate(
-    github.rest.repos.listCommitStatusesForRef,
-    { ...context.repo, ref, per_page: 100 },
-  )).find((status) => status.context === STATUS_CONTEXT);
+  // newest first, so find() gets each reviewer's current status
+  const currentReviewStatuses = async (ref) => {
+    const statuses = await github.paginate(
+      github.rest.repos.listCommitStatusesForRef,
+      { ...context.repo, ref, per_page: 100 },
+    );
+    return REVIEW_CONTEXTS.map((name) => statuses.find((status) => status.context === name));
+  };
   const { data: pr } = await github.rest.pulls.get(params);
   const files = await github.paginate(github.rest.pulls.listFiles, { ...params, per_page: 100 });
-  const claudeStatus = await currentClaudeStatus(pr.head.sha);
-  const result = evaluatePullRequest(pr, files, config, claudeStatus);
+  const reviewStatuses = await currentReviewStatuses(pr.head.sha);
+  const result = evaluatePullRequest(pr, files, config, reviewStatuses);
   if (pr.base.ref !== context.payload.repository.default_branch) {
     result.eligible = false;
     result.reasons.push('PR must target the default branch.');
@@ -27,16 +31,6 @@ export default async function run({
     || latest.state !== pr.state || latest.base.sha !== pr.base.sha) {
     core.setFailed('PR changed during evaluation; rerun against its current state.');
     return;
-  }
-
-  if (!claudeStatus && pr.state === 'open') {
-    await github.rest.repos.createCommitStatus({
-      ...context.repo,
-      sha: pr.head.sha,
-      context: STATUS_CONTEXT,
-      state: 'pending',
-      description: 'Comment /claude-review to run Claude review.',
-    });
   }
 
   const dismiss = (reviewId) => github.rest.pulls.dismissReview({
@@ -57,7 +51,7 @@ export default async function run({
       output: {
         title: title.length > 255 ? `${title.slice(0, 254)}…` : title,
         summary: eligible
-          ? `${result.tool}: ${result.lines} changed lines, trusted author, Claude found no BLOCKING issues. CI and other merge requirements still apply.`
+          ? `${result.tool}: ${result.lines} changed lines, trusted author, the AI review approved. CI and other merge requirements still apply.`
           : reasons.map((reason) => `- ${reason}`).join('\n'),
       },
     });
@@ -74,12 +68,12 @@ export default async function run({
         ...params,
         commit_id: pr.head.sha,
         event: 'APPROVE',
-        body: `${MARKER}\nEligible: ${result.tool}, ${result.lines} changed lines, trusted author, Claude review passed for ${pr.head.sha}. CI and other merge requirements still apply.`,
+        body: `${MARKER}\nEligible: ${result.tool}, ${result.lines} changed lines, trusted author, the AI review approved ${pr.head.sha}. CI and other merge requirements still apply.`,
       });
-      const recheck = await currentClaudeStatus(pr.head.sha);
-      if (recheck?.id !== claudeStatus.id) {
+      const recheck = await currentReviewStatuses(pr.head.sha);
+      if (recheck.some((status, i) => status?.id !== reviewStatuses[i].id)) {
         await dismiss(created.id);
-        const reason = 'Claude review status changed during approval; approval withdrawn.';
+        const reason = 'AI review status changed during approval; approval withdrawn.';
         await report(false, [reason]);
         core.notice(reason);
         await core.summary.write();

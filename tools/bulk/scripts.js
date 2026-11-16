@@ -1,4 +1,4 @@
-import { analyzeUrls, extractOrgSite } from './utils.js';
+import { analyzeUrls, groupUrlsByTarget } from './utils.js';
 import { getAdminClientForSite } from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 
@@ -10,7 +10,6 @@ const OPERATION_LABELS = {
   preview: 'Preview',
   live: 'Publish',
   index: 'Index',
-  cache: 'Purge',
   unpublish: 'Unpublish',
   unpreview: 'Unpreview',
 };
@@ -21,11 +20,15 @@ function sleep(ms) {
   });
 }
 
-// Creates a fresh, collapsed results block for a single run, kept alongside
-// (above) any earlier runs' blocks rather than replacing them.
-const createRunBlock = () => {
+// Keep target blocks within their run so earlier runs retain their own results.
+const createRunBlock = (container, coords, onProgress) => {
   const details = document.createElement('details');
   details.className = 'run-result';
+  const targetLabel = coords ? `${coords.org}/${coords.site} (${coords.ref}) - ` : '';
+  if (coords) {
+    Object.assign(details.dataset, coords);
+    details.classList.add('run-bucket');
+  }
 
   const summary = document.createElement('summary');
   summary.textContent = 'Running…';
@@ -37,15 +40,30 @@ const createRunBlock = () => {
 
   const list = document.createElement('ol');
   list.className = 'results-list';
-  details.append(list);
+  if (coords) details.append(list);
 
-  resultsContainer.prepend(details);
+  if (coords) container.append(details);
+  else container.prepend(details);
 
   let successCount = 0;
   let failCount = 0;
+  let hasError = false;
 
-  const updateSummary = (processed, total, label) => {
-    summary.textContent = `${label} ${processed} of ${total} - ${failCount} failed, ${successCount} succeeded`;
+  const updateSummary = (processed, total, label, counts) => {
+    if (counts) {
+      failCount = counts.failCount;
+      successCount = counts.successCount;
+    }
+    summary.textContent = `${targetLabel}${label} ${processed} of ${total} - ${failCount} failed, ${successCount} succeeded`;
+    onProgress?.({
+      processed, failCount, successCount, hasError: hasError || failCount > 0,
+    });
+  };
+
+  // A bucket error does not establish outcomes for unreported URLs.
+  const markFailed = (processed, total, label) => {
+    hasError = true;
+    updateSummary(processed, total, `${label} failed`);
   };
 
   const appendMessage = (string, status = 'unknown') => {
@@ -78,12 +96,8 @@ const createRunBlock = () => {
     return li;
   };
 
-  const finish = () => {
-    runButton.disabled = false;
-  };
-
   return {
-    appendMessage, appendResult, updateSummary, finish,
+    appendMessage, appendResult, updateSummary, markFailed, element: details,
   };
 };
 
@@ -248,13 +262,162 @@ const showSanitizationWarning = (changes) => {
   });
 };
 
+async function executeBucket({ coords, paths, ui }, {
+  operation, label, slow, forceUpdate,
+}, pendingJobs) {
+  const total = paths.length;
+  let counter = 0;
+  const { appendMessage, appendResult, updateSummary } = ui;
+  const reportError = (error) => {
+    // eslint-disable-next-line no-console
+    console.error(error);
+    appendMessage(`Unexpected error: ${error.message}`, 500);
+    ui.markFailed(counter, total, label);
+  };
+
+  try {
+    let admin = await getAdminClientForSite(coords);
+    if (adminVersion) admin = admin.pinVersion(adminVersion);
+
+    if (['preview', 'live'].includes(operation)) {
+      const verb = operation === 'preview' ? 'preview' : 'publish';
+      const bulkResp = await executeAdminRequest(
+        () => admin[operation]().bulk({ paths, forceUpdate }),
+        admin,
+        { policy: AuthMode.PREFLIGHT_AND_RETRY },
+      );
+      if (!bulkResp) {
+        appendMessage('Sign-in cancelled');
+        updateSummary(0, total, `${label} cancelled`);
+        return false;
+      }
+      if (!bulkResp.ok) {
+        appendMessage(`Failed to bulk ${verb} ${total} URLs on ${coords.org}/${coords.site}: ${await bulkResp.text()}`, bulkResp.status);
+        updateSummary(total, total, `${label} failed`, { failCount: total, successCount: 0 });
+        return true;
+      }
+      const { job, links } = await bulkResp.json();
+      const { name } = job;
+      const readStatus = async (url) => {
+        const response = await executeAdminRequest(
+          () => admin.raw('GET', url),
+          admin,
+          { policy: AuthMode.NONE },
+        );
+        if (!response?.ok) {
+          throw new Error(`Failed to get status for job ${name}: HTTP ${response?.status ?? 'no response'}`);
+        }
+        return response.json();
+      };
+
+      // Follow API-returned links: H5 details and H6 reports have different URLs.
+      let detailsUrl = links?.details;
+      if (!detailsUrl && links?.self) {
+        detailsUrl = (await readStatus(links.self)).links?.details;
+      }
+      if (!detailsUrl) {
+        appendMessage(`Bulk ${operation} started (job ${name}) but the API returned no status link`, 500);
+        ui.markFailed(0, total, label);
+        return true;
+      }
+
+      let loggedCount = 0;
+      let polling = false;
+      const completion = new Promise((resolve, reject) => {
+        const jobStatusPoll = window.setInterval(async () => {
+          if (polling) return;
+          polling = true;
+          try {
+            const {
+              state,
+              progress: { processed = 0 } = {},
+              startTime,
+              stopTime,
+              data: { resources = [] } = {},
+            } = await readStatus(detailsUrl);
+            counter = processed;
+            for (let i = loggedCount; i < resources.length; i += 1) {
+              const res = resources[i];
+              if (!res.status) break;
+              const path = res.resourcePath || res.path;
+              appendResult(`${path} (${res.status})`, res.status, processed, total, label);
+              loggedCount = i + 1;
+            }
+            updateSummary(processed, total, label);
+            if (state === 'stopped') {
+              window.clearInterval(jobStatusPoll);
+              const duration = (new Date(stopTime).valueOf()
+                - new Date(startTime).valueOf()) / 1000;
+              appendMessage(`Bulk ${operation} completed in ${duration}s`);
+              resolve();
+            }
+          } catch (error) {
+            window.clearInterval(jobStatusPoll);
+            reject(error);
+          } finally {
+            polling = false;
+          }
+        }, 1000);
+      });
+      pendingJobs.push(completion.catch(reportError));
+      return true;
+    }
+
+    const endpoint = { unpublish: 'live', unpreview: 'preview' }[operation] || operation;
+    const remove = ['unpublish', 'unpreview'].includes(operation);
+    const resource = admin[endpoint]();
+    const doAdminOp = (path, policy = AuthMode.NONE) => executeAdminRequest(
+      () => (remove ? resource.remove(path) : resource.update(path, null)),
+      admin,
+      { policy },
+    );
+    const logOp = async (response) => {
+      await response.text();
+      counter += 1;
+      appendResult(`${counter}/${total}: ${response.request.url}`, response.status, counter, total, label);
+    };
+    const remaining = [...paths];
+    appendMessage(`URLs: ${total}`);
+    const firstResp = await doAdminOp(remaining.shift(), AuthMode.PREFLIGHT_AND_RETRY);
+    if (!firstResp) {
+      appendMessage('Sign-in cancelled');
+      updateSummary(0, total, `${label} cancelled`);
+      return false;
+    }
+    await logOp(firstResp);
+    const dequeue = async () => {
+      while (remaining.length) {
+        const path = remaining.shift();
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const response = await doAdminOp(path);
+          // eslint-disable-next-line no-await-in-loop
+          if (response) await logOp(response);
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.error(error);
+          counter += 1;
+          appendResult(`${path} (failed: ${error.message})`, 0, counter, total, label);
+        }
+        // eslint-disable-next-line no-await-in-loop
+        if (slow) await sleep(1500);
+      }
+    };
+    let concurrency = remove ? 40 : 3;
+    if (slow) concurrency = 1;
+    await Promise.all(Array.from({ length: concurrency }, dequeue));
+  } catch (error) {
+    reportError(error);
+  }
+  return true;
+}
+
 document.getElementById('urls-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  let counter = 0;
   runButton.disabled = true;
-  const {
-    appendMessage, appendResult, updateSummary, finish,
-  } = createRunBlock();
+  const run = createRunBlock(resultsContainer);
+  const { appendMessage, element: runElement } = run;
+  const finish = () => { runButton.disabled = false; };
 
   const rawUrls = document.getElementById('urls').value
     .split('\n')
@@ -299,174 +462,63 @@ document.getElementById('urls-form').addEventListener('submit', async (e) => {
     return false;
   }
 
-  // All URLs in a run target the same site; detect the backend from the first
-  // one and pick the matching admin client (H5 admin.hlx.page or H6 api.aem.live).
-  let admin;
-  try {
-    const firstCoords = extractOrgSite(urlsToUse[0]);
-    admin = await getAdminClientForSite(firstCoords);
-    if (adminVersion) admin = admin.pinVersion(adminVersion);
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error(error);
-    appendMessage(`Unexpected error: ${error.message}`);
-    finish();
-    return false;
-  }
-
   const operation = document.getElementById('operation').dataset.value;
   const label = OPERATION_LABELS[operation] || operation;
   const slow = document.getElementById('slow').checked;
   const forceUpdate = document.getElementById('force').checked;
-  updateSummary(0, total, label);
-
-  const ENDPOINTS = { unpublish: 'live', unpreview: 'preview' };
-  const METHODS = { unpublish: 'DELETE', unpreview: 'DELETE' };
-
-  // Returns AdminResponse or null (login cancelled).
-  const doAdminOp = (url, policy = AuthMode.NONE) => {
-    const { hostname, pathname } = new URL(url);
-    const [branch, repo, owner] = hostname.split('.')[0].split('--');
-    const endpoint = ENDPOINTS[operation] || operation;
-    const method = METHODS[operation] || 'POST';
-    const resource = admin[endpoint]({ org: owner, site: repo, ref: branch });
-    return executeAdminRequest(
-      () => (method === 'DELETE'
-        ? resource.remove(pathname)
-        : resource.update(pathname, null)),
-      { org: owner, site: repo, policy },
-    );
-  };
-
-  const logOp = (resp) => {
-    const { url: reqUrl } = resp.request;
-    return resp.text().then(() => {
-      counter += 1;
-      appendResult(`${counter}/${total}: ${reqUrl}`, resp.status, counter, total, label);
+  let buckets;
+  try {
+    buckets = groupUrlsByTarget(urlsToUse);
+  } catch (error) {
+    appendMessage(error.message);
+    finish();
+    return false;
+  }
+  const progress = new Map();
+  const updateRun = (runLabel = label) => {
+    const counts = [...progress.values()].reduce((sum, item) => ({
+      processed: sum.processed + item.processed,
+      failCount: sum.failCount + item.failCount,
+      successCount: sum.successCount + item.successCount,
+      hasError: sum.hasError || item.hasError,
+    }), {
+      processed: 0, failCount: 0, successCount: 0, hasError: false,
     });
+    const summaryLabel = counts.hasError ? `${runLabel} with errors` : runLabel;
+    run.updateSummary(counts.processed, total, summaryLabel, counts);
   };
-
-  const executeOperation = async (url) => {
-    const resp = await doAdminOp(url);
-    if (resp) await logOp(resp);
-  };
-
-  const dequeue = async () => {
-    while (urlsToUse.length) {
-      const url = urlsToUse.shift();
-      try {
-        // eslint-disable-next-line no-await-in-loop
-        await executeOperation(url);
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error(error);
-        appendResult(`${url} (failed: ${error.message})`, 0, counter, total, label);
-      }
+  const planned = buckets.map((bucket) => {
+    const ui = createRunBlock(runElement, bucket.coords, (counts) => {
+      progress.set(bucket, counts);
+      updateRun();
+    });
+    ui.updateSummary(0, bucket.paths.length, label);
+    return { ...bucket, ui };
+  });
+  runElement.open = true;
+  const pendingJobs = [];
+  let outcome = 'finished';
+  try {
+    // Sequential starts avoid competing login dialogs and preserve direct-request limits.
+    for (let i = 0; i < planned.length; i += 1) {
       // eslint-disable-next-line no-await-in-loop
-      if (slow) await sleep(1500);
-    }
-  };
-
-  const doBulkOperation = async () => {
-    const VERB = { preview: 'preview', live: 'publish' };
-    const { hostname } = new URL(urlsToUse[0]);
-    const [branch, repo, owner] = hostname.split('.')[0].split('--');
-    const paths = urlsToUse.map((url) => new URL(url).pathname);
-    const bulkResp = await executeAdminRequest(
-      () => admin[operation]({ org: owner, site: repo, ref: branch })
-        .bulk({ paths, forceUpdate }),
-      { org: owner, site: repo, policy: AuthMode.PREFLIGHT_AND_RETRY },
-    );
-    if (!bulkResp) {
-      appendMessage('Sign-in cancelled');
-      finish();
-      return;
-    }
-    if (!bulkResp.ok) {
-      appendMessage(`Failed to bulk ${VERB[operation]} ${paths.length} URLs on ${owner}/${repo}: ${await bulkResp.text()}`);
-      finish();
-      return;
-    }
-    const { job } = await bulkResp.json();
-    const { name } = job;
-    // H6 job topics differ from the operation (e.g. live -> live-publish);
-    // job.topic is echoed by H6's start response and absent on H5.
-    const jobTopic = job.topic || VERB[operation];
-    let loggedCount = 0;
-    const jobStatusPoll = window.setInterval(async () => {
-      try {
-        const jobResp = await executeAdminRequest(
-          () => admin.job({ org: owner, site: repo, ref: branch })
-            .get(`${jobTopic}/${name}/details`),
-          { org: owner, site: repo, policy: AuthMode.NONE },
-        );
-        const jobStatus = await jobResp.json();
-        const {
-          state,
-          progress: { processed = 0 } = {},
-          startTime,
-          stopTime,
-          data: { resources = [] } = {},
-        } = jobStatus;
-        // resources fills in front-to-back as the job processes them; status 0
-        // means "not yet processed". Stop at the first unprocessed entry each
-        // tick so it gets picked up (in order) on a later poll instead of
-        // being logged as a failure.
-        for (let i = loggedCount; i < resources.length; i += 1) {
-          const res = resources[i];
-          if (!res.status) break;
-          const path = res.resourcePath || res.path;
-          appendResult(`${path} (${res.status})`, res.status, processed, total, label);
-          loggedCount = i + 1;
-        }
-        if (state === 'stopped') {
-          window.clearInterval(jobStatusPoll);
-          const duration = (new Date(stopTime).valueOf()
-            - new Date(startTime).valueOf()) / 1000;
-          appendMessage(`Bulk ${operation} completed in ${duration}s`);
-          finish();
-        } else {
-          updateSummary(processed, total, label);
-        }
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error(`failed to get status for job ${name}: ${error}`);
-        window.clearInterval(jobStatusPoll);
-        finish();
+      const proceed = await executeBucket(planned[i], {
+        operation, label, slow, forceUpdate,
+      }, pendingJobs);
+      if (!proceed) {
+        outcome = 'cancelled';
+        // Stop new submissions on cancellation; accepted jobs still finish reporting.
+        planned.slice(i + 1).forEach(({ paths, ui }) => {
+          ui.appendMessage('Skipped because sign-in was cancelled');
+          ui.updateSummary(0, paths.length, `${label} skipped`);
+        });
+        break;
       }
-    }, 1000);
-  };
-
-  if (['preview', 'live'].includes(operation)) {
-    // Runs its own polling loop in the background; guard against any
-    // unexpected rejection leaving the run button stuck disabled.
-    doBulkOperation().catch((error) => {
-      // eslint-disable-next-line no-console
-      console.error(error);
-      appendMessage(`Unexpected error: ${error.message}`);
-      finish();
-    });
-  } else {
-    appendMessage(`URLs: ${urlsToUse.length}`);
-    let concurrency = ['live', 'unpublish', 'unpreview'].includes(operation) ? 40 : 3;
-    if (slow) concurrency = 1;
-
-    try {
-      // Auth preflight on first URL before launching concurrent dequeues.
-      const firstResp = await doAdminOp(urlsToUse.shift(), AuthMode.PREFLIGHT_AND_RETRY);
-      if (!firstResp) {
-        appendMessage('Sign-in cancelled');
-        return false;
-      }
-      await logOp(firstResp);
-      await Promise.all(Array.from({ length: concurrency }, () => dequeue()));
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error(error);
-      appendMessage(`Unexpected error: ${error.message}`);
-    } finally {
-      finish();
     }
+    await Promise.all(pendingJobs);
+  } finally {
+    updateRun(`${label} ${outcome}`);
+    finish();
   }
   return true;
 });

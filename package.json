@@ -5,6 +5,7 @@
   "description": "Tools Site for AEM Edge Delivery Services",
   "type": "module",
   "scripts": {
+    "typecheck": "tsc --project tsconfig.json",
     "vendor": "node vendor/vendor.js",
     "postinstall": "node vendor/vendor.js",
     "lint:js": "eslint .",
@@ -33,7 +34,8 @@
     "eslint-plugin-import": "2.32.0",
     "jsdom": "^30.0.0",
     "stylelint": "17.16.0",
-    "stylelint-config-standard": "40.0.0"
+    "stylelint-config-standard": "40.0.0",
+    "typescript": "7.0.2"
   },
   "dependencies": {
     "@adobe/rum-distiller": "1.23.1",

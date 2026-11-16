@@ -43,6 +43,10 @@
   border-radius: var(--rounding-s);
 }
 
+.bulk-ops .run-bucket {
+  margin: 0 var(--spacing-m) var(--spacing-m);
+}
+
 .bulk-ops .run-result summary {
   cursor: pointer;
   font-weight: var(--weight-bold);

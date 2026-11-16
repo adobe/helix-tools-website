@@ -11,7 +11,7 @@ const realFetch = global.fetch;
  * Call this inside a describe() block in each client's test file.
  * Registers its own beforeEach/afterEach fetch spy at the call-site scope.
  */
-export default function runSharedBehaviorTests(admin) {
+export default function runSharedBehaviorTests(admin, versionParamKey) {
   let calls;
   let respond;
 
@@ -483,7 +483,56 @@ export default function runSharedBehaviorTests(admin) {
     });
   });
 
+  describe('admin.pinVersion(version) default parameters', () => {
+    it('preserves unrelated default parameters when pinning and repinning', async () => {
+      const a = admin.withRequestInit({ params: { keep: 'yes' } });
+      const pinned = a.pinVersion('1.2.3');
+      const repinned = pinned.pinVersion('2.0.0');
+      const coords = { org: 'adobe', site: 'x' };
+      await pinned.status(coords).get('/page');
+      await repinned.status(coords).get('/page');
+      assert.deepEqual(
+        calls.map(({ url }) => Object.fromEntries(new URL(url).searchParams)),
+        [
+          { keep: 'yes', [versionParamKey]: '1.2.3' },
+          { keep: 'yes', [versionParamKey]: '2.0.0' },
+        ],
+      );
+    });
+
+    it('unpins only the version parameter without changing the pinned parent', async () => {
+      const pinned = admin.withRequestInit({ params: { keep: 'yes' } }).pinVersion('1.2.3');
+      const unpinned = pinned.pinVersion(undefined);
+      const coords = { org: 'adobe', site: 'x' };
+      await unpinned.status(coords).get('/page');
+      await pinned.status(coords).get('/page');
+      assert.deepEqual(
+        calls.map(({ url }) => Object.fromEntries(new URL(url).searchParams)),
+        [
+          { keep: 'yes' },
+          { keep: 'yes', [versionParamKey]: '1.2.3' },
+        ],
+      );
+    });
+  });
+
   describe('admin.withRequestInit(extra)', () => {
+    it('uses explicit operation methods instead of a conflicting default', async () => {
+      const a = admin.withRequestInit({ method: 'PATCH' });
+      const coords = { org: 'adobe', site: 'x' };
+      const results = await Promise.all([
+        a.config(coords).read(),
+        a.config(coords).create('{}'),
+        a.preview(coords).update('/page'),
+        a.live(coords).remove('/page'),
+        a.raw('GET', '/example'),
+      ]);
+      assert.deepEqual(
+        calls.map((call, i) => [call.init.method, results[i].request.method]),
+        ['GET', 'PUT', 'POST', 'DELETE', 'GET'].map((method) => [method, method]),
+      );
+    });
+
     it('merges fetch-init defaults into every request', async () => {
       const a = admin.withRequestInit({ credentials: 'include', cache: 'no-cache' });
       await a.config({ org: 'adobe', site: 'x' }).select('robots.txt').read();
