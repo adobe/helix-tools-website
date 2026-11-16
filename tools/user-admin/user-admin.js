@@ -2,7 +2,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { loadIcon, icon, showToast } from '../../utils/card-ui/card-ui.js';
-import getAdminClient from '../../scripts/admin-compat.js';
+import { getAdminClientForSite } from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { parseUsersFromAccessConfig, buildAccessConfig } from '../../utils/users/users.js';
 import { createUserRow, collectUsers, userRowErrors } from '../../utils/users/user-row.js';
@@ -10,8 +10,6 @@ import { ROLE_DESCRIPTIONS } from '../../utils/roles/roles.js';
 import { createRolesField } from '../../utils/roles/roles-field.js';
 
 const VIEW_STORAGE_KEY = 'user-admin-view';
-
-let admin;
 
 const adminForm = document.getElementById('admin-form');
 const site = document.getElementById('site');
@@ -21,28 +19,30 @@ const usersContainer = document.getElementById('users-container');
 const accessConfig = { type: 'org', users: [], originalSiteAccess: {} };
 
 async function getOrgConfig() {
+  const coords = { org: org.value };
   const result = await executeAdminRequest(
     async () => {
-      const res = await admin.config({ org: org.value }).read();
+      const res = await (await getAdminClientForSite(coords)).config(coords).read();
       logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
       return res;
     },
-    { org: org.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
+    { ...coords, policy: AuthMode.PREFLIGHT_AND_RETRY },
   );
   if (!result) return null;
   return result.ok ? result.json() : null;
 }
 
 async function getSiteAccessConfig() {
+  const coords = { org: org.value, site: site.value };
   const result = await executeAdminRequest(
     async () => {
-      const res = await admin.config({ org: org.value, site: site.value })
+      const res = await (await getAdminClientForSite(coords)).config(coords)
         .select('access.json')
         .read();
       logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
       return res;
     },
-    { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
+    { ...coords, policy: AuthMode.PREFLIGHT_AND_RETRY },
   );
   if (!result) return null;
   if (result.status === 404) return { admin: { role: {} } };
@@ -52,29 +52,31 @@ async function getSiteAccessConfig() {
 async function updateSiteAccess() {
   const { originalSiteAccess, users } = accessConfig;
   const access = buildAccessConfig(originalSiteAccess, users);
+  const coords = { org: org.value, site: site.value };
   const result = await executeAdminRequest(
     async () => {
-      const res = await admin.config({ org: org.value, site: site.value })
+      const res = await (await getAdminClientForSite(coords)).config(coords)
         .select('access.json')
         .update(JSON.stringify(access));
       logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
       return res;
     },
-    { org: org.value, site: site.value },
+    coords,
   );
   return result?.ok ?? false;
 }
 
 async function updateOrgUserRoles(user) {
+  const coords = { org: org.value };
   const result = await executeAdminRequest(
     async () => {
-      const res = await admin.config({ org: org.value })
+      const res = await (await getAdminClientForSite(coords)).config(coords)
         .select(`users/${user.id}.json`)
         .update(JSON.stringify(user));
       logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
       return res;
     },
-    { org: org.value },
+    coords,
   );
   return result?.ok ?? false;
 }
@@ -85,15 +87,16 @@ async function deleteUserFromSite(user) {
 }
 
 async function deleteUserFromOrg(user) {
+  const coords = { org: org.value };
   const result = await executeAdminRequest(
     async () => {
-      const res = await admin.config({ org: org.value })
+      const res = await (await getAdminClientForSite(coords)).config(coords)
         .select(`users/${user.id}.json`)
         .remove();
       logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
       return res;
     },
-    { org: org.value },
+    coords,
   );
   return result?.ok ?? false;
 }
@@ -113,18 +116,19 @@ async function addUsersToSite(users) {
 
 async function addUsersToOrg(users) {
   let added = 0;
+  const coords = { org: org.value };
   try {
     await users.reduce(async (prevPromise, user) => {
       await prevPromise;
       const result = await executeAdminRequest(
         async () => {
-          const res = await admin.config({ org: org.value })
+          const res = await (await getAdminClientForSite(coords)).config(coords)
             .select('users.json')
             .update(JSON.stringify(user));
           logResponse(consoleBlock, res.status, [res.request.method, res.request.url, res.error]);
           return res;
         },
-        { org: org.value },
+        coords,
       );
       if (result?.ok) {
         added += 1;
@@ -677,7 +681,6 @@ adminForm.addEventListener('submit', async (e) => {
 });
 
 async function init() {
-  admin = await getAdminClient();
   // Load required icons
   const neededIcons = ['user', 'edit', 'grid', 'list', 'trash'];
   await Promise.all(neededIcons.map(loadIcon));
