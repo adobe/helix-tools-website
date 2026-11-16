@@ -18,6 +18,18 @@ npm i
 npm run lint
 ```
 
+## JavaScript contract checking
+
+```sh
+npm run typecheck
+```
+
+TypeScript checks selected shared JavaScript APIs through JSDoc to catch contract
+mistakes during development. This is not a TypeScript migration or build step:
+the site still runs `.js` directly, with no generated application code.
+See [TESTING.md](TESTING.md#incremental-javascript-type-checking) for the purpose,
+current coverage, and how to extend the checks.
+
 ## Site Admin sources
 
 The create-site and Edit Sources dialogs group settings under Code, Content, and Overlay.
