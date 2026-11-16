@@ -10,6 +10,7 @@ import h6Admin from '../../scripts/aem-admin.js';
 const {
   default: getAdminClient,
   getAdminClientForSite,
+  getAdminClientForOrg,
 } = await import('../../scripts/admin-compat.js');
 
 describe('getAdminClient()', () => {
@@ -334,5 +335,101 @@ describe('getAdminClientForSite()', () => {
       assert.equal(client.status().url, `https://api.aem.live/recover-${failure}/sites/s/status`);
       assert.equal(fetchMock.mock.callCount(), expectedAttempts + 1);
     });
+  });
+});
+
+// Org-scoped clients are always H6, so no backend detection request is made.
+describe('getAdminClientForOrg()', () => {
+  const originalFetch = global.fetch;
+
+  afterEach(() => {
+    window.localStorage.removeItem('use-h6-api');
+    global.fetch = originalFetch;
+  });
+
+  const stubFetch = () => {
+    const calls = [];
+    global.fetch = async (url, init) => {
+      calls.push({ url, init });
+      return new Response('{}');
+    };
+    return calls;
+  };
+
+  it('binds the H6 org config to an immutable snapshot without probing a backend', async () => {
+    const calls = stubFetch();
+    const coords = { org: 'org-only' };
+    const pending = getAdminClientForOrg(coords);
+    coords.org = 'changed';
+    const client = await pending;
+
+    assert.deepEqual(client.coords, { org: 'org-only' });
+    assert.equal(client.config().url, 'https://api.aem.live/org-only/config.json');
+    assert.equal(
+      client.config().select('users/abc.json').url,
+      'https://api.aem.live/org-only/config/users/abc.json',
+    );
+    assert.equal(Object.isFrozen(client), true);
+    assert.equal(Object.isFrozen(client.coords), true);
+    assert.throws(() => { client.coords.org = 'another'; }, TypeError);
+    assert.equal(calls.length, 0);
+  });
+
+  it('binds only the operations org-level tools use', async () => {
+    const client = await getAdminClientForOrg({ org: 'only-config' });
+    assert.deepEqual(
+      Object.keys(client).sort(),
+      ['config', 'coords', 'pinVersion', 'withRequestInit'],
+    );
+  });
+
+  it('rejects arguments to config() instead of silently ignoring a retarget', async () => {
+    const client = await getAdminClientForOrg({ org: 'no-retarget' });
+    assert.throws(
+      () => client.config({ org: 'another' }),
+      { name: 'TypeError', message: /does not accept arguments/ },
+    );
+  });
+
+  it('rejects invalid or site-bearing coordinates before any request', async () => {
+    const calls = stubFetch();
+    const invalid = [undefined, null, {}, { org: '' }, { org: ' ' }, { org: 7 }];
+    await Promise.all(invalid.map((coords) => assert.rejects(
+      getAdminClientForOrg(coords),
+      { name: 'TypeError', message: /non-empty/ },
+    )));
+    await assert.rejects(
+      getAdminClientForOrg({ org: 'o', site: 'docs' }),
+      { name: 'TypeError', message: /org-only/ },
+    );
+    assert.equal(calls.length, 0);
+  });
+
+  it('reuses one client per org, regardless of the use-h6-api override', async () => {
+    const a = await getAdminClientForOrg({ org: 'cached-org' });
+    assert.equal(await getAdminClientForOrg({ org: 'cached-org' }), a);
+    window.localStorage.setItem('use-h6-api', '');
+    assert.equal(await getAdminClientForOrg({ org: 'cached-org' }), a);
+    const other = await getAdminClientForOrg({ org: 'other-org' });
+    assert.notEqual(other, a);
+    assert.deepEqual(other.coords, { org: 'other-org' });
+  });
+
+  it('keeps derived clients bound while forwarding defaults and version pins', async () => {
+    const calls = stubFetch();
+    const base = await getAdminClientForOrg({ org: 'derived-org' });
+    const derived = base
+      .withRequestInit({ credentials: 'include', params: { tenant: 'shared' } })
+      .pinVersion('revision');
+
+    assert.deepEqual(derived.coords, { org: 'derived-org' });
+    assert.equal(derived.config().url, base.config().url);
+    await derived.config().read();
+    assert.equal(
+      calls[0].url,
+      'https://api.aem.live/derived-org/config.json?tenant=shared&aem-api-version=revision',
+    );
+    assert.equal(calls[0].init.credentials, 'include');
+    assert.equal(await getAdminClientForOrg({ org: 'derived-org' }), base);
   });
 });

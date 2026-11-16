@@ -9,6 +9,9 @@
  *
  * @typedef {Readonly<{org: string, site: string, ref: string|null}>} BoundCoordinates
  *
+ * @typedef {{org: string}} OrgCoordinates
+ * @typedef {Readonly<{org: string}>} OrgBoundCoordinates
+ *
  * @typedef {{org: string, site?: never, profile?: never}
  *   | {org: string, site: string, profile?: never}
  *   | {org: string, site?: never, profile: string}} ConfigCoordinates
@@ -119,6 +122,17 @@
  * @property {(version?: string) => BoundAdminClient} pinVersion
  *
  * @typedef {Readonly<BoundAdminClientProperties>} BoundAdminClient
+ *
+ * Org-scoped client: always the H6 backend, binding only what org-level tools use.
+ * Add a resource here only when a tool needs it.
+ *
+ * @typedef {object} OrgBoundAdminClientProperties
+ * @property {OrgBoundCoordinates} coords
+ * @property {() => AdminConfigResource} config
+ * @property {(extra: AdminRequestDefaults) => OrgBoundAdminClient} withRequestInit
+ * @property {(version?: string) => OrgBoundAdminClient} pinVersion
+ *
+ * @typedef {Readonly<OrgBoundAdminClientProperties>} OrgBoundAdminClient
  *
  * @typedef {() => Promise<UnboundAdminClient|null>} UnboundAdminClientFactory
  * @typedef {(coords: SiteCoordinates) => Promise<BoundAdminClient>} BoundAdminClientFactory

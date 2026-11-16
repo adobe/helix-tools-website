@@ -15,7 +15,8 @@ export const AuthMode = Object.freeze({
 });
 
 /**
- * @typedef {import('../scripts/admin-types.js').BoundAdminClient} BoundAdminClient
+ * @typedef {import('../scripts/admin-types.js').BoundAdminClient
+ *   | import('../scripts/admin-types.js').OrgBoundAdminClient} BoundAdminClient
  * @typedef {typeof AuthMode[keyof typeof AuthMode]} AuthPolicy
  * @typedef {{ policy?: AuthPolicy }} AuthOptions
  * @typedef {AuthOptions & { org: string, site?: string }} AuthConfig

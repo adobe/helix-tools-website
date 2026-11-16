@@ -22,6 +22,22 @@ async function loadAdminModule(useH6) {
 }
 
 /**
+ * @template T
+ * @template C
+ * @param {(coords: C) => T} resource
+ * @param {C} coords
+ * @returns {() => T}
+ */
+function bindResource(resource, coords) {
+  return (...args) => {
+    if (args.length) {
+      throw new TypeError(`Bound admin ${resource.name}() does not accept arguments`);
+    }
+    return resource(coords);
+  };
+}
+
+/**
  * @param {import('./admin-types.js').UnboundAdminClient} admin
  * @param {import('./admin-types.js').BoundCoordinates} coords
  * @returns {import('./admin-types.js').BoundAdminClient}
@@ -32,14 +48,7 @@ function bindAdminClient(admin, coords) {
    * @param {(coords: import('./admin-types.js').BoundCoordinates) => T} resource
    * @returns {() => T}
    */
-  function bind(resource) {
-    return (...args) => {
-      if (args.length) {
-        throw new TypeError(`Bound admin ${resource.name}() does not accept arguments`);
-      }
-      return resource(coords);
-    };
-  }
+  const bind = (resource) => bindResource(resource, coords);
 
   return Object.freeze({
     coords,
@@ -138,5 +147,51 @@ export async function getAdminClientForSite(coords) {
     throw error;
   });
   clientCache.set(key, pending);
+  return pending;
+}
+
+/** @type {Map<string, Promise<import('./admin-types.js').OrgBoundAdminClient>>} */
+const orgClientCache = new Map();
+
+/**
+ * @param {import('./admin-types.js').UnboundAdminClient} admin
+ * @param {import('./admin-types.js').OrgBoundCoordinates} coords
+ * @returns {import('./admin-types.js').OrgBoundAdminClient}
+ */
+function bindOrgClient(admin, coords) {
+  return Object.freeze({
+    coords,
+    config: bindResource(admin.config, coords),
+    withRequestInit: (extra) => bindOrgClient(admin.withRequestInit(extra), coords),
+    pinVersion: (version) => bindOrgClient(admin.pinVersion(version), coords),
+  });
+}
+
+/**
+ * Get a cached, immutable org-bound client. Org-level operations exist only on the
+ * Helix 6 backend, so there is no detection and the `use-h6-api` override is irrelevant.
+ * Only operations an org-level tool uses are bound; add others when a tool needs them.
+ *
+ * @param {import('./admin-types.js').OrgCoordinates} coords
+ * @returns {Promise<import('./admin-types.js').OrgBoundAdminClient>}
+ */
+export async function getAdminClientForOrg(coords) {
+  if (!coords || typeof coords.org !== 'string' || !coords.org.trim()) {
+    throw new TypeError('Admin client org must be a non-empty string');
+  }
+  if ('site' in coords) {
+    throw new TypeError('Admin client for org is org-only; use getAdminClientForSite for a site');
+  }
+  const scope = Object.freeze({ org: coords.org });
+  const cached = orgClientCache.get(scope.org);
+  if (cached) return cached;
+  const pending = loadAdminModule(true).then((admin) => {
+    if (!admin) throw new Error(`Failed to load admin client for ${scope.org}`);
+    return bindOrgClient(admin, scope);
+  }).catch((error) => {
+    orgClientCache.delete(scope.org);
+    throw error;
+  });
+  orgClientCache.set(scope.org, pending);
   return pending;
 }
