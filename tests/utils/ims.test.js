@@ -68,7 +68,7 @@ describe('utils/ims', () => {
     const { onReady, onError, ...config } = window.adobeid;
     assert.deepEqual(config, {
       client_id: 'darkalley',
-      scope: 'AdobeID,openid,additional_info.ownerOrg',
+      scope: 'AdobeID,openid,additional_info.ownerOrg,read_organizations',
       locale: 'en_US',
       environment: 'stg1',
       useLocalStorage: true,

@@ -5,7 +5,7 @@ const IMS_URL = 'https://auth.services.adobe.com/imslib/imslib.min.js';
 const IMS_ENV = 'stg1';
 const IMS_CLIENT_ID = 'darkalley';
 // the cache worker (helix-cache-debug src/auth.js) only accepts tokens within this scope
-const IMS_SCOPE = 'AdobeID,openid,additional_info.ownerOrg';
+const IMS_SCOPE = 'AdobeID,openid,additional_info.ownerOrg,read_organizations';
 const IMS_TIMEOUT = 5000;
 
 let ims;
