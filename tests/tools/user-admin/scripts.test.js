@@ -137,6 +137,44 @@ describe('user-admin:user-admin.js', () => {
     ]);
   });
 
+  it('adds several org users with one create request each, none carrying an id', async () => {
+    api.respond('getConfigOrg', { status: 200, body: ORG_USERS });
+    api.respond('updateConfigOrgSub', { status: 200, body: {} });
+    await load();
+
+    document.querySelector('.add-user-btn').click();
+    document.querySelector('dialog .user-row-email').value = 'one@example.com';
+    pick('author');
+    document.querySelector('dialog .add-another-btn').click();
+    document.querySelectorAll('dialog .user-row-email')[1].value = 'two@example.com';
+    await saveModal();
+    await waitFor(() => writes().length === 2);
+
+    assert.deepEqual(writes(), [
+      ['POST', '/myorg/config/users.json', { email: 'one@example.com', roles: ['author'] }],
+      ['POST', '/myorg/config/users.json', { email: 'two@example.com', roles: ['author'] }],
+    ]);
+  });
+
+  it('stops adding org users at the first rejected create and reports how many were added', async () => {
+    api.respond('getConfigOrg', { status: 200, body: ORG_USERS });
+    api.respond('updateConfigOrgSub', [{ status: 200, body: {} }, { status: 400 }]);
+    await load();
+
+    document.querySelector('.add-user-btn').click();
+    document.querySelector('dialog .user-row-email').value = 'one@example.com';
+    pick('author');
+    document.querySelector('dialog .add-another-btn').click();
+    document.querySelectorAll('dialog .user-row-email')[1].value = 'two@example.com';
+    document.querySelector('dialog .add-another-btn').click();
+    document.querySelectorAll('dialog .user-row-email')[2].value = 'three@example.com';
+    await saveModal();
+    await waitFor(() => document.querySelector('dialog .modal-error'));
+
+    assert.equal(writes().length, 2);
+    assert.match(document.querySelector('dialog .modal-error').textContent, /1 user\(s\) added, 2 failed/);
+  });
+
   it('updates and deletes an org user by id', async () => {
     api.respond('getConfigOrg', { status: 200, body: ORG_USERS });
     api.respond('updateConfigOrgSub', { status: 200, body: {} });

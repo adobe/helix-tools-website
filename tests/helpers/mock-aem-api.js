@@ -1,9 +1,101 @@
 /* eslint-env node */
 import { readFileSync } from 'node:fs';
+import Ajv2019 from 'ajv/dist/2019.js';
 
 const SPEC = JSON.parse(readFileSync(new URL('../fixtures/aem-admin-api-spec.json', import.meta.url), 'utf8'));
 const BASE = new URL(SPEC.servers[0].url).origin;
 const METHODS = ['get', 'post', 'put', 'delete', 'patch', 'head'];
+
+// The spec's schemas carry their own $id/$schema, which would re-base the
+// `#/components/schemas/...` refs between them; drop those so refs resolve against our root.
+function withoutIds(node) {
+  if (Array.isArray(node)) return node.map(withoutIds);
+  if (node === null || typeof node !== 'object') return node;
+  return Object.fromEntries(Object.entries(node)
+    .filter(([key]) => !['$id', '$schema', '$comment'].includes(key))
+    .map(([key, value]) => [key, withoutIds(value)]));
+}
+
+const SCHEMAS = withoutIds(SPEC.components.schemas);
+// Formats are not checked; the spec's structure (types, required keys, enums, patterns) is.
+const ajv = new Ajv2019({ strict: false, validateFormats: false, allErrors: true });
+const validators = new Map();
+
+// Config routes whose `{path}` addresses a property of the named parent config schema.
+const CONFIG_SUB_ROUTES = {
+  '/{org}/config/{path}': 'org',
+  '/{org}/sites/{site}/config/{path}': 'site',
+  '/{org}/profiles/{profile}/config/{path}': 'profile',
+  '/{org}/aggregated/{site}/config/{path}': 'site',
+};
+const WRITE_METHODS = ['POST', 'PUT', 'PATCH'];
+
+function deref(node) {
+  let current = node;
+  while (current?.$ref) current = SCHEMAS[current.$ref.split('/').pop()];
+  return current;
+}
+
+function childSchema(node, key) {
+  const parent = deref(node);
+  if (parent?.properties?.[key]) return parent.properties[key];
+  return Object.entries(parent?.patternProperties || {})
+    .find(([pattern]) => new RegExp(pattern).test(key))?.[1];
+}
+
+function validatorFor(parent, segments, node) {
+  const key = `${parent}:${segments.join('/')}`;
+  if (!validators.has(key)) {
+    validators.set(key, ajv.compile({ ...node, components: { schemas: SCHEMAS } }));
+  }
+  return validators.get(key);
+}
+
+// SPEC GAP: the spec only describes the stored `users` array, where `id` is required.
+// H6 accepts a single new user without an id and assigns it server-side.
+function newUserValidator() {
+  if (!validators.has('new-user')) {
+    const { required, ...user } = SCHEMAS.user;
+    validators.set('new-user', ajv.compile({
+      ...user,
+      required: required.filter((key) => key !== 'id'),
+      components: { schemas: SCHEMAS },
+    }));
+  }
+  return validators.get('new-user');
+}
+
+// The suffix (`.json`, `.txt`) is stripped as the H5 client does; the spec does not say
+// whether H6 accepts it.
+function configSegments(path) {
+  return path.split('/').filter(Boolean)
+    .map((segment) => decodeURIComponent(segment))
+    .map((segment, i, all) => (i === all.length - 1 ? segment.replace(/\.[^./]+$/, '') : segment));
+}
+
+function checkConfigPath(template, path, method, body) {
+  const parent = CONFIG_SUB_ROUTES[template];
+  if (!parent) return null;
+  const segments = configSegments(path);
+  const label = segments.join('/');
+  if (!childSchema(SCHEMAS[parent], segments[0])) {
+    return { status: 404, reason: `config path "${segments[0]}" is not a property of the ${parent} config` };
+  }
+  // SPEC GAP: H6 addresses a single org user as `users/{id}`; the spec has no such path.
+  const isUserById = parent === 'org' && segments[0] === 'users' && segments.length === 2;
+  const node = isUserById ? SCHEMAS.user : segments.reduce(
+    (current, segment) => current && childSchema(current, segment),
+    SCHEMAS[parent],
+  );
+  if (!node) {
+    return { status: 404, reason: `config path "${label}" cannot be resolved in the ${parent} config` };
+  }
+  if (!WRITE_METHODS.includes(method) || body === undefined) return null;
+  const isNewUser = parent === 'org' && label === 'users' && !Array.isArray(body);
+  const validate = isNewUser ? newUserValidator() : validatorFor(parent, segments, node);
+  if (validate(body)) return null;
+  return { status: 400, reason: `body does not match ${label}: ${ajv.errorsText(validate.errors)}` };
+}
 
 // `{path}` spans segments (e.g. /live/a/b.html); every other param is one segment.
 function compile(template) {
@@ -57,7 +149,12 @@ function readBody(init) {
  * - Unmatched path -> 404, wrong method -> 405; both are recorded in `violations`.
  * - Every response is declared per test with `respond()`. A routed operation with no declared
  *   response returns 501 and is recorded in `violations`; nothing is generated from the spec.
- * - Request and response bodies are NOT schema-validated.
+ * - Config sub-routes (`.../config/{path}`): the first `{path}` segment must be a property of the
+ *   org/site/profile config schema, nested segments must resolve through it, and write bodies are
+ *   validated against that property's schema. Failures are recorded in `violations` (404/400).
+ *   SPEC GAP rules (behavior the spec does not describe): a single user POSTed to org `users` is
+ *   validated without `id` (assigned server-side), and `users/{id}` addresses one org user.
+ * - Other request and response bodies are NOT schema-validated.
  *
  * @example
  * const api = createMockAemApi();
@@ -105,6 +202,17 @@ export default function createMockAemApi() {
     call.pathParams = Object.fromEntries(
       found.route.names.map((name, i) => [name, found.match[i + 1]]),
     );
+
+    const configProblem = checkConfigPath(
+      found.route.template,
+      call.pathParams.path,
+      call.method,
+      call.body,
+    );
+    if (configProblem) {
+      state.violations.push({ ...call, reason: configProblem.reason });
+      return toResponse({ status: configProblem.status, headers: { 'x-error': `mock: ${configProblem.reason}` } });
+    }
 
     const declared = responses.get(operation.operationId);
     if (declared === undefined) {
