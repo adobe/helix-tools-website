@@ -14,6 +14,7 @@
     "scripts/admin-compat.js",
     "utils/admin-request.js",
     "tools/user-admin/api.js",
+    "tools/headers-edit/api.js",
     "tests/scripts/admin-types.typecheck.js"
   ]
 }
