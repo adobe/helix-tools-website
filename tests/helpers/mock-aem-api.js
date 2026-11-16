@@ -139,6 +139,7 @@ export default function createMockAemApi() {
       global.fetch = async (input, init) => {
         const href = typeof input === 'string' ? input : input.url;
         if (new URL(href).origin !== BASE) {
+          state.violations.push({ url: href, reason: 'non-H6 origin' });
           throw new Error(`mock-aem-api: unexpected request to ${href}`);
         }
         return handle(input, init);
