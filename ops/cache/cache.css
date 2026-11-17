@@ -2,10 +2,14 @@
   margin: 6px 0;
 }
 
-.cache .ims-login {
-  display: flex;
-  align-items: center;
-  gap: 14px;
+.cache {
+  --header-height: 154px;
+}
+
+@media (width >= 900px) {
+  .cache {
+    --header-height: 74px;
+  }
 }
 
 .cache div.form {

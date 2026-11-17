@@ -2,7 +2,7 @@ import { sampleRUM } from '../../scripts/aem.js';
 import { registerToolReady } from '../../scripts/scripts.js';
 import { createModal } from '../../blocks/modal/modal.js';
 import escapeHtml from '../../utils/html.js';
-import { createImsLogin, getImsToken, isSignedIn } from '../../utils/ims.js';
+import { getImsToken, isSignedIn } from '../../utils/ims.js';
 import { authHeaders, getAuthError } from './cache-auth.js';
 
 const API = 'https://helix-cache-debug.adobeaem.workers.dev';
@@ -587,8 +587,6 @@ const renderDetails = (data) => {
 };
 
 async function init() {
-  document.querySelector('main h1').after(createImsLogin());
-
   const params = new URLSearchParams(window.location.search);
   if (params.has('url')) {
     input.value = params.get('url');
@@ -645,6 +643,8 @@ async function init() {
       button.disabled = false;
     }
   });
+  // Initialize IMS before the lazy-loaded header so redirect tokens are removed promptly.
+  await isSignedIn();
   sampleRUM.enhance();
 }
 

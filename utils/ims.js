@@ -74,6 +74,7 @@ export function signOut() {
 
 function createButton(text, onClick) {
   const button = document.createElement('button');
+  button.type = 'button';
   button.className = 'button';
   button.textContent = text;
   button.addEventListener('click', onClick);
@@ -96,17 +97,34 @@ async function getProfileName() {
 export function createImsLogin() {
   const container = document.createElement('div');
   container.className = 'ims-login';
+  container.setAttribute('role', 'group');
+  container.setAttribute('aria-label', 'Adobe sign-in');
   container.textContent = 'Checking Adobe sign-in…';
 
   loadIms().then(async () => {
     if (!getImsToken()) {
-      container.replaceChildren(createButton('Sign in with Adobe', signIn));
+      const button = createButton('Sign in with Adobe', signIn);
+      button.classList.add('ims-sign-in');
+      container.replaceChildren(button);
       return;
     }
     const name = await getProfileName();
     const status = document.createElement('span');
-    status.textContent = name ? `Signed in as ${name}` : 'Signed in with Adobe';
-    container.replaceChildren(status, createButton('Sign out', signOut));
+    status.className = 'ims-account';
+    const label = document.createElement('span');
+    label.className = 'ims-label';
+    label.textContent = name ? 'Signed in as ' : 'Signed in with Adobe';
+    status.append(label);
+    if (name) {
+      const identity = document.createElement('span');
+      identity.className = 'ims-identity';
+      identity.textContent = name;
+      identity.title = name;
+      status.append(identity);
+    }
+    const button = createButton('Sign out', signOut);
+    button.classList.add('outline');
+    container.replaceChildren(status, button);
   }).catch(() => {
     container.textContent = 'Adobe sign-in is unavailable. Reload the page to try again.';
   });

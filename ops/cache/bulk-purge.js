@@ -2,7 +2,7 @@ import { sampleRUM } from '../../scripts/aem.js';
 import { registerToolReady } from '../../scripts/scripts.js';
 import { createModal } from '../../blocks/modal/modal.js';
 import escapeHtml from '../../utils/html.js';
-import { createImsLogin, getImsToken, isSignedIn } from '../../utils/ims.js';
+import { getImsToken, isSignedIn } from '../../utils/ims.js';
 import { authHeaders, getAuthError } from './cache-auth.js';
 import {
   parseHostList,
@@ -613,7 +613,6 @@ const onStopClick = () => {
 };
 
 async function init() {
-  document.querySelector('main h1').after(createImsLogin());
   renderPresets();
   updatePanelVisibility();
 
@@ -641,6 +640,8 @@ async function init() {
   downloadButton.addEventListener('click', onDownloadClick);
 
   updatePurgeButtonState();
+  // Initialize IMS before the lazy-loaded header so redirect tokens are removed promptly.
+  await isSignedIn();
   sampleRUM.enhance();
 }
 
