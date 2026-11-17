@@ -166,7 +166,7 @@ remains unbound and keeps its override behavior during migration.
 Admin API integration tests exercise real H5/H6 adapters with network interception.
 These runtime tests complement the static contracts by checking backend detection,
 request routing, and per-target execution. Keep tool-specific behavior and coverage
-in the corresponding tests, and migration progress in the migration checklist.
+in the corresponding tests.
 
 ### Runtime tests
 
