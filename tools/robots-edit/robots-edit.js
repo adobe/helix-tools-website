@@ -1,7 +1,7 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { getAdminClientForSite } from '../../scripts/admin-compat.js';
 import { initConfigField } from '../../utils/config/config.js';
-import { logResponse } from '../../blocks/console/console.js';
+import { logMessage, logResponse } from '../../blocks/console/console.js';
 import { readRobots, writeRobots } from './api.js';
 
 const adminForm = document.getElementById('admin-form');
@@ -25,7 +25,7 @@ async function loadClient() {
   try {
     return await getAdminClientForSite({ org: org.value, site: site.value });
   } catch (error) {
-    logResponse(consoleBlock, 500, ['GET', `${org.value}/${site.value}`, error.message]);
+    logMessage(consoleBlock, 'error', ['Backend detection', `${org.value}/${site.value}`, error.message]);
     return null;
   }
 }

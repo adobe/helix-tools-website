@@ -141,8 +141,8 @@ describe('robots-edit:robots-edit.js', () => {
 
     await submit('admin-form', 1);
 
-    const [[status, method, target, error]] = rows();
-    assert.deepEqual([status, method, target], ['500', 'GET', 'myorg/unknownsite']);
+    const [[level, source, target, error]] = rows();
+    assert.deepEqual([level, source, target], ['ERROR', 'Backend detection', 'myorg/unknownsite']);
     assert.match(error, /Admin backend detection failed .* HTTP 404/);
     assert.deepEqual(api.calls, []);
     assert.deepEqual(loginCalls, []);
