@@ -13,6 +13,7 @@
     "scripts/admin-types.js",
     "scripts/admin-compat.js",
     "utils/admin-request.js",
+    "tools/log-viewer/api.js",
     "tests/scripts/admin-types.typecheck.js"
   ]
 }
