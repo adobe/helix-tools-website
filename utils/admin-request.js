@@ -70,6 +70,8 @@ function waitForLogin(org) {
  * `updateConfig()` only fires on 2xx — a 4xx/5xx may not actually validate
  * the org/site combo (e.g. 404 could mean the org doesn't exist). It's a
  * no-op on pages without the org/site fields, so callers needn't opt in.
+ * Bound clients persist only while the form still matches their target;
+ * legacy callers retain persistence of the current form values.
  *
  * Normalize both signatures here so they share the same auth policy flow.
  *
@@ -99,6 +101,6 @@ export async function executeAdminRequest(requestFn, authConfig, options = {}) {
     result = await requestFn();
   }
 
-  if (result?.ok) updateConfig();
+  if (result?.ok) updateConfig('coords' in authConfig ? authConfig.coords : undefined);
   return result;
 }

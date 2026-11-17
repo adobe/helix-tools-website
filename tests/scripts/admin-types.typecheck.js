@@ -1,6 +1,7 @@
 // @ts-check
 import getAdminClient, { getAdminClientForSite, getAdminClientForOrg } from '../../scripts/admin-compat.js';
 import { AuthMode, executeAdminRequest } from '../../utils/admin-request.js';
+import { updateConfig } from '../../utils/config/config.js';
 
 /**
  * Compile-only contract checks; these functions are never executed.
@@ -106,10 +107,17 @@ export async function checkAdminRequestContracts(client) {
 
 export async function checkFactoryContracts() {
   const bound = await getAdminClientForSite({ org: 'adobe', site: 'docs' });
+  updateConfig();
+  updateConfig(bound.coords);
   checkBoundClient(bound);
   await checkAdminRequestContracts(bound);
   const org = await getAdminClientForOrg({ org: 'adobe' });
+  updateConfig(org.coords);
   checkOrgBoundClient(org);
+  // @ts-expect-error A persistence target must include its org.
+  updateConfig({ site: 'docs' });
+  // @ts-expect-error A persistence target's site must be a string.
+  updateConfig({ org: 'adobe', site: 123 });
   await executeAdminRequest(async () => ({ status: 200 }), org, {
     policy: AuthMode.PREFLIGHT_AND_RETRY,
   });
