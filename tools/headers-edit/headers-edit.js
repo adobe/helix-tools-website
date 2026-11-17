@@ -1,7 +1,7 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { getAdminClientForSite } from '../../scripts/admin-compat.js';
 import { initConfigField } from '../../utils/config/config.js';
-import { logResponse } from '../../blocks/console/console.js';
+import { logMessage, logResponse } from '../../blocks/console/console.js';
 import { readHeaders, writeHeaders, removeHeaders } from './api.js';
 
 const adminForm = document.getElementById('admin-form');
@@ -158,6 +158,26 @@ function removePath() {
 }
 
 /**
+ * Shows or hides the path selector and button bar of the editor.
+ * @param {boolean} shown
+ */
+function showEditor(shown) {
+  const hidden = String(!shown);
+  document.querySelector('.path-selector').setAttribute('aria-hidden', hidden);
+  document.querySelector('.button-bar').setAttribute('aria-hidden', hidden);
+}
+
+/**
+ * Unpins the client and hides the editor after a failed Fetch, so the previous site's
+ * headers are never shown (or saved) while the form names another org/site.
+ */
+function resetEditor() {
+  client = null;
+  headersList.innerHTML = '';
+  showEditor(false);
+}
+
+/**
  * Detects H5 or H6 for the selected site and logs a detection failure to the console.
  * @returns {Promise<import('../../scripts/admin-types.js').BoundAdminClient|null>}
  */
@@ -165,7 +185,7 @@ async function loadClient() {
   try {
     return await getAdminClientForSite({ org: org.value, site: site.value });
   } catch (error) {
-    logResponse(consoleBlock, 500, ['GET', `${org.value}/${site.value}`, error.message]);
+    logMessage(consoleBlock, 'error', ['Backend detection', `${org.value}/${site.value}`, error.message]);
     return null;
   }
 }
@@ -214,9 +234,11 @@ async function init() {
     }
 
     const loaded = await loadClient();
-    if (!loaded) return;
-    const headers = await readHeaders(loaded, log);
-    if (!headers) return;
+    const headers = loaded ? await readHeaders(loaded, log) : null;
+    if (!headers) {
+      resetEditor();
+      return;
+    }
     // Pin only with the headers it loaded, so a Save never writes them to another site.
     client = loaded;
     headersList.innerHTML = '';
@@ -225,8 +247,7 @@ async function init() {
     currentPath = null;
     populatePathSelect();
     loadHeadersForPath('/**');
-    document.querySelector('.path-selector').setAttribute('aria-hidden', 'false');
-    document.querySelector('.button-bar').setAttribute('aria-hidden', 'false');
+    showEditor(true);
   });
 }
 

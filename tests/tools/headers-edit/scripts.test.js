@@ -144,14 +144,40 @@ describe('headers-edit:headers-edit.js', () => {
     assert.deepEqual(rows()[0], ['204', 'DELETE', HEADERS_URL, '']);
   });
 
+  it('hides the editor and stops saving when a later fetch fails', async () => {
+    api.respond('getConfigSiteSub', { body: { '/**': [{ key: 'x-a', value: '1' }] } });
+    await fetchHeaders();
+    assert.ok(editorShown());
+
+    document.getElementById('site').value = 'forbidden';
+    api.respond('getConfigSiteSub', { status: 403 });
+    submit('admin-form');
+    await waitFor(() => rows().length === 2);
+
+    const [[status, method, url]] = rows();
+    assert.deepEqual(
+      [status, method, url],
+      ['403', 'GET', 'https://api.aem.live/myorg/sites/forbidden/config/headers.json'],
+    );
+    assert.equal(document.querySelector('.path-selector').getAttribute('aria-hidden'), 'true');
+    assert.equal(document.querySelector('.button-bar').getAttribute('aria-hidden'), 'true');
+    assert.equal(document.querySelectorAll('#headers-list .header-item').length, 0);
+
+    const callCount = api.calls.length;
+    submit('headers-form');
+    await new Promise((resolve) => { setTimeout(resolve, 20); });
+    assert.equal(api.calls.length, callCount);
+    assert.equal(rows().length, 2);
+  });
+
   it('logs a backend detection failure instead of calling the API', async () => {
     document.getElementById('site').value = 'detect-fails';
     probeStatus = 404;
 
     await fetchHeaders();
 
-    const [[status, method, target, error]] = rows();
-    assert.deepEqual([status, method, target], ['500', 'GET', 'myorg/detect-fails']);
+    const [[level, source, target, error]] = rows();
+    assert.deepEqual([level, source, target], ['ERROR', 'Backend detection', 'myorg/detect-fails']);
     assert.match(error, /Admin backend detection failed .* HTTP 404/);
     assert.deepEqual(api.calls, []);
     assert.deepEqual(loginCalls, []);
