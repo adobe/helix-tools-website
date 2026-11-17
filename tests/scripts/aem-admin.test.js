@@ -309,17 +309,65 @@ describe('aem-admin.js — H6 URL contract', () => {
   });
 
   describe('admin.sidekick(coords) URLs', () => {
-    it('.url is /{org}/sites/{site}/sidekick', () => {
+    it('.url is the effective-config base', () => {
       assert.equal(
         admin.sidekick({ org: 'adobe', site: 'x' }).url,
-        'https://api.aem.live/adobe/sites/x/sidekick',
+        'https://api.aem.live/adobe/aggregated/x',
       );
     });
 
     it('.get("config.json") GETs the sidekick config', async () => {
       await admin.sidekick({ org: 'adobe', site: 'x' }).get('config.json');
-      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/sidekick/config.json');
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/aggregated/x/config.json');
       assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('normalizes effective Sidekick config and retains request defaults and version pins', async () => {
+      respond = () => Response.json({
+        content: { source: { type: 'markup', url: 'https://editor.example.com' } },
+        sidekick: {
+          editUrlPattern: '{{contentSourceUrl}}{{pathname}}?org={{org}}',
+          reviewHost: 'reviews.example.com',
+        },
+      });
+      const client = admin.withRequestInit({ credentials: 'include', params: { trace: 'yes' } })
+        .pinVersion('test-version');
+      const result = await client.sidekick({ org: 'adobe', site: 'x' })
+        .get('/config.json', { params: { trace: 'override' } });
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/aggregated/x/config.json?trace=override&aem-api-version=test-version');
+      assert.equal(calls[0].init.method, 'GET');
+      assert.equal(calls[0].init.credentials, 'include');
+      assert.equal(result.ok, true);
+      assert.equal(result.status, 200);
+      assert.deepEqual(await result.json(), {
+        editUrlPattern: '{{contentSourceUrl}}{{pathname}}?org={{org}}',
+        editUrl: 'https://editor.example.com{{pathname}}?org={{org}}',
+        reviewHost: 'reviews.example.com',
+      });
+    });
+
+    it('exposes normalized Sidekick config through text as well as JSON', async () => {
+      respond = () => Response.json({
+        content: { source: { type: 'markup', url: 'https://editor.example.com' } },
+        sidekick: { editUrlPattern: '{{contentSourceUrl}}{{pathname}}' },
+      });
+      const resource = admin.sidekick({ org: 'adobe', site: 'x' });
+      const jsonResponse = await resource.get('config.json');
+      const textResponse = await resource.get('config.json');
+      assert.deepEqual(JSON.parse(await textResponse.text()), await jsonResponse.json());
+      await assert.rejects(() => textResponse.json(), TypeError);
+    });
+
+    it('preserves Sidekick HTTP failures without trying to normalize the body', async () => {
+      respond = () => new Response('Access denied', {
+        status: 403,
+        headers: { 'x-error': 'Missing config:read' },
+      });
+      const response = await admin.sidekick({ org: 'adobe', site: 'x' }).get('config.json');
+      assert.equal(response.ok, false);
+      assert.equal(response.status, 403);
+      assert.equal(response.error, 'Missing config:read');
+      assert.equal(await response.text(), 'Access denied');
     });
 
     it('does not expose .update or .remove', () => {

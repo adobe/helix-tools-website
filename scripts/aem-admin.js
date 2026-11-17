@@ -187,7 +187,35 @@ function createAdmin(defaults = {}) {
   function job(coords) { return bindOperation(opBase('jobs', coords), ['get', 'remove']); }
   function psi(coords) { return bindOperation(opBase('psi', coords), ['get']); }
   function snapshot(coords) { return bindOperation(opBase('snapshot', coords), ['get', 'update', 'remove']); }
-  function sidekick(coords) { return bindOperation(opBase('sidekick', coords), ['get']); }
+  function sidekick({ org, site }) {
+    // Effective config preserves profile inheritance without introducing a second config API.
+    const resource = bindOperation(`${ADMIN_BASE}/${org}/aggregated/${site}`, ['get']);
+    return {
+      url: resource.url,
+      async get(path, opts) {
+        const response = await resource.get(path, opts);
+        if (!response.ok || String(path).replace(/^\//, '') !== 'config.json') return response;
+        const json = async () => {
+          const effectiveConfig = await response.json();
+          if (!effectiveConfig || typeof effectiveConfig !== 'object' || Array.isArray(effectiveConfig)
+            || (effectiveConfig.sidekick !== undefined && (!effectiveConfig.sidekick
+              || typeof effectiveConfig.sidekick !== 'object'
+              || Array.isArray(effectiveConfig.sidekick)))) {
+            throw new Error('aem-admin: invalid effective Sidekick config');
+          }
+          const sidekickConfig = { ...effectiveConfig.sidekick };
+          if (typeof sidekickConfig.editUrlPattern === 'string') {
+            const sourceUrl = effectiveConfig.content?.source?.url;
+            sidekickConfig.editUrl = typeof sourceUrl === 'string'
+              ? sidekickConfig.editUrlPattern.replaceAll('{{contentSourceUrl}}', () => sourceUrl)
+              : sidekickConfig.editUrlPattern;
+          }
+          return sidekickConfig;
+        };
+        return { ...response, json, text: async () => JSON.stringify(await json()) };
+      },
+    };
+  }
   function medialog(coords) { return bindOperation(opBase('medialog', coords), ['get']); }
 
   /**

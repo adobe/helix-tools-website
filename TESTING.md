@@ -108,21 +108,16 @@ references in JSDoc `import(...)`; do not add runtime imports for typedefs.
 `tsconfig.json` keeps `strict: true`, `checkJs: false`, and explicit entry points.
 Individual files opt in with `// @ts-check`, so importing an existing library does
 not automatically enable diagnostics throughout its unchecked implementation.
-The current scope is:
+Use `tsconfig.json` and the files' `// @ts-check` directives as the source of truth
+for checking scope; do not maintain a duplicate per-module inventory here.
 
-- `scripts/admin-types.js`: shared client, resource, coordinate, and response contracts.
-- `scripts/admin-compat.js`: client detection, caching, and the bound wrapper.
-- `utils/admin-request.js`: auth orchestration and both request-helper overloads.
-- `tests/scripts/admin-types.typecheck.js`: compile-only contract checks.
-
-The compile-only fixture is checked, **not executed**. Valid examples must type-check;
+Compile-only contract fixtures are checked, **not executed**. Valid examples must type-check;
 invalid examples use explanatory `@ts-expect-error` directives. If an API change
 accidentally permits an invalid call, its now-unused directive makes the check fail.
 Examples cover coordinate mutation, bound-client retargeting, unsupported resource
 methods, auth options, and inferred response types.
 
-The H5/H6 adapter implementations and tool consumers are not yet opted in.
-A passing check does not certify those unchecked callers, validate server JSON,
+A passing check does not certify unchecked callers, validate server JSON,
 or prove request routing and auth behavior. Parsed JSON is `unknown` in the shared
 response contract and must be narrowed or validated before use in checked code.
 Type checking complements runtime tests; it does not replace input validation,
@@ -168,9 +163,10 @@ Client creation is cached per org/site/ref and temporary H6 override state.
 Concurrent callers share creation; failures are evicted. `getAdminClient()`
 remains unbound and keeps its override behavior during migration.
 
-The factory and Bulk integration suites exercise real H5/H6 adapters with
-network interception. These runtime tests complement the static contracts by
-checking backend detection, request routing, and per-target execution.
+Admin API integration tests exercise real H5/H6 adapters with network interception.
+These runtime tests complement the static contracts by checking backend detection,
+request routing, and per-target execution. Keep tool-specific behavior and coverage
+in the corresponding tests, and migration progress in the migration checklist.
 
 ### Runtime tests
 
