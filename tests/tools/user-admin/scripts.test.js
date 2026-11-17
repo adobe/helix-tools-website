@@ -293,20 +293,41 @@ describe('user-admin:user-admin.js', () => {
     ]);
   });
 
-  it('shows a load error and makes no admin calls when the org client cannot be created', async () => {
+  it('logs org factory failures without making admin calls', async (t) => {
+    const errorLog = t.mock.method(console, 'error', () => {});
     document.getElementById('org').value = '';
     await load();
 
     assert.equal(document.querySelector('.error').textContent, 'Failed to load users');
     assert.deepEqual(api.calls, []);
+    // Node warnings also use console.error; inspect diagnostics carrying an actual error.
+    const errors = errorLog.mock.calls
+      .map(({ arguments: args }) => args)
+      .filter(([, error]) => error instanceof Error);
+    assert.deepEqual(errors, [
+      [
+        'Failed to create org admin client:',
+        new TypeError('Admin client org must be a non-empty string'),
+      ],
+    ]);
   });
 
-  it('shows a load error and makes no admin calls when backend detection fails', async () => {
+  it('logs backend detection failures without making admin calls', async (t) => {
+    const errorLog = t.mock.method(console, 'error', () => {});
     document.getElementById('site').value = 'detect-fails';
     probeStatus = 404;
     await load();
 
     assert.equal(document.querySelector('.error').textContent, 'Failed to load users');
     assert.deepEqual(api.calls, []);
+    const errors = errorLog.mock.calls
+      .map(({ arguments: args }) => args)
+      .filter(([, error]) => error instanceof Error);
+    assert.deepEqual(errors, [
+      [
+        'Failed to create site admin client:',
+        new Error('Admin backend detection failed for myorg/detect-fails/main: HTTP 404'),
+      ],
+    ]);
   });
 });

@@ -595,7 +595,9 @@ adminForm.addEventListener('submit', async (e) => {
     let client;
     try {
       client = await getAdminClientForSite({ org: org.value, site: site.value });
-    } catch {
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to create site admin client:', error);
       usersContainer.innerHTML = '<p class="error">Failed to load users</p>';
       return;
     }
@@ -614,7 +616,9 @@ adminForm.addEventListener('submit', async (e) => {
     let client;
     try {
       client = await getAdminClientForOrg({ org: org.value });
-    } catch {
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to create org admin client:', error);
       usersContainer.innerHTML = '<p class="error">Failed to load users</p>';
       return;
     }
