@@ -1,6 +1,7 @@
 // @ts-check
-import getAdminClient, { getAdminClientForSite } from '../../scripts/admin-compat.js';
+import getAdminClient, { getAdminClientForSite, getAdminClientForOrg } from '../../scripts/admin-compat.js';
 import { AuthMode, executeAdminRequest } from '../../utils/admin-request.js';
+import { updateConfig } from '../../utils/config/config.js';
 
 /**
  * Compile-only contract checks; these functions are never executed.
@@ -52,6 +53,25 @@ export function checkBoundClient(client) {
 }
 
 /**
+ * @param {import('../../scripts/admin-types.js').OrgBoundAdminClient} client
+ */
+export function checkOrgBoundClient(client) {
+  client.config().select('users.json').update('{}');
+  client.withRequestInit({ credentials: 'include' }).pinVersion('v1').config().read();
+
+  // @ts-expect-error Org clients expose only the operations org-level tools use.
+  client.status();
+  // @ts-expect-error Org coordinates have no site.
+  client.coords.site.toString();
+  // @ts-expect-error Org coordinates are read-only.
+  client.coords.org = 'another';
+  // @ts-expect-error Bound config cannot be retargeted.
+  client.config({ org: 'another' });
+  // @ts-expect-error Derived org clients stay org-scoped.
+  client.pinVersion('v1').status();
+}
+
+/**
  * @param {import('../../scripts/admin-types.js').BoundAdminClient} client
  */
 export async function checkAdminRequestContracts(client) {
@@ -87,8 +107,22 @@ export async function checkAdminRequestContracts(client) {
 
 export async function checkFactoryContracts() {
   const bound = await getAdminClientForSite({ org: 'adobe', site: 'docs' });
+  updateConfig();
+  updateConfig(bound.coords);
   checkBoundClient(bound);
   await checkAdminRequestContracts(bound);
+  const org = await getAdminClientForOrg({ org: 'adobe' });
+  updateConfig(org.coords);
+  checkOrgBoundClient(org);
+  // @ts-expect-error A persistence target must include its org.
+  updateConfig({ site: 'docs' });
+  // @ts-expect-error A persistence target's site must be a string.
+  updateConfig({ org: 'adobe', site: 123 });
+  await executeAdminRequest(async () => ({ status: 200 }), org, {
+    policy: AuthMode.PREFLIGHT_AND_RETRY,
+  });
+  // @ts-expect-error Org clients are org-only; a site needs getAdminClientForSite.
+  getAdminClientForOrg({ org: 'adobe', site: 'docs' });
   const unbound = await getAdminClient();
   if (unbound) checkUnboundClient(unbound);
 }

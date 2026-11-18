@@ -9,6 +9,9 @@
  *
  * @typedef {Readonly<{org: string, site: string, ref: string|null}>} BoundCoordinates
  *
+ * @typedef {{org: string}} OrgCoordinates
+ * @typedef {Readonly<{org: string}>} OrgBoundCoordinates
+ *
  * @typedef {{org: string, site?: never, profile?: never}
  *   | {org: string, site: string, profile?: never}
  *   | {org: string, site?: never, profile: string}} ConfigCoordinates
@@ -85,6 +88,7 @@
  * @property {(coords: SiteCoordinates) => AdminGetResource} sidekick
  * @property {(coords: SiteCoordinates) => AdminGetResource} medialog
  * @property {AdminRawRequest} raw
+ * @property {(url: URL, coords: BoundCoordinates) => boolean} isInScope
  * @property {(url: string) => ParsedCoordinates} coordsFromURL
  * @property {(coords: {org: string, site?: string}) => AdminSuggestion[]} suggestions
  * @property {(extra: AdminRequestDefaults) => UnboundAdminClient} withRequestInit
@@ -94,7 +98,8 @@
 /**
  * Bound API: resource accessors accept no arguments; config is site-scoped.
  * Read-only coordinates let auth reuse the same target without exposing backend
- * selection. Raw access remains explicitly unscoped for API-returned job links.
+ * selection. Raw access accepts API-returned links only within the selected
+ * backend and org/site (and the H5 ref, unless null); out-of-scope URLs throw.
  * Derivation preserves scope and backend without modifying the cached base client.
  *
  * @typedef {object} BoundAdminClientProperties
@@ -119,6 +124,17 @@
  * @property {(version?: string) => BoundAdminClient} pinVersion
  *
  * @typedef {Readonly<BoundAdminClientProperties>} BoundAdminClient
+ *
+ * Org-scoped client: always the H6 backend, binding only what org-level tools use.
+ * Add a resource here only when a tool needs it.
+ *
+ * @typedef {object} OrgBoundAdminClientProperties
+ * @property {OrgBoundCoordinates} coords
+ * @property {() => AdminConfigResource} config
+ * @property {(extra: AdminRequestDefaults) => OrgBoundAdminClient} withRequestInit
+ * @property {(version?: string) => OrgBoundAdminClient} pinVersion
+ *
+ * @typedef {Readonly<OrgBoundAdminClientProperties>} OrgBoundAdminClient
  *
  * @typedef {() => Promise<UnboundAdminClient|null>} UnboundAdminClientFactory
  * @typedef {(coords: SiteCoordinates) => Promise<BoundAdminClient>} BoundAdminClientFactory
