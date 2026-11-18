@@ -26,7 +26,6 @@ const CONFIG_SUB_ROUTES = {
   '/{org}/config/{path}': 'org',
   '/{org}/sites/{site}/config/{path}': 'site',
   '/{org}/profiles/{profile}/config/{path}': 'profile',
-  '/{org}/aggregated/{site}/config/{path}': 'site',
 };
 const WRITE_METHODS = ['POST', 'PUT', 'PATCH'];
 
@@ -214,7 +213,14 @@ export default function createMockAemApi() {
       return toResponse({ status: configProblem.status, headers: { 'x-error': `mock: ${configProblem.reason}` } });
     }
 
-    const declared = responses.get(operation.operationId);
+    // Spec delta: the published spec documents /{org}/aggregated/{site}/..., but
+    // helix-api-service (SiteHandler.js) serves `?aggregated=true` on the site config: GET only,
+    // config.json and config/robots.txt only. The vendored fixture still carries the spec's
+    // aggregated routes, so the mock maps the query form onto that stub key.
+    const isAggregated = operation.operationId === 'getConfigSite'
+      && url.searchParams.get('aggregated') === 'true';
+    if (isAggregated) call.operationId = 'getAggregatedConfigSite';
+    const declared = responses.get(call.operationId);
     if (declared === undefined) {
       state.violations.push({ ...call, reason: `no response declared for ${call.operationId}` });
       return toResponse({ status: 501, headers: { 'x-error': 'mock: no response declared' } });

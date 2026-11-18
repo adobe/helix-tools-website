@@ -240,12 +240,12 @@ function createAdmin(defaults = {}) {
 
   /**
    * Read-only view of the site config merged with its inherited values.
-   * H6 URL: /{org}/aggregated/{site}/config.json
+   * H6 URL: /{org}/sites/{site}/config.json?aggregated=true (as served by helix-api-service)
    *
    * @param {{org: string, site: string}} coords
    */
   function aggregated({ org, site }) {
-    const url = `${ADMIN_BASE}/${org}/aggregated/${site}/config.json`;
+    const url = `${ADMIN_BASE}/${org}/sites/${site}/config.json?aggregated=true`;
     return {
       read: (opts) => request({ method: 'GET', url, params: opts?.params }),
       url,

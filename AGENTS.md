@@ -166,6 +166,7 @@ See [Incremental JavaScript type checking](TESTING.md#incremental-javascript-typ
 
 The vendored OpenAPI spec `tests/fixtures/aem-admin-api-spec.json` is the only authority for what the H6 API supports. The fake H6 server in `tests/helpers/mock-aem-api.js` routes from it.
 
+- Known spec delta: the spec documents aggregated config at `/{org}/aggregated/{site}/...`, but helix-api-service serves `GET /{org}/sites/{site}/config.json?aggregated=true` (read-only; `config.json` and `config/robots.txt` only). `scripts/aem-admin.js` uses the query form; the mock maps it onto the `getAggregatedConfigSite` stub. Do not edit the fixture to correct this, since it is overwritten on refresh.
 - Read both `paths` and `components` (`schemas`, `parameters`). `paths` alone does not tell you what a `{path}` value or a body may be.
 - On the config routes (`/{org}/config/{path}`, `/{org}/sites/{site}/config/{path}`, `/{org}/profiles/{profile}/config/{path}`, `/{org}/aggregated/{site}/config/{path}`), `{path}` selects a property of the parent config schema (`org`, `site`, `profile`), e.g. `headers`, `cdn`, `users`, `access`. The property's schema defines the body. Check a sub-path against those schemas, not by searching the spec for a filename such as `headers.json` or `sitemap.yaml`.
 - The H5 client treats `x.json` and `x/` as two views of one node, and `select()` strips the extension. The spec does not say whether H6 accepts the suffix; do not assume either way.

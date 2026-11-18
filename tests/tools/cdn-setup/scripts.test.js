@@ -226,7 +226,7 @@ describe('cdn-setup:cdn-setup.js', () => {
       assert.deepEqual(api.violations, []);
       assert.deepEqual(
         api.calls.map(({ method, pathname }) => `${method} ${pathname}`).sort(),
-        ['GET /h6org/aggregated/h6site/config.json', 'GET /h6org/sites/h6site/config.json'],
+        ['GET /h6org/sites/h6site/config.json', 'GET /h6org/sites/h6site/config.json'],
       );
       assert.equal(document.getElementById('host').value, 'www.example.com');
       assert.equal(document.getElementById('cdn-fastly').checked, true);

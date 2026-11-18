@@ -107,7 +107,7 @@ describe('getAdminClientForSite()', () => {
         client.aggregated().url,
         backend === 'H5'
           ? `https://admin.hlx.page/config/agg-${backend}/aggregated/docs.json`
-          : `https://api.aem.live/agg-${backend}/aggregated/docs/config.json`,
+          : `https://api.aem.live/agg-${backend}/sites/docs/config.json?aggregated=true`,
       );
       assert.throws(() => client.aggregated({ org: 'other', site: 'other' }), TypeError);
     });

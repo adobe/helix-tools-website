@@ -130,7 +130,7 @@ describe('cdn-check:cdn-check.js', () => {
       assert.deepEqual(api.violations, []);
       assert.deepEqual(
         api.calls.map(({ method, pathname }) => `${method} ${pathname}`),
-        ['GET /h6org/aggregated/h6site/config.json'],
+        ['GET /h6org/sites/h6site/config.json'],
       );
       assert.equal(configCheck().status, 'Managed');
     });

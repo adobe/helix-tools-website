@@ -83,16 +83,16 @@ describe('aem-admin.js — H6 URL contract', () => {
   });
 
   describe('admin.aggregated(coords) URLs', () => {
-    it('.url is /{org}/aggregated/{site}/config.json', () => {
+    it('.url is the site config with aggregated=true', () => {
       assert.equal(
         admin.aggregated({ org: 'adobe', site: 'x' }).url,
-        'https://api.aem.live/adobe/aggregated/x/config.json',
+        'https://api.aem.live/adobe/sites/x/config.json?aggregated=true',
       );
     });
 
-    it('.read() GETs the aggregated URL', async () => {
+    it('.read() GETs the site config with aggregated=true', async () => {
       await admin.aggregated({ org: 'adobe', site: 'x' }).read();
-      assert.equal(calls[0].url, 'https://api.aem.live/adobe/aggregated/x/config.json');
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/config.json?aggregated=true');
       assert.equal(calls[0].init.method, 'GET');
     });
 
