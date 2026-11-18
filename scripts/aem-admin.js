@@ -64,10 +64,13 @@ function createAdmin(defaults = {}) {
     method, url, body, contentType, params,
   }) {
     const mergedParams = { ...defaultParams, ...params };
+    const inUrl = new URLSearchParams(url.split('?')[1] || '');
     let finalUrl = url;
-    if (Object.keys(mergedParams).length) {
+    if (Object.keys(mergedParams).some((k) => !inUrl.has(k))) {
       const qs = new URLSearchParams();
-      Object.entries(mergedParams).forEach(([k, v]) => qs.set(k, v));
+      Object.entries(mergedParams).forEach(([k, v]) => {
+        if (!inUrl.has(k)) qs.set(k, v);
+      });
       finalUrl = `${url}${url.includes('?') ? '&' : '?'}${qs.toString()}`;
     }
     const init = { ...initDefaults, method };

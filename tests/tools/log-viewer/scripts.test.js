@@ -387,6 +387,21 @@ describe('log-viewer request compatibility', () => {
     assert.deepEqual(logins(), ['acme/docs', 'acme/docs']);
   });
 
+  it('does not duplicate the version pin when an H6 pagination link already carries it', async () => {
+    window.history.replaceState(null, '', '?hlx-admin-version=1.2.3');
+    window.localStorage.setItem('use-h6-api', 'true');
+    const next = 'https://api.aem.live/acme/sites/docs/log?aem-api-version=1.2.3&nextToken=opaque&limit=2';
+    api.respond('status', { body: HOSTS });
+    api.respond('getLogs', [
+      { body: { entries: [entry('/first')], links: { next } } },
+      { body: { entries: [entry('/second')] } },
+    ]);
+
+    await submit();
+
+    assert.equal(urls().at(-1), next);
+  });
+
   it('pins host, log and detail calls using each backend version parameter', async () => {
     window.history.replaceState(null, '', '?hlx-admin-version=1.2.3');
     respond(`${STATUS}?hlx-admin-version=1.2.3`, HOSTS);
