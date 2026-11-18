@@ -1,0 +1,35 @@
+.zipper #zipper-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.zipper legend {
+  font-weight: 600;
+  margin-bottom: var(--spacing-s);
+}
+
+.zipper #zipper-error {
+  border-left: 4px solid var(--red-900);
+  padding: var(--spacing-s);
+  background: var(--layer-depth);
+  overflow-wrap: anywhere;
+}
+
+.zipper .zipper-paths {
+  max-height: 24rem;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--color-border);
+}
+
+.zipper #zipper-form button:disabled,
+.zipper #download-zip:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.zipper main [hidden] {
+  display: none;
+}
