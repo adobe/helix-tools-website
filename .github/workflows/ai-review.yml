@@ -2,6 +2,7 @@ name: AI Review
 
 on:
   pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
 
 concurrency:
   group: ai-review-${{ github.event.pull_request.number }}
@@ -9,6 +10,7 @@ concurrency:
 
 jobs:
   ai-review:
+    if: ${{ !github.event.pull_request.draft }}
     uses: adobe/helix-shared-workflows/.github/workflows/ai-review.yml@v1
     secrets:
       AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
