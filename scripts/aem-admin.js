@@ -148,6 +148,17 @@ function createAdmin(defaults = {}) {
     return `${ADMIN_BASE}/${org}/sites/${site}/${op}`;
   }
 
+  /**
+   * @param {URL} url
+   * @param {import('./admin-types.js').BoundCoordinates} coords
+   * @returns {boolean}
+   */
+  function isInScope(url, coords) {
+    const root = new URL(opBase('', coords)).pathname;
+    return url.origin === ADMIN_BASE
+      && (url.pathname === root.slice(0, -1) || url.pathname.startsWith(root));
+  }
+
   function bindOperation(baseUrl, caps) {
     function join(path = '') {
       const p = String(path).replace(/^\//, '');
@@ -260,6 +271,7 @@ function createAdmin(defaults = {}) {
     sidekick,
     medialog,
     raw,
+    isInScope,
     suggestions,
     coordsFromURL,
     withRequestInit,
