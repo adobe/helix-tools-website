@@ -1,7 +1,7 @@
 /* eslint-disable no-alert */
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
-import { logResponse } from '../../blocks/console/console.js';
+import { logMessage, logResponse } from '../../blocks/console/console.js';
 import { getAdminClientForSite } from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { getErrorMessage, validateBranchName } from './utils.js';
@@ -21,6 +21,8 @@ const host = document.getElementById('host');
 
 let originalConfig;
 let validationPassed = false;
+// `client` is pinned until the next fetch: edits to the form inputs don't retarget the save.
+let client = null;
 
 const VALIDATION_URL = 'https://admin.hlx.page/hook/byocdn-push-invalidation/';
 
@@ -350,15 +352,15 @@ async function getClientOrReport() {
   try {
     return await getAdminClientForSite({ org: org.value, site: site.value });
   } catch (err) {
-    logResponse(consoleBlock, 500, ['GET', 'backend detection', err.message]);
+    logMessage(consoleBlock, 'error', ['Backend detection', `${org.value}/${site.value}`, err.message]);
     alert(err.message);
     return null;
   }
 }
 
 async function saveConfig() {
-  if (!org.value || !site.value) {
-    alert('Please select an organization and site first');
+  if (!client) {
+    alert('Please fetch a site configuration first');
     return;
   }
 
@@ -374,7 +376,11 @@ async function saveConfig() {
   const branchInput = document.getElementById('branch');
   if (branchInput) branchInput.value = branchInput.value.trim();
   if (branchInput && branchInput.value) {
-    const branchError = validateBranchName(branchInput.value, site.value, org.value);
+    const branchError = validateBranchName(
+      branchInput.value,
+      client.coords.site,
+      client.coords.org,
+    );
     if (branchError) {
       alert(branchError);
       branchInput.focus();
@@ -386,8 +392,6 @@ async function saveConfig() {
   saveBtn.disabled = true;
 
   try {
-    const client = await getClientOrReport();
-    if (!client) return;
     const result = await executeAdminRequest(
       () => client.config().select('cdn/prod.json').update(JSON.stringify(cdnConfig)),
       client,
@@ -435,12 +439,12 @@ async function init() {
       return;
     }
 
-    const client = await getClientOrReport();
-    if (!client) return;
+    const fetchClient = await getClientOrReport();
+    if (!fetchClient) return;
     const result = await executeAdminRequest(async () => {
       const [aggRes, siteRes] = await Promise.all([
-        client.aggregated().read(),
-        client.config().read(),
+        fetchClient.aggregated().read(),
+        fetchClient.config().read(),
       ]);
       [aggRes, siteRes].forEach((r) => {
         const { method, url } = r.request;
@@ -448,7 +452,7 @@ async function init() {
       });
       const status = aggRes.status === 401 || siteRes.status === 401 ? 401 : siteRes.status;
       return { status, ok: siteRes.ok, parts: { aggRes, siteRes } };
-    }, client, { policy: AuthMode.PREFLIGHT_AND_RETRY });
+    }, fetchClient, { policy: AuthMode.PREFLIGHT_AND_RETRY });
 
     if (!result) return;
     const { aggRes, siteRes } = result.parts;
@@ -460,6 +464,7 @@ async function init() {
     }
 
     if (siteRes.status === 200) {
+      client = fetchClient;
       const siteConfig = await siteRes.json();
       if (siteConfig.cdn && siteConfig.cdn.prod) {
         originalConfig = siteConfig.cdn.prod;
@@ -507,6 +512,7 @@ async function init() {
       validationResults.setAttribute('aria-hidden', 'true');
       updateSaveButtonState();
     } else if (siteRes.status === 404) {
+      client = fetchClient;
       originalConfig = {};
       cdnForm.setAttribute('aria-hidden', 'false');
       cdnForm.removeAttribute('disabled');
