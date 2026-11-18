@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="lab" content="true">
+  <title>Zipper</title>
+  <script nonce="aem" src="/scripts/aem.js" type="module"></script>
+  <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
+  <script nonce="aem" src="/tools/zipper/zipper.js" type="module"></script>
+  <link rel="stylesheet" href="/styles/styles.css">
+  <link rel="stylesheet" href="/utils/config/config.css">
+  <link rel="stylesheet" href="/tools/zipper/zipper.css">
+</head>
+<body class="zipper">
+  <header></header>
+  <main>
+    <div>
+      <h1>Zipper</h1>
+      <p>Download a CodeBus branch as a ZIP, or export source content from a Helix 6 site.</p>
+    </div>
+    <div>
+      <form id="zipper-form">
+        <fieldset id="zipper-fields">
+          <legend>Configure your download</legend>
+          <div class="form-field config-field">
+            <div class="form-field org-field">
+              <label for="org">Organization</label>
+              <input id="org" name="org" list="org-list" autocomplete="off" required>
+              <datalist id="org-list"></datalist>
+            </div>
+            <div class="form-field site-field">
+              <label for="site">Site</label>
+              <input id="site" name="site" list="site-list" autocomplete="off" required disabled>
+              <datalist id="site-list"></datalist>
+            </div>
+          </div>
+          <div class="form-field">
+            <label for="download-type">Download type</label>
+            <select id="download-type">
+              <option value="code">Code branch (ZIP)</option>
+              <option value="source">Source content</option>
+            </select>
+          </div>
+          <div id="branch-field" class="form-field">
+            <label for="branch">CodeBus branch</label>
+            <input id="branch" value="main" aria-describedby="branch-help" required>
+            <small id="branch-help">Includes non-hidden files. The live host must allow cross-origin downloads.</small>
+          </div>
+          <div id="source-field" class="form-field" hidden>
+            <label for="source-path">Source path</label>
+            <input id="source-path" placeholder="/docs/" aria-describedby="source-help" disabled>
+            <small id="source-help">Use a file path for a direct download. End a folder path with / to download it as a ZIP, or leave this blank for the whole site.</small>
+          </div>
+          <p class="button-wrapper"><button id="zipper-submit" type="submit" class="button">Preview ZIP</button></p>
+        </fieldset>
+      </form>
+      <p id="zipper-error" role="alert" hidden></p>
+      <p id="zipper-status" role="status"></p>
+      <section id="zipper-preview" aria-labelledby="preview-title" hidden>
+        <h2 id="preview-title" tabindex="-1">ZIP preview</h2>
+        <p id="preview-summary"></p>
+        <div class="zipper-paths" role="region" aria-label="Archive paths" tabindex="0">
+          <ul id="preview-paths"></ul>
+        </div>
+        <details id="preview-skipped" hidden>
+          <summary></summary>
+          <ul></ul>
+        </details>
+        <p class="button-wrapper"><button id="download-zip" type="button" class="button">Download ZIP</button></p>
+      </section>
+      <p>For protected sites, sign in with AEM Sidekick. ZIP archives are built in browser memory.</p>
+    </div>
+  </main>
+  <footer></footer>
+</body>
+</html>

@@ -1,11 +1,7 @@
-const API_ORIGIN = 'https://api.aem.live';
+import { API_ORIGIN, projectRoot } from '../../utils/helix6-download.js';
 
 export function codeRoot(org, site) {
-  const values = [org, site].map((value) => value.trim());
-  if (values.some((value) => !/^[a-z0-9][a-z0-9-]*$/i.test(value))) {
-    throw new Error('Organization and site must contain only letters, numbers, and hyphens.');
-  }
-  return `${API_ORIGIN}/${values[0]}/repos/${values[1]}/code/`;
+  return `${projectRoot(org, site, 'repos')}code/`;
 }
 
 // Never follow API-provided paths outside the selected repository or API origin.

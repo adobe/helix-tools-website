@@ -49,6 +49,34 @@ organization using AEM Sidekick before browsing. Your session must have code
 read/list permissions. The homepage tool catalog is CMS-authored; adding a card
 for this tool requires a content update.
 
+## Zipper
+
+Open `/tools/zipper/index.html` and enter an organization and site:
+
+- **Code branch (ZIP):** Enter the CodeBus branch name (for example, `main`).
+  Zipper uses the same export as Code Browser, including its live-host CORS
+  requirement. This exports deployed code, not a Git history or repository clone.
+- **Source content:** Enter a source file path such as `/docs/example.html` to
+  download its original bytes. Enter `/docs/` for a recursive folder ZIP, or
+  leave the path blank to ZIP the site's source root. Downloads use
+  `https://api.aem.live/{org}/sites/{site}/source/` and do not include version history.
+
+For ZIP exports, select **Preview ZIP** to see the file and folder paths in the
+archive, then select **Download ZIP**. Zipper downloads the listed files only
+after confirmation. Changing the selection clears the preview. Single source
+files still download directly.
+
+If a nested folder returns HTTP 400 or 404, Zipper continues scanning other
+folders. If a later CodeBus listing page fails with either status, Zipper keeps
+entries from earlier pages. The preview lists the affected paths and marks the
+download as partial. If the starting folder's first listing fails, the preview
+stops and shows the error.
+
+Zipper is read-only. Protected projects require an AEM Sidekick session with
+code read/list or source `preview:read` permissions, respectively. Archives are
+assembled in browser memory. If any file shown in the preview fails to download,
+Zipper stops rather than silently dropping it. The homepage catalog is CMS-authored.
+
 ## Local development
 
 1. Create a new repository based on the `aem-boilerplate` template and add a mountpoint in the `fstab.yaml`
