@@ -240,7 +240,7 @@ function createAdmin(defaults = {}) {
 
   /**
    * Read-only view of the site config merged with its inherited values.
-   * H6 URL: /{org}/sites/{site}/config.json?aggregated=true (as served by helix-api-service)
+   * H6 URL: /{org}/sites/{site}/config.json?aggregated=true
    *
    * @param {{org: string, site: string}} coords
    */

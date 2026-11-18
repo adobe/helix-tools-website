@@ -213,18 +213,12 @@ export default function createMockAemApi() {
       return toResponse({ status: configProblem.status, headers: { 'x-error': `mock: ${configProblem.reason}` } });
     }
 
-    // Spec delta: the published spec documents /{org}/aggregated/{site}/..., but
-    // helix-api-service (SiteHandler.js) serves `?aggregated=true` on the site config: GET only,
-    // config.json and config/robots.txt only. The vendored fixture still carries the spec's
-    // aggregated routes, so the mock maps the query form onto that stub key.
-    const isAggregated = operation.operationId === 'getConfigSite'
-      && url.searchParams.get('aggregated') === 'true';
-    if (isAggregated) call.operationId = 'getAggregatedConfigSite';
     const declared = responses.get(call.operationId);
     if (declared === undefined) {
       state.violations.push({ ...call, reason: `no response declared for ${call.operationId}` });
       return toResponse({ status: 501, headers: { 'x-error': 'mock: no response declared' } });
     }
+    if (typeof declared === 'function') return toResponse(declared(call));
     if (!Array.isArray(declared)) return toResponse(declared);
     const index = counts.get(call.operationId) || 0;
     counts.set(call.operationId, index + 1);
@@ -236,8 +230,9 @@ export default function createMockAemApi() {
     get violations() { return state.violations; },
     /**
      * @param {string} operationId
-     * @param {object|object[]} response `{status, body, headers}`, or a list of them returned
-     *   one per call in order (the last one repeats)
+     * @param {object|object[]|function(object): object} response `{status, body, headers}`, a
+     *   list of them returned one per call in order (the last one repeats), or a function of the
+     *   recorded call (e.g. to answer by `call.query`)
      */
     respond(operationId, response) {
       responses.set(operationId, response);

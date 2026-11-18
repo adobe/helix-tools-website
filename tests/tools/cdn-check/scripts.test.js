@@ -122,15 +122,15 @@ describe('cdn-check:cdn-check.js', () => {
     });
 
     it('reads the aggregated config from the spec route and reports the cdn', async () => {
-      api.respond('getAggregatedConfigSite', json(200, { cdn: { prod: { type: 'managed' } } }));
+      api.respond('getConfigSite', json(200, { cdn: { prod: { type: 'managed' } } }));
 
       await runCheck('h6org', 'h6site');
 
       assert.deepEqual(legacyCalls, []);
       assert.deepEqual(api.violations, []);
       assert.deepEqual(
-        api.calls.map(({ method, pathname }) => `${method} ${pathname}`),
-        ['GET /h6org/sites/h6site/config.json'],
+        api.calls.map(({ method, pathname, query }) => ({ method, pathname, query })),
+        [{ method: 'GET', pathname: '/h6org/sites/h6site/config.json', query: { aggregated: 'true' } }],
       );
       assert.equal(configCheck().status, 'Managed');
     });
