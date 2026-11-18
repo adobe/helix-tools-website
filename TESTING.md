@@ -141,8 +141,9 @@ silence diagnostics; reserve `@ts-expect-error` for intentional negative checks.
 
 `scripts/admin-types.js` describes the unbound and bound APIs. The bound
 factory returns cached clients with a read-only `coords` property exposing
-the target to auth without exposing backend selection; `raw()` remains an
-explicit unscoped operation for server-provided URLs. Bound derivation
+the target to auth without exposing backend selection; `raw()` accepts absolute
+or root-relative URLs only within the selected backend and bound org/site
+(and H5 ref, unless null). Out-of-scope URLs throw before fetching. Bound derivation
 returns another bound client; unbound derivation stays unbound.
 
 `executeAdminRequest(requestFn, client, { policy })` obtains auth coordinates

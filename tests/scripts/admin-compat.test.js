@@ -10,6 +10,7 @@ import h6Admin from '../../scripts/aem-admin.js';
 const {
   default: getAdminClient,
   getAdminClientForSite,
+  getAdminClientForOrg,
 } = await import('../../scripts/admin-compat.js');
 
 describe('getAdminClient()', () => {
@@ -228,7 +229,7 @@ describe('getAdminClientForSite()', () => {
         assert.equal(client.status().url, base.status().url);
       });
       const root = base.status().url;
-      const rawUrl = 'https://example.com/api-returned/job';
+      const rawUrl = `${base.job().url}/api-returned-job`;
       calls.length = 0;
       await base.status().get('/base');
       await defaults.status().get('/defaults');
@@ -249,6 +250,140 @@ describe('getAdminClientForSite()', () => {
       assert.equal(calls[2].init.body, '{}');
       assert.equal(calls[2].init.headers.get('x-client'), 'derived');
       assert.equal(await getAdminClientForSite(coords), base);
+    });
+  });
+
+  [
+    { backend: 'H5', header: null },
+    { backend: 'H6', header: 'true' },
+  ].forEach(({ backend, header }) => {
+    it(`rejects raw URLs outside the ${backend} target before fetching, including on derived clients`, async () => {
+      const calls = stubFetch(header);
+      const org = `raw-scope-${backend}`;
+      const base = await getAdminClientForSite({ org, site: 'docs', ref: 'branch' });
+      const root = base.job().url;
+      const config = base.config().url;
+      const invalid = [
+        root.replace(new URL(root).origin, 'https://example.com'),
+        root.replace(new URL(root).origin, backend === 'H5'
+          ? 'https://api.aem.live' : 'https://admin.hlx.page'),
+        root.replace('https:', 'http:'),
+        root.replace(`/${org}/`, '/another-org/'),
+        root.replace('/docs', '/docs-extra'),
+        config.replace(`/${org}/`, '/another-org/'),
+        config.replace('/docs', '/docs-extra'),
+        `${root}/../../another-site`,
+        `${root}/%2e%2e/%2e%2e/another-site`,
+        `${root}/%2e%2e%2f%2e%2e%2fanother-site`,
+        `${root}/..%5c..%5canother-site`,
+        `${root}#fragment`,
+        `${root}#`,
+        root.replace('https://', 'https://user:password@'),
+        ...(backend === 'H5' ? [
+          root.replace('/branch', '/another-ref'),
+          root.replace('/branch', '/branch-extra'),
+          `https://admin.hlx.page/config/${org}.json`,
+          `https://admin.hlx.page/config/${org}/profiles/profile.json`,
+          `https://admin.hlx.page/%63onfig/${org}/docs/branch`,
+        ] : [
+          `https://api.aem.live/${org}/config.json`,
+          `https://api.aem.live/${org}/profiles/profile/config.json`,
+          `https://api.aem.live/${org}/sites/docs.json/jobs`,
+        ]),
+      ];
+      const pinned = base.pinVersion('revision');
+      const clients = [
+        base,
+        base.withRequestInit({ credentials: 'include' }),
+        pinned,
+        pinned.pinVersion(),
+      ];
+      calls.length = 0;
+      const outcomes = await Promise.all(clients.flatMap((client) => invalid.map(async (url) => {
+        try {
+          await client.raw('DELETE', url);
+          return { url, rejected: false };
+        } catch (error) {
+          return { url, rejected: error instanceof TypeError };
+        }
+      })));
+
+      assert.deepEqual(
+        { outcomes, calls },
+        {
+          outcomes: clients.flatMap(() => invalid.map((url) => ({ url, rejected: true }))),
+          calls: [],
+        },
+      );
+    });
+  });
+
+  [
+    {
+      backend: 'H5', header: null, ref: 'branch', versionParam: 'hlx-admin-version',
+    },
+    {
+      backend: 'H5', header: null, ref: null, versionParam: 'hlx-admin-version',
+    },
+    {
+      backend: 'H6', header: 'true', ref: 'branch', versionParam: 'aem-api-version',
+    },
+  ].forEach(({
+    backend, header, ref, versionParam,
+  }) => {
+    it(`accepts in-scope absolute and root-relative ${backend} raw URLs with ref ${ref}`, async () => {
+      const calls = stubFetch(header);
+      const org = `raw-paths-${backend}-${ref}`;
+      const base = await getAdminClientForSite({ org, site: 'docs', ref });
+      const client = base.withRequestInit({
+        credentials: 'include',
+        headers: new Headers({ 'x-client': 'raw' }),
+        params: { tenant: 'shared' },
+      }).pinVersion('default-revision');
+      const operation = backend === 'H5'
+        ? `/custom-operation/${org}/docs${ref ? `/${ref}` : ''}/nested.json?server=1`
+        : `/${org}/sites/docs/custom-operation/nested.json?server=1`;
+      const urls = [
+        operation,
+        ...['json', 'yaml', 'yml', 'txt', 'html'].map(
+          (extension) => client.config().url.replace(/\.json$/, `.${extension}`),
+        ),
+        new URL(client.config().select('access.yaml').url).pathname,
+        `${client.job().url}/api-returned-job`,
+        `${client.job().url}/folder%2Fjob`,
+        `${client.job().url}/folder%5Cjob`,
+      ];
+      const { origin } = new URL(client.config().url);
+      const expectedURLs = urls.map((url) => {
+        const absolute = new URL(url, origin).href;
+        return `${absolute}${absolute.includes('?') ? '&' : '?'}tenant=shared&${versionParam}=call-revision`;
+      });
+      calls.length = 0;
+      const responses = [];
+      await assert.doesNotReject(async () => {
+        responses.push(...await Promise.all(urls.map((url) => client.raw('PATCH', url, 'payload', {
+          contentType: 'text/yaml',
+          params: { [versionParam]: 'call-revision' },
+        }))));
+      });
+
+      assert.deepEqual(calls.map(({ url, init }) => ({
+        url,
+        method: init.method,
+        body: init.body,
+        credentials: init.credentials,
+        headers: [...init.headers],
+      })), expectedURLs.map((url) => ({
+        url,
+        method: 'PATCH',
+        body: 'payload',
+        credentials: 'include',
+        headers: [['content-type', 'text/yaml'], ['x-client', 'raw']],
+      })));
+      assert.deepEqual(
+        responses.map(({ ok, status, request }) => ({ ok, status, request })),
+        expectedURLs.map((url) => ({ ok: true, status: 200, request: { method: 'PATCH', url } })),
+      );
     });
   });
 
@@ -337,5 +472,101 @@ describe('getAdminClientForSite()', () => {
       assert.equal(client.status().url, `https://api.aem.live/recover-${failure}/sites/s/status`);
       assert.equal(fetchMock.mock.callCount(), expectedAttempts + 1);
     });
+  });
+});
+
+// Org-scoped clients are always H6, so no backend detection request is made.
+describe('getAdminClientForOrg()', () => {
+  const originalFetch = global.fetch;
+
+  afterEach(() => {
+    window.localStorage.removeItem('use-h6-api');
+    global.fetch = originalFetch;
+  });
+
+  const stubFetch = () => {
+    const calls = [];
+    global.fetch = async (url, init) => {
+      calls.push({ url, init });
+      return new Response('{}');
+    };
+    return calls;
+  };
+
+  it('binds the H6 org config to an immutable snapshot without probing a backend', async () => {
+    const calls = stubFetch();
+    const coords = { org: 'org-only' };
+    const pending = getAdminClientForOrg(coords);
+    coords.org = 'changed';
+    const client = await pending;
+
+    assert.deepEqual(client.coords, { org: 'org-only' });
+    assert.equal(client.config().url, 'https://api.aem.live/org-only/config.json');
+    assert.equal(
+      client.config().select('users/abc.json').url,
+      'https://api.aem.live/org-only/config/users/abc.json',
+    );
+    assert.equal(Object.isFrozen(client), true);
+    assert.equal(Object.isFrozen(client.coords), true);
+    assert.throws(() => { client.coords.org = 'another'; }, TypeError);
+    assert.equal(calls.length, 0);
+  });
+
+  it('binds only the operations org-level tools use', async () => {
+    const client = await getAdminClientForOrg({ org: 'only-config' });
+    assert.deepEqual(
+      Object.keys(client).sort(),
+      ['config', 'coords', 'pinVersion', 'withRequestInit'],
+    );
+  });
+
+  it('rejects arguments to config() instead of silently ignoring a retarget', async () => {
+    const client = await getAdminClientForOrg({ org: 'no-retarget' });
+    assert.throws(
+      () => client.config({ org: 'another' }),
+      { name: 'TypeError', message: /does not accept arguments/ },
+    );
+  });
+
+  it('rejects invalid or site-bearing coordinates before any request', async () => {
+    const calls = stubFetch();
+    const invalid = [undefined, null, {}, { org: '' }, { org: ' ' }, { org: 7 }];
+    await Promise.all(invalid.map((coords) => assert.rejects(
+      getAdminClientForOrg(coords),
+      { name: 'TypeError', message: /non-empty/ },
+    )));
+    await assert.rejects(
+      getAdminClientForOrg({ org: 'o', site: 'docs' }),
+      { name: 'TypeError', message: /org-only/ },
+    );
+    assert.equal(calls.length, 0);
+  });
+
+  it('reuses one client per org, regardless of the use-h6-api override', async () => {
+    const a = await getAdminClientForOrg({ org: 'cached-org' });
+    assert.equal(await getAdminClientForOrg({ org: 'cached-org' }), a);
+    window.localStorage.setItem('use-h6-api', '');
+    assert.equal(await getAdminClientForOrg({ org: 'cached-org' }), a);
+    const other = await getAdminClientForOrg({ org: 'other-org' });
+    assert.notEqual(other, a);
+    assert.deepEqual(other.coords, { org: 'other-org' });
+  });
+
+  it('keeps derived clients bound while forwarding defaults and version pins', async () => {
+    const calls = stubFetch();
+    const base = await getAdminClientForOrg({ org: 'derived-org' });
+    const derived = base
+      .withRequestInit({ credentials: 'include', params: { tenant: 'shared' } })
+      .pinVersion('revision');
+
+    assert.deepEqual(derived.coords, { org: 'derived-org' });
+    assert.equal(derived.config().url, base.config().url);
+    await derived.config().read();
+    assert.equal(
+      calls[0].url,
+      'https://api.aem.live/derived-org/config.json?tenant=shared&aem-api-version=revision',
+    );
+    assert.equal(calls[0].init.credentials, 'include');
+    assert.equal(await getAdminClientForOrg({ org: 'derived-org' }), base);
   });
 });
