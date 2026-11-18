@@ -7,10 +7,16 @@ import { readFile } from 'node:fs/promises';
 import createMockAemApi from '../../helpers/mock-aem-api.js';
 
 let loginCalls = [];
+let toolReady;
 
-// Page bootstrap, login and the org/site picker are out of scope; same seams as the bulk tests.
+// Page bootstrap and login are out of scope; same seams as the bulk tests. The org/site
+// config helper stays real (only its stylesheet load, which never settles in jsdom, is stubbed)
+// so the tests see what a request persists to the URL and the recent projects.
 mock.module('../../../scripts/scripts.js', {
-  exports: { registerToolReady: () => {} },
+  exports: { registerToolReady: (ready) => { toolReady = ready; } },
+});
+mock.module('../../../scripts/aem.js', {
+  exports: { loadCSS: async () => {} },
 });
 mock.module('../../../blocks/profile/profile.js', {
   exports: {
@@ -19,9 +25,6 @@ mock.module('../../../blocks/profile/profile.js', {
       return true;
     },
   },
-});
-mock.module('../../../utils/config/config.js', {
-  exports: { initConfigField: async () => {}, updateConfig: () => {} },
 });
 
 const HEADERS_URL = 'https://api.aem.live/myorg/sites/mysite/config/headers.json';
@@ -52,8 +55,9 @@ describe('headers-edit:headers-edit.js', () => {
     const html = await readFile(new URL('../../../tools/headers-edit/index.html', import.meta.url), 'utf8');
     [document.body.innerHTML] = html.match(/<main>[\s\S]*<\/main>/);
     document.querySelector('.console').innerHTML = '<table><tbody></tbody></table>';
+    global.localStorage = window.localStorage;
     await import('../../../tools/headers-edit/headers-edit.js');
-    await new Promise((resolve) => { setTimeout(resolve, 0); }); // let init() attach listeners
+    await toolReady; // init() has attached the listeners
   });
 
   beforeEach(() => {
@@ -84,6 +88,8 @@ describe('headers-edit:headers-edit.js', () => {
     api.uninstall();
     api.reset();
     document.querySelector('.console tbody').innerHTML = '';
+    window.localStorage.removeItem('aem-projects');
+    window.history.replaceState({}, '', '/tools/headers-edit/index.html');
     assert.deepEqual(violations, []);
   });
 
@@ -130,6 +136,38 @@ describe('headers-edit:headers-edit.js', () => {
     assert.equal(save.url, HEADERS_URL);
     assert.deepEqual(save.body, { '/**': [{ key: 'x-a', value: '2' }] });
     assert.ok(probes.every((url) => !url.includes('othersite')));
+  });
+
+  it('keeps the fetched site in the URL and recent projects when a save follows form edits', async () => {
+    const persisted = () => ({
+      url: window.location.href,
+      projects: JSON.parse(window.localStorage.getItem('aem-projects')),
+    });
+    window.history.replaceState({}, '', '/tools/headers-edit/index.html');
+    window.localStorage.setItem('aem-projects', JSON.stringify({
+      orgs: ['saved-org'], sites: { 'saved-org': ['saved-site'] },
+    }));
+    api.respond('getConfigSiteSub', { body: { '/**': [{ key: 'x-a', value: '1' }] } });
+    api.respond('updateConfigSiteSub', { body: {} });
+    await fetchHeaders();
+    const fetched = {
+      url: 'http://localhost/tools/headers-edit/index.html?org=myorg&site=mysite',
+      projects: {
+        orgs: ['myorg', 'saved-org'],
+        sites: { 'saved-org': ['saved-site'], myorg: ['mysite'] },
+      },
+    };
+    assert.deepEqual(persisted(), fetched);
+
+    document.getElementById('org').value = 'otherorg';
+    document.getElementById('site').value = 'othersite';
+    document.querySelector('#headers-list .header-value').value = '2';
+    submit('headers-form');
+    await waitFor(() => rows().length === 2);
+
+    const save = api.calls.find((call) => call.operationId === 'updateConfigSiteSub');
+    assert.equal(save.url, HEADERS_URL);
+    assert.deepEqual(persisted(), fetched);
   });
 
   it('deletes the headers config when every header is removed', async () => {
