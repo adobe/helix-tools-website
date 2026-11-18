@@ -194,6 +194,22 @@ function createAdmin(defaults = {}) {
   }
 
   /**
+   * @param {URL} url
+   * @param {import('./admin-types.js').BoundCoordinates} coords
+   * @returns {boolean}
+   */
+  function isInScope(url, coords) {
+    if (url.origin !== ADMIN_BASE) return false;
+    const configRoot = new URL(config(coords).url).pathname.replace(/\.json$/, '');
+    if (url.pathname === configRoot || url.pathname.startsWith(`${configRoot}/`)
+      || Object.keys(CONTENT_TYPES).some((ext) => url.pathname === `${configRoot}.${ext}`)) return true;
+    const operation = url.pathname.split('/')[1];
+    if (!operation || operation === 'config' || operation.includes('%')) return false;
+    const root = new URL(opBase(operation, coords)).pathname;
+    return url.pathname === root || url.pathname.startsWith(`${root}/`);
+  }
+
+  /**
    * Bind an operational API resource to a base URL. Returns only the methods
    * listed in `caps` — callers get `undefined` (not a 405) for unsupported ops.
    *
@@ -332,6 +348,7 @@ function createAdmin(defaults = {}) {
     sidekick,
     medialog,
     raw,
+    isInScope,
     suggestions,
     coordsFromURL,
     withRequestInit,

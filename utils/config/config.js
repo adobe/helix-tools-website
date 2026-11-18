@@ -156,10 +156,15 @@ function updateStorageFromSidekick(projects) {
 
 /**
  * Updates URL parameters, local storage, and datalists based on org/site values.
+ * With a validated target, leave newer form edits unpersisted.
+ * @param {{org: string, site?: string}} [expected] Target validated by the request.
  */
-export function updateConfig() {
+export function updateConfig(expected) {
   const cfg = validDOM();
   if (cfg) {
+    if (expected && (cfg.org.value !== expected.org || cfg.site.value !== (expected.site ?? ''))) {
+      return;
+    }
     updateParams([cfg.org, cfg.site]);
     updateStorage(cfg.org.value, cfg.site.value);
     populateList(cfg.orgList, [cfg.org.value]);
