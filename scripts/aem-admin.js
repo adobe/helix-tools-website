@@ -201,14 +201,33 @@ function createAdmin(defaults = {}) {
   function job(coords) { return bindOperation(opBase('jobs', coords), ['get', 'remove']); }
   function psi(coords) { return bindOperation(opBase('psi', coords), ['get']); }
   function snapshot(coords) { return bindOperation(opBase('snapshot', coords), ['get', 'update', 'remove']); }
+
+  /**
+   * Read-only view of the site config merged with its inherited values.
+   * H6 URL: /{org}/sites/{site}/config.json?aggregated=true
+   *
+   * @param {{org: string, site: string}} coords
+   */
+  function aggregated({ org, site }) {
+    const url = `${ADMIN_BASE}/${org}/sites/${site}/config.json?aggregated=true`;
+    return {
+      read: (opts) => request({ method: 'GET', url, params: opts?.params }),
+      url,
+    };
+  }
+
   function sidekick({ org, site }) {
     // Effective config preserves profile inheritance without introducing a second config API.
-    const resource = bindOperation(`${ADMIN_BASE}/${org}/aggregated/${site}`, ['get']);
+    const resource = aggregated({ org, site });
     return {
       url: resource.url,
       async get(path, opts) {
-        const response = await resource.get(path, opts);
-        if (!response.ok || String(path).replace(/^\//, '') !== 'config.json') return response;
+        // H6 only exposes the aggregated site config; there is no per-path sidekick resource.
+        if (String(path).replace(/^\//, '') !== 'config.json') {
+          throw new Error(`aem-admin: unsupported sidekick path "${path}"`);
+        }
+        const response = await resource.read(opts);
+        if (!response.ok) return response;
         const json = async () => {
           const effectiveConfig = await response.json();
           if (!effectiveConfig || typeof effectiveConfig !== 'object' || Array.isArray(effectiveConfig)
@@ -267,20 +286,6 @@ function createAdmin(defaults = {}) {
       init.contentType = opts?.contentType ?? 'application/json';
     }
     return request(init);
-  }
-
-  /**
-   * Read-only view of the site config merged with its inherited values.
-   * H6 URL: /{org}/sites/{site}/config.json?aggregated=true
-   *
-   * @param {{org: string, site: string}} coords
-   */
-  function aggregated({ org, site }) {
-    const url = `${ADMIN_BASE}/${org}/sites/${site}/config.json?aggregated=true`;
-    return {
-      read: (opts) => request({ method: 'GET', url, params: opts?.params }),
-      url,
-    };
   }
 
   function withRequestInit(extra) {

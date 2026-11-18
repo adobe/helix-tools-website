@@ -312,7 +312,7 @@ describe('site-query request compatibility', () => {
     window.localStorage.setItem('use-h6-api', 'true');
     window.history.replaceState(null, '', '/?hlx-admin-version=release-1');
     api.respond('status', [{ body: HOSTS }, { body: {} }]);
-    api.respond('getAggregatedConfigSite', [
+    api.respond('getConfigSite', [
       { status: 401 },
       {
         body: {
@@ -334,8 +334,8 @@ describe('site-query request compatibility', () => {
     assert.deepEqual(api.calls.map(({ url, method }) => [url, method]), [
       ['https://api.aem.live/acme/sites/docs/status/index.html?aem-api-version=release-1', 'GET'],
       ['https://api.aem.live/acme/sites/docs/status/guide?aem-api-version=release-1&editUrl=auto', 'GET'],
-      ['https://api.aem.live/acme/aggregated/docs/config.json?aem-api-version=release-1', 'GET'],
-      ['https://api.aem.live/acme/aggregated/docs/config.json?aem-api-version=release-1', 'GET'],
+      ['https://api.aem.live/acme/sites/docs/config.json?aggregated=true&aem-api-version=release-1', 'GET'],
+      ['https://api.aem.live/acme/sites/docs/config.json?aggregated=true&aem-api-version=release-1', 'GET'],
     ]);
     assert.deepEqual(loginCalls, [['acme', 'docs'], ['acme', 'docs']]);
   });

@@ -104,6 +104,20 @@ describe('aem-admin.js — H6 URL contract', () => {
     });
   });
 
+  describe('query params already in the URL', () => {
+    it('win over the same key in params without duplicating it', async () => {
+      await admin.aggregated({ org: 'adobe', site: 'x' })
+        .read({ params: { aggregated: 'false' } });
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/config.json?aggregated=true');
+    });
+
+    it('still append params with new keys', async () => {
+      await admin.aggregated({ org: 'adobe', site: 'x' })
+        .read({ params: { aggregated: 'false', trace: 'yes' } });
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/config.json?aggregated=true&trace=yes');
+    });
+  });
+
   describe('admin.status(coords) URLs', () => {
     it('.url is /{org}/sites/{site}/status', () => {
       assert.equal(
@@ -331,17 +345,25 @@ describe('aem-admin.js — H6 URL contract', () => {
   });
 
   describe('admin.sidekick(coords) URLs', () => {
-    it('.url is the effective-config base', () => {
+    it('.url is the aggregated site config', () => {
       assert.equal(
         admin.sidekick({ org: 'adobe', site: 'x' }).url,
-        'https://api.aem.live/adobe/aggregated/x',
+        'https://api.aem.live/adobe/sites/x/config.json?aggregated=true',
       );
     });
 
-    it('.get("config.json") GETs the sidekick config', async () => {
+    it('.get("config.json") GETs the aggregated site config', async () => {
       await admin.sidekick({ org: 'adobe', site: 'x' }).get('config.json');
-      assert.equal(calls[0].url, 'https://api.aem.live/adobe/aggregated/x/config.json');
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/config.json?aggregated=true');
       assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('rejects paths other than config.json without fetching', async () => {
+      await assert.rejects(
+        () => admin.sidekick({ org: 'adobe', site: 'x' }).get('other.json'),
+        /unsupported sidekick path/,
+      );
+      assert.equal(calls.length, 0);
     });
 
     it('normalizes effective Sidekick config and retains request defaults and version pins', async () => {
@@ -356,7 +378,7 @@ describe('aem-admin.js — H6 URL contract', () => {
         .pinVersion('test-version');
       const result = await client.sidekick({ org: 'adobe', site: 'x' })
         .get('/config.json', { params: { trace: 'override' } });
-      assert.equal(calls[0].url, 'https://api.aem.live/adobe/aggregated/x/config.json?trace=override&aem-api-version=test-version');
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/config.json?aggregated=true&trace=override&aem-api-version=test-version');
       assert.equal(calls[0].init.method, 'GET');
       assert.equal(calls[0].init.credentials, 'include');
       assert.equal(result.ok, true);

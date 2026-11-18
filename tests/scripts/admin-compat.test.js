@@ -88,7 +88,7 @@ describe('getAdminClientForSite()', () => {
           ? `https://admin.hlx.page/${operation}/${expected.org}/docs/dev`
           : `https://api.aem.live/${expected.org}/sites/docs/${segment}`;
         if (backend === 'H6' && operation === 'sidekick') {
-          url = `https://api.aem.live/${expected.org}/aggregated/docs`;
+          url = `https://api.aem.live/${expected.org}/sites/docs/config.json?aggregated=true`;
         }
         assert.equal(client[operation]().url, url, operation);
       });
