@@ -82,6 +82,28 @@ describe('aem-admin.js — H6 URL contract', () => {
     });
   });
 
+  describe('admin.aggregated(coords) URLs', () => {
+    it('.url is the site config with aggregated=true', () => {
+      assert.equal(
+        admin.aggregated({ org: 'adobe', site: 'x' }).url,
+        'https://api.aem.live/adobe/sites/x/config.json?aggregated=true',
+      );
+    });
+
+    it('.read() GETs the site config with aggregated=true', async () => {
+      await admin.aggregated({ org: 'adobe', site: 'x' }).read();
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/config.json?aggregated=true');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('is read-only', () => {
+      const aggregated = admin.aggregated({ org: 'adobe', site: 'x' });
+      ['update', 'create', 'remove', 'select'].forEach((method) => {
+        assert.equal(aggregated[method], undefined, method);
+      });
+    });
+  });
+
   describe('admin.status(coords) URLs', () => {
     it('.url is /{org}/sites/{site}/status', () => {
       assert.equal(

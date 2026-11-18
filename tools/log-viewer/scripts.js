@@ -1,7 +1,6 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
-import getAdminClient from '../../scripts/admin-compat.js';
-import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
+import createLogApi from './api.js';
 import {
   toDateTimeLocal, calculatePastDate,
 } from './utils.js';
@@ -15,9 +14,6 @@ function loadCreateEditor() {
   }
   return createEditorPromise;
 }
-
-// field ids
-let admin;
 
 const FIELDS = ['date-from', 'date-to'];
 
@@ -217,8 +213,9 @@ function updateTableDisplay(show) {
  * @param {number} status - HTTP error status code.
  * @param {string} org - Organization name.
  * @param {string} site - Site name within org.
+ * @param {string} [detail] - Request failure details.
  */
-async function updateTableError(status, org, site) {
+async function updateTableError(status, org, site, detail) {
   const messages = {
     400: 'The request for logs could not be processed.',
     403: 'Insufficient permissions to view the requested logs. Sign in with a different user to view the requested logs.',
@@ -227,7 +224,7 @@ async function updateTableError(status, org, site) {
   };
 
   const tbody = status === 401 ? LOGIN : ERROR;
-  const text = messages[status] || 'Unable to display the requested logs.';
+  const text = detail || messages[status] || 'Unable to display the requested logs.';
   const title = tbody.querySelector('strong');
   const message = tbody.querySelector('p:last-of-type');
 
@@ -258,13 +255,15 @@ function clearTable(table) {
  * @param {HTMLButtonElement} button - The button that triggered the click.
  */
 async function onAdminClick(source, button) {
+  button.dataset.detailLabel ||= button.textContent;
   showLoadingButton(button);
+  button.dataset.label = button.dataset.detailLabel;
+  button.title = button.value;
   try {
     const { createModal } = await import('../../blocks/modal/modal.js');
     let json = source;
     if (typeof source === 'function') {
-      const { org, site } = getFormData(FORM);
-      const res = await executeAdminRequest(source, { org, site });
+      const res = await source();
       if (!res || !res.ok) throw new Error(`Failed to fetch details: ${res?.status}`);
       json = await res.json();
     }
@@ -289,6 +288,8 @@ async function onAdminClick(source, button) {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Could not create modal:', error);
+    button.dataset.label = 'Error loading details';
+    button.title = error.message;
   }
   resetLoadingButton(button);
 }
@@ -298,9 +299,10 @@ async function onAdminClick(source, button) {
  * @param {Object} data - Log data object.
  * @param {string} live - Hostname for live environment.
  * @param {string} preview - Hostname for preview environment.
+ * @param {object} api - API for the submitted target.
  * @returns {HTMLTableRowElement} Table row element with populated cells.
  */
-function buildLog(data, live, preview) {
+function buildLog(data, live, preview, api) {
   const row = document.createElement('tr');
   const cols = [
     'timestamp',
@@ -322,7 +324,7 @@ function buildLog(data, live, preview) {
     'ip',
     'duration',
   ];
-  const formattedData = new RewrittenData(data, live, preview, onAdminClick, admin);
+  const formattedData = new RewrittenData(data, live, preview, onAdminClick, api);
   formattedData.rewrite(cols);
 
   cols.forEach((col) => {
@@ -351,10 +353,11 @@ function buildLog(data, live, preview) {
  * @param {Object[]} logs - Array of log data objects.
  * @param {string} live - Hostname for live environment.
  * @param {string} preview - Hostname for preview environment.
+ * @param {object} api - API for the submitted target.
  */
-function displayLogs(logs, live, preview) {
+function displayLogs(logs, live, preview, api) {
   logs.forEach((log) => {
-    const row = buildLog(log, live, preview);
+    const row = buildLog(log, live, preview, api);
     RESULTS.prepend(row);
   });
   updateTableDisplay(logs.length ? 'results' : 'no-results');
@@ -392,67 +395,41 @@ function writeTimeParams(timeframe) {
 
 /**
  * Fetches all log entries with pagination.
- * @param {string} org - Organization name.
- * @param {string} site - Site name within org.
+ * @param {object} api - API for the submitted target.
  * @param {string} timeframe - Timeframe for fetching logs.
  * @returns {Promise<>} Object containing all log entries and/or an error.
  */
-async function fetchAllLogs(org, site, timeframe) {
-  const adminClient = await getAdminClient();
+async function fetchAllLogs(api, timeframe) {
   const logs = [];
   const timeParams = Object.fromEntries(new URLSearchParams(writeTimeParams(timeframe)));
   let nextToken;
+  let next;
   let firstPage = true;
 
   do {
     const params = nextToken ? { ...timeParams, nextToken } : timeParams;
-    const policy = firstPage ? AuthMode.PREFLIGHT_AND_RETRY : AuthMode.RETRY_ON_401;
-    firstPage = false;
     // eslint-disable-next-line no-await-in-loop
-    const res = await executeAdminRequest(
-      () => adminClient.log({ org, site }).get('', { params }),
-      { org, site, policy },
-    );
+    const res = await api.readLogs(params, firstPage, next);
+    firstPage = false;
     if (!res) return { logs, error: { status: 401 } };
     if (!res.ok) return { logs, error: { status: res.status } };
     // eslint-disable-next-line no-await-in-loop
     const json = await res.json();
     logs.push(...json.entries);
     nextToken = json.nextToken || null;
-  } while (nextToken);
+    next = json.links?.next;
+  } while (next || nextToken);
 
   return { logs, error: null };
 }
 
 /**
- * Fetches all logs for a specified site within a given timeframe.
- * @param {string} org - Organization name.
- * @param {string} site - Site name within org.
- * @param {string} timeframe - Timeframe for fetching logs.
- * @returns {Promise<>} Object containing log entries or an error.
- */
-async function fetchLogs(org, site, timeframe) {
-  try {
-    const { logs, error } = await fetchAllLogs(org, site, timeframe);
-    return { logs, error };
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.log('Failed to fetch logs:', error);
-    return { logs: [], error };
-  }
-}
-
-/**
  * Fetches the live and preview host URLs for org/site.
- * @param {string} org - Organization name.
- * @param {string} site - Site name within org.
+ * @param {object} api - API for the submitted target.
  * @returns {Promise<>} Object with `live` and `preview` hostnames.
  */
-async function fetchHosts(org, site) {
-  const res = await executeAdminRequest(
-    () => admin.status({ org, site }).get(''),
-    { org, site, policy: AuthMode.PREFLIGHT_AND_RETRY },
-  );
+async function fetchHosts(api) {
+  const res = await api.readHosts();
   if (!res) return { error: { status: 401 } };
   if (!res.ok) return { error: { status: res.status } };
   const json = await res.json();
@@ -525,9 +502,6 @@ function getCellText(cell) {
  * Registers event listeners to handle form interactions, table updates, and UI behavior.
  */
 async function registerListeners() {
-  admin = await getAdminClient();
-  // await initConfigField();
-
   // enable timeframe dropdown
   PICKER.addEventListener('click', (e) => {
     const { target } = e;
@@ -579,28 +553,34 @@ async function registerListeners() {
 
     const data = getFormData(target);
     const { org, site } = data;
-    if (org && site) {
-      // validate org/site config
-      const { live, preview, error: fetchHostError } = await fetchHosts(org, site);
-      if (fetchHostError) {
-        updateTableError(fetchHostError.status, org, site);
-      } else if (live && preview) {
-        // ensure log access
-        const timeframe = [...PICKER_OPTIONS].find((o) => o.getAttribute('aria-selected') === 'true').dataset.value;
-        const { logs, error } = await fetchLogs(org, site, timeframe);
-        if (!error) {
-          displayLogs(logs, live, preview);
-          updateConfig();
-          updateParams(data);
+    try {
+      if (org && site) {
+        const version = new URLSearchParams(window.location.search).get('hlx-admin-version') || undefined;
+        const api = await createLogApi({ org, site }, version);
+        const { live, preview, error: fetchHostError } = await fetchHosts(api);
+        if (fetchHostError) {
+          updateTableError(fetchHostError.status, org, site);
+        } else if (live && preview) {
+          const timeframe = [...PICKER_OPTIONS].find((o) => o.getAttribute('aria-selected') === 'true').dataset.value;
+          const { logs, error } = await fetchAllLogs(api, timeframe);
+          if (!error) {
+            displayLogs(logs, live, preview, api);
+            updateConfig();
+            updateParams(data);
+          } else {
+            updateTableError(error.status, org, site);
+          }
         } else {
-          updateTableError(error.status, org, site);
+          updateTableError('Project', org, site);
         }
-      } else {
-        updateTableError('Project', org, site);
       }
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to fetch logs:', error);
+      updateTableError('Request', org, site, error.message);
+    } finally {
+      enableForm(target, submitter);
     }
-
-    enableForm(target, submitter);
   });
 
   // enable CSV download

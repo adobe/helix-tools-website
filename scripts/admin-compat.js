@@ -19,7 +19,7 @@ const clientCache = new Map();
 
 /** @type {readonly AdminResourceName[]} */
 const SITE_RESOURCES = [
-  'config', 'status', 'preview', 'live', 'code', 'log', 'index',
+  'config', 'aggregated', 'status', 'preview', 'live', 'code', 'log', 'index',
   'sitemap', 'job', 'psi', 'snapshot', 'sidekick', 'medialog', 'suggestions',
 ];
 

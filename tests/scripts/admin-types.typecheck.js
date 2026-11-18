@@ -31,6 +31,7 @@ export function checkUnboundClient(client) {
 export function checkBoundClient(client) {
   client.status().get('/guide');
   client.config().select('cdn.json').read();
+  client.aggregated().read();
   client.withRequestInit({ credentials: 'include' }).pinVersion('v1').preview().bulk({
     paths: ['/guide'],
   });
@@ -50,6 +51,10 @@ export function checkBoundClient(client) {
   client.pinVersion('v1').status({ org: 'another', site: 'site' });
   // @ts-expect-error Read-only resources do not acquire update capabilities.
   client.sidekick().update('/config.json');
+  // @ts-expect-error Aggregated config is read-only.
+  client.aggregated().update('{}');
+  // @ts-expect-error Aggregated config cannot descend into another path.
+  client.aggregated().select('cdn.json');
 }
 
 /**

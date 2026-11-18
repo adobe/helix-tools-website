@@ -1,8 +1,8 @@
 /* eslint-disable no-alert */
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
-import { logResponse } from '../../blocks/console/console.js';
-import getAdminClient from '../../scripts/admin-compat.js';
+import { logMessage, logResponse } from '../../blocks/console/console.js';
+import { getAdminClientForSite } from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import { getErrorMessage, validateBranchName } from './utils.js';
 
@@ -19,9 +19,10 @@ const site = document.getElementById('site');
 const org = document.getElementById('org');
 const host = document.getElementById('host');
 
-let admin;
 let originalConfig;
 let validationPassed = false;
+// `client` is pinned until the next fetch: edits to the form inputs don't retarget the save.
+let client = null;
 
 const VALIDATION_URL = 'https://admin.hlx.page/hook/byocdn-push-invalidation/';
 
@@ -347,9 +348,19 @@ async function runValidation() {
   }
 }
 
+async function getClientOrReport() {
+  try {
+    return await getAdminClientForSite({ org: org.value, site: site.value });
+  } catch (err) {
+    logMessage(consoleBlock, 'error', ['Backend detection', `${org.value}/${site.value}`, err.message]);
+    alert(err.message);
+    return null;
+  }
+}
+
 async function saveConfig() {
-  if (!org.value || !site.value) {
-    alert('Please select an organization and site first');
+  if (!client) {
+    alert('Please fetch a site configuration first');
     return;
   }
 
@@ -365,7 +376,11 @@ async function saveConfig() {
   const branchInput = document.getElementById('branch');
   if (branchInput) branchInput.value = branchInput.value.trim();
   if (branchInput && branchInput.value) {
-    const branchError = validateBranchName(branchInput.value, site.value, org.value);
+    const branchError = validateBranchName(
+      branchInput.value,
+      client.coords.site,
+      client.coords.org,
+    );
     if (branchError) {
       alert(branchError);
       branchInput.focus();
@@ -378,10 +393,8 @@ async function saveConfig() {
 
   try {
     const result = await executeAdminRequest(
-      () => admin.config({ org: org.value, site: site.value })
-        .select('cdn/prod.json')
-        .update(JSON.stringify(cdnConfig)),
-      { org: org.value, site: site.value },
+      () => client.config().select('cdn/prod.json').update(JSON.stringify(cdnConfig)),
+      client,
     );
     if (!result) return;
     const { method, url } = result.request;
@@ -392,7 +405,6 @@ async function saveConfig() {
 }
 
 async function init() {
-  admin = await getAdminClient();
   await initConfigField();
 
   // Update URL params when org or site changes
@@ -427,10 +439,12 @@ async function init() {
       return;
     }
 
+    const fetchClient = await getClientOrReport();
+    if (!fetchClient) return;
     const result = await executeAdminRequest(async () => {
       const [aggRes, siteRes] = await Promise.all([
-        admin.config({ org: org.value }).select(`aggregated/${site.value}.json`).read(),
-        admin.config({ org: org.value, site: site.value }).read(),
+        fetchClient.aggregated().read(),
+        fetchClient.config().read(),
       ]);
       [aggRes, siteRes].forEach((r) => {
         const { method, url } = r.request;
@@ -438,7 +452,7 @@ async function init() {
       });
       const status = aggRes.status === 401 || siteRes.status === 401 ? 401 : siteRes.status;
       return { status, ok: siteRes.ok, parts: { aggRes, siteRes } };
-    }, { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY });
+    }, fetchClient, { policy: AuthMode.PREFLIGHT_AND_RETRY });
 
     if (!result) return;
     const { aggRes, siteRes } = result.parts;
@@ -450,6 +464,7 @@ async function init() {
     }
 
     if (siteRes.status === 200) {
+      client = fetchClient;
       const siteConfig = await siteRes.json();
       if (siteConfig.cdn && siteConfig.cdn.prod) {
         originalConfig = siteConfig.cdn.prod;
@@ -497,6 +512,7 @@ async function init() {
       validationResults.setAttribute('aria-hidden', 'true');
       updateSaveButtonState();
     } else if (siteRes.status === 404) {
+      client = fetchClient;
       originalConfig = {};
       cdnForm.setAttribute('aria-hidden', 'false');
       cdnForm.removeAttribute('disabled');

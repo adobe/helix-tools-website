@@ -100,6 +100,20 @@ describe('getAdminClientForSite()', () => {
       );
       assert.deepEqual(client.suggestions(), admin.suggestions(expected));
     });
+
+    it(`exposes a read-only ${backend} aggregated config bound to the site`, async () => {
+      stubFetch(header);
+      const client = await getAdminClientForSite({ org: `agg-${backend}`, site: 'docs', ref: 'dev' });
+
+      assert.equal(typeof client.aggregated, 'function');
+      assert.equal(
+        client.aggregated().url,
+        backend === 'H5'
+          ? `https://admin.hlx.page/config/agg-${backend}/aggregated/docs.json`
+          : `https://api.aem.live/agg-${backend}/sites/docs/config.json?aggregated=true`,
+      );
+      assert.throws(() => client.aggregated({ org: 'other', site: 'other' }), TypeError);
+    });
   });
 
   it('probes the legacy sidekick config endpoint for the default ref', async () => {
