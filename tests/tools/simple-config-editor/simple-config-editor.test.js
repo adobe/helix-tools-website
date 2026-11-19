@@ -149,6 +149,34 @@ describe('simple-config-editor on Helix 6', () => {
     assert.deepEqual(update.body, { cdn: { prod: { type: 'fastly', host: 'www.acme.com' } } });
   });
 
+  it('clears the loaded config when the site is changed after load', async () => {
+    respondConfig({ body: CONFIG }, { body: AGGREGATE });
+    await load();
+
+    const siteField = document.getElementById('site');
+    siteField.value = 'other-site';
+    siteField.dispatchEvent(new window.Event('change'));
+
+    assert.equal(document.getElementById('config-editor').getAttribute('aria-hidden'), 'true');
+    assert.equal(document.getElementById('config-tbody').children.length, 0);
+  });
+
+  it('locks the org and site fields while there are pending changes', async () => {
+    respondConfig({ body: CONFIG }, { body: AGGREGATE });
+    api.respond('updateConfigSite', { status: 200 });
+    await load();
+
+    document.querySelector('.remove-property[data-key="serviceId"][data-path="cdn.prod"]').click();
+
+    assert.equal(document.getElementById('org').disabled, true);
+    assert.equal(document.getElementById('site').disabled, true);
+
+    await save();
+
+    assert.equal(document.getElementById('org').disabled, false);
+    assert.equal(document.getElementById('site').disabled, false);
+  });
+
   it('does not write when there are no changes', async () => {
     respondConfig({ body: CONFIG }, { body: AGGREGATE });
     await load();

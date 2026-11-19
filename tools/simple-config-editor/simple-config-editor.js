@@ -146,6 +146,9 @@ function updateSaveButton() {
   const saveButton = document.getElementById('save-all-changes');
   if (!saveButton) return;
 
+  org.disabled = pendingChanges.size > 0;
+  site.disabled = pendingChanges.size > 0;
+
   if (pendingChanges.size > 0) {
     saveButton.style.display = 'inline-block';
     saveButton.textContent = `Save All Changes (${pendingChanges.size})`;
@@ -1056,6 +1059,19 @@ async function init() {
     e.preventDefault();
     loadConfig();
   });
+
+  // Changing the site after load clears the view so it never shows another site's config
+  [org, site].forEach((field) => field.addEventListener('change', () => {
+    if (!loadedClient) return;
+    const { coords } = loadedClient;
+    if (org.value === coords.org && site.value === coords.site) return;
+    loadedClient = null;
+    currentConfig = {};
+    originalConfig = {};
+    aggregateConfig = {};
+    configTbody.innerHTML = '';
+    configEditor.setAttribute('aria-hidden', 'true');
+  }));
 
   // Add property button
   document.getElementById('add-property').addEventListener('click', addProperty);
