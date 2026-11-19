@@ -3,9 +3,45 @@ import fetchWithRetry from '../utils/fetch-retry.js';
 
 const H6_FLAG = 'use-h6-api';
 
+/**
+ * @typedef {import('./admin-types.js').BoundAdminClient |
+ *   import('./admin-types.js').OrgBoundAdminClient} ScopedAdminClient
+ */
+
 // Cache the whole creation promise so detection and binding are shared.
-/** @type {Map<string, Promise<import('./admin-types.js').BoundAdminClient>>} */
+/** @type {Map<string, Promise<ScopedAdminClient>>} */
 const clientCache = new Map();
+
+/**
+ * @typedef {Exclude<keyof import('./admin-types.js').UnboundAdminClient,
+ *   'raw'|'isInScope'|'coordsFromURL'|'withRequestInit'|'pinVersion'>} AdminResourceName
+ */
+
+/** @type {readonly AdminResourceName[]} */
+const SITE_RESOURCES = [
+  'config', 'status', 'preview', 'live', 'code', 'log', 'index',
+  'sitemap', 'job', 'psi', 'snapshot', 'sidekick', 'medialog', 'suggestions',
+];
+
+/**
+ * @template {ScopedAdminClient} T
+ * @param {readonly ['site', string, string, string|null, boolean] |
+ *   readonly ['org', string]} parts
+ * @param {() => Promise<T>} create
+ * @returns {Promise<T>}
+ */
+function getCachedClient(parts, create) {
+  const key = JSON.stringify(parts);
+  // Scope-prefixed keys keep each cached promise paired with its factory's client type.
+  const cached = /** @type {Promise<T>|undefined} */ (clientCache.get(key));
+  if (cached) return cached;
+  const pending = create().catch((error) => {
+    clientCache.delete(key);
+    throw error;
+  });
+  clientCache.set(key, pending);
+  return pending;
+}
 
 /**
  * @param {boolean} useH6
@@ -22,46 +58,84 @@ async function loadAdminModule(useH6) {
 }
 
 /**
+ * @param {import('./admin-types.js').UnboundAdminClient} source
+ * @param {import('./admin-types.js').BoundCoordinates} coords
+ * @returns {import('./admin-types.js').AdminRawRequest}
+ */
+function bindRawRequest(source, coords) {
+  const { origin } = new URL(source.config(coords).url);
+  return (method, urlOrPath, body, opts) => {
+    const url = new URL(urlOrPath, origin);
+    const decoded = new URL(url);
+    // Server routing can interpret encoded separators as coordinate boundaries.
+    decoded.pathname = url.pathname.replace(/%2f/gi, '/').replace(/%5c/gi, '/');
+    // Adapters own backend-specific URL boundaries; the binder only enforces them.
+    if (url.username || url.password || url.href.includes('#')
+      || !source.isInScope(url, coords) || !source.isInScope(decoded, coords)) {
+      throw new TypeError('Bound admin raw() URL must remain within its backend and coordinates');
+    }
+    return source.raw(method, url.href, body, opts);
+  };
+}
+
+/**
+ * @overload
  * @param {import('./admin-types.js').UnboundAdminClient} admin
  * @param {import('./admin-types.js').BoundCoordinates} coords
+ * @param {readonly AdminResourceName[]} resources
  * @returns {import('./admin-types.js').BoundAdminClient}
  */
-function bindAdminClient(admin, coords) {
+/**
+ * @overload
+ * @param {import('./admin-types.js').UnboundAdminClient} admin
+ * @param {import('./admin-types.js').OrgBoundCoordinates} coords
+ * @param {readonly ['config']} resources
+ * @returns {import('./admin-types.js').OrgBoundAdminClient}
+ */
+/**
+ * @param {import('./admin-types.js').UnboundAdminClient} admin
+ * @param {import('./admin-types.js').BoundCoordinates |
+ *   import('./admin-types.js').OrgBoundCoordinates} coords
+ * @param {readonly AdminResourceName[]} resources
+ * @returns {ScopedAdminClient}
+ */
+function bindAdminClient(admin, coords, resources) {
   /**
-   * @template T
-   * @param {(coords: import('./admin-types.js').BoundCoordinates) => T} resource
-   * @returns {() => T}
+   * @param {import('./admin-types.js').UnboundAdminClient} source
+   * @returns {ScopedAdminClient}
    */
-  function bind(resource) {
-    return (...args) => {
-      if (args.length) {
-        throw new TypeError(`Bound admin ${resource.name}() does not accept arguments`);
-      }
-      return resource(coords);
-    };
-  }
-
-  return Object.freeze({
-    coords,
-    config: bind(admin.config),
-    status: bind(admin.status),
-    preview: bind(admin.preview),
-    live: bind(admin.live),
-    code: bind(admin.code),
-    log: bind(admin.log),
-    index: bind(admin.index),
-    sitemap: bind(admin.sitemap),
-    job: bind(admin.job),
-    psi: bind(admin.psi),
-    snapshot: bind(admin.snapshot),
-    sidekick: bind(admin.sidekick),
-    medialog: bind(admin.medialog),
-    raw: admin.raw,
-    coordsFromURL: admin.coordsFromURL,
-    suggestions: bind(admin.suggestions),
-    withRequestInit: (extra) => bindAdminClient(admin.withRequestInit(extra), coords),
-    pinVersion: (version) => bindAdminClient(admin.pinVersion(version), coords),
-  });
+  const bind = (source) => {
+    const bound = Object.fromEntries(resources.map((name) => [
+      name,
+      /** @param {...unknown} args */
+      (...args) => {
+        if (args.length) {
+          throw new TypeError(`Bound admin ${source[name].name}() does not accept arguments`);
+        }
+        if (name === 'config') return source.config(coords);
+        if (!('site' in coords)) {
+          throw new TypeError(`Bound admin ${name}() requires site coordinates`);
+        }
+        return source[name](coords);
+      },
+    ]));
+    const helpers = 'site' in coords
+      ? { raw: bindRawRequest(source, coords), coordsFromURL: source.coordsFromURL }
+      : {};
+    // The resource lists supply the required accessors for each public client contract.
+    return /** @type {ScopedAdminClient} */ (Object.freeze({
+      coords,
+      ...bound,
+      ...helpers,
+      withRequestInit: (/** @type {import('./admin-types.js').AdminRequestDefaults} */ extra) => (
+        bind(source.withRequestInit(extra))
+      ),
+      pinVersion: (/** @type {string|undefined} */ version = undefined) => (
+        bind(source.pinVersion(version))
+      ),
+    }));
+  };
+  return bind(admin);
 }
 
 /**
@@ -106,7 +180,7 @@ async function isHelix6({ org, site, ref = 'main' }, forceH6) {
 
 /**
  * Get a cached, immutable site-bound client, selecting H5 or H6 by detection.
- * Resource accessors take no arguments; raw URLs remain explicitly unscoped.
+ * Resource accessors take no arguments; raw URLs must stay within the bound target.
  * Request-default and version derivation preserve binding without changing this cache.
  * Transient detection failures use the shared GET retry policy. Permanent HTTP errors
  * and exhausted retries reject; failures are not cached as legacy-backend results.
@@ -126,17 +200,32 @@ export async function getAdminClientForSite(coords) {
   const scope = Object.freeze({ org, site, ref });
   const forceH6 = window.localStorage.getItem(H6_FLAG) !== null;
   // Keep forced selection separate from automatic detection while the override exists.
-  const key = JSON.stringify([org, site, ref, forceH6]);
-  const cached = clientCache.get(key);
-  if (cached) return cached;
-  const pending = (async () => {
+  return getCachedClient(['site', org, site, ref, forceH6], async () => {
     const admin = await loadAdminModule(await isHelix6(scope, forceH6));
     if (!admin) throw new Error(`Failed to load admin client for ${org}/${site}`);
-    return bindAdminClient(admin, scope);
-  })().catch((error) => {
-    clientCache.delete(key);
-    throw error;
+    return bindAdminClient(admin, scope, SITE_RESOURCES);
   });
-  clientCache.set(key, pending);
-  return pending;
+}
+
+/**
+ * Get a cached, immutable org-bound client. Org-level operations exist only on the
+ * Helix 6 backend, so there is no detection and the `use-h6-api` override is irrelevant.
+ * Only operations an org-level tool uses are bound; add others when a tool needs them.
+ *
+ * @param {import('./admin-types.js').OrgCoordinates} coords
+ * @returns {Promise<import('./admin-types.js').OrgBoundAdminClient>}
+ */
+export async function getAdminClientForOrg(coords) {
+  if (!coords || typeof coords.org !== 'string' || !coords.org.trim()) {
+    throw new TypeError('Admin client org must be a non-empty string');
+  }
+  if ('site' in coords) {
+    throw new TypeError('Admin client for org is org-only; use getAdminClientForSite for a site');
+  }
+  const scope = Object.freeze({ org: coords.org });
+  return getCachedClient(['org', scope.org], async () => {
+    const admin = await loadAdminModule(true);
+    if (!admin) throw new Error(`Failed to load admin client for ${scope.org}`);
+    return bindAdminClient(admin, scope, ['config']);
+  });
 }

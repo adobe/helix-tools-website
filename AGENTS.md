@@ -26,6 +26,7 @@ The repository provides the basic structure, blocks, and configuration needed to
 - Run linting before committing: `npm run lint`
 - Auto-Fix linting issues: `npm run lint:fix`
 - Run tests: `npm test`
+- Check opted-in JavaScript API contracts: `npm run typecheck`
 
 ## Project Structure
 
@@ -146,6 +147,38 @@ Pages are progressively loaded in three phases to maximize performance. This pro
 ## Testing & Quality Assurance
 
 See `TESTING.md` for the full testing philosophy, what warrants automated CI tests vs. what to skip, and test conventions.
+
+### JavaScript Contract Checking
+
+TypeScript is used only to check selected JavaScript/JSDoc contracts during
+development, starting with shared admin clients and auth. It is not a TypeScript
+migration, transpilation step, or application build; browsers still run `.js` directly.
+
+- Keep `noEmit: true` and incremental opt-in checking (`checkJs: false`, `// @ts-check` per file).
+- When changing a checked API, update its shared JSDoc types and compile-only contract checks. Use JSDoc `import(...)` for type-only references, not runtime imports.
+- Extend checking to shared libraries as they are changed, ensuring they are reachable from `tsconfig.json`; do not convert unrelated files or enable repository-wide checking.
+- Fix contract mismatches rather than hiding them with `any` or suppressions. Keep runtime validation, guards, and tests: static types do not enforce runtime behavior.
+- Run `npm run typecheck` alongside lint and relevant runtime tests when changing checked APIs.
+
+See [Incremental JavaScript type checking](TESTING.md#incremental-javascript-type-checking) for the purpose, current scope, limitations, and negative contract checks.
+
+### Admin API Contract (Helix 6)
+
+The vendored OpenAPI spec `tests/fixtures/aem-admin-api-spec.json` is the only authority for what the H6 API supports. The fake H6 server in `tests/helpers/mock-aem-api.js` routes from it.
+
+- Read both `paths` and `components` (`schemas`, `parameters`). `paths` alone does not tell you what a `{path}` value or a body may be.
+- On the config routes (`/{org}/config/{path}`, `/{org}/sites/{site}/config/{path}`, `/{org}/profiles/{profile}/config/{path}`, `/{org}/aggregated/{site}/config/{path}`), `{path}` selects a property of the parent config schema (`org`, `site`, `profile`), e.g. `headers`, `cdn`, `users`, `access`. The property's schema defines the body. Check a sub-path against those schemas, not by searching the spec for a filename such as `headers.json` or `sitemap.yaml`.
+- The H5 client treats `x.json` and `x/` as two views of one node, and `select()` strips the extension. The spec does not say whether H6 accepts the suffix; do not assume either way.
+- Do not write tool code against a route that is not in the spec (currently e.g. `sitemap`, `index`, `snapshot`, `psi`, `sidekick`, `medialog`), and do not add routes to the fixture to make a test pass.
+- H5 and H6 payloads can differ for the same client call (e.g. `robots.txt` is plain text on H5, `{ "txt": string }` on H6). Compare the tool's actual body with the schema when migrating it.
+- When discussing an API route, always give the full route with its org/site context (e.g. `GET /{org}/sites/{site}/config/headers`), never a bare `config` or `config/{path}`.
+
+#### Fake server behavior
+
+- The fake resolves a config `{path}` through the parent schema and validates write bodies (POST, PUT, PATCH) with ajv; failures are recorded in `api.violations` and answered 404 (unresolvable path) or 400 (body mismatch). Tool tests assert `api.violations` is empty in `afterEach`, so a tool that misuses the contract fails its own test. Prove coverage through the tool tests, not tests of the fake.
+- The spec describes stored config, not every request shape. Behavior it omits is added to the fake as a rule marked `SPEC GAP:` (search for it), written as the behavior only, e.g. "H6 accepts a new user without an id and assigns it server-side". Current rules: a single user POSTed to org `users` is validated without `id`, and `users/{id}` addresses one org user for POST and DELETE.
+- The H6 API implementation and its libraries are private. Never name them, their files or their functions in code, tests, comments or this file. Record only the observed behavior.
+- A `SPEC GAP:` rule is not a licence to call an undocumented route; it only lets the fake accept behavior the real API is known to support. Remove a rule once the published spec covers it.
 
 ### Performance
 - Follow AEM Edge Delivery performance best practices https://www.aem.live/developer/keeping-it-100
