@@ -271,6 +271,19 @@ describe('site-query request compatibility', () => {
     assert.deepEqual(opened, []);
   });
 
+  it('reports a permission error when the site config read is forbidden', async () => {
+    await load();
+    searchPage();
+    respond(`${STATUS}/guide?editUrl=auto`, {});
+    respond(`${BASE}/sidekick/acme/docs/main/config.json`, {}, 403);
+    await submit();
+    const link = document.querySelector('a.edit-link');
+    link.click();
+    await waitFor(() => link.classList.contains('disabled'));
+    assert.equal(link.textContent, 'No permission to look up edit link');
+    assert.deepEqual(opened, []);
+  });
+
   it('does not open an editor after edit authentication is cancelled', async () => {
     await load();
     searchPage();
@@ -376,7 +389,7 @@ describe('site-query request compatibility', () => {
   it('shows edit HTTP failures without trying a config fallback', async () => {
     await load();
     searchPage();
-    respond(`${STATUS}/guide?editUrl=auto`, {}, 403);
+    respond(`${STATUS}/guide?editUrl=auto`, {}, 500);
     await submit();
     const link = document.querySelector('a.edit-link');
     link.click();

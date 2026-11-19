@@ -135,7 +135,9 @@ function displayResult(url, matches, api) {
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('failed to open edit link', err);
-      editLink.textContent = 'Error opening edit link';
+      editLink.textContent = err.status === 403
+        ? 'No permission to look up edit link'
+        : 'Error opening edit link';
       editLink.classList.add('disabled');
     }
   });
