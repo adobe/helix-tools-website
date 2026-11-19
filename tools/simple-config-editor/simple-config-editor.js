@@ -2,8 +2,14 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { logResponse, logMessage } from '../../blocks/console/console.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { createModal } from '../../blocks/modal/modal.js';
-import getAdminClient from '../../scripts/admin-compat.js';
-import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
+import { getAdminClientForSite } from '../../scripts/admin-compat.js';
+import {
+  readConfigWithAggregate,
+  readConfig,
+  readMigrationPreview,
+  createConfig,
+  writeConfig,
+} from './api.js';
 import {
   setNestedValue,
   removeNestedValue,
@@ -12,15 +18,13 @@ import {
 } from './utils.js';
 import escapeHtml from '../../utils/html.js';
 
-let admin;
-
 let currentConfig = {};
 // eslint-disable-next-line no-unused-vars
 let originalConfig = {}; // Used to track original state for comparison
 let aggregateConfig = {}; // Used to show inherited values
-// {org, site} captured at load time so save/migrate act on the
-// originally-loaded site even if the user changes the dropdown after loading.
-let loadedCoords = null;
+// Client captured at load time so save/migrate act on the originally-loaded
+// site even if the user changes the dropdown after loading.
+let loadedClient = null;
 const pendingChanges = new Map(); // Track all pending changes
 let showInherited = false; // Track whether inherited properties are visible
 
@@ -94,6 +98,11 @@ const site = document.getElementById('site');
 const configEditor = document.getElementById('config-editor');
 const configTbody = document.getElementById('config-tbody');
 const consoleBlock = document.querySelector('.console');
+const log = (res) => logResponse(
+  consoleBlock,
+  res.status,
+  [res.request.method, res.request.url, res.error],
+);
 
 // Utility functions
 
@@ -888,21 +897,14 @@ async function showMigrationConfirmation(migratedConfig) {
  * @param {Object} configToMigrate - The cleaned migrated configuration to save
  */
 async function performMigration(configToMigrate) {
-  if (!loadedCoords) {
+  if (!loadedClient) {
     logMessage(consoleBlock, 'error', ['MIGRATE', 'No site context to migrate.', '']);
     return;
   }
-  const { org: orgVal, site: siteVal } = loadedCoords;
 
   logMessage(consoleBlock, 'info', ['MIGRATE', 'Performing migration...', '']);
 
-  const result = await executeAdminRequest(async () => {
-    const res = await admin.config({ org: orgVal, site: siteVal })
-      .create(JSON.stringify(configToMigrate));
-    const { method, url } = res.request;
-    logResponse(consoleBlock, res.status, [method, url, res.error]);
-    return res;
-  }, { org: orgVal, site: siteVal });
+  const result = await createConfig(loadedClient, log, configToMigrate);
 
   if (!result) return;
   if (!result.ok) {
@@ -916,9 +918,7 @@ async function performMigration(configToMigrate) {
 }
 
 /**
- * Loads the configuration for the selected org/site. Site config and aggregate
- * config are fetched in parallel inside one executeAdminRequest — a single
- * 401 retries both. PREFLIGHT_AND_RETRY because this is the entry point.
+ * Loads the configuration for the selected org/site.
  */
 async function loadConfig() {
   const orgVal = org.value;
@@ -931,42 +931,21 @@ async function loadConfig() {
   logMessage(consoleBlock, 'info', ['LOAD', `Loading config from: /config/${orgVal}/sites/${siteVal}.json`, '']);
 
   try {
-    const result = await executeAdminRequest(async () => {
-      const cfgNode = admin.config({ org: orgVal, site: siteVal });
-      const aggregateNode = admin.config({ org: orgVal })
-        .select(`aggregated/${siteVal}.json`);
-      const [cfgRes, aggRes] = await Promise.all([cfgNode.read(), aggregateNode.read()]);
-      [cfgRes, aggRes].forEach((r) => {
-        const { method, url } = r.request;
-        logResponse(consoleBlock, r.status, [method, url, r.error]);
-      });
-      // Bubble 401 if either part 401s so the wrapper retries the whole pair.
-      const status = cfgRes.status === 401 || aggRes.status === 401 ? 401 : cfgRes.status;
-      return {
-        status,
-        ok: cfgRes.ok && aggRes.ok,
-        parts: { cfg: cfgRes, aggregate: aggRes },
-      };
-    }, { org: orgVal, site: siteVal, policy: AuthMode.PREFLIGHT_AND_RETRY });
+    const client = await getAdminClientForSite({ org: orgVal, site: siteVal });
+    const result = await readConfigWithAggregate(client, log);
 
     if (!result) return;
-    const { cfg: configResponse, aggregate: aggregateResponse } = result.parts;
+    const { cfg: configResponse, aggregate: aggregateResponse } = result;
 
     if (configResponse.status === 404) {
       logMessage(consoleBlock, 'warning', ['LOAD', 'No configuration file found. Checking for migration options...', '']);
-      const migrateResult = await executeAdminRequest(async () => {
-        const res = await admin.config({ org: orgVal, site: siteVal })
-          .read({ params: { migrate: 'true' } });
-        const { method, url } = res.request;
-        logResponse(consoleBlock, res.status, [method, url, res.error]);
-        return res;
-      }, { org: orgVal, site: siteVal });
+      const migrateResult = await readMigrationPreview(client, log);
 
       if (!migrateResult) return;
       if (migrateResult.ok) {
         const migratedConfig = await migrateResult.json();
         const cleanedConfig = cleanAndLogHostProperties({ ...migratedConfig });
-        loadedCoords = { org: orgVal, site: siteVal };
+        loadedClient = client;
         configEditor.removeAttribute('aria-hidden');
         showMigrationConfirmation(cleanedConfig);
         logMessage(consoleBlock, 'info', ['MIGRATE', 'Migration preview loaded. Review and confirm to proceed.', '']);
@@ -985,7 +964,7 @@ async function loadConfig() {
     const config = await configResponse.json();
     const aggregate = await aggregateResponse.json();
 
-    loadedCoords = { org: orgVal, site: siteVal };
+    loadedClient = client;
     currentConfig = { ...config };
     originalConfig = { ...config };
     aggregateConfig = { ...aggregate };
@@ -1013,20 +992,13 @@ async function saveAllChanges() {
     logMessage(consoleBlock, 'warning', ['SAVE', 'No changes to save', '']);
     return;
   }
-  if (!loadedCoords) {
+  if (!loadedClient) {
     logMessage(consoleBlock, 'error', ['SAVE', 'No site loaded.', '']);
     return;
   }
-  const { org: orgVal, site: siteVal } = loadedCoords;
-  const cfgNode = admin.config({ org: orgVal, site: siteVal });
 
   try {
-    const getResult = await executeAdminRequest(async () => {
-      const res = await cfgNode.read();
-      const { method, url } = res.request;
-      logResponse(consoleBlock, res.status, [method, url, res.error]);
-      return res;
-    }, { org: orgVal, site: siteVal });
+    const getResult = await readConfig(loadedClient, log);
 
     if (!getResult) return;
     if (!getResult.ok) {
@@ -1036,12 +1008,7 @@ async function saveAllChanges() {
     const serverConfig = await getResult.json();
     applyPendingChanges(serverConfig, pendingChanges);
 
-    const saveResult = await executeAdminRequest(async () => {
-      const res = await cfgNode.update(JSON.stringify(serverConfig));
-      const { method, url } = res.request;
-      logResponse(consoleBlock, res.status, [method, url, res.error]);
-      return res;
-    }, { org: orgVal, site: siteVal });
+    const saveResult = await writeConfig(loadedClient, log, serverConfig);
 
     if (!saveResult) return;
     if (!saveResult.ok) {
@@ -1081,12 +1048,10 @@ function toggleInheritedProperties() {
  * Initializes the config editor
  */
 async function init() {
-  admin = await getAdminClient();
   // Initialize config field (handles URL params, localStorage, sidekick auto-population)
   await initConfigField();
 
-  // Load config when form is submitted. Auth is handled inside loadConfig
-  // via executeAdminRequest with PREFLIGHT_AND_RETRY.
+  // Load config when form is submitted. Auth is handled inside loadConfig.
   document.getElementById('config-selection-form').addEventListener('submit', (e) => {
     e.preventDefault();
     loadConfig();

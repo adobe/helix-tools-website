@@ -15,6 +15,7 @@
     "utils/admin-request.js",
     "tools/log-viewer/api.js",
     "tools/user-admin/api.js",
+    "tools/simple-config-editor/api.js",
     "tests/scripts/admin-types.typecheck.js"
   ]
 }
