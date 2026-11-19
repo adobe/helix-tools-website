@@ -14,7 +14,7 @@ const clientCache = new Map();
 
 /**
  * @typedef {Exclude<keyof import('./admin-types.js').UnboundAdminClient,
- *   'raw'|'isInScope'|'coordsFromURL'|'withRequestInit'|'pinVersion'>} AdminResourceName
+ *   'raw'|'isInScope'|'withRequestInit'|'pinVersion'>} AdminResourceName
  */
 
 /** @type {readonly AdminResourceName[]} */
@@ -120,7 +120,7 @@ function bindAdminClient(admin, coords, resources) {
       },
     ]));
     const helpers = 'site' in coords
-      ? { raw: bindRawRequest(source, coords), coordsFromURL: source.coordsFromURL }
+      ? { raw: bindRawRequest(source, coords) }
       : {};
     // The resource lists supply the required accessors for each public client contract.
     return /** @type {ScopedAdminClient} */ (Object.freeze({
@@ -136,6 +136,42 @@ function bindAdminClient(admin, coords, resources) {
     }));
   };
   return bind(admin);
+}
+
+/** @param {string | undefined} s */
+const stripJson = (s) => (s ? s.replace(/\.json$/, '') : null);
+
+/** @param {string[]} parts */
+function h5Coords(parts) {
+  if (parts[0] === 'config') {
+    const org = stripJson(parts[1]);
+    if (!org) return { org: null, site: null };
+    return { org, site: parts[2] === 'sites' ? stripJson(parts[3]) : null };
+  }
+  return { org: parts[1] ?? null, site: parts[2] ?? null };
+}
+
+/** @param {string[]} parts */
+function h6Coords(parts) {
+  const org = parts[0];
+  if (!org) return { org: null, site: null };
+  return { org, site: parts[1] === 'sites' ? stripJson(parts[2]) : null };
+}
+
+/**
+ * Parse org/site from an admin API URL. The host selects the URL grammar
+ * only; it says nothing about which backend the site actually uses.
+ * @param {string} url
+ * @returns {import('./admin-types.js').ParsedCoordinates}
+ */
+export function coordsFromURL(url) {
+  try {
+    const { hostname, pathname } = new URL(url);
+    const parts = pathname.split('/').filter(Boolean);
+    return hostname === 'admin.hlx.page' ? h5Coords(parts) : h6Coords(parts);
+  } catch {
+    return { org: null, site: null };
+  }
 }
 
 /**

@@ -1,6 +1,6 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { logResponse } from '../../blocks/console/console.js';
-import getAdminClient from '../../scripts/admin-compat.js';
+import getAdminClient, { coordsFromURL } from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 
 let admin;
@@ -89,10 +89,10 @@ async function init() {
   admin = await getAdminClient();
   adminURL.value = localStorage.getItem('admin-url') || admin.status({ org: 'adobe', site: 'aem-boilerplate' }).url;
 
-  updateAdminURLSuggestions(admin.coordsFromURL(adminURL.value));
+  updateAdminURLSuggestions(coordsFromURL(adminURL.value));
 
   adminURL.addEventListener('input', () => {
-    updateAdminURLSuggestions(admin.coordsFromURL(adminURL.value));
+    updateAdminURLSuggestions(coordsFromURL(adminURL.value));
     if (editorPromise) {
       editorPromise.then((editor) => {
         editor.setLanguage(currentLanguage());
@@ -148,7 +148,7 @@ async function init() {
    */
   adminForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const { org, site } = admin.coordsFromURL(adminURL.value);
+    const { org, site } = coordsFromURL(adminURL.value);
     const result = await executeAdminRequest(
       () => admin.raw('GET', adminURL.value),
       { org, site, policy: AuthMode.RETRY_ON_401 },
