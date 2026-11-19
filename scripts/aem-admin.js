@@ -119,7 +119,12 @@ function createAdmin(defaults = {}) {
         const dirUrl = url.replace(/\.[^./]+$/, '');
         return bindConfig(`${dirUrl}/${clean}`);
       },
-      read: (opts) => request({ method: 'GET', url, params: opts?.params }),
+      read: (opts) => {
+        if (opts?.params && 'migrate' in opts.params) {
+          return Promise.reject(new Error('aem-admin: config migrate is not supported on Helix 6'));
+        }
+        return request({ method: 'GET', url, params: opts?.params });
+      },
       update: (body, opts) => write('POST', body, opts),
       create: (body, opts) => write('PUT', body, opts),
       remove: (opts) => request({ method: 'DELETE', url, params: opts?.params }),

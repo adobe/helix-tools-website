@@ -80,6 +80,14 @@ describe('aem-admin.js — H6 URL contract', () => {
       await admin.config({ org: 'adobe', profile: 'p' }).read();
       assert.equal(calls[0].url, 'https://api.aem.live/adobe/profiles/p/config.json');
     });
+
+    it('.read() with migrate rejects without fetching — H6 has no config migration', async () => {
+      await assert.rejects(
+        admin.config({ org: 'adobe', site: 'x' }).read({ params: { migrate: 'true' } }),
+        /migrate is not supported on Helix 6/,
+      );
+      assert.equal(calls.length, 0);
+    });
   });
 
   describe('admin.aggregated(coords) URLs', () => {
