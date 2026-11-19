@@ -64,10 +64,13 @@ function createAdmin(defaults = {}) {
     method, url, body, contentType, params,
   }) {
     const mergedParams = { ...defaultParams, ...params };
+    const inUrl = new URLSearchParams(url.split('?')[1] || '');
     let finalUrl = url;
-    if (Object.keys(mergedParams).length) {
+    if (Object.keys(mergedParams).some((k) => !inUrl.has(k))) {
       const qs = new URLSearchParams();
-      Object.entries(mergedParams).forEach(([k, v]) => qs.set(k, v));
+      Object.entries(mergedParams).forEach(([k, v]) => {
+        if (!inUrl.has(k)) qs.set(k, v);
+      });
       finalUrl = `${url}${url.includes('?') ? '&' : '?'}${qs.toString()}`;
     }
     const init = { ...initDefaults, method };
@@ -146,6 +149,17 @@ function createAdmin(defaults = {}) {
   // H6 URL pattern: /{org}/sites/{site}/{op} — ref segment is gone
   function opBase(op, { org, site }) {
     return `${ADMIN_BASE}/${org}/sites/${site}/${op}`;
+  }
+
+  /**
+   * @param {URL} url
+   * @param {import('./admin-types.js').BoundCoordinates} coords
+   * @returns {boolean}
+   */
+  function isInScope(url, coords) {
+    const root = new URL(opBase('', coords)).pathname;
+    return url.origin === ADMIN_BASE
+      && (url.pathname === root.slice(0, -1) || url.pathname.startsWith(root));
   }
 
   function bindOperation(baseUrl, caps) {
@@ -260,6 +274,7 @@ function createAdmin(defaults = {}) {
     sidekick,
     medialog,
     raw,
+    isInScope,
     suggestions,
     coordsFromURL,
     withRequestInit,
