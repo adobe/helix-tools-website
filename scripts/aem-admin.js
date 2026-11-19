@@ -219,13 +219,16 @@ function createAdmin(defaults = {}) {
   function sidekick({ org, site }) {
     // Effective config preserves profile inheritance without introducing a second config API.
     const resource = aggregated({ org, site });
-    return {
+    const sidekickResource = {
       url: resource.url,
       async get(path, opts) {
         // H6 only exposes the aggregated site config; there is no per-path sidekick resource.
         if (String(path).replace(/^\//, '') !== 'config.json') {
           throw new Error(`aem-admin: unsupported sidekick path "${path}"`);
         }
+        return sidekickResource.read(opts);
+      },
+      async read(opts) {
         const response = await resource.read(opts);
         if (!response.ok) return response;
         const json = async () => {
@@ -248,6 +251,7 @@ function createAdmin(defaults = {}) {
         return { ...response, json, text: async () => JSON.stringify(await json()) };
       },
     };
+    return sidekickResource;
   }
   function medialog(coords) { return bindOperation(opBase('medialog', coords), ['get']); }
 

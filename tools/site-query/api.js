@@ -64,7 +64,7 @@ export default async function createSiteQueryApi(coords, version) {
         return status.edit.url;
       }
       const configResponse = await executeAdminRequest(
-        () => siteClient.sidekick().get('config.json'),
+        () => siteClient.sidekick().read(),
         siteClient,
       );
       if (!configResponse) return null;

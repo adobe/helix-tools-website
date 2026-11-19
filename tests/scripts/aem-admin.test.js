@@ -358,6 +358,12 @@ describe('aem-admin.js — H6 URL contract', () => {
       assert.equal(calls[0].init.method, 'GET');
     });
 
+    it('.read() GETs the aggregated site config', async () => {
+      await admin.sidekick({ org: 'adobe', site: 'x' }).read();
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/config.json?aggregated=true');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
     it('rejects paths other than config.json without fetching', async () => {
       await assert.rejects(
         () => admin.sidekick({ org: 'adobe', site: 'x' }).get('other.json'),

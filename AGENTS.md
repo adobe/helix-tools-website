@@ -170,7 +170,7 @@ The vendored OpenAPI spec `tests/fixtures/aem-admin-api-spec.json` is the only a
 - On the config routes (`/{org}/config/{path}`, `/{org}/sites/{site}/config/{path}`, `/{org}/profiles/{profile}/config/{path}`), `{path}` selects a property of the parent config schema (`org`, `site`, `profile`), e.g. `headers`, `cdn`, `users`, `access`. The property's schema defines the body. Check a sub-path against those schemas, not by searching the spec for a filename such as `headers.json` or `sitemap.yaml`.
 - The H5 client treats `x.json` and `x/` as two views of one node, and `select()` strips the extension. The spec does not say whether H6 accepts the suffix; do not assume either way.
 - Do not write tool code against a route that is not in the spec (currently e.g. `sitemap`, `index`, `snapshot`, `psi`, `sidekick`, `medialog`), and do not add routes to the fixture to make a test pass.
-- On H6, sidekick config comes from the aggregated site config (`GET /{org}/sites/{site}/config.json?aggregated=true`). `sidekick().get('config.json')` in `scripts/aem-admin.js` reads it through `aggregated()`.
+- On H6, sidekick config comes from the aggregated site config (`GET /{org}/sites/{site}/config.json?aggregated=true`). `sidekick().read()` and `sidekick().get('config.json')` in `scripts/aem-admin.js` read it through `aggregated()`.
 - H5 and H6 payloads can differ for the same client call (e.g. `robots.txt` is plain text on H5, `{ "txt": string }` on H6). Compare the tool's actual body with the schema when migrating it.
 - When discussing an API route, always give the full route with its org/site context (e.g. `GET /{org}/sites/{site}/config/headers`), never a bare `config` or `config/{path}`.
 

@@ -290,7 +290,10 @@ function createAdmin(defaults = {}) {
   function job(coords) { return bindOperation(opBase('job', coords), ['get', 'remove']); }
   function psi(coords) { return bindOperation(opBase('psi', coords), ['get']); }
   function snapshot(coords) { return bindOperation(opBase('snapshot', coords), ['get', 'update', 'remove']); }
-  function sidekick(coords) { return bindOperation(opBase('sidekick', coords), ['get']); }
+  function sidekick(coords) {
+    const resource = bindOperation(opBase('sidekick', coords), ['get']);
+    return { ...resource, read: (opts) => resource.get('config.json', opts) };
+  }
   function medialog(coords) { return bindOperation(opBase('medialog', coords), ['get']); }
 
   /**
