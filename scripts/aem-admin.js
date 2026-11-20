@@ -29,27 +29,6 @@ function deriveContentType(url) {
  */
 
 /**
- * Parse org and site coords from an H6 admin API URL.
- * /{org}/sites/{site}/... → {org, site}; all other paths → {org, site: null}.
- *
- * @param {string} url - Full H6 admin URL
- * @returns {{org: string|null, site: string|null}}
- */
-function coordsFromURL(url) {
-  try {
-    const parts = new URL(url).pathname.split('/').filter(Boolean);
-    const org = parts[0] ?? null;
-    if (!org) return { org: null, site: null };
-    if (parts[1] === 'sites' && parts[2]) {
-      return { org, site: parts[2].replace(/\.json$/, '') };
-    }
-    return { org, site: null };
-  } catch {
-    return { org: null, site: null };
-  }
-}
-
-/**
  * Create the admin client with optional default request init values.
  *
  * @param {RequestInit & {params?: Record<string, string>}} [defaults]
@@ -291,7 +270,6 @@ function createAdmin(defaults = {}) {
     raw,
     isInScope,
     suggestions,
-    coordsFromURL,
     withRequestInit,
     pinVersion,
   };

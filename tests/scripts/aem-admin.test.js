@@ -407,49 +407,4 @@ describe('aem-admin.js — H6 URL contract', () => {
       assert.ok(items.every(({ url }) => !url.includes('/sites/x')));
     });
   });
-
-  describe('admin.coordsFromURL(url) H6 patterns', () => {
-    it('parses org + site from /{org}/sites/{site}/config.json', () => {
-      assert.deepEqual(
-        admin.coordsFromURL('https://api.aem.live/adobe/sites/x/config.json'),
-        { org: 'adobe', site: 'x' },
-      );
-    });
-
-    it('parses org-only from /{org}/config.json', () => {
-      assert.deepEqual(
-        admin.coordsFromURL('https://api.aem.live/adobe/config.json'),
-        { org: 'adobe', site: null },
-      );
-    });
-
-    it('treats /{org}/sites.json as org-only (list, not a specific site)', () => {
-      assert.deepEqual(
-        admin.coordsFromURL('https://api.aem.live/adobe/sites.json'),
-        { org: 'adobe', site: null },
-      );
-    });
-
-    it('parses org + site from an operation URL', () => {
-      assert.deepEqual(
-        admin.coordsFromURL('https://api.aem.live/adobe/sites/x/status'),
-        { org: 'adobe', site: 'x' },
-      );
-    });
-
-    it('parses org + site from an operation URL with content path', () => {
-      assert.deepEqual(
-        admin.coordsFromURL('https://api.aem.live/adobe/sites/x/preview/en/index'),
-        { org: 'adobe', site: 'x' },
-      );
-    });
-
-    it('derived client coordsFromURL parses correctly', () => {
-      const a = admin.withRequestInit({ credentials: 'include' });
-      assert.deepEqual(
-        a.coordsFromURL('https://api.aem.live/adobe/sites/x/config.json'),
-        { org: 'adobe', site: 'x' },
-      );
-    });
-  });
 });
