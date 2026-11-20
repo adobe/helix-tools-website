@@ -241,6 +241,20 @@ function createAdmin(defaults = {}) {
     return request(init);
   }
 
+  /**
+   * Read-only view of the site config merged with its inherited values.
+   * H6 URL: /{org}/sites/{site}/config.json?aggregated=true
+   *
+   * @param {{org: string, site: string}} coords
+   */
+  function aggregated({ org, site }) {
+    const url = `${ADMIN_BASE}/${org}/sites/${site}/config.json?aggregated=true`;
+    return {
+      read: (opts) => request({ method: 'GET', url, params: opts?.params }),
+      url,
+    };
+  }
+
   function withRequestInit(extra) {
     return createAdmin({ ...defaults, ...extra });
   }
@@ -261,6 +275,7 @@ function createAdmin(defaults = {}) {
 
   return {
     config,
+    aggregated,
     status,
     preview,
     live,

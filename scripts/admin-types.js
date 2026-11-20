@@ -48,6 +48,12 @@
  */
 
 /**
+ * Site config merged with inherited values; the API offers reads only.
+ *
+ * @typedef {Pick<AdminConfigResource, 'url'|'read'>} AdminAggregatedResource
+ */
+
+/**
  * Capability catalogue; individual resources expose only their supported methods.
  * Bulk payloads are serialized by the adapter; other operation bodies are BodyInit.
  *
@@ -75,6 +81,7 @@
  *
  * @typedef {object} UnboundAdminClient
  * @property {(coords: ConfigCoordinates) => AdminConfigResource} config
+ * @property {(coords: SiteCoordinates) => AdminAggregatedResource} aggregated
  * @property {(coords: SiteCoordinates) => AdminGetUpdateResource} status
  * @property {(coords: SiteCoordinates) => AdminBulkResource} preview
  * @property {(coords: SiteCoordinates) => AdminBulkResource} live
@@ -105,6 +112,7 @@
  * @typedef {object} BoundAdminClientProperties
  * @property {BoundCoordinates} coords
  * @property {() => AdminConfigResource} config
+ * @property {() => AdminAggregatedResource} aggregated
  * @property {() => AdminGetUpdateResource} status
  * @property {() => AdminBulkResource} preview
  * @property {() => AdminBulkResource} live

@@ -1,10 +1,8 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import getAdminClient from '../../scripts/admin-compat.js';
-import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
+import { getAdminClientForSite } from '../../scripts/admin-compat.js';
 import { initConfigField } from '../../utils/config/config.js';
-import { logResponse } from '../../blocks/console/console.js';
-
-let admin;
+import { logMessage, logResponse } from '../../blocks/console/console.js';
+import { readHeaders, writeHeaders, removeHeaders } from './api.js';
 
 const adminForm = document.getElementById('admin-form');
 const headersForm = document.getElementById('headers-form');
@@ -19,6 +17,15 @@ const removePathBtn = document.getElementById('remove-path');
 
 let originalHeaders;
 let currentPath = null;
+// `client` is pinned until the next Fetch: edits to the org/site inputs don't retarget a Save,
+// which writes the headers loaded from the fetched site.
+let client = null;
+
+const log = (res) => logResponse(
+  consoleBlock,
+  res.status,
+  [res.request.method, res.request.url, res.error],
+);
 
 function createHeaderItem(header = '', value = '') {
   const div = document.createElement('div');
@@ -150,8 +157,40 @@ function removePath() {
   loadHeadersForPath(currentPath);
 }
 
+/**
+ * Shows or hides the path selector and button bar of the editor.
+ * @param {boolean} shown
+ */
+function showEditor(shown) {
+  const hidden = String(!shown);
+  document.querySelector('.path-selector').setAttribute('aria-hidden', hidden);
+  document.querySelector('.button-bar').setAttribute('aria-hidden', hidden);
+}
+
+/**
+ * Unpins the client and hides the editor after a failed Fetch, so the previous site's
+ * headers are never shown (or saved) while the form names another org/site.
+ */
+function resetEditor() {
+  client = null;
+  headersList.innerHTML = '';
+  showEditor(false);
+}
+
+/**
+ * Detects H5 or H6 for the selected site and logs a detection failure to the console.
+ * @returns {Promise<import('../../scripts/admin-types.js').BoundAdminClient|null>}
+ */
+async function loadClient() {
+  try {
+    return await getAdminClientForSite({ org: org.value, site: site.value });
+  } catch (error) {
+    logMessage(consoleBlock, 'error', ['Backend detection', `${org.value}/${site.value}`, error.message]);
+    return null;
+  }
+}
+
 async function init() {
-  admin = await getAdminClient();
   await initConfigField();
 
   addHeaderBtn.addEventListener('click', () => {
@@ -167,11 +206,8 @@ async function init() {
 
   headersForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!org.value || !site.value) {
-      // eslint-disable-next-line no-alert
-      alert('Please select an organization and site first');
-      return;
-    }
+    // The editor is hidden until a Fetch has pinned a client.
+    if (!client) return;
 
     saveCurrentPathHeaders();
 
@@ -182,16 +218,11 @@ async function init() {
       }
     });
 
-    const headers = admin.config({ org: org.value, site: site.value }).select('headers.json');
-    const result = await executeAdminRequest(
-      () => (Object.keys(patchedHeaders).length === 0
-        ? headers.remove()
-        : headers.update(JSON.stringify(patchedHeaders))),
-      { org: org.value, site: site.value },
-    );
-    if (!result) return;
-    const { method, url } = result.request;
-    logResponse(consoleBlock, result.status, [method, url, result.error]);
+    if (Object.keys(patchedHeaders).length === 0) {
+      await removeHeaders(client, log);
+    } else {
+      await writeHeaders(client, log, patchedHeaders);
+    }
   });
 
   adminForm.addEventListener('submit', async (e) => {
@@ -202,33 +233,21 @@ async function init() {
       return;
     }
 
-    // Preflight on the fetch (entry point); the resulting session covers later saves.
-    const result = await executeAdminRequest(
-      () => admin.config({ org: org.value, site: site.value }).select('headers.json').read(),
-      { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
-    );
-    if (!result) return;
-    headersList.innerHTML = '';
-    const buttonBar = document.querySelector('.button-bar');
-    const pathSelector = document.querySelector('.path-selector');
-    if (result.status === 200) {
-      originalHeaders = await result.json();
-      currentPath = null;
-      populatePathSelect();
-      loadHeadersForPath('/**');
-      pathSelector.setAttribute('aria-hidden', 'false');
-      buttonBar.setAttribute('aria-hidden', 'false');
-    } else if (result.status === 404) {
-      originalHeaders = {};
-      currentPath = null;
-      populatePathSelect();
-      loadHeadersForPath('/**');
-      pathSelector.setAttribute('aria-hidden', 'false');
-      buttonBar.setAttribute('aria-hidden', 'false');
+    const loaded = await loadClient();
+    const headers = loaded ? await readHeaders(loaded, log) : null;
+    if (!headers) {
+      resetEditor();
+      return;
     }
-
-    const { method, url } = result.request;
-    logResponse(consoleBlock, result.status, [method, url, result.error]);
+    // Pin only with the headers it loaded, so a Save never writes them to another site.
+    client = loaded;
+    headersList.innerHTML = '';
+    // An empty object means no headers are configured yet (404).
+    originalHeaders = headers;
+    currentPath = null;
+    populatePathSelect();
+    loadHeadersForPath('/**');
+    showEditor(true);
   });
 }
 
