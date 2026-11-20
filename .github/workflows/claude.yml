@@ -45,7 +45,6 @@ jobs:
             The user commented: "${{ github.event.comment.body || github.event.review.body || github.event.issue.body }}"
 
             If they are asking for a code review, use the Skill tool to invoke the `code-review` skill for PR #${{ github.event.issue.number || github.event.pull_request.number }}.
-            The skill only reports findings: post them yourself as one PR comment with `gh pr comment`.
             When running `gh pr view` and `gh pr diff`, add `--repo ${{ github.repository }}`.
             Substitute `{owner}/{repo}` with `${{ github.repository }}` in all commands.
 
