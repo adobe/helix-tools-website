@@ -196,14 +196,14 @@ export default async function getAdminClient() {
  * sidekick config, present even on unauthenticated (401) responses. The
  * `use-h6-api` localStorage override forces H6 without a network call.
  *
- * Not exported — {@link getAdminClientForSite} is the public entry point for
- * per-site selection.
+ * Prefer {@link getAdminClientForSite} for per-site selection; this is exported
+ * for tools that take a raw admin URL and must check it against the site.
  *
  * @param {import('./admin-types.js').BoundCoordinates} coords
  * @param {boolean} forceH6
  * @returns {Promise<boolean>}
  */
-async function isHelix6({ org, site, ref = 'main' }, forceH6) {
+export async function isHelix6({ org, site, ref = 'main' }, forceH6) {
   if (forceH6) return true;
   // Null omits an operation ref, but detection still needs a concrete config URL.
   const url = `https://admin.hlx.page/sidekick/${org}/${site}/${ref ?? 'main'}/config.json`;

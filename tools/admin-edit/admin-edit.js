@@ -1,9 +1,9 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { logResponse } from '../../blocks/console/console.js';
-import getAdminClient, { coordsFromURL } from '../../scripts/admin-compat.js';
+import { coordsFromURL } from '../../scripts/admin-compat.js';
+import h6Admin from '../../scripts/aem-admin.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
-
-let admin;
+import adminForURL, { movedToH6 } from './utils.js';
 
 const adminForm = document.getElementById('admin-form');
 const adminURL = document.getElementById('admin-url');
@@ -16,6 +16,7 @@ const methodDropdown = document.querySelector('.picker-field ul');
 const methodOptions = methodDropdown.querySelectorAll('li');
 const consoleBlock = document.querySelector('.console');
 const saveButton = document.getElementById('save');
+const apiUpgradeHint = document.querySelector('.api-upgrade-hint');
 
 let editorPromise;
 
@@ -80,14 +81,44 @@ function updateAdminURLSuggestions({ org, site }) {
     adminURLList.innerHTML = '';
     return;
   }
-  adminURLList.innerHTML = admin.suggestions({ org, site })
+  adminURLList.innerHTML = adminForURL(adminURL.value).suggestions({ org, site })
     .map(({ url, label }) => `<option value="${url}" label="${label}"></option>`)
     .join('');
 }
 
+/**
+ * Blocks H5 requests for sites already upgraded to the AEM API, showing a
+ * hint under the URL field. Also blocks when the upgrade check itself fails.
+ * @returns {Promise<boolean>} true if the request may proceed
+ */
+async function checkAPIUpgrade() {
+  let moved;
+  try {
+    moved = await movedToH6(adminURL.value);
+  } catch {
+    apiUpgradeHint.textContent = 'Could not check whether this site has been upgraded to the AEM API.';
+    apiUpgradeHint.hidden = false;
+    return false;
+  }
+  if (!moved) {
+    apiUpgradeHint.hidden = true;
+    return true;
+  }
+  const link = document.createElement('a');
+  link.href = 'https://www.aem.live/docs/api.html';
+  link.target = '_blank';
+  link.textContent = 'aem.live/docs/api';
+  apiUpgradeHint.replaceChildren(
+    'This site has been upgraded to the AEM API, please use that endpoint instead. (',
+    link,
+    ')',
+  );
+  apiUpgradeHint.hidden = false;
+  return false;
+}
+
 async function init() {
-  admin = await getAdminClient();
-  adminURL.value = localStorage.getItem('admin-url') || admin.status({ org: 'adobe', site: 'aem-boilerplate' }).url;
+  adminURL.value = localStorage.getItem('admin-url') || h6Admin.status({ org: 'adobe', site: 'aem-boilerplate' }).url;
 
   updateAdminURLSuggestions(coordsFromURL(adminURL.value));
 
@@ -112,13 +143,14 @@ async function init() {
    */
   bodyForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!await checkAPIUpgrade()) return;
     localStorage.setItem('admin-url', adminURL.value);
 
     let editor;
     try { editor = await ensureEditor(); } catch { return; }
     const bodyValue = editor.getValue() || undefined;
     const contentType = bodyValue && adminURL.value.endsWith('.yaml') ? 'text/yaml' : undefined;
-    const resp = await admin.raw(
+    const resp = await adminForURL(adminURL.value).raw(
       reqMethod.value,
       adminURL.value,
       bodyValue,
@@ -148,9 +180,10 @@ async function init() {
    */
   adminForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!await checkAPIUpgrade()) return;
     const { org, site } = coordsFromURL(adminURL.value);
     const result = await executeAdminRequest(
-      () => admin.raw('GET', adminURL.value),
+      () => adminForURL(adminURL.value).raw('GET', adminURL.value),
       { org, site, policy: AuthMode.RETRY_ON_401 },
     );
     if (!result) return; // login cancelled
@@ -166,6 +199,7 @@ async function init() {
   });
 
   adminForm.addEventListener('reset', () => {
+    apiUpgradeHint.hidden = true;
     if (editorPromise) {
       editorPromise.then((editor) => editor.setValue(''));
     }
