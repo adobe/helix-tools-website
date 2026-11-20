@@ -261,6 +261,12 @@ describe('helix-admin.js — H5 URL contract', () => {
       assert.equal(calls[0].init.method, 'GET');
     });
 
+    it('.read() GETs the sidekick config', async () => {
+      await admin.sidekick({ org: 'adobe', site: 'x' }).read();
+      assert.equal(calls[0].url, 'https://admin.hlx.page/sidekick/adobe/x/main/config.json');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
     it('does not expose .update or .remove', () => {
       const s = admin.sidekick({ org: 'adobe', site: 'x' });
       assert.equal(s.update, undefined);
