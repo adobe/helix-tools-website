@@ -1,7 +1,7 @@
 /* eslint-disable no-await-in-loop -- sequential awaits required: DNS DoH provider fallback chain,
  * IP metadata provider chain (ipwho → ipapi → RDAP), and ordered CDN checks must not race. */
 import classifyIpNetwork from './cdn-check-network.js';
-import getAdminClient from '../../scripts/admin-compat.js';
+import { getAdminClientForSite } from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 
 // CORS proxy for cross-origin requests (fcors.org). The key is sent as a query param on
@@ -9,7 +9,6 @@ import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 // for fcors rate/account attribution on their side; committing it matches shipping any
 // other public client-side token (code review: not a server secret—public attribution key only).
 // Rotate with fcors if quotas are abused.
-let admin;
 
 const CORS_PROXY_URL = 'https://www.fcors.org';
 const CORS_PROXY_KEY = 'iyIjewSFgBzbPVG3';
@@ -941,9 +940,11 @@ async function checkCdnConfig(org, site, sharedCdnProd = null) {
   }
 
   try {
+    const client = await getAdminClientForSite({ org, site });
     const result = await executeAdminRequest(
-      () => admin.config({ org }).select('aggregated').select(`${site}.json`).read(),
-      { org, site, policy: AuthMode.PREFLIGHT_AND_RETRY },
+      () => client.aggregated().read(),
+      client,
+      { policy: AuthMode.PREFLIGHT_AND_RETRY },
     );
 
     if (!result) {
@@ -2109,7 +2110,6 @@ function setupEventListeners() {
 
 // Auto-run check if URL query params are present
 async function init() {
-  admin = await getAdminClient();
   setupEventListeners();
 
   const params = new URLSearchParams(window.location.search);
