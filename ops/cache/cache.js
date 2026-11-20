@@ -1,6 +1,9 @@
 import { sampleRUM } from '../../scripts/aem.js';
 import { registerToolReady } from '../../scripts/scripts.js';
+import { createModal } from '../../blocks/modal/modal.js';
 import escapeHtml from '../../utils/html.js';
+import { getImsToken, isSignedIn } from '../../utils/ims.js';
+import { authHeaders, getAuthError } from './cache-auth.js';
 
 const API = 'https://helix-cache-debug.adobeaem.workers.dev';
 const input = document.querySelector('input#url-input');
@@ -9,19 +12,8 @@ const button = document.querySelector('button#search-button');
 /** @type {HTMLDivElement} */
 const resultsContainer = document.querySelector('div#results');
 
-/** @type {string} */
-let authKey;
-
-// get key from storage or ask for it
-if (localStorage.getItem('cache-debug-key')) {
-  authKey = localStorage.getItem('cache-debug-key');
-} else {
-  // eslint-disable-next-line no-alert
-  authKey = prompt('Enter your cache superuser key');
-  if (authKey) {
-    localStorage.setItem('cache-debug-key', authKey);
-  }
-}
+// the cache superuser key is no longer used, remove any stored copy
+localStorage.removeItem('cache-debug-key');
 
 let createEditorPromise;
 function loadCreateEditor() {
@@ -84,44 +76,39 @@ const getReferenceResponse = (pops) => {
 const purge = (liveHost, keys, paths) => fetch(`${API}/purge`, {
   method: 'POST',
   body: JSON.stringify({ liveHost, keys, paths }),
-  headers: {
-    'content-type': 'application/json',
-    authorization: `Bearer ${authKey}`,
-  },
+  headers: authHeaders({ 'content-type': 'application/json' }),
 });
 
-const fetchDetails = async (url) => {
-  const resp = await fetch(`${API}?url=${encodeURIComponent(url)}`, {
-    headers: {
-      authorization: `Bearer ${authKey}`,
-    },
-  });
-  if (resp.status === 403 && resp.headers.get('x-error') === 'invalid authorization') {
-    authKey = undefined;
-    localStorage.removeItem('cache-debug-key');
-  }
-  return resp;
+const fetchDetails = (url) => fetch(`${API}?url=${encodeURIComponent(url)}`, {
+  headers: authHeaders(),
+});
+
+const showModal = async (title, content) => {
+  const heading = document.createElement('h2');
+  heading.id = `cache-modal-title-${crypto.randomUUID()}`;
+  heading.textContent = title;
+  const container = document.createElement('div');
+  container.innerHTML = content;
+  const { block, showModal: openModal } = await createModal([heading, ...container.childNodes]);
+  block.querySelector('dialog').setAttribute('aria-labelledby', heading.id);
+  openModal();
+  return block;
 };
 
-const showModal = (title, content) => {
-  const modal = document.createElement('div');
-  modal.classList.add('modal-container');
-  modal.innerHTML = /* html */`
-    <div class="modal-overlay"></div>
-    <div class="modal">
-      <div class="modal-header">
-        <h3>${escapeHtml(title)}</h3>
-        <button class="modal-close">\u2715</button>
-      </div>
-      <div class="modal-content">
-          ${content}
-      </div>
-    </div>
-  `;
-  const closeBtn = modal.querySelector('.modal-close');
-  closeBtn.addEventListener('click', () => modal.remove());
-  document.body.appendChild(modal);
-  return modal;
+const showError = (message) => {
+  const p = document.createElement('p');
+  p.className = 'error';
+  p.setAttribute('role', 'alert');
+  p.textContent = message;
+  resultsContainer.prepend(p);
+};
+
+const showPurgeError = async (message) => {
+  try {
+    await showModal('Purge Error', `<p>${escapeHtml(message)}</p>`);
+  } catch (e) {
+    showError(`${message} Unable to open error dialog: ${e.message || 'Failed to load the dialog.'}`);
+  }
 };
 
 /**
@@ -275,7 +262,7 @@ const showCodeModal = async (language, title, text) => {
     `;
   }
 
-  const modal = showModal(title, content);
+  const modal = await showModal(title, content);
 
   if (useJsonViewer) {
     const data = JSON.parse(text);
@@ -286,13 +273,18 @@ const showCodeModal = async (language, title, text) => {
     container.appendChild(tree);
   } else {
     const host = modal.querySelector('.code-viewer');
-    const createEditor = await loadCreateEditor();
-    createEditor({
-      parent: host,
-      doc: text,
-      language: toEditorLanguage(language),
-      readOnly: true,
-    });
+    try {
+      const createEditor = await loadCreateEditor();
+      createEditor({
+        parent: host,
+        doc: text,
+        language: toEditorLanguage(language),
+        readOnly: true,
+      });
+    } catch (e) {
+      modal.querySelector('dialog').close();
+      throw e;
+    }
   }
 
   const copyBtn = modal.querySelector('.code-actions .copy');
@@ -465,7 +457,12 @@ const renderPurgeSection = (container, data) => {
       .filter((p) => p.length))];
 
     if (!keys.length && !paths.length) {
-      showModal('Purge Error', '<p>At least one of Cache Keys or Paths is required</p>');
+      await showPurgeError('At least one of Cache Keys or Paths is required');
+      return;
+    }
+
+    if (!getImsToken()) {
+      await showPurgeError('Sign in with Adobe to purge.');
       return;
     }
 
@@ -473,12 +470,12 @@ const renderPurgeSection = (container, data) => {
     try {
       const response = await purge(dotLiveHost, keys, paths);
       if (!response.ok) {
-        throw new Error(`Failed to purge: ${response.status}`);
+        throw new Error(getAuthError(response) ?? `Failed to purge: ${response.status}`);
       }
       const text = await response.text();
       await showCodeModal('log', 'Purge Result', text);
     } catch (e) {
-      showModal('Purge Error', /* html */`<p>${escapeHtml(e.message)}</p>`);
+      await showPurgeError(e.message || 'Failed to display the purge result.');
     }
   });
 };
@@ -507,8 +504,13 @@ const renderDetails = (data) => {
     </div>
   `;
   const seeAllBtn = resultsContainer.querySelector('.see-all a');
-  seeAllBtn.addEventListener('click', () => {
-    showCodeModal('json', 'Probe Details', JSON.stringify(data, undefined, 2));
+  seeAllBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    try {
+      await showCodeModal('json', 'Probe Details', JSON.stringify(data, undefined, 2));
+    } catch (error) {
+      showError(`Failed to open probe details: ${error.message || 'Failed to load the dialog.'}`);
+    }
   });
 
   // add settings section
@@ -585,9 +587,9 @@ const renderDetails = (data) => {
 };
 
 async function init() {
-  const loc = new URL(window.location.href);
-  if (loc.searchParams.has('url')) {
-    input.value = loc.searchParams.get('url');
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('url')) {
+    input.value = params.get('url');
     setTimeout(() => button.click());
   }
 
@@ -610,9 +612,16 @@ async function init() {
     }
 
     try {
+      button.disabled = true;
+      if (!await isSignedIn()) {
+        resultsContainer.innerHTML = '<p class="error">Sign in with Adobe to use the cache debugger.</p>';
+        return;
+      }
+
+      // read the location only now, after imslib removed the token from it
+      const loc = new URL(window.location.href);
       loc.searchParams.set('url', url.toString());
       window.history.replaceState({}, '', loc);
-      button.disabled = true;
 
       let count = 0;
       const interval = setInterval(() => {
@@ -623,7 +632,9 @@ async function init() {
       clearInterval(interval);
 
       if (!response.ok) {
-        resultsContainer.innerHTML = `<p class="error">Failed to fetch details: ${response.status} - ${escapeHtml(await response.text())}</p>`;
+        const message = getAuthError(response)
+          ?? `Failed to fetch details: ${response.status} - ${await response.text()}`;
+        resultsContainer.innerHTML = `<p class="error">${escapeHtml(message)}</p>`;
         return;
       }
       const data = await response.json();
@@ -632,6 +643,8 @@ async function init() {
       button.disabled = false;
     }
   });
+  // Initialize IMS before the lazy-loaded header so redirect tokens are removed promptly.
+  await isSignedIn();
   sampleRUM.enhance();
 }
 

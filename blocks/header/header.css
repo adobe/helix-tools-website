@@ -195,6 +195,97 @@ header.header-wrapper {
             outline-offset: 2px;
           }
         }
+
+        .nav-ims-login {
+          min-width: 0;
+          margin-inline-end: auto;
+        }
+
+        .ims-login {
+          display: flex;
+          align-items: center;
+          gap: var(--spacing-s);
+          max-width: 22rem;
+          font-size: var(--body-size-s);
+          line-height: 1.3;
+
+          .ims-account {
+            min-width: 0;
+          }
+
+          .ims-label {
+            display: block;
+            color: var(--color-font-grey);
+            font-size: var(--detail-size-s);
+          }
+
+          .ims-identity {
+            display: block;
+            max-width: 10rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-weight: 600;
+          }
+
+          .button {
+            flex-shrink: 0;
+            margin: 0;
+            border-radius: 999px;
+            padding: 0.45em 0.85em;
+            font-size: var(--body-size-s);
+            white-space: nowrap;
+          }
+
+          .button.ims-sign-in {
+            color: var(--color-text);
+            background-color: var(--color-background);
+            border-color: var(--color-border);
+
+            &:hover,
+            &:focus {
+              color: var(--color-text);
+              background-color: var(--layer-depth);
+              border-color: var(--color-font-grey);
+            }
+
+            &:focus-visible {
+              outline: 2px solid var(--color-link);
+              outline-offset: 3px;
+            }
+          }
+        }
+      }
+
+      &.has-ims-login {
+        flex-wrap: wrap;
+        gap: var(--spacing-xs) var(--spacing-m);
+
+        .nav-tools {
+          width: 100%;
+
+          .tools-list {
+            flex-wrap: wrap;
+            gap: var(--spacing-s);
+            justify-content: flex-end;
+          }
+        }
+
+        @media (width >= 900px) {
+          flex-wrap: nowrap;
+
+          .nav-tools {
+            width: auto;
+          }
+
+          .nav-ims-login {
+            margin-inline-end: var(--spacing-s);
+          }
+
+          .ims-identity {
+            max-width: 14rem;
+          }
+        }
       }
     }
 
