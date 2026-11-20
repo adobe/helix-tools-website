@@ -39,7 +39,7 @@
     "typescript": "7.0.2"
   },
   "dependencies": {
-    "@adobe/rum-distiller": "1.23.1",
+    "@adobe/rum-distiller": "1.24.0",
     "@codemirror/lang-html": "6.4.12",
     "@codemirror/lang-json": "6.0.2",
     "@codemirror/lang-yaml": "6.1.3",
