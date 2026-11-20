@@ -1,5 +1,7 @@
 {
   "extends": ["config:recommended"],
+  "labels": ["ignore-psi-check"],
+  "gitIgnoredAuthors": ["41898282+github-actions[bot]@users.noreply.github.com"],
   "packageRules": [
     {
       "matchUpdateTypes": ["patch"],
@@ -15,7 +17,6 @@
     },
     {
       "matchDepTypes": ["devDependencies"],
-      "labels": ["ignore-psi-check"],
       "automerge": true,
       "ignoreTests": false
     },
