@@ -132,8 +132,9 @@ export default function runSharedBehaviorTests(admin, versionParamKey) {
   });
 
   describe('write content-type derivation', () => {
+    // robots.txt is written differently per backend; see the client-specific tests.
     const cases = [
-      ['robots.txt', 'text/plain'],
+      ['foo.txt', 'text/plain'],
       ['headers.json', 'application/json'],
       ['content/query.yaml', 'text/yaml'],
       ['foo.yml', 'text/yaml'],
@@ -223,7 +224,7 @@ export default function runSharedBehaviorTests(admin, versionParamKey) {
     });
 
     it('.update(\'\') is a real empty body and still derives content-type', async () => {
-      await admin.config({ org: 'adobe', site: 'x' }).select('robots.txt').update('');
+      await admin.config({ org: 'adobe', site: 'x' }).select('foo.txt').update('');
       assert.equal(calls[0].init.method, 'POST');
       assert.equal(calls[0].init.body, '');
       assert.equal(calls[0].init.headers.get('content-type'), 'text/plain');
@@ -557,7 +558,7 @@ export default function runSharedBehaviorTests(admin, versionParamKey) {
 
     it('preserves method/body/content-type on top of init defaults', async () => {
       const a = admin.withRequestInit({ credentials: 'include' });
-      await a.config({ org: 'adobe', site: 'x' }).select('robots.txt').update('User-agent: *');
+      await a.config({ org: 'adobe', site: 'x' }).select('foo.txt').update('User-agent: *');
       assert.equal(calls[0].init.method, 'POST');
       assert.equal(calls[0].init.body, 'User-agent: *');
       assert.equal(calls[0].init.credentials, 'include');
@@ -569,7 +570,7 @@ export default function runSharedBehaviorTests(admin, versionParamKey) {
 
     it('merges headers from defaults with the per-call content-type', async () => {
       const a = admin.withRequestInit({ headers: { authorization: 'token abc' } });
-      await a.config({ org: 'adobe', site: 'x' }).select('robots.txt').update('User-agent: *');
+      await a.config({ org: 'adobe', site: 'x' }).select('foo.txt').update('User-agent: *');
       assert.deepEqual(Object.fromEntries(calls[0].init.headers), {
         authorization: 'token abc',
         'content-type': 'text/plain',
@@ -580,7 +581,7 @@ export default function runSharedBehaviorTests(admin, versionParamKey) {
       const a = admin.withRequestInit({
         headers: new Headers({ authorization: 'token abc' }),
       });
-      await a.config({ org: 'adobe', site: 'x' }).select('robots.txt').update('User-agent: *');
+      await a.config({ org: 'adobe', site: 'x' }).select('foo.txt').update('User-agent: *');
       assert.equal(calls[0].init.headers.get('authorization'), 'token abc');
       assert.equal(calls[0].init.headers.get('content-type'), 'text/plain');
     });
@@ -589,7 +590,7 @@ export default function runSharedBehaviorTests(admin, versionParamKey) {
       const a = admin.withRequestInit({
         headers: [['authorization', 'token abc']],
       });
-      await a.config({ org: 'adobe', site: 'x' }).select('robots.txt').update('User-agent: *');
+      await a.config({ org: 'adobe', site: 'x' }).select('foo.txt').update('User-agent: *');
       assert.equal(calls[0].init.headers.get('authorization'), 'token abc');
       assert.equal(calls[0].init.headers.get('content-type'), 'text/plain');
     });
