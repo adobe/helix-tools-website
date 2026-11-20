@@ -49,7 +49,6 @@
     "chartjs-plugin-datalabels": "2.2.0",
     "codemirror": "6.0.2",
     "diff": "9.0.0",
-    "echarts": "6.1.0",
     "luxon": "3.7.2",
     "yaml": "2.9.1"
   }
