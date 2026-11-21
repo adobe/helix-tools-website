@@ -1,6 +1,6 @@
 /* eslint-env node */
 import {
-  describe, it, before, beforeEach, mock,
+  describe, it, before, beforeEach, afterEach, mock,
 } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -74,6 +74,7 @@ describe('admin-edit:admin-edit.js', () => {
     const detectURL = 'https://admin.hlx.page/sidekick/myorg/mysite/main/config.json';
     let requested;
     let detectResponse;
+    let fetchStub;
     const hint = () => document.querySelector('.api-upgrade-hint');
     const submit = (id) => document.getElementById(id)
       .dispatchEvent(new window.Event('submit', { cancelable: true }));
@@ -81,17 +82,17 @@ describe('admin-edit:admin-edit.js', () => {
     beforeEach(() => {
       requested = [];
       detectResponse = () => new Response('', { status: 401, headers: { 'x-api-upgrade-available': 'true' } });
-      const fetchMock = async (url) => {
+      fetchStub = mock.method(global, 'fetch', async (url) => {
         const href = String(url instanceof Request ? url.url : url);
         if (href === detectURL) return detectResponse();
         requested.push(href);
         return new Response('{}', { status: 200 });
-      };
-      global.fetch = fetchMock;
-      window.fetch = fetchMock;
+      });
       hint().hidden = true;
       hint().textContent = '';
     });
+
+    afterEach(() => fetchStub.mock.restore());
 
     ['admin-form', 'body-form'].forEach((form) => {
       describe(form, () => {
