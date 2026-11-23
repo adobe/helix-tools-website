@@ -16,6 +16,7 @@
     "tools/log-viewer/api.js",
     "tools/site-query/api.js",
     "tools/user-admin/api.js",
+    "tools/headers-edit/api.js",
     "tests/scripts/admin-types.typecheck.js"
   ]
 }
