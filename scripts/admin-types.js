@@ -54,6 +54,12 @@
  */
 
 /**
+ * Sidekick config for a site; the API offers reads only.
+ *
+ * @typedef {AdminGetResource & Pick<AdminConfigResource, 'read'>} AdminSidekickResource
+ */
+
+/**
  * Capability catalogue; individual resources expose only their supported methods.
  * Bulk payloads are serialized by the adapter; other operation bodies are BodyInit.
  *
@@ -92,7 +98,7 @@
  * @property {(coords: SiteCoordinates) => AdminGetRemoveResource} job
  * @property {(coords: SiteCoordinates) => AdminGetResource} psi
  * @property {(coords: SiteCoordinates) => AdminCrudResource} snapshot
- * @property {(coords: SiteCoordinates) => AdminGetResource} sidekick
+ * @property {(coords: SiteCoordinates) => AdminSidekickResource} sidekick
  * @property {(coords: SiteCoordinates) => AdminGetResource} medialog
  * @property {AdminRawRequest} raw
  * @property {(url: URL, coords: BoundCoordinates) => boolean} isInScope
@@ -123,7 +129,7 @@
  * @property {() => AdminGetRemoveResource} job
  * @property {() => AdminGetResource} psi
  * @property {() => AdminCrudResource} snapshot
- * @property {() => AdminGetResource} sidekick
+ * @property {() => AdminSidekickResource} sidekick
  * @property {() => AdminGetResource} medialog
  * @property {AdminRawRequest} raw
  * @property {(url: string) => ParsedCoordinates} coordsFromURL

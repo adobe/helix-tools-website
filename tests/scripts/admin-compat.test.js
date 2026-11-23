@@ -84,9 +84,12 @@ describe('getAdminClientForSite()', () => {
       ];
       operations.forEach((operation) => {
         const segment = backend === 'H6' && operation === 'job' ? 'jobs' : operation;
-        const url = backend === 'H5'
+        let url = backend === 'H5'
           ? `https://admin.hlx.page/${operation}/${expected.org}/docs/dev`
           : `https://api.aem.live/${expected.org}/sites/docs/${segment}`;
+        if (backend === 'H6' && operation === 'sidekick') {
+          url = `https://api.aem.live/${expected.org}/sites/docs/config.json?aggregated=true`;
+        }
         assert.equal(client[operation]().url, url, operation);
       });
       assert.equal(

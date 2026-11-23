@@ -1,9 +1,6 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
-import getAdminClient from '../../scripts/admin-compat.js';
-import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
-
-let admin;
+import createSiteQueryApi from './api.js';
 
 function getFormData(form) {
   const data = {};
@@ -112,7 +109,7 @@ function updateTableError(table, errCode) {
   });
 }
 
-function displayResult(url, matches, org, site) {
+function displayResult(url, matches, api) {
   const tr = document.createElement('tr');
   tr.innerHTML = `
     <td><a href="${url.href}" target="_blank">${url.href}</a> (<a class="edit-link" href="#">Edit</a>)</td>
@@ -131,41 +128,16 @@ function displayResult(url, matches, org, site) {
     }
 
     try {
-      const statusRes = await executeAdminRequest(
-        () => admin.status({ org, site }).get(url.pathname, { params: { editUrl: 'auto' } }),
-        { org, site },
-      );
-      if (!statusRes) return; // login cancelled
-      const status = await statusRes.json();
-      let editUrl = status.edit && status.edit.url;
-
-      // fallback to sidekick config if status doesn't provide edit URL
-      if (!editUrl) {
-        const configRes = await executeAdminRequest(
-          () => admin.sidekick({ org, site }).get('config.json'),
-          { org, site },
-        );
-        if (!configRes) return; // login cancelled
-        const config = await configRes.json();
-        const editUrlPattern = config.editUrl;
-        if (editUrlPattern) {
-          editUrl = editUrlPattern
-            .replace('{{pathname}}', url.pathname)
-            .replace('{{org}}', org)
-            .replace('{{site}}', site);
-        }
-      }
-
-      if (editUrl) {
-        editLink.href = editUrl;
-        window.open(editUrl);
-      } else {
-        throw new Error('admin did not return an edit url');
-      }
+      const editUrl = await api.getEditUrl(url.pathname);
+      if (!editUrl) return; // login cancelled
+      editLink.href = editUrl;
+      window.open(editUrl);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('failed to open edit link', err);
-      editLink.textContent = 'Error opening edit link';
+      editLink.textContent = err.status === 403
+        ? 'No permission to look up edit link'
+        : 'Error opening edit link';
       editLink.classList.add('disabled');
     }
   });
@@ -298,11 +270,11 @@ async function queryPage(url, query, queryType, acquire) {
   return matches ? matches.length : 0;
 }
 
-async function processUrl(sitemapUrl, query, queryType, org, site, acquire) {
+async function processUrl(sitemapUrl, query, queryType, api, acquire) {
   try {
     const matches = await queryPage(sitemapUrl, query, queryType, acquire);
     if (matches > 0) {
-      return displayResult(sitemapUrl, matches, org, site);
+      return displayResult(sitemapUrl, matches, api);
     }
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -313,7 +285,6 @@ async function processUrl(sitemapUrl, query, queryType, org, site, acquire) {
 }
 
 async function init(doc) {
-  admin = await getAdminClient();
   doc.querySelector('.site-query').dataset.status = 'loading';
   await initConfigField();
 
@@ -348,20 +319,12 @@ async function init(doc) {
       clearResults(table);
       disableForm(form);
 
-      // fetch host config
-      const hostsResult = await executeAdminRequest(
-        () => admin.status({ org, site }).get(''),
-        { org, site, policy: AuthMode.PREFLIGHT_AND_RETRY },
+      const api = await createSiteQueryApi(
+        { org, site },
+        new URLSearchParams(window.location.search).get('hlx-admin-version'),
       );
-      if (!hostsResult) return; // login cancelled
-      const hostsJson = hostsResult.ok ? await hostsResult.json() : null;
-      const live = hostsJson?.live?.url ? new URL(hostsJson.live.url).host : null;
-      if (!live) {
-        updateTableError(table, hostsResult.status);
-        stopButton.setAttribute('aria-hidden', 'true');
-        caption.setAttribute('aria-hidden', 'true');
-        return;
-      }
+      const live = await api.getLiveHost();
+      if (!live) return; // login cancelled
 
       updateConfig();
 
@@ -389,7 +352,7 @@ async function init(doc) {
         if (stopped) break;
 
         if (sitemapUrl.pathname.startsWith(path)) {
-          const promise = processUrl(sitemapUrl, query, queryType, org, site, acquire)
+          const promise = processUrl(sitemapUrl, query, queryType, api, acquire)
             .then((tr) => {
               updateSearched();
               if (tr) {
@@ -422,7 +385,7 @@ async function init(doc) {
         updateTableError(table, 403);
       } else if (err.message.startsWith('Failed on initial fetch')) {
         updateTableError(table, 499);
-      } else if (err.message.startsWith('Not found')) {
+      } else if (err.status === 404 || err.message.startsWith('Not found')) {
         updateTableError(table, 404);
       } else {
         updateTableError(table, 500);
