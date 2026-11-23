@@ -90,3 +90,28 @@
   text-decoration: none;
   cursor: default;
 }
+
+.site-query .path-suggestion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-s);
+  margin-top: 0.5em;
+  color: light-dark(var(--red-900), var(--red-400));
+}
+
+.site-query .path-suggestion p {
+  margin: 0;
+}
+
+.site-query .path-suggestion .button {
+  margin: 0;
+  padding: var(--spacing-xs) var(--spacing-s);
+  font-size: var(--body-size-s);
+  overflow-wrap: anywhere;
+}
+
+.site-query .path-suggestion[hidden],
+.site-query .path-suggestion .button[hidden] {
+  display: none;
+}
