@@ -64,6 +64,20 @@ function newUserValidator() {
   return validators.get('new-user');
 }
 
+// SPEC GAP: the spec only describes the stored `robots` config (`{ txt }`). H6 rejects that as a
+// site or profile `robots.txt` write and accepts `{ body: <text> }` instead, stored as `txt`.
+function robotsWriteValidator() {
+  if (!validators.has('robots-write')) {
+    validators.set('robots-write', ajv.compile({
+      type: 'object',
+      properties: { body: { type: 'string' } },
+      required: ['body'],
+      additionalProperties: false,
+    }));
+  }
+  return validators.get('robots-write');
+}
+
 // The suffix (`.json`, `.txt`) is stripped as the H5 client does; the spec does not say
 // whether H6 accepts it.
 function configSegments(path) {
@@ -91,7 +105,11 @@ function checkConfigPath(template, path, method, body) {
   }
   if (!WRITE_METHODS.includes(method) || body === undefined) return null;
   const isNewUser = parent === 'org' && label === 'users' && !Array.isArray(body);
-  const validate = isNewUser ? newUserValidator() : validatorFor(parent, segments, node);
+  const isRobotsTxt = parent !== 'org' && decodeURIComponent(path) === 'robots.txt';
+  let validate;
+  if (isNewUser) validate = newUserValidator();
+  else if (isRobotsTxt) validate = robotsWriteValidator();
+  else validate = validatorFor(parent, segments, node);
   if (validate(body)) return null;
   return { status: 400, reason: `body does not match ${label}: ${ajv.errorsText(validate.errors)}` };
 }
@@ -152,7 +170,8 @@ function readBody(init) {
  *   org/site/profile config schema, nested segments must resolve through it, and write bodies are
  *   validated against that property's schema. Failures are recorded in `violations` (404/400).
  *   SPEC GAP rules (behavior the spec does not describe): a single user POSTed to org `users` is
- *   validated without `id` (assigned server-side), and `users/{id}` addresses one org user.
+ *   validated without `id` (assigned server-side), `users/{id}` addresses one org user, and a
+ *   site or profile `robots.txt` write is validated as `{ body: string }` (stored as `txt`).
  * - Other request and response bodies are NOT schema-validated.
  *
  * @example

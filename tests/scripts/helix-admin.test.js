@@ -57,6 +57,14 @@ describe('helix-admin.js — H5 URL contract', () => {
       assert.equal(calls[0].url, 'https://admin.hlx.page/config/adobe/sites/x/robots.txt');
     });
 
+    it('a site robots.txt update(text) POSTs the text as text/plain', async () => {
+      await admin.config({ org: 'adobe', site: 'x' }).select('robots.txt').update('User-agent: *');
+      assert.equal(calls[0].url, 'https://admin.hlx.page/config/adobe/sites/x/robots.txt');
+      assert.equal(calls[0].init.method, 'POST');
+      assert.equal(calls[0].init.body, 'User-agent: *');
+      assert.equal(calls[0].init.headers.get('content-type'), 'text/plain');
+    });
+
     it('select from org root descends into /config/{org}/', async () => {
       await admin.config({ org: 'adobe' }).select('aggregated/x.json').read();
       assert.equal(calls[0].url, 'https://admin.hlx.page/config/adobe/aggregated/x.json');

@@ -9,6 +9,8 @@ const CONTENT_TYPES = {
   html: 'text/html',
 };
 
+const ROBOTS_TXT_URL = /\/[^/]+\/(sites|profiles)\/[^/]+\/config\/robots\.txt$/;
+
 function leafExtension(url) {
   return url.match(/\.([^./]+)$/)?.[1];
 }
@@ -110,6 +112,13 @@ function createAdmin(defaults = {}) {
       if (body !== undefined && body !== null) {
         init.body = body;
         init.contentType = deriveContentType(url);
+        // H6 rejects a site or profile robots.txt written as text/plain or as the stored
+        // `{ txt }` (400 "missing body"); it accepts `{ body: <text> }` as JSON, stores it as
+        // `txt` and serves it back as text/plain.
+        if (ROBOTS_TXT_URL.test(url)) {
+          init.body = JSON.stringify({ body });
+          init.contentType = 'application/json';
+        }
       }
       return request(init);
     };

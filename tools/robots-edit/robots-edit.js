@@ -1,10 +1,8 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import getAdminClient from '../../scripts/admin-compat.js';
-import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
+import { getAdminClientForSite } from '../../scripts/admin-compat.js';
 import { initConfigField } from '../../utils/config/config.js';
-import { logResponse } from '../../blocks/console/console.js';
-
-let admin;
+import { logMessage, logResponse } from '../../blocks/console/console.js';
+import { readRobots, writeRobots } from './api.js';
 
 const adminForm = document.getElementById('admin-form');
 const bodyForm = document.getElementById('body-form');
@@ -13,13 +11,26 @@ const consoleBlock = document.querySelector('.console');
 const site = document.getElementById('site');
 const org = document.getElementById('org');
 
-function logResult(result) {
-  const { method, url } = result.request;
-  logResponse(consoleBlock, result.status, [method, url, result.error]);
+const log = (res) => logResponse(
+  consoleBlock,
+  res.status,
+  [res.request.method, res.request.url, res.error],
+);
+
+/**
+ * Detects H5 or H6 for the selected site and logs a detection failure to the console.
+ * @returns {Promise<import('../../scripts/admin-types.js').BoundAdminClient|null>}
+ */
+async function loadClient() {
+  try {
+    return await getAdminClientForSite({ org: org.value, site: site.value });
+  } catch (error) {
+    logMessage(consoleBlock, 'error', ['Backend detection', `${org.value}/${site.value}`, error.message]);
+    return null;
+  }
 }
 
 async function init() {
-  admin = await getAdminClient();
   await initConfigField();
 
   bodyForm.addEventListener('submit', async (e) => {
@@ -30,12 +41,10 @@ async function init() {
       return;
     }
 
-    const result = await executeAdminRequest(
-      () => admin.config({ org: org.value, site: site.value }).select('robots.txt').update(body.value),
-      { org: org.value, site: site.value },
-    );
-    if (!result) return; // 401 followed by cancelled login
-    logResult(result);
+    // The textarea is free text, so Save targets the org/site currently in the form.
+    const admin = await loadClient();
+    if (!admin) return;
+    await writeRobots(admin, log, body.value);
   });
 
   adminForm.addEventListener('submit', async (e) => {
@@ -46,15 +55,10 @@ async function init() {
       return;
     }
 
-    // Preflight on Fetch (the natural entry point: fetch → edit → save).
-    // Once the fetch succeeds, the user has an active session for any later save.
-    const result = await executeAdminRequest(
-      () => admin.config({ org: org.value, site: site.value }).select('robots.txt').read(),
-      { org: org.value, site: site.value, policy: AuthMode.PREFLIGHT_AND_RETRY },
-    );
-    if (!result) return; // user cancelled login or timed out
-    if (result.ok) body.value = await result.text();
-    logResult(result);
+    const admin = await loadClient();
+    if (!admin) return;
+    const text = await readRobots(admin, log);
+    if (text !== null) body.value = text;
   });
 }
 

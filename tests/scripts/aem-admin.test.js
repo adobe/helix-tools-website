@@ -57,6 +57,40 @@ describe('aem-admin.js — H6 URL contract', () => {
       assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/config/robots.txt');
     });
 
+    // H6 rejects robots.txt as text/plain or `{ txt }`; it accepts `{ body }` as JSON.
+    it('a site robots.txt update(text) POSTs { body: text } as JSON', async () => {
+      await admin.config({ org: 'adobe', site: 'x' }).select('robots.txt').update('User-agent: *');
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/config/robots.txt');
+      assert.equal(calls[0].init.method, 'POST');
+      assert.deepEqual(JSON.parse(calls[0].init.body), { body: 'User-agent: *' });
+      assert.equal(calls[0].init.headers.get('content-type'), 'application/json');
+    });
+
+    it('a profile robots.txt update(\'\') POSTs { body: \'\' } as JSON', async () => {
+      await admin.config({ org: 'adobe', profile: 'p' }).select('robots.txt').update('');
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/profiles/p/config/robots.txt');
+      assert.deepEqual(JSON.parse(calls[0].init.body), { body: '' });
+      assert.equal(calls[0].init.headers.get('content-type'), 'application/json');
+    });
+
+    it('other config writes keep the body and derived content-type', async () => {
+      await admin.config({ org: 'adobe', site: 'x' }).select('headers.json').update('{"/**":[]}');
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/config/headers.json');
+      assert.equal(calls[0].init.body, '{"/**":[]}');
+      assert.equal(calls[0].init.headers.get('content-type'), 'application/json');
+      await admin.config({ org: 'adobe', site: 'x' }).select('foo.txt').update('User-agent: *');
+      assert.equal(calls[1].init.body, 'User-agent: *');
+      assert.equal(calls[1].init.headers.get('content-type'), 'text/plain');
+    });
+
+    it('robots.txt reads are unchanged GETs', async () => {
+      respond = () => new Response('User-agent: *', { status: 200, headers: { 'content-type': 'text/plain' } });
+      const res = await admin.config({ org: 'adobe', site: 'x' }).select('robots.txt').read();
+      assert.equal(calls[0].init.method, 'GET');
+      assert.equal(calls[0].init.body, undefined);
+      assert.equal(await res.text(), 'User-agent: *');
+    });
+
     it('select from org root descends into /{org}/config/ — not equivalent to config({org, site})', async () => {
       // Unlike H5 (where /config/{org} is a fixed prefix), H6's config.json IS
       // the org root's leaf, so descending from it does not reach the same

@@ -30,7 +30,7 @@ tools.aem.live: administrative and development tools for AEM Edge Delivery Servi
 - `tests/fixtures/aem-admin-api-spec.json` is the only authority. Read `paths` and `components` (`schemas`, `parameters`).
 - On config routes, `{path}` selects a property of the parent schema (`org`, `site`, `profile`), e.g. `headers`, `cdn`, `users`. That property's schema defines the body.
 - When you discuss a route, give the full route with org/site: `GET /{org}/sites/{site}/config/headers`.
-- H5 and H6 payloads can differ for the same call (`robots.txt`: plain text on H5, `{ "txt": string }` on H6). Compare the body with the schema.
+- H5 and H6 payloads can differ for the same call (`robots.txt`: plain text on H5; on H6, written as `{ "body": string }`, read back as text/plain, stored as `{ "txt": string }`). Compare the body with the schema.
 - The H5 client treats `x.json` and `x/` as one node; the spec is silent for H6. Do not assume.
 - The fake validates write bodies with ajv and records `api.violations` (404 unresolvable path, 400 bad body). Tool tests assert it is empty in `afterEach`.
 - Spec omissions are `SPEC GAP:` rules in the fake, written as behavior only. They are not a licence to call undocumented routes. Remove one when the spec covers it.
