@@ -19,6 +19,27 @@ const SIGN_IN_STAGE = 'ims-sign-in-stage';
 let ims;
 let signInTab;
 let signingIn;
+// the token last announced with ims-signed-in or ims-signed-out
+let announcedToken;
+
+/**
+ * Returns the current IMS access token.
+ * @returns {string|undefined} The access token, if signed in
+ */
+export function getImsToken() {
+  return window.adobeIMS?.getAccessToken()?.token;
+}
+
+/**
+ * Fires ims-signed-in or ims-signed-out once the token changed: a sign-in or sign-out in any
+ * tab, or its expiry.
+ */
+function announceTokenChange() {
+  const token = getImsToken();
+  if (token === announcedToken) return;
+  announcedToken = token;
+  window.dispatchEvent(new Event(token ? 'ims-signed-in' : 'ims-signed-out'));
+}
 
 /**
  * Loads and initializes the Adobe IMS library (once per page).
@@ -37,6 +58,12 @@ export function loadIms() {
       alwaysRemoveTokenFromUrl: true,
       onReady: () => {
         clearTimeout(timer);
+        announcedToken = getImsToken();
+        // follow sign-ins in other tabs (tabs share localStorage). Not removals: reading then
+        // restores imslib's in-memory token; sign-outs come through onSignOutEventReceived
+        window.addEventListener('storage', ({ newValue }) => {
+          if (newValue !== null) announceTokenChange();
+        });
         resolve();
       },
       // non-fatal: imslib still calls onReady afterwards
@@ -44,6 +71,8 @@ export function loadIms() {
         // eslint-disable-next-line no-console
         console.warn('IMS error', type, message);
       },
+      // another tab signed out (imslib already removed the token)
+      onSignOutEventReceived: announceTokenChange,
     };
     // not loadScript from scripts/aem.js: importing that module starts RUM
     const script = document.createElement('script');
@@ -55,14 +84,6 @@ export function loadIms() {
     document.head.append(script);
   });
   return ims;
-}
-
-/**
- * Returns the current IMS access token.
- * @returns {string|undefined} The access token, if signed in
- */
-export function getImsToken() {
-  return window.adobeIMS?.getAccessToken()?.token;
 }
 
 /**
@@ -100,8 +121,12 @@ export function signIn() {
     signInTab.focus();
     return signingIn;
   }
-  // browsers only open a tab right after a click: otherwise leave it to the sign-in button
-  if (window.navigator.userActivation?.isActive === false) return Promise.resolve(false);
+  // browsers only open a tab right after a click
+  if (window.navigator.userActivation?.isActive === false) {
+    // eslint-disable-next-line no-alert
+    window.alert('Sign in with Adobe to continue: click again, or sign in from the profile menu.');
+    return Promise.resolve(false);
+  }
   signInTab = window.open(SIGN_IN_PAGE, '_blank');
   if (!signInTab) {
     // eslint-disable-next-line no-alert
@@ -113,9 +138,8 @@ export function signIn() {
       if (!signInTab.closed) return;
       clearInterval(timer);
       signingIn = undefined;
-      const signedIn = isImsTokenFresh();
-      if (signedIn) window.dispatchEvent(new Event('ims-signed-in'));
-      resolve(signedIn);
+      announceTokenChange();
+      resolve(isImsTokenFresh());
     }, SIGN_IN_POLL_INTERVAL);
   });
   return signingIn;
@@ -188,15 +212,24 @@ export function createImsLogin() {
   container.setAttribute('aria-label', 'Adobe sign-in');
   container.textContent = 'Checking Adobe sign-in…';
 
+  let renders = 0;
+  let expiryTimer;
   const render = async () => {
+    renders += 1;
+    const current = renders;
+    clearTimeout(expiryTimer);
     if (!getImsToken()) {
       container.replaceChildren(createButton('Sign in with Adobe', signIn));
       return;
     }
-    // imslib doesn't tell the page when the token expires: show the sign-in button again then
+    // imslib doesn't tell the page when the token expires: announce it then
     const expiresIn = new Date(window.adobeIMS.getAccessToken()?.expire).getTime() - Date.now();
-    if (!Number.isNaN(expiresIn)) setTimeout(render, Math.min(expiresIn + 1000, MAX_DELAY));
+    if (!Number.isNaN(expiresIn)) {
+      expiryTimer = setTimeout(announceTokenChange, Math.min(expiresIn + 1000, MAX_DELAY));
+    }
     const name = await getProfileName();
+    // a newer render ran meanwhile, e.g. after a sign-out
+    if (current !== renders) return;
     const status = document.createElement('span');
     status.className = 'ims-account';
     const label = document.createElement('span');
@@ -218,8 +251,30 @@ export function createImsLogin() {
   loadIms().then(render).catch(() => {
     container.textContent = 'Adobe sign-in is unavailable. Reload the page to try again.';
   });
-  // signing in happens in another tab (signIn), so update when it completes
+  // sign-ins, sign-outs and expiry, in any tab (announceTokenChange)
   window.addEventListener('ims-signed-in', render);
+  window.addEventListener('ims-signed-out', render);
 
   return container;
+}
+
+/**
+ * Shows a sign-in button in the element until signed in, in any tab, then calls back.
+ * For pages that load on their own only when signed in.
+ * @param {HTMLElement} element Where to show the button
+ * @param {() => void} onSignedIn Called once signed in
+ * @returns {() => void} Cancels: removes the button and stops waiting
+ */
+export function promptImsSignIn(element, onSignedIn) {
+  const button = createButton('Sign in with Adobe', signIn);
+  const resume = () => {
+    button.remove();
+    onSignedIn();
+  };
+  element.append(button);
+  window.addEventListener('ims-signed-in', resume, { once: true });
+  return () => {
+    button.remove();
+    window.removeEventListener('ims-signed-in', resume);
+  };
 }

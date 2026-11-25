@@ -296,7 +296,7 @@ async function handleSubmit(event) {
     setStatus('Enter an organization and site to load schedules.', 'warning');
     return;
   }
-  const signedIn = await ensureAdminLogin(currentOrg);
+  const signedIn = await ensureAdminLogin();
   if (!signedIn) return;
   await loadSiteState();
 }

@@ -2,7 +2,6 @@ import { updateConfig } from './config/config.js';
 import {
   getImsToken, isImsTokenFresh, loadIms, signIn,
 } from './ims.js';
-import { messageSidekick } from './sidekick.js';
 
 /**
  * Auth-handling policy for {@link executeAdminRequest}. `retryOn401` opens the Adobe
@@ -32,17 +31,22 @@ async function waitForIms() {
 }
 
 /**
- * Checks that admin requests for the org will be authenticated, and stay so for the
- * task about to start: with an IMS token that doesn't expire soon or, without one,
- * with the token the sidekick adds for that org. Otherwise opens the Adobe sign-in.
- * @param {string} org The org
+ * Checks if admin requests can go out without signing in, as {@link ensureAdminLogin} would.
+ * Pages load on their own only then: signing in needs a click.
  * @returns {Promise<boolean>} true if signed in
  */
-export async function ensureAdminLogin(org) {
+export async function isAdminSignedIn() {
+  return await waitForIms() && isImsTokenFresh();
+}
+
+/**
+ * Checks for an IMS token that won't expire during the task about to start; otherwise opens
+ * the Adobe sign-in.
+ * @returns {Promise<boolean>} true if signed in
+ */
+export async function ensureAdminLogin() {
   const imsReady = await waitForIms();
   if (isImsTokenFresh()) return true;
-  const orgs = await messageSidekick({ action: 'getAuthInfo' });
-  if (Array.isArray(orgs) && orgs.includes(org)) return true;
   if (!imsReady) return false;
   // a token that expires soon still works if the user closes the sign-in
   return await signIn() || !!getImsToken();
@@ -64,13 +68,12 @@ export async function ensureAdminLogin(org) {
  * @template {{ status: number }} T
  * @param {() => Promise<T>} requestFn       must be safe to invoke twice
  * @param {object} authConfig
- * @param {string} authConfig.org
  * @param {AuthMode} [authConfig.policy]     default: `retryOn401`
  * @returns {Promise<T | null>}
  */
 export async function executeAdminRequest(requestFn, authConfig) {
-  const { org, policy = AuthMode.RETRY_ON_401 } = authConfig;
-  if (policy === AuthMode.PREFLIGHT_AND_RETRY && !await ensureAdminLogin(org)) return null;
+  const { policy = AuthMode.RETRY_ON_401 } = authConfig;
+  if (policy === AuthMode.PREFLIGHT_AND_RETRY && !await ensureAdminLogin()) return null;
 
   const imsReady = await waitForIms();
   let result = await requestFn();

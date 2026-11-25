@@ -3,7 +3,7 @@ import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { loadIcon, icon, showToast } from '../../utils/card-ui/card-ui.js';
 import getAdminClient from '../../scripts/admin-compat.js';
-import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
+import { executeAdminRequest, AuthMode, isAdminSignedIn } from '../../utils/admin-request.js';
 import { parseUsersFromAccessConfig, buildAccessConfig } from '../../utils/users/users.js';
 import { createUserRow, collectUsers, userRowErrors } from '../../utils/users/user-row.js';
 import { ROLE_DESCRIPTIONS } from '../../utils/roles/roles.js';
@@ -684,8 +684,11 @@ async function init() {
 
   await initConfigField();
 
+  // auto-load only when signed in: signing in needs a click
   if (org.value) {
-    adminForm.dispatchEvent(new Event('submit'));
+    isAdminSignedIn().then((signedIn) => {
+      if (signedIn) adminForm.dispatchEvent(new Event('submit'));
+    });
   }
 }
 

@@ -59,6 +59,7 @@ async function runSignInPage() {
 
 describe('utils/ims', () => {
   let warn;
+  let addEventListener;
 
   before(() => {
     // JSDOM only dispatches its own events
@@ -67,9 +68,13 @@ describe('utils/ims', () => {
 
   beforeEach(() => {
     warn = mock.method(console, 'warn', () => {});
+    // drop each case's window listeners, or they'd react to later cases' events
+    addEventListener = mock.method(window, 'addEventListener');
   });
 
   afterEach(() => {
+    addEventListener.mock.calls.forEach((call) => window.removeEventListener(...call.arguments));
+    addEventListener.mock.restore();
     warn.mock.restore();
     delete window.adobeid;
     delete window.adobeIMS;
@@ -89,7 +94,9 @@ describe('utils/ims', () => {
       loadScriptStub.mock.calls[0].arguments,
       ['https://auth.services.adobe.com/imslib/imslib.min.js'],
     );
-    const { onReady, onError, ...config } = window.adobeid;
+    const {
+      onReady, onError, onSignOutEventReceived, ...config
+    } = window.adobeid;
     assert.deepEqual(config, {
       client_id: 'darkalley',
       scope: 'AdobeID,openid,additional_info.ownerOrg,read_organizations,aem.frontend.all',
@@ -207,8 +214,7 @@ describe('utils/ims', () => {
   });
 
   it('signs in in a new tab, and updates the page once the tab closes signed in', async () => {
-    // setTimeout too: the event redraws the sign-in of earlier cases, which waits for expiry
-    mock.timers.enable({ apis: ['setInterval', 'setTimeout'] });
+    mock.timers.enable({ apis: ['setInterval'] });
     const tab = { closed: false };
     const open = mock.method(window, 'open', () => tab);
     let updates = 0;
@@ -298,5 +304,104 @@ describe('utils/ims', () => {
     } finally {
       mock.timers.reset();
     }
+  });
+
+  it('asks for another click when the browser would block the sign-in tab', async () => {
+    Object.defineProperty(window.navigator, 'userActivation', {
+      value: { isActive: false },
+      configurable: true,
+    });
+    const open = mock.method(window, 'open', () => ({ closed: false }));
+    const alert = mock.method(window, 'alert', () => {});
+    try {
+      imslib();
+      const { loadIms, signIn } = await importIms();
+      await loadIms();
+      assert.equal(await signIn(), false);
+      assert.equal(open.mock.callCount(), 0);
+      assert.equal(alert.mock.callCount(), 1);
+    } finally {
+      open.mock.restore();
+      alert.mock.restore();
+      delete window.navigator.userActivation;
+    }
+  });
+
+  it('follows a sign-in in another tab', async () => {
+    const adobeIMS = imslib({ profile: { email: 'alice@example.com' } });
+    const { createImsLogin } = await importIms();
+    const login = createImsLogin();
+    await settle();
+    const events = [];
+    const record = ({ type }) => events.push(type);
+    window.addEventListener('ims-signed-in', record);
+    window.addEventListener('ims-signed-out', record);
+
+    // another tab stores its token in the shared localStorage
+    adobeIMS.token = 'token-1';
+    window.dispatchEvent(new window.StorageEvent('storage', { newValue: 'token-1' }));
+    await settle();
+    assert.deepEqual(events, ['ims-signed-in']);
+    assert.equal(login.querySelector('span').textContent, 'Signed in as alice@example.com');
+
+    // other writes change nothing
+    window.dispatchEvent(new window.StorageEvent('storage', { newValue: 'other' }));
+    await settle();
+    assert.deepEqual(events, ['ims-signed-in']);
+  });
+
+  it('stays signed out when another tab signs out while the profile loads', async () => {
+    let resolveProfile;
+    const adobeIMS = imslib({
+      token: 'token-1',
+      profile: new Promise((resolve) => { resolveProfile = resolve; }),
+    });
+    const { createImsLogin } = await importIms();
+    const login = createImsLogin();
+    await settle();
+
+    // imslib removes the token, then reports the other tab's sign-out
+    adobeIMS.token = null;
+    window.adobeid.onSignOutEventReceived();
+    await settle();
+    assert.equal(login.querySelector('button').textContent, 'Sign in with Adobe');
+
+    resolveProfile({ email: 'alice@example.com' });
+    await settle();
+    assert.equal(login.querySelector('button').textContent, 'Sign in with Adobe');
+  });
+
+  it('shows a sign-in button in place of content, also with a token about to expire, then calls back once', async () => {
+    // a token in its last hour isn't enough to load on open (isAdminSignedIn)
+    const adobeIMS = imslib({ token: 'token-1' });
+    const { loadIms, promptImsSignIn } = await importIms();
+    await loadIms();
+    const element = document.createElement('div');
+    const onSignedIn = mock.fn();
+    promptImsSignIn(element, onSignedIn);
+    assert.equal(element.querySelector('button').textContent, 'Sign in with Adobe');
+
+    // signed in again in another tab
+    adobeIMS.token = 'token-2';
+    window.dispatchEvent(new window.StorageEvent('storage', { newValue: 'token-2' }));
+    await settle();
+    assert.equal(onSignedIn.mock.callCount(), 1);
+    assert.equal(element.children.length, 0);
+
+    window.dispatchEvent(new Event('ims-signed-in'));
+    assert.equal(onSignedIn.mock.callCount(), 1);
+  });
+
+  it('stops waiting for the sign-in once cancelled', async () => {
+    imslib();
+    const { promptImsSignIn } = await importIms();
+    const element = document.createElement('div');
+    const onSignedIn = mock.fn();
+    const cancel = promptImsSignIn(element, onSignedIn);
+    cancel();
+    assert.equal(element.children.length, 0);
+
+    window.dispatchEvent(new Event('ims-signed-in'));
+    assert.equal(onSignedIn.mock.callCount(), 0);
   });
 });

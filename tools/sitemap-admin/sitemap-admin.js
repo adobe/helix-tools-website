@@ -1,7 +1,7 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField } from '../../utils/config/config.js';
 import getAdminClient from '../../scripts/admin-compat.js';
-import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
+import { executeAdminRequest, AuthMode, isAdminSignedIn } from '../../utils/admin-request.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { escapeXml, parseHreflang, collectSitemapEntries } from './utils.js';
 
@@ -612,8 +612,11 @@ async function init() {
     }
   });
 
+  // auto-load only when signed in: signing in needs a click
   if (org.value && site.value) {
-    adminForm.requestSubmit();
+    isAdminSignedIn().then((signedIn) => {
+      if (signedIn) adminForm.requestSubmit();
+    });
   }
 }
 

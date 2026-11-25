@@ -1,7 +1,8 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import getAdminClient from '../../scripts/admin-compat.js';
-import { executeAdminRequest } from '../../utils/admin-request.js';
+import { executeAdminRequest, isAdminSignedIn } from '../../utils/admin-request.js';
 import { initConfigField } from '../../utils/config/config.js';
+import { promptImsSignIn } from '../../utils/ims.js';
 import escapeHtml from '../../utils/html.js';
 import filterPendingPages from './diff-utils.js';
 import { fetchHosts } from './utils.js';
@@ -830,45 +831,9 @@ async function loadSinglePageDiff(path) {
 }
 
 /**
- * Main initialization function.
+ * Loads the hosts, then the diff of the page or the job's pending pages.
  */
-async function init() {
-  admin = await getAdminClient();
-  jobAdmin = admin.withRequestInit({ mode: 'cors' });
-  // Get params from URL
-  const params = new URLSearchParams(window.location.search);
-  currentOrg = params.get('org');
-  currentSite = params.get('site');
-  currentJob = params.get('job');
-  currentPath = params.get('path');
-  isEmbedMode = params.get('embed') === 'true';
-  isSinglePageMode = !!currentPath && !currentJob;
-
-  // Apply embed mode if requested (do this early for visual consistency)
-  if (isEmbedMode) {
-    applyEmbedMode();
-  }
-
-  // Initialize config field only if not in embed mode
-  if (!isEmbedMode) {
-    await initConfigField();
-  }
-
-  if (!currentOrg || !currentSite) {
-    showError('Missing org or site parameters. Use ?org=<org>&site=<site>&path=<path> or &job=<jobId>');
-    return;
-  }
-
-  // Must have either path (single page mode) or job (multi-page mode)
-  if (!currentPath && !currentJob) {
-    showError('Missing path or job parameter. Provide either path=<pagePath> or job=<jobId>');
-    return;
-  }
-
-  // Update info section
-  DIFF_SITE.textContent = `${currentOrg}/${currentSite}`;
-  DIFF_INFO.setAttribute('aria-hidden', 'false');
-
+async function loadDiffs() {
   // Show loading state
   updateDisplayState('loading');
 
@@ -919,6 +884,55 @@ async function init() {
     console.error('Error initializing diff view:', error);
     showError(error.message || 'An error occurred while loading page status.');
   }
+}
+
+/**
+ * Main initialization function.
+ */
+async function init() {
+  admin = await getAdminClient();
+  jobAdmin = admin.withRequestInit({ mode: 'cors' });
+  // Get params from URL
+  const params = new URLSearchParams(window.location.search);
+  currentOrg = params.get('org');
+  currentSite = params.get('site');
+  currentJob = params.get('job');
+  currentPath = params.get('path');
+  isEmbedMode = params.get('embed') === 'true';
+  isSinglePageMode = !!currentPath && !currentJob;
+
+  // Apply embed mode if requested (do this early for visual consistency)
+  if (isEmbedMode) {
+    applyEmbedMode();
+  }
+
+  // Initialize config field only if not in embed mode
+  if (!isEmbedMode) {
+    await initConfigField();
+  }
+
+  if (!currentOrg || !currentSite) {
+    showError('Missing org or site parameters. Use ?org=<org>&site=<site>&path=<path> or &job=<jobId>');
+    return;
+  }
+
+  // Must have either path (single page mode) or job (multi-page mode)
+  if (!currentPath && !currentJob) {
+    showError('Missing path or job parameter. Provide either path=<pagePath> or job=<jobId>');
+    return;
+  }
+
+  // Update info section
+  DIFF_SITE.textContent = `${currentOrg}/${currentSite}`;
+  DIFF_INFO.setAttribute('aria-hidden', 'false');
+
+  // signing in needs a click: show the sign-in button instead
+  if (!await isAdminSignedIn()) {
+    showError('Sign in with Adobe to view page diffs.');
+    promptImsSignIn(DIFF_ERROR.querySelector('div'), loadDiffs);
+    return;
+  }
+  await loadDiffs();
 }
 
 registerToolReady(init());

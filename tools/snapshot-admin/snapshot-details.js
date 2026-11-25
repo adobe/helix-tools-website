@@ -10,6 +10,8 @@ import {
   addPasswordFieldListeners,
 } from './utils.js';
 import { updateScheduledPublish, isRegisteredForSnapshotScheduler } from './snapshot-utils.js';
+import { isAdminSignedIn } from '../../utils/admin-request.js';
+import { promptImsSignIn } from '../../utils/ims.js';
 
 // DOM Elements
 const snapshotDetailsContainer = document.getElementById('snapshot-details-container');
@@ -547,6 +549,16 @@ async function init() {
   currentOrg = org;
   currentSite = site;
   currentSnapshot = snapshotName;
+
+  // signing in needs a click: show the sign-in button instead
+  if (!await isAdminSignedIn()) {
+    const message = document.createElement('p');
+    message.textContent = 'Sign in with Adobe to view this snapshot.';
+    snapshotDetails.replaceChildren(message);
+    snapshotDetailsContainer.setAttribute('aria-hidden', 'false');
+    promptImsSignIn(snapshotDetails, loadSnapshotDetails);
+    return;
+  }
 
   // Load the snapshot details
   await loadSnapshotDetails();

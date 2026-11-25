@@ -1980,19 +1980,20 @@ function showReport(startTime, exportResult) {
   log('Done.', 'success');
 }
 
+// a run waiting for the sign-in; a new run replaces it
+let resumeAfterSignIn;
+
 async function runBackfill() {
+  window.removeEventListener('ims-signed-in', resumeAfterSignIn);
   const org = DOM.org.value.trim();
   const site = DOM.site.value.trim();
   const fallbackUser = DOM.fallbackUser.value.trim();
 
   if (!org || !site) return;
 
-  if (!await ensureAdminLogin(org)) {
-    window.addEventListener('profile-update', ({ detail: loginInfo }) => {
-      if (loginInfo.includes(org)) {
-        DOM.runBtn.click();
-      }
-    }, { once: true });
+  if (!await ensureAdminLogin()) {
+    resumeAfterSignIn = () => DOM.runBtn.click();
+    window.addEventListener('ims-signed-in', resumeAfterSignIn, { once: true });
     return;
   }
 

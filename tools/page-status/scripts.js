@@ -2,7 +2,8 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import getAdminClient from '../../scripts/admin-compat.js';
 import { decorateIcons } from '../../scripts/aem.js';
 import { initConfigField } from '../../utils/config/config.js';
-import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
+import { executeAdminRequest, AuthMode, isAdminSignedIn } from '../../utils/admin-request.js';
+import { promptImsSignIn } from '../../utils/ims.js';
 import loadingMessages from './loading-messages.js';
 import { validatePath, classifySequenceStatus, fetchHosts } from './utils.js';
 
@@ -15,6 +16,8 @@ const FILTER = document.getElementById('status-filter');
 const DOWNLOADCSV = document.getElementById('download-csv');
 const DIFFMODE = document.getElementById('diff-mode');
 let intervalId;
+// cancels the linked job's sign-in prompt (runFromParams)
+let cancelJobSignIn;
 const randomLoadingMessage = () => loadingMessages[
   Math.floor(Math.random() * loadingMessages.length)
 ];
@@ -508,6 +511,16 @@ async function runFromParams(search) {
     const site = params.get('site');
     const job = params.get('job');
     if (org && site && job) {
+      // signing in needs a click: show the sign-in button instead
+      if (!await isAdminSignedIn()) {
+        ERROR.querySelector('strong').textContent = 'Sign in required';
+        const message = ERROR.querySelector('p:last-of-type');
+        message.textContent = 'Sign in with Adobe to view this job.';
+        cancelJobSignIn = promptImsSignIn(message.parentElement, () => runFromParams(search));
+        CAPTION.setAttribute('aria-hidden', true);
+        updateTableDisplay('error');
+        return;
+      }
       let preview;
       try {
         setupJob(FORM, FORM.querySelector('button'));
@@ -542,12 +555,14 @@ async function init() {
   await initConfigField();
 
   FORM.addEventListener('reset', () => {
+    cancelJobSignIn?.();
     clearTable(RESULTS);
     disableActionButtons();
   });
 
   FORM.addEventListener('submit', async (e) => {
     e.preventDefault();
+    cancelJobSignIn?.();
     const { target, submitter } = e;
     const data = getFormData(target);
     const { org, site, path } = data;

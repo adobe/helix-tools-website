@@ -6,16 +6,14 @@ import assert from 'node:assert/strict';
 
 // Mock the collaborators before importing the helper. This is one of the rare
 // places where mocking is the right call (see TESTING.md): the helper's only job
-// IS to orchestrate imslib, the sidekick and updateConfig into a result, so the
-// seam under test is the contract with those collaborators.
+// IS to orchestrate imslib and updateConfig into a result, so the seam under
+// test is the contract with those collaborators.
 let updateConfigCalls;
 let imsToken;
 let imsTokenFresh;
 let loadImsStub;
 let signInCalls;
 let signInResult;
-let sidekickAuthInfo;
-let sidekickCalls;
 mock.module('../../utils/config/config.js', {
   namedExports: { updateConfig: () => { updateConfigCalls += 1; } },
 });
@@ -30,16 +28,9 @@ mock.module('../../utils/ims.js', {
     },
   },
 });
-mock.module('../../utils/sidekick.js', {
-  namedExports: {
-    messageSidekick: async (message) => {
-      sidekickCalls.push(message);
-      return sidekickAuthInfo;
-    },
-  },
-});
-
-const { executeAdminRequest, ensureAdminLogin, AuthMode } = await import('../../utils/admin-request.js');
+const {
+  executeAdminRequest, ensureAdminLogin, isAdminSignedIn, AuthMode,
+} = await import('../../utils/admin-request.js');
 
 const settle = () => new Promise((resolve) => { setImmediate(resolve); });
 
@@ -61,43 +52,48 @@ beforeEach(() => {
   loadImsStub = async () => {};
   signInCalls = 0;
   signInResult = false;
-  sidekickAuthInfo = 'no-sidekick';
-  sidekickCalls = [];
 });
 
 describe('ensureAdminLogin', () => {
-  it('is signed in with a fresh IMS token, without asking the sidekick', async () => {
+  it('is signed in with a fresh IMS token', async () => {
     imsToken = 'ims-token';
     imsTokenFresh = true;
-    assert.equal(await ensureAdminLogin('adobe'), true);
-    assert.equal(sidekickCalls.length, 0);
+    assert.equal(await ensureAdminLogin(), true);
     assert.equal(signInCalls, 0);
   });
 
   it('opens the sign-in when the IMS token expires soon, keeping it if the user closes the tab', async () => {
     imsToken = 'ims-token';
-    assert.equal(await ensureAdminLogin('adobe'), true);
+    assert.equal(await ensureAdminLogin(), true);
     assert.equal(signInCalls, 1);
   });
 
-  it('falls back to a sidekick session for the org', async () => {
-    sidekickAuthInfo = ['other', 'adobe'];
-    assert.equal(await ensureAdminLogin('adobe'), true);
-    assert.deepEqual(sidekickCalls, [{ action: 'getAuthInfo' }]);
-    assert.equal(signInCalls, 0);
-  });
-
-  it('signs in with Adobe without either', async () => {
-    sidekickAuthInfo = ['other'];
-    assert.equal(await ensureAdminLogin('adobe'), false);
+  it('signs in with Adobe without a token', async () => {
+    assert.equal(await ensureAdminLogin(), false);
     signInResult = true;
-    assert.equal(await ensureAdminLogin('adobe'), true);
+    assert.equal(await ensureAdminLogin(), true);
     assert.equal(signInCalls, 2);
   });
 
   it('does not sign in when imslib is unavailable', async () => {
     loadImsStub = async () => { throw new Error('IMS timeout'); };
-    assert.equal(await ensureAdminLogin('adobe'), false);
+    assert.equal(await ensureAdminLogin(), false);
+    assert.equal(signInCalls, 0);
+  });
+});
+
+describe('isAdminSignedIn', () => {
+  it('is true only with a fresh IMS token, and never signs in', async () => {
+    imsToken = 'ims-token';
+    imsTokenFresh = true;
+    assert.equal(await isAdminSignedIn(), true);
+
+    // a token that expires soon would need a sign-in
+    imsTokenFresh = false;
+    assert.equal(await isAdminSignedIn(), false);
+
+    loadImsStub = async () => { throw new Error('IMS timeout'); };
+    assert.equal(await isAdminSignedIn(), false);
     assert.equal(signInCalls, 0);
   });
 });
@@ -117,7 +113,6 @@ describe('executeAdminRequest', () => {
     assert.equal(result.status, 200);
     assert.equal(requestFn.calls, 1);
     assert.equal(updateConfigCalls, 1);
-    assert.equal(sidekickCalls.length, 0);
   });
 
   it('signs in on a 401 sent without an IMS token, then sends the request again', async () => {

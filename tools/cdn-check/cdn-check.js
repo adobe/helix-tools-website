@@ -2,7 +2,7 @@
  * IP metadata provider chain (ipwho → ipapi → RDAP), and ordered CDN checks must not race. */
 import classifyIpNetwork from './cdn-check-network.js';
 import getAdminClient from '../../scripts/admin-compat.js';
-import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
+import { executeAdminRequest, AuthMode, isAdminSignedIn } from '../../utils/admin-request.js';
 
 // CORS proxy for cross-origin requests (fcors.org). The key is sent as a query param on
 // every proxied request and is visible in DevTools — it is not a server secret. It exists
@@ -2125,7 +2125,11 @@ async function init() {
     if (prodPageUrlParam) {
       prodPageUrlInput.value = prodPageUrlParam;
     }
-    await runChecksWithSubmitUi(urlParam, prodPageUrlParam || null);
+    // run on open from a share link (it carries the CDN config), or when signed in
+    const { cdnProd } = parseCdnProdShareFromSearch(params);
+    if (cdnProd || await isAdminSignedIn()) {
+      await runChecksWithSubmitUi(urlParam, prodPageUrlParam || null);
+    }
     return;
   }
 
@@ -2138,7 +2142,7 @@ async function init() {
       aemInput.value = aemPageUrl;
       setOriginDetectHint('');
       updateShareableQuery(prodPageUrlParam, null);
-      await runChecksWithSubmitUi(aemPageUrl, prodPageUrlParam);
+      if (await isAdminSignedIn()) await runChecksWithSubmitUi(aemPageUrl, prodPageUrlParam);
     } catch (err) {
       setOriginDetectHint('');
       showManualAemField();

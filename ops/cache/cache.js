@@ -461,13 +461,15 @@ const renderPurgeSection = (container, data) => {
       return;
     }
 
-    if (!getImsToken() && !await signIn()) {
-      await showPurgeError('Sign in with Adobe to purge.');
-      return;
-    }
-
-    // purge
+    // lock before signing in, so more clicks don't send more purges
+    purgeBtn.disabled = true;
     try {
+      if (!getImsToken() && !await signIn()) {
+        await showPurgeError('Sign in with Adobe to purge.');
+        return;
+      }
+
+      // purge
       const response = await purge(dotLiveHost, keys, paths);
       if (!response.ok) {
         throw new Error(getAuthError(response) ?? `Failed to purge: ${response.status}`);
@@ -476,6 +478,8 @@ const renderPurgeSection = (container, data) => {
       await showCodeModal('log', 'Purge Result', text);
     } catch (e) {
       await showPurgeError(e.message || 'Failed to display the purge result.');
+    } finally {
+      purgeBtn.disabled = false;
     }
   });
 };
@@ -590,7 +594,10 @@ async function init() {
   const params = new URLSearchParams(window.location.search);
   if (params.has('url')) {
     input.value = params.get('url');
-    setTimeout(() => button.click());
+    // auto-run only when signed in: signing in needs a click
+    isSignedIn().then((signedIn) => {
+      if (signedIn) button.click();
+    });
   }
 
   input.addEventListener('keydown', (e) => {

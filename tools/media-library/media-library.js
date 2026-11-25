@@ -16,7 +16,7 @@ import t from './core/messages.js';
 import { MediaLibraryError, ErrorCodes, logMediaLibraryError } from './core/errors.js';
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
-import { AuthMode, ensureAdminLogin } from '../../utils/admin-request.js';
+import { AuthMode, ensureAdminLogin, isAdminSignedIn } from '../../utils/admin-request.js';
 import {
   getMetadata,
   getMediaData,
@@ -254,7 +254,8 @@ async function init() {
     if (!isIncrementalEligible(metadata)) return;
 
     try {
-      if (!(await ensureAdminLogin(orgKey))) return;
+      // on page load: refresh only when signed in (signing in needs a click)
+      if (!(await isAdminSignedIn())) return;
 
       const cachedMediaData = await getMediaData(orgKey, siteKey, pathKey);
       const timeParams = incrementalTimeParams(metadata.lastFetchTime);
@@ -299,7 +300,11 @@ async function init() {
     }
   }
 
+  // a load waiting for the sign-in; a new load replaces it
+  let resumeAfterSignIn;
+
   async function loadMediaData(orgKey, siteKey, pathKey = '') {
+    window.removeEventListener('ims-signed-in', resumeAfterSignIn);
     updateAppState({
       org: orgKey,
       site: siteKey,
@@ -311,7 +316,7 @@ async function init() {
 
     let cancelProgressiveThrottle = () => {};
     try {
-      if (!(await ensureAdminLogin(orgKey))) {
+      if (!(await ensureAdminLogin())) {
         logMediaLibraryError(ErrorCodes.AUTH_REQUIRED, { context: 'build' });
         showNotification(t('NOTIFY_ERROR'), t('AUTH_REQUIRED'), 'danger');
         updateAppState({
@@ -319,14 +324,13 @@ async function init() {
           validationError: t('AUTH_REQUIRED'),
           sitePathValid: false,
         });
-        const onProfileUpdate = async () => {
-          window.removeEventListener('profile-update', onProfileUpdate);
-          if (await ensureAdminLogin(orgKey)) {
+        resumeAfterSignIn = async () => {
+          if (await ensureAdminLogin()) {
             updateAppState({ validationError: null });
             loadMediaData(orgKey, siteKey, pathKey);
           }
         };
-        window.addEventListener('profile-update', onProfileUpdate);
+        window.addEventListener('ims-signed-in', resumeAfterSignIn, { once: true });
         return;
       }
       updateAppState({ sitePathValid: true, validationError: null });

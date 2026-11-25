@@ -548,35 +548,36 @@ const onPurgeClick = async () => {
     return;
   }
 
-  if (!getImsToken() && !await signIn()) {
-    const p = document.createElement('p');
-    p.className = 'error purge-error';
-    p.textContent = 'Sign in with Adobe to purge.';
-    inputMessages.appendChild(p);
-    return;
-  }
-
-  if (!confirmPurge(selected)) return;
-
-  const mode = getMode();
-  const job = {
-    mode,
-    presetIds: getCheckedPresetIds(),
-    customKeys: parseList(customKeysInput.value),
-    paths: parsePaths(pathsInput.value).paths,
-    purgeOrg: purgeOrgInput.checked,
-    purgeHead: purgeHeadInput.checked,
-  };
-
+  // lock before signing in, so more clicks don't start more runs
   running = true;
-  stopRequested = false;
   setFormDisabled(true);
-  stopButton.hidden = false;
-  stopButton.disabled = false;
-  lastJob = job;
-  lastPurgedRows = [];
-
   try {
+    if (!getImsToken() && !await signIn()) {
+      const p = document.createElement('p');
+      p.className = 'error purge-error';
+      p.textContent = 'Sign in with Adobe to purge.';
+      inputMessages.appendChild(p);
+      return;
+    }
+
+    if (!confirmPurge(selected)) return;
+
+    const mode = getMode();
+    const job = {
+      mode,
+      presetIds: getCheckedPresetIds(),
+      customKeys: parseList(customKeysInput.value),
+      paths: parsePaths(pathsInput.value).paths,
+      purgeOrg: purgeOrgInput.checked,
+      purgeHead: purgeHeadInput.checked,
+    };
+
+    stopRequested = false;
+    stopButton.hidden = false;
+    stopButton.disabled = false;
+    lastJob = job;
+    lastPurgedRows = [];
+
     for (let i = 0; i < selected.length; i += 1) {
       const row = selected[i];
       if (stopRequested) {
