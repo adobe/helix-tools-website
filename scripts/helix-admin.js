@@ -31,13 +31,7 @@ function deriveContentType(url) {
  * caught message. `text()` and `json()` reject on network errors and wrap the
  * underlying Response body otherwise — single-use, call one, not both.
  *
- * @typedef {object} AdminResponse
- * @property {boolean} ok
- * @property {number} status
- * @property {() => Promise<string>} text
- * @property {() => Promise<any>} json
- * @property {string} error   `x-error` header on HTTP responses; thrown message on network error
- * @property {{method: string, url: string}} request   echo for logging
+ * @typedef {import('./admin-types.js').AdminResponse} AdminResponse
  */
 
 /**
@@ -93,7 +87,7 @@ function createAdmin(defaults = {}) {
       Object.entries(mergedParams).forEach(([k, v]) => qs.set(k, v));
       finalUrl = `${url}${url.includes('?') ? '&' : '?'}${qs.toString()}`;
     }
-    const init = { method, ...initDefaults };
+    const init = { ...initDefaults, method };
     if (body !== undefined && body !== null) {
       init.body = body;
       if (contentType) {
@@ -210,6 +204,22 @@ function createAdmin(defaults = {}) {
   }
 
   /**
+   * @param {URL} url
+   * @param {import('./admin-types.js').BoundCoordinates} coords
+   * @returns {boolean}
+   */
+  function isInScope(url, coords) {
+    if (url.origin !== ADMIN_BASE) return false;
+    const configRoot = new URL(config(coords).url).pathname.replace(/\.json$/, '');
+    if (url.pathname === configRoot || url.pathname.startsWith(`${configRoot}/`)
+      || Object.keys(CONTENT_TYPES).some((ext) => url.pathname === `${configRoot}.${ext}`)) return true;
+    const operation = url.pathname.split('/')[1];
+    if (!operation || operation === 'config' || operation.includes('%')) return false;
+    const root = new URL(opBase(operation, coords)).pathname;
+    return url.pathname === root || url.pathname.startsWith(`${root}/`);
+  }
+
+  /**
    * Bind an operational API resource to a base URL. Returns only the methods
    * listed in `caps` — callers get `undefined` (not a 405) for unsupported ops.
    *
@@ -295,6 +305,7 @@ function createAdmin(defaults = {}) {
 
   /**
    * Derive a client whose init defaults are merged with `extra` (later wins).
+   * Explicit operation methods take precedence over defaults.
    * The original client is unaffected; chainable.
    *
    * @param {RequestInit} extra
@@ -304,17 +315,36 @@ function createAdmin(defaults = {}) {
   }
 
   /**
+   * Read-only view of the site config merged with its inherited values.
+   * H5 URL: /config/{org}/aggregated/{site}.json
+   *
+   * @param {{org: string, site: string}} coords
+   */
+  function aggregated({ org, site }) {
+    const url = `${ADMIN_BASE}/config/${org}/aggregated/${site}.json`;
+    return {
+      read: (opts) => request({ method: 'GET', url, params: opts?.params }),
+      url,
+    };
+  }
+
+  /**
    * Derive a client that pins every request to the given admin API version.
+   * Preserves other default params; no version removes only the version pin.
    * Non-mutating, like `withRequestInit` — the original client is unaffected.
    *
    * @param {string} [version]
    */
   function pinVersion(version) {
-    return withRequestInit({ params: version ? { [VERSION_PARAM_KEY]: version } : undefined });
+    const params = { ...defaultParams };
+    if (version) params[VERSION_PARAM_KEY] = version;
+    else delete params[VERSION_PARAM_KEY];
+    return withRequestInit({ params });
   }
 
   return {
     config,
+    aggregated,
     status,
     preview,
     live,
@@ -328,6 +358,7 @@ function createAdmin(defaults = {}) {
     sidekick,
     medialog,
     raw,
+    isInScope,
     suggestions,
     coordsFromURL,
     withRequestInit,

@@ -2,6 +2,7 @@ import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
+import { offerPathOnly } from './path-field.js';
 
 let admin;
 
@@ -325,6 +326,9 @@ async function init(doc) {
   const stopButton = doc.querySelector('#stop-search');
   const caption = table.querySelector('caption');
   let stopped = false;
+
+  offerPathOnly(form.elements.sitemap, { allowRoot: false });
+  offerPathOnly(form.elements.path);
 
   stopButton.addEventListener('click', () => {
     stopped = true;

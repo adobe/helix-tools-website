@@ -14,6 +14,7 @@ let imsTokenFresh;
 let loadImsStub;
 let signInCalls;
 let signInResult;
+let signInStub;
 mock.module('../../utils/config/config.js', {
   namedExports: { updateConfig: () => { updateConfigCalls += 1; } },
 });
@@ -22,10 +23,7 @@ mock.module('../../utils/ims.js', {
     getImsToken: () => imsToken,
     isImsTokenFresh: () => imsTokenFresh,
     loadIms: () => loadImsStub(),
-    signIn: async () => {
-      signInCalls += 1;
-      return signInResult;
-    },
+    signIn: () => signInStub(),
   },
 });
 const {
@@ -52,6 +50,10 @@ beforeEach(() => {
   loadImsStub = async () => {};
   signInCalls = 0;
   signInResult = false;
+  signInStub = async () => {
+    signInCalls += 1;
+    return signInResult;
+  };
 });
 
 describe('ensureAdminLogin', () => {
@@ -113,6 +115,62 @@ describe('executeAdminRequest', () => {
     assert.equal(result.status, 200);
     assert.equal(requestFn.calls, 1);
     assert.equal(updateConfigCalls, 1);
+  });
+
+  describe('bound-client overload', () => {
+    [
+      {
+        name: 'preflights and retries with the third-argument policy',
+        options: { policy: AuthMode.PREFLIGHT_AND_RETRY },
+        statuses: [401, 200],
+        events: [['signIn'], ['request', 401], ['signIn'], ['request', 200]],
+      },
+      {
+        name: 'signs in on a 401 with an explicit 401-retry policy',
+        options: { policy: AuthMode.RETRY_ON_401 },
+        statuses: [401, 200],
+        events: [['request', 401], ['signIn'], ['request', 200]],
+      },
+      {
+        name: 'defaults to 401 retry when the third argument is omitted',
+        options: undefined,
+        statuses: [401, 200],
+        events: [['request', 401], ['signIn'], ['request', 200]],
+      },
+      {
+        name: 'honors the none policy without sign-in or retry',
+        options: { policy: AuthMode.NONE },
+        statuses: [401],
+        events: [['request', 401]],
+      },
+    ].forEach(({
+      name, options, statuses, events: expectedEvents,
+    }) => {
+      it(name, async () => {
+        const client = Object.freeze({
+          coords: Object.freeze({ org: 'bound-org', site: 'bound-site', ref: 'main' }),
+        });
+        const events = [];
+        signInStub = async () => {
+          events.push(['signIn']);
+          return true;
+        };
+        const responses = statuses.map((status) => ({ status, ok: status === 200 }));
+        let attempt = 0;
+        const requestFn = async () => {
+          const response = responses[Math.min(attempt, responses.length - 1)];
+          attempt += 1;
+          events.push(['request', response.status]);
+          return response;
+        };
+
+        const result = await executeAdminRequest(requestFn, client, options);
+
+        assert.deepEqual(events, expectedEvents);
+        assert.equal(result, responses[responses.length - 1]);
+        assert.equal(updateConfigCalls, result.ok ? 1 : 0);
+      });
+    });
   });
 
   it('signs in on a 401 sent without an IMS token, then sends the request again', async () => {

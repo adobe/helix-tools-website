@@ -1,3 +1,4 @@
+// @ts-check
 import { updateConfig } from './config/config.js';
 import {
   getImsToken, isImsTokenFresh, loadIms, signIn,
@@ -16,6 +17,14 @@ export const AuthMode = Object.freeze({
   RETRY_ON_401: 'retryOn401',
   PREFLIGHT_AND_RETRY: 'preflightAndRetry',
 });
+
+/**
+ * @typedef {import('../scripts/admin-types.js').BoundAdminClient
+ *   | import('../scripts/admin-types.js').OrgBoundAdminClient} BoundAdminClient
+ * @typedef {typeof AuthMode[keyof typeof AuthMode]} AuthPolicy
+ * @typedef {{ policy?: AuthPolicy }} AuthOptions
+ * @typedef {AuthOptions & { org: string, site?: string }} AuthConfig
+ */
 
 /**
  * Waits for imslib, so the admin clients can send the IMS token.
@@ -53,6 +62,21 @@ export async function ensureAdminLogin() {
 }
 
 /**
+ * @template {{ status: number, ok?: boolean }} T
+ * @overload
+ * @param {() => Promise<T>} requestFn
+ * @param {AuthConfig} authConfig
+ * @returns {Promise<T | null>}
+ */
+/**
+ * @template {{ status: number, ok?: boolean }} T
+ * @overload
+ * @param {() => Promise<T>} requestFn
+ * @param {BoundAdminClient} client
+ * @param {AuthOptions} [options]
+ * @returns {Promise<T | null>}
+ */
+/**
  * Execute an admin API request with an optional sign-in check, signing in and
  * sending it again on a 401. Returns `null` if the user didn't complete the
  * Adobe sign-in.
@@ -64,15 +88,19 @@ export async function ensureAdminLogin() {
  * `updateConfig()` only fires on 2xx — a 4xx/5xx may not actually validate
  * the org/site combo (e.g. 404 could mean the org doesn't exist). It's a
  * no-op on pages without the org/site fields, so callers needn't opt in.
+ * Bound clients persist only while the form still matches their target;
+ * legacy callers retain persistence of the current form values.
  *
- * @template {{ status: number }} T
+ * Normalize both signatures here so they share the same auth policy flow.
+ *
+ * @template {{ status: number, ok?: boolean }} T
  * @param {() => Promise<T>} requestFn       must be safe to invoke twice
- * @param {object} authConfig
- * @param {AuthMode} [authConfig.policy]     default: `retryOn401`
+ * @param {AuthConfig | BoundAdminClient} authConfig
+ * @param {AuthOptions} [options]            bound-client policy; default: `retryOn401`
  * @returns {Promise<T | null>}
  */
-export async function executeAdminRequest(requestFn, authConfig) {
-  const { policy = AuthMode.RETRY_ON_401 } = authConfig;
+export async function executeAdminRequest(requestFn, authConfig, options = {}) {
+  const { policy = AuthMode.RETRY_ON_401 } = 'coords' in authConfig ? options : authConfig;
   if (policy === AuthMode.PREFLIGHT_AND_RETRY && !await ensureAdminLogin()) return null;
 
   const imsReady = await waitForIms();
@@ -81,6 +109,6 @@ export async function executeAdminRequest(requestFn, authConfig) {
     if (!await signIn()) return null;
     result = await requestFn();
   }
-  if (result?.ok) updateConfig();
+  if (result?.ok) updateConfig('coords' in authConfig ? authConfig.coords : undefined);
   return result;
 }

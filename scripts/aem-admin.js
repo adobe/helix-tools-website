@@ -25,13 +25,7 @@ function deriveContentType(url) {
 /**
  * Normalized response envelope returned by every admin API call.
  *
- * @typedef {object} AdminResponse
- * @property {boolean} ok
- * @property {number} status
- * @property {() => Promise<string>} text
- * @property {() => Promise<any>} json
- * @property {string} error                            `x-error` header, '' if absent
- * @property {{method: string, url: string}} request   echo for logging
+ * @typedef {import('./admin-types.js').AdminResponse} AdminResponse
  */
 
 /**
@@ -61,6 +55,7 @@ function coordsFromURL(url) {
  * @param {RequestInit & {params?: Record<string, string>}} [defaults]
  *   `params` is merged under every call's own `opts.params` (call-site wins
  *   on key collisions); everything else is merged into every request's init.
+ *   Explicit operation methods take precedence over defaults.
  */
 function createAdmin(defaults = {}) {
   const { params: defaultParams, ...initDefaults } = defaults;
@@ -69,13 +64,16 @@ function createAdmin(defaults = {}) {
     method, url, body, contentType, params,
   }) {
     const mergedParams = { ...defaultParams, ...params };
+    const inUrl = new URLSearchParams(url.split('?')[1] || '');
     let finalUrl = url;
-    if (Object.keys(mergedParams).length) {
+    if (Object.keys(mergedParams).some((k) => !inUrl.has(k))) {
       const qs = new URLSearchParams();
-      Object.entries(mergedParams).forEach(([k, v]) => qs.set(k, v));
+      Object.entries(mergedParams).forEach(([k, v]) => {
+        if (!inUrl.has(k)) qs.set(k, v);
+      });
       finalUrl = `${url}${url.includes('?') ? '&' : '?'}${qs.toString()}`;
     }
-    const init = { method, ...initDefaults };
+    const init = { ...initDefaults, method };
     if (body !== undefined && body !== null) {
       init.body = body;
       if (contentType) {
@@ -163,6 +161,17 @@ function createAdmin(defaults = {}) {
     return `${ADMIN_BASE}/${org}/sites/${site}/${op}`;
   }
 
+  /**
+   * @param {URL} url
+   * @param {import('./admin-types.js').BoundCoordinates} coords
+   * @returns {boolean}
+   */
+  function isInScope(url, coords) {
+    const root = new URL(opBase('', coords)).pathname;
+    return url.origin === ADMIN_BASE
+      && (url.pathname === root.slice(0, -1) || url.pathname.startsWith(root));
+  }
+
   function bindOperation(baseUrl, caps) {
     function join(path = '') {
       const p = String(path).replace(/^\//, '');
@@ -179,8 +188,14 @@ function createAdmin(defaults = {}) {
         return request(init);
       },
       remove: (path, opts) => request({ method: 'DELETE', url: join(path), params: opts?.params }),
-      // H6 bulk jobs need forceAsync to run past the small synchronous limit.
-      bulk: (payload, opts) => all.update('/*', JSON.stringify({ ...payload, forceAsync: true }), opts),
+      // H6 rejects `/*`: bulk must POST to the operation root. forceAsync lifts the sync limit.
+      bulk: (payload, opts) => request({
+        method: 'POST',
+        url: `${baseUrl}/`,
+        body: JSON.stringify({ ...payload, forceAsync: true }),
+        contentType: opts?.contentType ?? 'application/json',
+        params: opts?.params,
+      }),
     };
     return { ...Object.fromEntries(caps.map((c) => [c, all[c]])), url: baseUrl };
   }
@@ -236,22 +251,41 @@ function createAdmin(defaults = {}) {
     return request(init);
   }
 
+  /**
+   * Read-only view of the site config merged with its inherited values.
+   * H6 URL: /{org}/sites/{site}/config.json?aggregated=true
+   *
+   * @param {{org: string, site: string}} coords
+   */
+  function aggregated({ org, site }) {
+    const url = `${ADMIN_BASE}/${org}/sites/${site}/config.json?aggregated=true`;
+    return {
+      read: (opts) => request({ method: 'GET', url, params: opts?.params }),
+      url,
+    };
+  }
+
   function withRequestInit(extra) {
     return createAdmin({ ...defaults, ...extra });
   }
 
   /**
    * Derive a client that pins every request to the given admin API version.
+   * Preserves other default params; no version removes only the version pin.
    * Non-mutating, like `withRequestInit` — the original client is unaffected.
    *
    * @param {string} [version]
    */
   function pinVersion(version) {
-    return withRequestInit({ params: version ? { [VERSION_PARAM_KEY]: version } : undefined });
+    const params = { ...defaultParams };
+    if (version) params[VERSION_PARAM_KEY] = version;
+    else delete params[VERSION_PARAM_KEY];
+    return withRequestInit({ params });
   }
 
   return {
     config,
+    aggregated,
     status,
     preview,
     live,
@@ -265,6 +299,7 @@ function createAdmin(defaults = {}) {
     sidekick,
     medialog,
     raw,
+    isInScope,
     suggestions,
     coordsFromURL,
     withRequestInit,

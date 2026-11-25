@@ -10,14 +10,14 @@ export class RewrittenData {
    * @param {string} live - Live hostname.
    * @param {string} preview - Preview hostname.
    * @param {Function} onAdminClick - Called with (requestFn|data, button) on detail button click.
-   * @param {object} adminClient - Active admin API client.
+   * @param {object} api - API for the submitted target.
    */
-  constructor(data, live, preview, onAdminClick = async () => {}, adminClient = null) {
+  constructor(data, live, preview, onAdminClick = async () => {}, api = null) {
     this.data = data;
     this.live = live;
     this.preview = preview;
     this.onAdminClick = onAdminClick;
-    this.admin = adminClient;
+    this.api = api;
   }
 
   timestamp(value) {
@@ -67,7 +67,7 @@ export class RewrittenData {
     }
     if (type === 'config') {
       return writeDetails(
-        () => this.admin.config({ org: data.org, site: data.site }).read(),
+        () => this.api.readConfig(data),
         value,
       );
     }
@@ -117,7 +117,7 @@ export class RewrittenData {
     }
     if (type === 'job' || type.includes('-job')) {
       return writeDetails(
-        () => this.admin.job({ org: data.org, site: data.site, ref: data.ref }).get(`${value}/details`),
+        () => this.api.readJobDetails(data, value),
         value,
       );
     }
@@ -125,7 +125,7 @@ export class RewrittenData {
       const { job: jobId } = data;
       if (jobId) {
         return writeDetails(
-          () => this.admin.job({ org: data.org, site: data.site, ref: data.ref }).get(`${jobId}/details`),
+          () => this.api.readJobDetails(data, jobId),
           jobId,
         );
       }
@@ -152,7 +152,7 @@ export class RewrittenData {
     }
     if (type === 'status') {
       return writeDetails(
-        () => this.admin.status({ org: data.owner, site: data.repo, ref: data.ref }).get(value),
+        () => this.api.readStatus(data, value),
         value,
       );
     }

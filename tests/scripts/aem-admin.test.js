@@ -8,7 +8,7 @@ import runSharedBehaviorTests from './admin-shared-behaviors.js';
 
 // ─── Shared behavioral contract ──────────────────────────────────────────────
 describe('aem-admin.js', () => {
-  runSharedBehaviorTests(admin);
+  runSharedBehaviorTests(admin, 'aem-api-version');
 });
 
 // ─── H6-specific functional tests ────────────────────────────────────────────
@@ -79,6 +79,28 @@ describe('aem-admin.js — H6 URL contract', () => {
     it('.read() at the profile root hits /{org}/profiles/{profile}/config.json', async () => {
       await admin.config({ org: 'adobe', profile: 'p' }).read();
       assert.equal(calls[0].url, 'https://api.aem.live/adobe/profiles/p/config.json');
+    });
+  });
+
+  describe('admin.aggregated(coords) URLs', () => {
+    it('.url is the site config with aggregated=true', () => {
+      assert.equal(
+        admin.aggregated({ org: 'adobe', site: 'x' }).url,
+        'https://api.aem.live/adobe/sites/x/config.json?aggregated=true',
+      );
+    });
+
+    it('.read() GETs the site config with aggregated=true', async () => {
+      await admin.aggregated({ org: 'adobe', site: 'x' }).read();
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/config.json?aggregated=true');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('is read-only', () => {
+      const aggregated = admin.aggregated({ org: 'adobe', site: 'x' });
+      ['update', 'create', 'remove', 'select'].forEach((method) => {
+        assert.equal(aggregated[method], undefined, method);
+      });
     });
   });
 
@@ -255,16 +277,16 @@ describe('aem-admin.js — H6 URL contract', () => {
   });
 
   describe('admin.preview/live(coords).bulk(payload, opts)', () => {
-    it('POSTs to /{org}/sites/{site}/preview/* with forceAsync set', async () => {
+    it('POSTs to the /{org}/sites/{site}/preview/ root with forceAsync set', async () => {
       await admin.preview({ org: 'adobe', site: 'x' }).bulk({ paths: ['/a'], forceUpdate: false });
-      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/preview/*');
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/preview/');
       assert.equal(calls[0].init.method, 'POST');
       assert.deepEqual(JSON.parse(calls[0].init.body), { paths: ['/a'], forceUpdate: false, forceAsync: true });
     });
 
-    it('live(coords).bulk hits /{org}/sites/{site}/live/*', async () => {
+    it('live(coords).bulk hits the /{org}/sites/{site}/live/ root', async () => {
       await admin.live({ org: 'adobe', site: 'x' }).bulk({ paths: ['/a'], forceUpdate: true });
-      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/live/*');
+      assert.equal(calls[0].url, 'https://api.aem.live/adobe/sites/x/live/');
     });
 
     it('a pinned client includes the version on bulk requests too', async () => {

@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "strict": true,
+    "target": "ES2022",
+    "module": "NodeNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": []
+  },
+  "include": [
+    "scripts/admin-types.js",
+    "scripts/admin-compat.js",
+    "utils/admin-request.js",
+    "tools/log-viewer/api.js",
+    "tools/user-admin/api.js",
+    "tools/headers-edit/api.js",
+    "tests/scripts/admin-types.typecheck.js"
+  ]
+}

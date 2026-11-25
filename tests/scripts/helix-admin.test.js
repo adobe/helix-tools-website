@@ -8,7 +8,7 @@ import runSharedBehaviorTests from './admin-shared-behaviors.js';
 
 // ─── Shared behavioral contract ──────────────────────────────────────────────
 describe('helix-admin.js', () => {
-  runSharedBehaviorTests(admin);
+  runSharedBehaviorTests(admin, 'hlx-admin-version');
 });
 
 // ─── H5-specific functional tests ────────────────────────────────────────────
@@ -82,6 +82,28 @@ describe('helix-admin.js — H5 URL contract', () => {
     it('.remove() hits the bound URL', async () => {
       await admin.config({ org: 'adobe', site: 'x' }).select('headers.json').remove();
       assert.equal(calls[0].url, 'https://admin.hlx.page/config/adobe/sites/x/headers.json');
+    });
+  });
+
+  describe('admin.aggregated(coords) URLs', () => {
+    it('.url is /config/{org}/aggregated/{site}.json', () => {
+      assert.equal(
+        admin.aggregated({ org: 'adobe', site: 'x' }).url,
+        'https://admin.hlx.page/config/adobe/aggregated/x.json',
+      );
+    });
+
+    it('.read() GETs the aggregated URL', async () => {
+      await admin.aggregated({ org: 'adobe', site: 'x' }).read();
+      assert.equal(calls[0].url, 'https://admin.hlx.page/config/adobe/aggregated/x.json');
+      assert.equal(calls[0].init.method, 'GET');
+    });
+
+    it('is read-only', () => {
+      const aggregated = admin.aggregated({ org: 'adobe', site: 'x' });
+      ['update', 'create', 'remove', 'select'].forEach((method) => {
+        assert.equal(aggregated[method], undefined, method);
+      });
     });
   });
 

@@ -78,6 +78,99 @@ Conventions when mocking *is* used:
 
 ## Test Conventions
 
+### Incremental JavaScript type checking
+
+#### Purpose
+
+TypeScript is a development-time safety net for shared JavaScript API contracts,
+**not a migration to TypeScript or a new application build step**. Shared libraries
+have callers across multiple tools; checking their contracts helps developers and
+agents catch incompatible API changes before they become runtime failures.
+JSDoc also makes supported calls and return types discoverable in editors.
+
+The initial focus is the admin-client boundary: distinguish bound from unbound
+clients, preserve resource capabilities, prevent accidental retargeting, and keep
+both auth call formats compatible. The goal is to make these guarantees explicit
+without requiring every existing tool to adopt type checking at once.
+
+Run the check with:
+
+```sh
+npm run typecheck
+```
+
+Browsers still run the `.js` files directly. The checker uses `noEmit` and produces
+no application JavaScript, declarations, or other generated output. Keep type-only
+references in JSDoc `import(...)`; do not add runtime imports for typedefs.
+
+#### Scope and limits
+
+`tsconfig.json` keeps `strict: true`, `checkJs: false`, and explicit entry points.
+Individual files opt in with `// @ts-check`, so importing an existing library does
+not automatically enable diagnostics throughout its unchecked implementation.
+Use `tsconfig.json` and the files' `// @ts-check` directives as the source of truth
+for checking scope; do not maintain a duplicate per-module inventory here.
+
+Compile-only contract fixtures are checked, **not executed**. Valid examples must type-check;
+invalid examples use explanatory `@ts-expect-error` directives. If an API change
+accidentally permits an invalid call, its now-unused directive makes the check fail.
+Examples cover coordinate mutation, bound-client retargeting, unsupported resource
+methods, auth options, and inferred response types.
+
+A passing check does not certify unchecked callers, validate server JSON,
+or prove request routing and auth behavior. Parsed JSON is `unknown` in the shared
+response contract and must be narrowed or validated before use in checked code.
+Type checking complements runtime tests; it does not replace input validation,
+runtime guards, or `Object.freeze()` for actual immutability.
+
+#### Extending the checks
+
+When changing a checked API, update its shared JSDoc contract and compile-only
+examples alongside the implementation, then run `npm run typecheck` in addition
+to lint and the relevant runtime tests. Preserve supported legacy calls during
+incremental migrations.
+
+Adopt checking in other shared libraries as they are changed: add `// @ts-check`,
+reuse shared contracts, and ensure the file is part of the `tsconfig.json` program
+through an import or a new explicit entry point. Do not enable repository-wide
+`checkJs` or convert unrelated files just to extend one library's coverage.
+Fix mismatches rather than widening contracts to `any` or adding suppressions to
+silence diagnostics; reserve `@ts-expect-error` for intentional negative checks.
+
+#### Admin-client contracts
+
+`scripts/admin-types.js` describes the unbound and bound APIs. The bound
+factory returns cached clients with a read-only `coords` property exposing
+the target to auth without exposing backend selection; `raw()` accepts absolute
+or root-relative URLs only within the selected backend and bound org/site
+(and H5 ref, unless null). Out-of-scope URLs throw before fetching. Bound derivation
+returns another bound client; unbound derivation stays unbound.
+
+`executeAdminRequest(requestFn, client, { policy })` obtains auth coordinates
+from the bound client's `coords`; omitting options keeps the 401-retry default.
+The existing `executeAdminRequest(requestFn, { org, site, policy })` form
+remains supported. Both signatures share the same login, retry, cancellation,
+and persistence flow; accepting a client avoids repeating auth coordinates,
+but does not validate the request callback's target.
+
+`getAdminClientForSite({ org, site, ref })` now returns the bound API:
+`client.status().get(path)`, not `client.status(coords).get(path)`. Resource
+accessors reject arguments rather than silently ignoring old coordinates.
+Org/site and non-null refs must be non-empty strings. Omitted refs default
+to `main`; `null` retains ref-less H5 operation URLs while probing `main`
+for backend detection.
+
+Client creation is cached per org/site/ref and temporary H6 override state.
+Concurrent callers share creation; failures are evicted. `getAdminClient()`
+remains unbound and keeps its override behavior during migration.
+
+Admin API integration tests exercise real H5/H6 adapters with network interception.
+These runtime tests complement the static contracts by checking backend detection,
+request routing, and per-target execution. Keep tool-specific behavior and coverage
+in the corresponding tests.
+
+### Runtime tests
+
 - **Framework**: Node.js built-in `node:test` + `node:assert/strict`
 - **Location**: `tests/{path-mirroring-source}/{module}.test.js` — all tests live under the top-level `tests/` directory, mirroring the layout of the code under test (e.g. `tools/bulk/utils.js` → `tests/tools/bulk/utils.test.js`). Name the test file after the module it tests.
 - **Run**: `npm test` (executes all `tests/**/*.test.js`)

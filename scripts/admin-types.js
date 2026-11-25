@@ -1,0 +1,151 @@
+// @ts-check
+/**
+ * Shared client contracts. Resource capabilities stay identical for H5 and H6.
+ *
+ * @typedef {object} SiteCoordinates
+ * @property {string} org
+ * @property {string} site
+ * @property {string|null} [ref] Defaults to main; null omits the H5 ref segment.
+ *
+ * @typedef {Readonly<{org: string, site: string, ref: string|null}>} BoundCoordinates
+ *
+ * @typedef {{org: string}} OrgCoordinates
+ * @typedef {Readonly<{org: string}>} OrgBoundCoordinates
+ *
+ * @typedef {{org: string, site?: never, profile?: never}
+ *   | {org: string, site: string, profile?: never}
+ *   | {org: string, site?: never, profile: string}} ConfigCoordinates
+ *
+ * @typedef {{org: string|null, site: string|null}} ParsedCoordinates
+ * @typedef {{url: string, label: string}} AdminSuggestion
+ * @typedef {Record<string, string|number|boolean>} AdminParams
+ * @typedef {{params?: AdminParams}} AdminRequestOptions
+ * @typedef {AdminRequestOptions & {contentType?: string}} AdminOperationOptions
+ * @typedef {RequestInit & AdminRequestOptions} AdminRequestDefaults
+ */
+
+/**
+ * HTTP and network failures use this envelope. Body readers remain single-use;
+ * callers must narrow or validate parsed JSON before consuming it.
+ *
+ * @typedef {object} AdminResponse
+ * @property {boolean} ok
+ * @property {number} status
+ * @property {() => Promise<string>} text
+ * @property {() => Promise<unknown>} json
+ * @property {string} error
+ * @property {{method: string, url: string}} request
+ */
+
+/**
+ * @typedef {object} AdminConfigResource
+ * @property {string} url
+ * @property {(subpath: string) => AdminConfigResource} select
+ * @property {(opts?: AdminRequestOptions) => Promise<AdminResponse>} read
+ * @property {(body?: string|null, opts?: AdminRequestOptions) => Promise<AdminResponse>} update
+ * @property {(body?: string|null, opts?: AdminRequestOptions) => Promise<AdminResponse>} create
+ * @property {(opts?: AdminRequestOptions) => Promise<AdminResponse>} remove
+ */
+
+/**
+ * Site config merged with inherited values; the API offers reads only.
+ *
+ * @typedef {Pick<AdminConfigResource, 'url'|'read'>} AdminAggregatedResource
+ */
+
+/**
+ * Capability catalogue; individual resources expose only their supported methods.
+ * Bulk payloads are serialized by the adapter; other operation bodies are BodyInit.
+ *
+ * @typedef {object} AdminOperationCapabilities
+ * @property {string} url
+ * @property {(path?: string, opts?: AdminRequestOptions) => Promise<AdminResponse>} get
+ * @property {(path?: string, body?: BodyInit|null,
+ *   opts?: AdminOperationOptions) => Promise<AdminResponse>} update
+ * @property {(path?: string, opts?: AdminRequestOptions) => Promise<AdminResponse>} remove
+ * @property {(payload: object, opts?: AdminOperationOptions) => Promise<AdminResponse>} bulk
+ *
+ * @typedef {Pick<AdminOperationCapabilities, 'url'|'get'>} AdminGetResource
+ * @typedef {Pick<AdminOperationCapabilities, 'url'|'update'>} AdminUpdateResource
+ * @typedef {Pick<AdminOperationCapabilities, 'url'|'get'|'update'>} AdminGetUpdateResource
+ * @typedef {Pick<AdminOperationCapabilities, 'url'|'get'|'remove'>} AdminGetRemoveResource
+ * @typedef {Pick<AdminOperationCapabilities, 'url'|'get'|'update'|'remove'>} AdminCrudResource
+ * @typedef {AdminCrudResource & Pick<AdminOperationCapabilities, 'bulk'>} AdminBulkResource
+ *
+ * @typedef {(method: string, urlOrPath: string, body?: BodyInit|null,
+ *   opts?: AdminOperationOptions) => Promise<AdminResponse>} AdminRawRequest
+ */
+
+/**
+ * Existing API: coordinates are supplied when obtaining a resource.
+ *
+ * @typedef {object} UnboundAdminClient
+ * @property {(coords: ConfigCoordinates) => AdminConfigResource} config
+ * @property {(coords: SiteCoordinates) => AdminAggregatedResource} aggregated
+ * @property {(coords: SiteCoordinates) => AdminGetUpdateResource} status
+ * @property {(coords: SiteCoordinates) => AdminBulkResource} preview
+ * @property {(coords: SiteCoordinates) => AdminBulkResource} live
+ * @property {(coords: SiteCoordinates) => AdminCrudResource} code
+ * @property {(coords: SiteCoordinates) => AdminGetUpdateResource} log
+ * @property {(coords: SiteCoordinates) => AdminCrudResource} index
+ * @property {(coords: SiteCoordinates) => AdminUpdateResource} sitemap
+ * @property {(coords: SiteCoordinates) => AdminGetRemoveResource} job
+ * @property {(coords: SiteCoordinates) => AdminGetResource} psi
+ * @property {(coords: SiteCoordinates) => AdminCrudResource} snapshot
+ * @property {(coords: SiteCoordinates) => AdminGetResource} sidekick
+ * @property {(coords: SiteCoordinates) => AdminGetResource} medialog
+ * @property {AdminRawRequest} raw
+ * @property {(url: URL, coords: BoundCoordinates) => boolean} isInScope
+ * @property {(url: string) => ParsedCoordinates} coordsFromURL
+ * @property {(coords: {org: string, site?: string}) => AdminSuggestion[]} suggestions
+ * @property {(extra: AdminRequestDefaults) => UnboundAdminClient} withRequestInit
+ * @property {(version?: string) => UnboundAdminClient} pinVersion
+ */
+
+/**
+ * Bound API: resource accessors accept no arguments; config is site-scoped.
+ * Read-only coordinates let auth reuse the same target without exposing backend
+ * selection. Raw access accepts API-returned links only within the selected
+ * backend and org/site (and the H5 ref, unless null); out-of-scope URLs throw.
+ * Derivation preserves scope and backend without modifying the cached base client.
+ *
+ * @typedef {object} BoundAdminClientProperties
+ * @property {BoundCoordinates} coords
+ * @property {() => AdminConfigResource} config
+ * @property {() => AdminAggregatedResource} aggregated
+ * @property {() => AdminGetUpdateResource} status
+ * @property {() => AdminBulkResource} preview
+ * @property {() => AdminBulkResource} live
+ * @property {() => AdminCrudResource} code
+ * @property {() => AdminGetUpdateResource} log
+ * @property {() => AdminCrudResource} index
+ * @property {() => AdminUpdateResource} sitemap
+ * @property {() => AdminGetRemoveResource} job
+ * @property {() => AdminGetResource} psi
+ * @property {() => AdminCrudResource} snapshot
+ * @property {() => AdminGetResource} sidekick
+ * @property {() => AdminGetResource} medialog
+ * @property {AdminRawRequest} raw
+ * @property {(url: string) => ParsedCoordinates} coordsFromURL
+ * @property {() => AdminSuggestion[]} suggestions
+ * @property {(extra: AdminRequestDefaults) => BoundAdminClient} withRequestInit
+ * @property {(version?: string) => BoundAdminClient} pinVersion
+ *
+ * @typedef {Readonly<BoundAdminClientProperties>} BoundAdminClient
+ *
+ * Org-scoped client: always the H6 backend, binding only what org-level tools use.
+ * Add a resource here only when a tool needs it.
+ *
+ * @typedef {object} OrgBoundAdminClientProperties
+ * @property {OrgBoundCoordinates} coords
+ * @property {() => AdminConfigResource} config
+ * @property {(extra: AdminRequestDefaults) => OrgBoundAdminClient} withRequestInit
+ * @property {(version?: string) => OrgBoundAdminClient} pinVersion
+ *
+ * @typedef {Readonly<OrgBoundAdminClientProperties>} OrgBoundAdminClient
+ *
+ * @typedef {() => Promise<UnboundAdminClient|null>} UnboundAdminClientFactory
+ * @typedef {(coords: SiteCoordinates) => Promise<BoundAdminClient>} BoundAdminClientFactory
+ */
+
+export {};
