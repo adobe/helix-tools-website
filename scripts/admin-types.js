@@ -96,7 +96,6 @@
  * @property {(coords: SiteCoordinates) => AdminGetResource} medialog
  * @property {AdminRawRequest} raw
  * @property {(url: URL, coords: BoundCoordinates) => boolean} isInScope
- * @property {(url: string) => ParsedCoordinates} coordsFromURL
  * @property {(coords: {org: string, site?: string}) => AdminSuggestion[]} suggestions
  * @property {(extra: AdminRequestDefaults) => UnboundAdminClient} withRequestInit
  * @property {(version?: string) => UnboundAdminClient} pinVersion
@@ -126,7 +125,6 @@
  * @property {() => AdminGetResource} sidekick
  * @property {() => AdminGetResource} medialog
  * @property {AdminRawRequest} raw
- * @property {(url: string) => ParsedCoordinates} coordsFromURL
  * @property {() => AdminSuggestion[]} suggestions
  * @property {(extra: AdminRequestDefaults) => BoundAdminClient} withRequestInit
  * @property {(version?: string) => BoundAdminClient} pinVersion

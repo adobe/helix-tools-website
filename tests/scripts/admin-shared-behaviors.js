@@ -402,17 +402,6 @@ export default function runSharedBehaviorTests(admin, versionParamKey) {
     });
   });
 
-  describe('admin.coordsFromURL(url)', () => {
-    it('returns nulls for an invalid URL', () => {
-      assert.deepEqual(admin.coordsFromURL('not-a-url'), { org: null, site: null });
-    });
-
-    it('is available as a function on withRequestInit-derived clients', () => {
-      const a = admin.withRequestInit({ credentials: 'include' });
-      assert.equal(typeof a.coordsFromURL, 'function');
-    });
-  });
-
   describe('network error handling', () => {
     it('returns ok=false with status=0 when fetch throws', async () => {
       respond = () => { throw new TypeError('Failed to fetch'); };

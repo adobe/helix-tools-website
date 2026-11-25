@@ -11,7 +11,97 @@ const {
   default: getAdminClient,
   getAdminClientForSite,
   getAdminClientForOrg,
+  coordsFromURL,
 } = await import('../../scripts/admin-compat.js');
+
+describe('coordsFromURL(url)', () => {
+  describe('H6 URLs', () => {
+    it('parses org + site from /{org}/sites/{site}/config.json', () => {
+      assert.deepEqual(
+        coordsFromURL('https://api.aem.live/adobe/sites/x/config.json'),
+        { org: 'adobe', site: 'x' },
+      );
+    });
+
+    it('parses org-only from /{org}/config.json', () => {
+      assert.deepEqual(
+        coordsFromURL('https://api.aem.live/adobe/config.json'),
+        { org: 'adobe', site: null },
+      );
+    });
+
+    it('treats /{org}/sites.json as org-only (list, not a specific site)', () => {
+      assert.deepEqual(
+        coordsFromURL('https://api.aem.live/adobe/sites.json'),
+        { org: 'adobe', site: null },
+      );
+    });
+
+    it('parses org + site from an operation URL', () => {
+      assert.deepEqual(
+        coordsFromURL('https://api.aem.live/adobe/sites/x/status'),
+        { org: 'adobe', site: 'x' },
+      );
+    });
+
+    it('parses org + site from an operation URL with content path', () => {
+      assert.deepEqual(
+        coordsFromURL('https://api.aem.live/adobe/sites/x/preview/en/index'),
+        { org: 'adobe', site: 'x' },
+      );
+    });
+  });
+
+  describe('H5 URLs', () => {
+    it('parses org from /config/{org}.json', () => {
+      assert.deepEqual(
+        coordsFromURL('https://admin.hlx.page/config/adobe.json'),
+        { org: 'adobe', site: null },
+      );
+    });
+
+    it('treats /config/{org}/sites.json as org-only (sites list, not a specific site)', () => {
+      assert.deepEqual(
+        coordsFromURL('https://admin.hlx.page/config/adobe/sites.json'),
+        { org: 'adobe', site: null },
+      );
+    });
+
+    it('parses org + site from /config/{org}/sites/{site}.json', () => {
+      assert.deepEqual(
+        coordsFromURL('https://admin.hlx.page/config/adobe/sites/x.json'),
+        { org: 'adobe', site: 'x' },
+      );
+    });
+
+    it('parses org + site from a site sub-resource config URL', () => {
+      assert.deepEqual(
+        coordsFromURL('https://admin.hlx.page/config/adobe/sites/x/cdn.json'),
+        { org: 'adobe', site: 'x' },
+      );
+    });
+
+    it('parses org + site from an operation URL', () => {
+      assert.deepEqual(
+        coordsFromURL('https://admin.hlx.page/status/adobe/x/main'),
+        { org: 'adobe', site: 'x' },
+      );
+    });
+
+    it('parses org + site from a preview URL with content path', () => {
+      assert.deepEqual(
+        coordsFromURL('https://admin.hlx.page/preview/adobe/x/main/en/index'),
+        { org: 'adobe', site: 'x' },
+      );
+    });
+  });
+
+  it('returns null coords for an unparseable URL', () => {
+    let coords;
+    assert.doesNotThrow(() => { coords = coordsFromURL('not a url'); });
+    assert.deepEqual(coords, { org: null, site: null });
+  });
+});
 
 describe('getAdminClient()', () => {
   afterEach(() => {

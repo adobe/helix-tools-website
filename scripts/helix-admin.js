@@ -47,33 +47,6 @@ function deriveContentType(url) {
  *   `params` is merged under every call's own `opts.params` (call-site wins
  *   on key collisions); everything else is merged into every request's init.
  */
-/**
- * Parse org and site coords from an admin API URL. Handles both config URLs
- * (`/config/{org}/sites/{site}.json`) and operation URLs
- * (`/{op}/{org}/{site}/{ref}/...`).
- *
- * @param {string} url - Full admin URL
- * @returns {{org: string|null, site: string|null}}
- */
-function coordsFromURL(url) {
-  try {
-    const parts = new URL(url).pathname.split('/').filter(Boolean);
-    if (parts[0] === 'config') {
-      const org = parts[1] ? parts[1].replace(/\.json$/, '') : null;
-      if (!org) return { org: null, site: null };
-      // parts[2] must be the literal 'sites' directory, not 'sites.json' (the list)
-      const site = (parts[2] === 'sites' && parts[3])
-        ? parts[3].replace(/\.json$/, '')
-        : null;
-      return { org, site };
-    }
-    // operation URL: /{op}/{org}/{site}/{ref}/...
-    return { org: parts[1] ?? null, site: parts[2] ?? null };
-  } catch {
-    return { org: null, site: null };
-  }
-}
-
 function createAdmin(defaults = {}) {
   const { params: defaultParams, ...initDefaults } = defaults;
 
@@ -350,7 +323,6 @@ function createAdmin(defaults = {}) {
     raw,
     isInScope,
     suggestions,
-    coordsFromURL,
     withRequestInit,
     pinVersion,
   };
