@@ -1,14 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
   <title>Snapshot Admin</title>
   <meta name="description" content="Tool for managing snapshots in AEM">
   <link rel="stylesheet" href="/styles/styles.css" />
-  <script src="/tools/snapshot-admin/popover.js" type="module"></script>
+  <script nonce="aem" src="/tools/snapshot-admin/popover.js" type="module"></script>
   <link rel="stylesheet" href="/tools/snapshot-admin/popover.css" />
 </head>
-<script>
-</script>
 <body class="appear">
   <div id="snapshot-selector-wrapper">
     <p><label for="snapshot-select">Select Snapshot:</label></p>

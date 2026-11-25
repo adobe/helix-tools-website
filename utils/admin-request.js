@@ -1,8 +1,13 @@
-import { ensureLogin } from '../blocks/profile/profile.js';
 import { updateConfig } from './config/config.js';
+import {
+  getImsToken, isImsTokenFresh, loadIms, signIn,
+} from './ims.js';
+import { messageSidekick } from './sidekick.js';
 
 /**
- * Auth-handling policy for {@link executeAdminRequest}.
+ * Auth-handling policy for {@link executeAdminRequest}. `retryOn401` opens the Adobe
+ * sign-in on a 401 and then sends the request again, and `preflightAndRetry` also
+ * checks the sign-in before sending.
  *
  * @readonly
  * @enum {string}
@@ -13,24 +18,44 @@ export const AuthMode = Object.freeze({
   PREFLIGHT_AND_RETRY: 'preflightAndRetry',
 });
 
-function waitForLogin(org) {
-  return new Promise((resolve) => {
-    const handlers = {};
-    const finish = (value) => {
-      window.removeEventListener('profile-update', handlers.onUpdate);
-      window.removeEventListener('profile-cancelled', handlers.onCancel);
-      resolve(value);
-    };
-    handlers.onUpdate = ({ detail }) => finish(Array.isArray(detail) && detail.includes(org));
-    handlers.onCancel = () => finish(false);
-    window.addEventListener('profile-update', handlers.onUpdate);
-    window.addEventListener('profile-cancelled', handlers.onCancel);
-  });
+/**
+ * Waits for imslib, so the admin clients can send the IMS token.
+ * @returns {Promise<boolean>} false if imslib is unavailable
+ */
+async function waitForIms() {
+  try {
+    await loadIms();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
- * Execute an admin API request with optional auth pre-check and 401 retry.
- * Returns `null` if the user fails to complete login.
+ * Checks that admin requests for the org will be authenticated, and stay so for the
+ * task about to start: with an IMS token that doesn't expire soon or, without one,
+ * with the token the sidekick adds for that org. Otherwise opens the Adobe sign-in.
+ * @param {string} org The org
+ * @returns {Promise<boolean>} true if signed in
+ */
+export async function ensureAdminLogin(org) {
+  const imsReady = await waitForIms();
+  if (isImsTokenFresh()) return true;
+  const orgs = await messageSidekick({ action: 'getAuthInfo' });
+  if (Array.isArray(orgs) && orgs.includes(org)) return true;
+  if (!imsReady) return false;
+  // a token that expires soon still works if the user closes the sign-in
+  return await signIn() || !!getImsToken();
+}
+
+/**
+ * Execute an admin API request with an optional sign-in check, signing in and
+ * sending it again on a 401. Returns `null` if the user didn't complete the
+ * Adobe sign-in.
+ *
+ * The admin clients send the IMS token once imslib is ready; without one, the
+ * sidekick's token still applies. Only a 401 sent without an IMS token opens the
+ * Adobe sign-in: admin would reject a new token just like the current one.
  *
  * `updateConfig()` only fires on 2xx — a 4xx/5xx may not actually validate
  * the org/site combo (e.g. 404 could mean the org doesn't exist). It's a
@@ -40,27 +65,19 @@ function waitForLogin(org) {
  * @param {() => Promise<T>} requestFn       must be safe to invoke twice
  * @param {object} authConfig
  * @param {string} authConfig.org
- * @param {string} [authConfig.site]
  * @param {AuthMode} [authConfig.policy]     default: `retryOn401`
  * @returns {Promise<T | null>}
  */
 export async function executeAdminRequest(requestFn, authConfig) {
-  const { org, site, policy = AuthMode.RETRY_ON_401 } = authConfig;
+  const { org, policy = AuthMode.RETRY_ON_401 } = authConfig;
+  if (policy === AuthMode.PREFLIGHT_AND_RETRY && !await ensureAdminLogin(org)) return null;
 
-  if (policy === AuthMode.PREFLIGHT_AND_RETRY) {
-    const signedIn = await ensureLogin(org, site) || await waitForLogin(org);
-    if (!signedIn) return null;
-  }
-
+  const imsReady = await waitForIms();
   let result = await requestFn();
-
-  const retry = policy === AuthMode.RETRY_ON_401 || policy === AuthMode.PREFLIGHT_AND_RETRY;
-  if (retry && result?.status === 401) {
-    const signedIn = await ensureLogin(org, site) || await waitForLogin(org);
-    if (!signedIn) return null;
+  if (imsReady && policy !== AuthMode.NONE && result?.status === 401 && !getImsToken()) {
+    if (!await signIn()) return null;
     result = await requestFn();
   }
-
   if (result?.ok) updateConfig();
   return result;
 }

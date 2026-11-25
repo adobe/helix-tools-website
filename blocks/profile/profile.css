@@ -95,6 +95,27 @@
   margin-top: 0;
 }
 
+.profile .profile-modal #profile-ims {
+  margin: 1rem 0 2rem;
+}
+
+.profile .profile-modal .ims-login {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.profile .profile-modal .ims-login .button {
+  margin: 0;
+}
+
+.profile .profile-modal .ims-identity {
+  font-weight: bold;
+  overflow-wrap: anywhere;
+}
+
 .profile .profile-modal .profile-add-form {
   position: fixed;
   top: 50%;

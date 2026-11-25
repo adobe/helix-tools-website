@@ -67,7 +67,7 @@ Avoid mocks whenever possible. They're expensive to maintain and give false conf
 Mocks are acceptable, and sometimes the right call, in a narrow case: **shared library or orchestration code where the unit under test IS the contract with a collaborator**, and that contract is the very thing you want to pin. The mock is the system under test, not a stand-in for it. Examples:
 
 - `tests/scripts/helix-admin.test.js` — fetches are spied because the wrapper's job is to construct fetch arguments and shape the response. The spy *is* the SUT.
-- `tests/utils/admin-request.test.js` — `ensureLogin` is mocked via `node:test`'s `mock.module` and `window` events are dispatched against an `EventTarget`, because the helper's job is to orchestrate those collaborators into a result. The orchestration logic itself is the contract under test.
+- `tests/utils/admin-request.test.js` — imslib (`utils/ims.js`), the sidekick (`utils/sidekick.js`) and `updateConfig` are mocked via `node:test`'s `mock.module`, because the helper's job is to orchestrate those collaborators into a result. The orchestration logic itself is the contract under test.
 
 If you find yourself reaching for a mock outside this case, stop and refactor. The pull toward "I'll just mock this one fetch" is exactly when the test starts giving false confidence.
 
@@ -89,4 +89,4 @@ See existing tests for reference:
 - `tests/tools/index-admin/utils.test.js` — path derivation with branching logic
 - `tests/tools/log-viewer/utils.test.js` — date utility extraction from a larger script
 - `tests/scripts/helix-admin.test.js` — orchestration code with a fetch spy as SUT
-- `tests/utils/admin-request.test.js` — orchestration code with `mock.module` and a `window` event-target shim
+- `tests/utils/admin-request.test.js` — orchestration code with `mock.module`

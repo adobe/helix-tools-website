@@ -317,15 +317,6 @@ export default async function decorate(block) {
       }
     });
 
-    if (getMetadata('ims-login') === 'true') {
-      const { createImsLogin } = await import('../../utils/ims.js');
-      const imsLogin = document.createElement('li');
-      imsLogin.className = 'nav-ims-login';
-      imsLogin.append(createImsLogin());
-      toolsList.append(imsLogin);
-      nav.classList.add('has-ims-login');
-    }
-
     // add theme toggle
     const themeToggleLi = document.createElement('li');
     const themeToggle = document.createElement('button');

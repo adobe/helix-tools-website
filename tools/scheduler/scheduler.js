@@ -1,9 +1,8 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 import getAdminClient from '../../scripts/admin-compat.js';
-import { executeAdminRequest } from '../../utils/admin-request.js';
+import { executeAdminRequest, ensureAdminLogin } from '../../utils/admin-request.js';
 import * as api from './utils.js';
 
 let scheduleAdmin;
@@ -297,7 +296,7 @@ async function handleSubmit(event) {
     setStatus('Enter an organization and site to load schedules.', 'warning');
     return;
   }
-  const signedIn = await ensureLogin(currentOrg, currentSite);
+  const signedIn = await ensureAdminLogin(currentOrg);
   if (!signedIn) return;
   await loadSiteState();
 }

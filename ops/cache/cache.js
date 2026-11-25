@@ -2,7 +2,7 @@ import { sampleRUM } from '../../scripts/aem.js';
 import { registerToolReady } from '../../scripts/scripts.js';
 import { createModal } from '../../blocks/modal/modal.js';
 import escapeHtml from '../../utils/html.js';
-import { getImsToken, isSignedIn } from '../../utils/ims.js';
+import { getImsToken, isSignedIn, signIn } from '../../utils/ims.js';
 import { authHeaders, getAuthError } from './cache-auth.js';
 
 const API = 'https://helix-cache-debug.adobeaem.workers.dev';
@@ -461,7 +461,7 @@ const renderPurgeSection = (container, data) => {
       return;
     }
 
-    if (!getImsToken()) {
+    if (!getImsToken() && !await signIn()) {
       await showPurgeError('Sign in with Adobe to purge.');
       return;
     }
@@ -613,12 +613,11 @@ async function init() {
 
     try {
       button.disabled = true;
-      if (!await isSignedIn()) {
+      if (!await isSignedIn() && !await signIn()) {
         resultsContainer.innerHTML = '<p class="error">Sign in with Adobe to use the cache debugger.</p>';
         return;
       }
 
-      // read the location only now, after imslib removed the token from it
       const loc = new URL(window.location.href);
       loc.searchParams.set('url', url.toString());
       window.history.replaceState({}, '', loc);
@@ -643,7 +642,7 @@ async function init() {
       button.disabled = false;
     }
   });
-  // Initialize IMS before the lazy-loaded header so redirect tokens are removed promptly.
+  // load imslib up front: the purge reads the token synchronously
   await isSignedIn();
   sampleRUM.enhance();
 }

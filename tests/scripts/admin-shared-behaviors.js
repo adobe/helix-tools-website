@@ -552,4 +552,36 @@ export default function runSharedBehaviorTests(admin) {
       assert.equal(calls[0].init.method, 'POST');
     });
   });
+
+  describe('IMS token', () => {
+    function setImsToken(token) {
+      window.adobeIMS = { getAccessToken: () => (token ? { token } : null) };
+    }
+
+    afterEach(() => {
+      delete window.adobeIMS;
+    });
+
+    it('sends the imslib token as a bearer to the admin origin', async () => {
+      setImsToken('ims-token');
+      await admin.config({ org: 'adobe', site: 'x' }).select('robots.txt').read();
+      assert.equal(calls[0].init.headers.get('authorization'), 'Bearer ims-token');
+    });
+
+    it('never sends the token to another origin', async () => {
+      setImsToken('ims-token');
+      const { origin } = new URL(admin.config({ org: 'adobe' }).url);
+      await admin.raw('GET', 'https://example.com/api/test');
+      await admin.raw('GET', `${origin}.example.com/api/test`);
+      assert.equal(calls[0].init.headers, undefined);
+      assert.equal(calls[1].init.headers, undefined);
+    });
+
+    it('keeps an authorization header set through withRequestInit', async () => {
+      setImsToken('ims-token');
+      const a = admin.withRequestInit({ headers: { authorization: 'token abc' } });
+      await a.raw('GET', '/foo/bar');
+      assert.equal(new Headers(calls[0].init.headers).get('authorization'), 'token abc');
+    });
+  });
 }

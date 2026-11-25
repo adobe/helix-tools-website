@@ -2,7 +2,7 @@ import { sampleRUM } from '../../scripts/aem.js';
 import { registerToolReady } from '../../scripts/scripts.js';
 import { createModal } from '../../blocks/modal/modal.js';
 import escapeHtml from '../../utils/html.js';
-import { getImsToken, isSignedIn } from '../../utils/ims.js';
+import { getImsToken, isSignedIn, signIn } from '../../utils/ims.js';
 import { authHeaders, getAuthError } from './cache-auth.js';
 import {
   parseHostList,
@@ -365,7 +365,7 @@ const onResolveClick = async () => {
   resolveButton.disabled = true;
   updatePurgeButtonState();
   try {
-    if (!await isSignedIn()) {
+    if (!await isSignedIn() && !await signIn()) {
       const p = document.createElement('p');
       p.className = 'error';
       p.textContent = 'Sign in with Adobe to use the bulk purge.';
@@ -548,7 +548,7 @@ const onPurgeClick = async () => {
     return;
   }
 
-  if (!getImsToken()) {
+  if (!getImsToken() && !await signIn()) {
     const p = document.createElement('p');
     p.className = 'error purge-error';
     p.textContent = 'Sign in with Adobe to purge.';
@@ -640,7 +640,7 @@ async function init() {
   downloadButton.addEventListener('click', onDownloadClick);
 
   updatePurgeButtonState();
-  // Initialize IMS before the lazy-loaded header so redirect tokens are removed promptly.
+  // load imslib up front: the purge reads the token synchronously
   await isSignedIn();
   sampleRUM.enhance();
 }

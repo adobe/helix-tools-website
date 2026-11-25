@@ -2,7 +2,7 @@
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
 
-// utils/ims.js loads scripts/aem.js, which has page side effects
+// cache-auth.js only needs the IMS token
 mock.module('../../../utils/ims.js', {
   namedExports: { getImsToken: () => undefined },
 });
