@@ -81,9 +81,9 @@ export async function ensureAdminLogin() {
  * sending it again on a 401. Returns `null` if the user didn't complete the
  * Adobe sign-in.
  *
- * The admin clients send the IMS token once imslib is ready; without one, the
- * sidekick's token still applies. Only a 401 sent without an IMS token opens the
- * Adobe sign-in: admin would reject a new token just like the current one.
+ * The admin clients send the IMS token once imslib is ready. Only a 401 sent
+ * without an IMS token opens the Adobe sign-in: admin would reject a new token
+ * just like the current one.
  *
  * `updateConfig()` only fires on 2xx — a 4xx/5xx may not actually validate
  * the org/site combo (e.g. 404 could mean the org doesn't exist). It's a

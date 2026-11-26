@@ -1,7 +1,6 @@
 /* eslint-disable no-restricted-globals, no-alert, no-await-in-loop */
 
 import {
-  getSidekickId,
   messageSidekick,
   NO_SIDEKICK,
 } from '../../utils/sidekick.js';
@@ -9,16 +8,6 @@ import { createImsLogin } from '../../utils/ims.js';
 
 // created with the block rather than the dialog, so imslib loads with the page
 let imsLogin;
-
-async function getLoginInfo() {
-  return messageSidekick({ action: 'getAuthInfo' });
-}
-
-function dispatchProfileEvent(event, detail = {}) {
-  window.dispatchEvent(
-    new CustomEvent(`profile-${event}`, { detail }),
-  );
-}
 
 function confirmInstallSidekick(resp) {
   if (resp === NO_SIDEKICK && confirm('AEM Sidekick is required to manage projects. Install now?')) {
@@ -97,89 +86,6 @@ async function removeSite(org, site) {
   });
 }
 
-async function fetchUserInfo(userInfoElem, org, site, loginInfo) {
-  let userInfo = '';
-  if (Array.isArray(loginInfo) && loginInfo.includes(org)) {
-    const resp = await fetch(`https://admin.hlx.page/profile/${org}/${site}`);
-    if (resp.ok) {
-      const { profile } = await resp.json();
-      if (profile) {
-        userInfo = `(${profile.email})`;
-      }
-    }
-  }
-  userInfoElem.textContent = userInfo;
-}
-
-function createLoginButton(org, loginInfo) {
-  const loggedIn = Array.isArray(loginInfo) && loginInfo.includes(org);
-  const action = loggedIn ? 'logout' : 'login';
-
-  const loginButton = document.createElement('button');
-  loginButton.id = `profile-login-${org}`;
-  loginButton.classList.add('button', action);
-  loginButton.textContent = loggedIn ? 'Sign out' : 'Sign in';
-  loginButton.title = loggedIn ? `Sign out of ${org}` : `Sign in to ${org}`;
-  if (loggedIn) {
-    loginButton.className = 'button logout outline';
-  } else {
-    loginButton.className = 'button login';
-  }
-
-  loginButton.addEventListener('click', async ({ target }) => {
-    if (!Array.isArray(loginInfo)) {
-      confirmInstallSidekick(loginInfo);
-      return;
-    }
-
-    loginButton.disabled = true;
-
-    // check and remove ops mode
-    const opsMode = isOpsMode(target);
-    document.querySelectorAll('#profile-modal button').forEach((button) => button.classList.remove('ops'));
-
-    const selectedSite = target.closest('li').querySelector(`input[name="profile-${org}-site"]:checked`)?.value;
-
-    const loginUrl = new URL(`https://admin.hlx.page/${action}/${org}/${selectedSite}/main`);
-    if (!loggedIn) {
-      if (opsMode) {
-        loginUrl.searchParams.append('idp', 'microsoft');
-        loginUrl.searchParams.append('tenantId', 'common');
-        loginUrl.searchParams.append('selectAccount', true);
-      }
-    }
-    loginUrl.searchParams.append('extensionId', getSidekickId());
-    const loginWindow = window.open(loginUrl.toString(), '_blank');
-
-    // 60s safety net: fire `profile-cancelled` if the login window is left open.
-    let giveUpTimer;
-
-    // wait for login window to be closed, then dispatch event
-    const checkLoginWindow = setInterval(async () => {
-      if (loginWindow.closed) {
-        clearInterval(checkLoginWindow);
-        clearTimeout(giveUpTimer);
-        loginButton.disabled = false;
-        setTimeout(async () => {
-          const newLoginInfo = await getLoginInfo();
-          const orgTitle = loginButton.parentElement.parentElement;
-          loginButton.replaceWith(createLoginButton(org, newLoginInfo));
-          fetchUserInfo(orgTitle.querySelector('.user-info'), org, selectedSite, newLoginInfo);
-          dispatchProfileEvent('update', newLoginInfo);
-        }, 200);
-      }
-    }, 500);
-
-    giveUpTimer = setTimeout(() => {
-      clearInterval(checkLoginWindow);
-      loginButton.disabled = false;
-      dispatchProfileEvent('cancelled');
-    }, 60000);
-  });
-
-  return loginButton;
-}
-
 function updateButtons(dialog, orgs) {
   const wrapper = dialog.querySelector('.button-wrapper');
 
@@ -248,9 +154,8 @@ function updateButtons(dialog, orgs) {
             resetForm();
             // eslint-disable-next-line no-use-before-define
             await updateProjects(dialog);
-            // select new site and focus login button
-            dialog.querySelector(`#profile-projects .profile-sites > li[data-name="${site}"] input`).checked = true;
-            dialog.querySelector(`#profile-projects .profile-orgs > li[data-name="${org}"] .button`).focus();
+            // focus the new site
+            dialog.querySelector(`#profile-projects .profile-orgs > li[data-name="${org}"] li[data-name="${site}"] a`)?.focus();
           }, 600);
         } else {
           resetForm();
@@ -340,8 +245,6 @@ async function updateProjects(dialog) {
     });
   });
 
-  const loginInfo = await getLoginInfo();
-
   // list orgs
   const orgList = document.createElement('ul');
   orgList.classList.add('profile-orgs');
@@ -356,40 +259,26 @@ async function updateProjects(dialog) {
     const orgTitle = document.createElement('h3');
     orgTitle.textContent = org;
     orgItem.append(orgTitle);
-    if (Array.isArray(loginInfo) && loginInfo.includes(org)) {
-      orgItem.classList.add('signed-in');
-    }
-    const userInfo = document.createElement('span');
-    userInfo.classList.add('user-info');
-    orgTitle.append(userInfo);
-    orgTitle.append(createLoginButton(org, loginInfo));
 
     // list sites within org
     const sitesList = document.createElement('ul');
     sitesList.classList.add('profile-sites');
     const { sites = [] } = profileInfo[org];
-    sites.sort().forEach(({ site, title }, i) => {
+    sites.sort().forEach(({ site, title }) => {
       if (!site) {
         return;
-      }
-      if (i === 0) {
-        fetchUserInfo(userInfo, org, site, loginInfo);
       }
       const siteItem = document.createElement('li');
       siteItem.dataset.name = site;
       siteItem.innerHTML = `
-        <input type="radio" id="profile-${org}-site-${i}" name="profile-${org}-site" value="${site}">
-        <label for="profile-${org}-site-${i}">${title || site}</label>
+        <span>${title || site}</span>
         <a
           target="_blank"
           href="https://main--${site}--${org}.aem.page/"
           title="Open ${site}"
-        ><span class="external-link"></span><span class="user-info"></span></a>
+        ><span class="external-link"></span></a>
       `;
 
-      if (i === 0) {
-        siteItem.querySelector('input').checked = true;
-      }
       const deleteButton = document.createElement('button');
       deleteButton.classList.add('cross');
       deleteButton.title = `Delete ${site} from ${org}`;
@@ -414,7 +303,7 @@ async function updateProjects(dialog) {
   const recentList = orgs.length > 0 ? null : createRecentProjectList();
   let intro = 'Projects you use in the tools appear here.';
   if (orgs.length > 0) {
-    intro = 'Sign in to a project below with the AEM Sidekick. Note: You may need to allow pop-ups from this site.';
+    intro = 'Projects in your AEM Sidekick.';
   } else if (recentList) {
     intro = "Projects you've used in this browser.";
   }
@@ -446,13 +335,9 @@ async function showModal(block) {
         dialog.querySelectorAll('button').forEach((button) => button.classList.remove('ops'));
       }
     });
-    // Bind once — the dialog is reused; rebinding stacks duplicate emissions.
+    // Bind once — the dialog is reused.
     dialog.addEventListener('close', () => {
       dialog.classList.remove('edit-mode');
-      // Fires on every close, including post-login. Listeners that care about
-      // the login outcome should observe `profile-update` (dispatched first)
-      // and remove themselves before this fires.
-      dispatchProfileEvent('cancelled');
     });
     block.append(dialog);
   }
@@ -496,5 +381,4 @@ export default async function decorate(block) {
     showModal(block);
   });
   block.append(avatar);
-  dispatchProfileEvent('loaded');
 }

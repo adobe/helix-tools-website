@@ -251,14 +251,12 @@ function clearTable(table) {
 /**
  * Updates table to display error message based on HTTP error code.
  * @param {number} status - HTTP error status code.
- * @param {string} preview - Hostname for preview environment.
  * @param {string} site - Site name within org.
  */
-function updateTableError(status, preview, site) {
+function updateTableError(status, site) {
   const messages = {
     400: 'The request for page status could not be processed.',
-    401: `<a href="https://${preview}" target="_blank">Sign in to the ${site} project sidekick</a> 
-      to view the status.`,
+    401: 'Your Adobe sign-in wasn\'t accepted. Sign out, then sign in with Adobe again.',
     403: 'Insufficient permissions to view page status.',
     404: 'Page status could not be found.',
     Project: `${site} project not found.`,
@@ -531,7 +529,7 @@ async function runFromParams(search) {
         await runAndDisplayJob(org, site, job, live, preview);
         updateJobParam(job);
       } catch (error) {
-        updateTableError(error.status || 'Job', preview, site);
+        updateTableError(error.status || 'Job', site);
         removeJobParam();
       } finally {
         enableForm(FORM, FORM.querySelector('button'));
@@ -578,7 +576,7 @@ async function init() {
       if (!jobName) return;
       await runAndDisplayJob(org, site, jobName, live, preview);
     } catch (error) {
-      updateTableError(error.status || 'Job', preview, site);
+      updateTableError(error.status || 'Job', site);
       removeJobParam();
     } finally {
       enableForm(target, submitter);

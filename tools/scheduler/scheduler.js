@@ -312,7 +312,7 @@ function handleReset() {
 
 async function init() {
   const admin = await getAdminClient();
-  // The tools-site shell can drive the profile login/retry flow, so Admin calls
+  // The tools page can run the Adobe sign-in and retry on a 401, so Admin calls
   // go through executeAdminRequest. `same-origin` credentials match page-status.
   scheduleAdmin = admin.withRequestInit({
     mode: 'cors',

@@ -15,21 +15,15 @@
   height: 100%;
 }
 
-.profile button.login.ops:not(.quiet),
 .profile #profile-add-save.ops {
   color: var(--color-button-emphasis-text);
   background-color: var(--color-button-emphasis-bg);
   border-color: var(--color-button-emphasis-bg);
 }
 
-.profile button.login.ops[disabled],
 .profile #profile-add-save.ops[disabled] {
   background-color: var(--color-button-disabled-bg);
   border-color: var(--color-button-disabled-bg);
-}
-
-.profile button.login.quiet.ops {
-  color: var(--color-text);
 }
 
 
@@ -162,22 +156,6 @@
 
 .profile .profile-modal .profile-orgs h3 {
   margin-top: 0;
-  position: relative;
-}
-
-.profile .profile-modal .profile-orgs h3 .user-info {
-  font-size: var(--body-size-m);
-  font-weight: normal;
-  color: var(--color-font-grey);
-  display: block;
-}
-
-.profile .profile-modal .profile-orgs h3 .button {
-  position: absolute;
-  top: 0;
-  right: 0;
-  font-size: var(--body-size-l);
-  line-height: normal;
 }
 
 .profile .profile-modal .profile-orgs .profile-sites li {
@@ -191,18 +169,6 @@
 
 .profile .profile-modal:not(.edit-mode) .profile-orgs .profile-sites li .cross {
   display: none;
-}
-
-.profile .profile-modal .profile-orgs .profile-sites li input[type="radio"] {
-  margin: 0;
-}
-
-.profile .profile-modal .profile-orgs .profile-sites li label {
-  margin: 2px 0;
-}
-
-.profile .profile-modal .profile-orgs .profile-sites li input:checked~label {
-  font-weight: bold;
 }
 
 .profile .profile-modal .external-link {
@@ -240,11 +206,4 @@
   top: 4px;
   border-top: 2px solid;
   border-right: 2px solid;
-}
-
-@media (width >=900px) {
-  .profile .profile-modal .profile-orgs h3 .user-info {
-    display: inline;
-    margin-left: 0.5rem;
-  }
 }
