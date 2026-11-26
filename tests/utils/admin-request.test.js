@@ -12,6 +12,7 @@ let updateConfigCalls;
 let imsToken;
 let imsTokenFresh;
 let loadImsStub;
+let requireSignInStub;
 let signInCalls;
 let signInResult;
 let signInStub;
@@ -23,6 +24,7 @@ mock.module('../../utils/ims.js', {
     getImsToken: () => imsToken,
     isImsTokenFresh: () => imsTokenFresh,
     loadIms: () => loadImsStub(),
+    requireSignIn: () => requireSignInStub(),
     signIn: () => signInStub(),
   },
 });
@@ -48,6 +50,7 @@ beforeEach(() => {
   imsToken = undefined;
   imsTokenFresh = false;
   loadImsStub = async () => {};
+  requireSignInStub = async () => {};
   signInCalls = 0;
   signInResult = false;
   signInStub = async () => {
@@ -115,6 +118,19 @@ describe('executeAdminRequest', () => {
     assert.equal(result.status, 200);
     assert.equal(requestFn.calls, 1);
     assert.equal(updateConfigCalls, 1);
+  });
+
+  it('sends nothing and opens no sign-in while the page leaves to sign in', async () => {
+    // requireSignIn() never settles once the page leaves for the sign-in page
+    requireSignInStub = () => new Promise(() => {});
+    const requestFn = requestFnReturning(401);
+    executeAdminRequest(requestFn, { org: 'adobe', site: 'x' });
+    executeAdminRequest(requestFn, {
+      org: 'adobe', site: 'x', policy: AuthMode.PREFLIGHT_AND_RETRY,
+    });
+    await settle();
+    assert.equal(requestFn.calls, 0);
+    assert.equal(signInCalls, 0);
   });
 
   describe('bound-client overload', () => {

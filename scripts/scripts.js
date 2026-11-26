@@ -14,6 +14,7 @@ import {
   loadBlock,
   decorateBlock,
 } from './aem.js';
+import { requireSignIn } from '../utils/ims.js';
 
 /**
  * Helper function to create DOM elements
@@ -368,6 +369,8 @@ function loadDelayed() {
 }
 
 async function loadPage() {
+  // not awaited: a signed-in page shouldn't wait for imslib to render
+  requireSignIn();
   await loadEager(document);
   await loadLazy(document);
   loadDelayed();

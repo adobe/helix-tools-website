@@ -3,12 +3,14 @@ import {
   describe, it, before, beforeEach, afterEach, mock,
 } from 'node:test';
 import assert from 'node:assert/strict';
+import { JSDOM } from 'jsdom';
 
 let loadScriptStub;
 // imslib loads through a script element: hand its URL to the stub, which fails it by throwing
-mock.method(document.head, 'append', (script) => {
+const stubScriptLoading = () => mock.method(document.head, 'append', (script) => {
   loadScriptStub(script.src).catch(() => script.onerror());
 });
+stubScriptLoading();
 
 // a fresh module instance per case, so the memoized IMS promise is not shared
 let instance = 0;
@@ -55,6 +57,26 @@ function assertSignInTab(open) {
 // loads the sign-in page in a fresh module instance, as each step at Adobe reloads it
 async function runSignInPage() {
   return (await importIms()).runSignInPage();
+}
+
+// shows the page at this URL in a window of its own, the global window and document until
+// restored: the shared window's host (localhost) never signs in on page load
+function openPage(url) {
+  const shared = { window: global.window, document: global.document, Event: global.Event };
+  const dom = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>', { url });
+  global.window = dom.window;
+  global.document = dom.window.document;
+  global.Event = dom.window.Event;
+  stubScriptLoading();
+  return () => {
+    dom.window.close();
+    Object.assign(global, shared);
+  };
+}
+
+// JSDOM can't leave a page: it reports each try as an error instead (console.error)
+function countNavigations(error) {
+  return error.mock.calls.filter(({ arguments: [message] }) => /navigation/.test(message)).length;
 }
 
 describe('utils/ims', () => {
@@ -464,5 +486,163 @@ describe('utils/ims', () => {
 
     window.dispatchEvent(new Event('ims-signed-in'));
     assert.equal(onSignedIn.mock.callCount(), 0);
+  });
+
+  describe('signing in on page load', () => {
+    const TOOL = 'http://localhost:3000/tools/sitemap-admin/index.html?org=adobe&site=docs#top';
+    let error;
+
+    beforeEach(() => {
+      error = mock.method(console, 'error', () => {});
+    });
+
+    afterEach(() => {
+      error.mock.restore();
+    });
+
+    it('leaves for the sign-in page in this tab without a token, which comes back once signed in', async () => {
+      const restore = openPage(TOOL);
+      try {
+        imslib();
+        const { requireSignIn } = await importIms();
+        let done = false;
+        requireSignIn().then(() => { done = true; });
+        await settle();
+        assert.equal(countNavigations(error), 1);
+        assert.equal(window.sessionStorage.getItem('ims-sign-in-return'), TOOL);
+        assert.equal(done, false);
+
+        // the sign-in page, in the same tab, back from IMS with a token
+        window.history.replaceState(null, '', '/utils/ims-sign-in.html');
+        document.body.innerHTML = '<main><p class="ims-sign-in-status"></p></main>';
+        const close = mock.method(window, 'close', () => {});
+        imslib({ token: 'token-1', expire: new Date(Date.now() + 24 * HOUR) });
+        await runSignInPage();
+        assert.equal(countNavigations(error), 2);
+        assert.equal(close.mock.callCount(), 0);
+        assert.equal(window.sessionStorage.getItem('ims-sign-in-return'), null);
+      } finally {
+        restore();
+      }
+    });
+
+    it('also leaves with a token that expires within the hour, and stays with a fresh one', async () => {
+      const restore = openPage(TOOL);
+      try {
+        imslib({ token: 'token-1', expire: new Date(Date.now() + HOUR - 1000) });
+        (await importIms()).requireSignIn();
+        await settle();
+        assert.equal(countNavigations(error), 1);
+
+        imslib({ token: 'token-2', expire: new Date(Date.now() + 24 * HOUR) });
+        await (await importIms()).requireSignIn();
+        assert.equal(countNavigations(error), 1);
+        assert.equal(window.sessionStorage.getItem('ims-sign-in-left'), null);
+      } finally {
+        restore();
+      }
+    });
+
+    [
+      ['on a host not registered for the client', {
+        url: 'https://main--helix-tools-website--adobe.aem.page/tools/sitemap-admin/index.html',
+      }],
+      ['in a frame', { setup: () => { window.self = {}; } }],
+      ['without imslib', {
+        setup: () => { loadScriptStub = mock.fn(async () => { throw new Error('load failed'); }); },
+      }],
+      ['after "Continue without signing in"', {
+        setup: () => window.sessionStorage.setItem('ims-sign-in-skipped', 'true'),
+      }],
+      ['less than a minute after leaving to sign in', {
+        setup: () => window.sessionStorage.setItem('ims-sign-in-left', String(Date.now() - 1000)),
+      }],
+    ].forEach(([when, { url = TOOL, setup = () => {} }]) => {
+      it(`goes on without a token ${when}`, async () => {
+        const restore = openPage(url);
+        try {
+          imslib();
+          setup();
+          await (await importIms()).requireSignIn();
+          assert.equal(countNavigations(error), 0);
+        } finally {
+          restore();
+        }
+      });
+    });
+
+    it('leaves again a minute after leaving to sign in', async () => {
+      const restore = openPage(TOOL);
+      try {
+        imslib();
+        window.sessionStorage.setItem('ims-sign-in-left', String(Date.now() - 61 * 1000));
+        (await importIms()).requireSignIn();
+        await settle();
+        assert.equal(countNavigations(error), 1);
+      } finally {
+        restore();
+      }
+    });
+
+    it('closes the tab instead of going to a return URL on another origin', async () => {
+      document.body.innerHTML = '<main><p class="ims-sign-in-status"></p></main>';
+      const close = mock.method(window, 'close', () => {});
+      try {
+        window.sessionStorage.setItem('ims-sign-in-return', 'https://example.com/');
+        imslib({ token: 'token-1', expire: new Date(Date.now() + 24 * HOUR) });
+        await runSignInPage();
+        // eslint-disable-next-line no-script-url
+        window.sessionStorage.setItem('ims-sign-in-return', 'javascript:alert(1)');
+        await runSignInPage();
+        assert.equal(close.mock.callCount(), 2);
+        assert.equal(countNavigations(error), 0);
+      } finally {
+        close.mock.restore();
+      }
+    });
+
+    it('offers to try again or to go back without signing in when the sign-in stops', async () => {
+      document.body.innerHTML = '<main><p class="ims-sign-in-status"></p></main>';
+      window.sessionStorage.setItem('ims-sign-in-return', 'http://localhost/tools/sitemap-admin/index.html');
+      // back from the IMS form without a token
+      window.sessionStorage.setItem('ims-sign-in-stage', 'form');
+      imslib();
+      await runSignInPage();
+      // a second run (Back) doesn't add the buttons twice
+      window.sessionStorage.setItem('ims-sign-in-stage', 'form');
+      await runSignInPage();
+      assert.equal(document.querySelector('.ims-sign-in-status').textContent, 'The Adobe sign-in did not complete.');
+      const buttons = [...document.querySelectorAll('main button')];
+      assert.deepEqual(buttons.map((button) => button.textContent), ['Try again', 'Continue without signing in']);
+
+      buttons[1].click();
+      assert.equal(window.sessionStorage.getItem('ims-sign-in-skipped'), 'true');
+      assert.equal(window.sessionStorage.getItem('ims-sign-in-return'), null);
+      assert.equal(countNavigations(error), 1);
+    });
+
+    it('opens the sign-in tab without the return URL or the stage it would copy', async () => {
+      mock.timers.enable({ apis: ['setInterval'] });
+      let copied;
+      const open = mock.method(window, 'open', () => {
+        copied = ['ims-sign-in-return', 'ims-sign-in-stage'].map((key) => window.sessionStorage.getItem(key));
+        return { closed: false, close: () => {} };
+      });
+      try {
+        window.sessionStorage.setItem('ims-sign-in-return', 'http://localhost/tools/sitemap-admin/index.html');
+        window.sessionStorage.setItem('ims-sign-in-stage', 'form');
+        imslib();
+        const { loadIms, signIn } = await importIms();
+        await loadIms();
+        const signedIn = signIn();
+        assert.deepEqual(copied, [null, null]);
+
+        document.querySelector('dialog.ims-sign-in-dialog button').click();
+        assert.equal(await signedIn, false);
+      } finally {
+        open.mock.restore();
+        mock.timers.reset();
+      }
+    });
   });
 });

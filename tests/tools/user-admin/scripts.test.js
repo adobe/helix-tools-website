@@ -13,6 +13,7 @@ mock.module('../../../utils/ims.js', {
     getImsToken: () => imsToken,
     isImsTokenFresh: () => !!imsToken,
     loadIms: async () => {},
+    requireSignIn: async () => {},
     signIn: async () => {
       signIns += 1;
       imsToken = 'ims-token';

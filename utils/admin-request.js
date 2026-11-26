@@ -1,7 +1,7 @@
 // @ts-check
 import { updateConfig } from './config/config.js';
 import {
-  getImsToken, isImsTokenFresh, loadIms, signIn,
+  getImsToken, isImsTokenFresh, loadIms, requireSignIn, signIn,
 } from './ims.js';
 
 /**
@@ -27,10 +27,12 @@ export const AuthMode = Object.freeze({
  */
 
 /**
- * Waits for imslib, so the admin clients can send the IMS token.
+ * Waits for the page-load sign-in (which never ends while the page leaves to sign in) and
+ * imslib, so the admin clients can send the IMS token.
  * @returns {Promise<boolean>} false if imslib is unavailable
  */
 async function waitForIms() {
+  await requireSignIn();
   try {
     await loadIms();
     return true;
