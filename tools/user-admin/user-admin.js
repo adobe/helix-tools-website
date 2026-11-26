@@ -3,7 +3,6 @@ import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { loadIcon, icon, showToast } from '../../utils/card-ui/card-ui.js';
 import { getAdminClientForOrg, getAdminClientForSite } from '../../scripts/admin-compat.js';
-import { isAdminSignedIn } from '../../utils/admin-request.js';
 import {
   readOrgConfig, readSiteAccess, writeSiteAccess, updateOrgUser, removeOrgUser, addOrgUser,
 } from './api.js';
@@ -643,11 +642,8 @@ async function init() {
 
   await initConfigField();
 
-  // auto-load only when signed in: signing in needs a click
   if (org.value) {
-    isAdminSignedIn().then((signedIn) => {
-      if (signedIn) adminForm.dispatchEvent(new Event('submit'));
-    });
+    adminForm.dispatchEvent(new Event('submit'));
   }
 }
 

@@ -454,40 +454,6 @@ describe('utils/ims', () => {
     assert.equal(login.querySelector('button').textContent, 'Sign in with Adobe');
   });
 
-  it('shows a sign-in button in place of content, also with a token about to expire, then calls back once', async () => {
-    // a token in its last hour isn't enough to load on open (isAdminSignedIn)
-    const adobeIMS = imslib({ token: 'token-1' });
-    const { loadIms, promptImsSignIn } = await importIms();
-    await loadIms();
-    const element = document.createElement('div');
-    const onSignedIn = mock.fn();
-    promptImsSignIn(element, onSignedIn);
-    assert.equal(element.querySelector('button').textContent, 'Sign in with Adobe');
-
-    // signed in again in another tab
-    adobeIMS.token = 'token-2';
-    window.dispatchEvent(new window.StorageEvent('storage', { newValue: 'token-2' }));
-    await settle();
-    assert.equal(onSignedIn.mock.callCount(), 1);
-    assert.equal(element.children.length, 0);
-
-    window.dispatchEvent(new Event('ims-signed-in'));
-    assert.equal(onSignedIn.mock.callCount(), 1);
-  });
-
-  it('stops waiting for the sign-in once cancelled', async () => {
-    imslib();
-    const { promptImsSignIn } = await importIms();
-    const element = document.createElement('div');
-    const onSignedIn = mock.fn();
-    const cancel = promptImsSignIn(element, onSignedIn);
-    cancel();
-    assert.equal(element.children.length, 0);
-
-    window.dispatchEvent(new Event('ims-signed-in'));
-    assert.equal(onSignedIn.mock.callCount(), 0);
-  });
-
   describe('signing in on page load', () => {
     const TOOL = 'http://localhost:3000/tools/sitemap-admin/index.html?org=adobe&site=docs#top';
     let error;

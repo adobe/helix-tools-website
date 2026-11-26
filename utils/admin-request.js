@@ -42,15 +42,6 @@ async function waitForIms() {
 }
 
 /**
- * Checks if admin requests can go out without signing in, as {@link ensureAdminLogin} would.
- * Pages load on their own only then: signing in needs a click.
- * @returns {Promise<boolean>} true if signed in
- */
-export async function isAdminSignedIn() {
-  return await waitForIms() && isImsTokenFresh();
-}
-
-/**
  * Checks for an IMS token that won't expire during the task about to start; otherwise opens
  * the Adobe sign-in.
  * @returns {Promise<boolean>} true if signed in

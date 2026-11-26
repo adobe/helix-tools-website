@@ -1,5 +1,4 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import { isAdminSignedIn } from '../../utils/admin-request.js';
 import {
   fetchSnapshots,
   saveManifest,
@@ -347,8 +346,7 @@ async function init() {
     currentSite = siteParam;
     // Enable the site field since we have both org and site values
     siteInput.disabled = false;
-    // auto-load only when signed in: signing in needs a click
-    if (await isAdminSignedIn()) await loadSnapshots();
+    await loadSnapshots();
   } else {
     // No snapshot parameter, initialize config fields normally
     try {
@@ -360,7 +358,7 @@ async function init() {
       if (orgInput.value && siteInput.value) {
         currentOrg = orgInput.value;
         currentSite = siteInput.value;
-        if (await isAdminSignedIn()) await loadSnapshots();
+        await loadSnapshots();
       }
     } catch (error) {
       // eslint-disable-next-line no-console

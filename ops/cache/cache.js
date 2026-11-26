@@ -594,10 +594,7 @@ async function init() {
   const params = new URLSearchParams(window.location.search);
   if (params.has('url')) {
     input.value = params.get('url');
-    // auto-run only when signed in: signing in needs a click
-    isSignedIn().then((signedIn) => {
-      if (signedIn) button.click();
-    });
+    setTimeout(() => button.click());
   }
 
   input.addEventListener('keydown', (e) => {

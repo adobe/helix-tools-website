@@ -1,8 +1,7 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import getAdminClient from '../../scripts/admin-compat.js';
-import { executeAdminRequest, isAdminSignedIn } from '../../utils/admin-request.js';
+import { executeAdminRequest } from '../../utils/admin-request.js';
 import { initConfigField } from '../../utils/config/config.js';
-import { promptImsSignIn } from '../../utils/ims.js';
 import escapeHtml from '../../utils/html.js';
 import filterPendingPages from './diff-utils.js';
 import { fetchHosts } from './utils.js';
@@ -926,12 +925,6 @@ async function init() {
   DIFF_SITE.textContent = `${currentOrg}/${currentSite}`;
   DIFF_INFO.setAttribute('aria-hidden', 'false');
 
-  // signing in needs a click: show the sign-in button instead
-  if (!await isAdminSignedIn()) {
-    showError('Sign in with Adobe to view page diffs.');
-    promptImsSignIn(DIFF_ERROR.querySelector('div'), loadDiffs);
-    return;
-  }
   await loadDiffs();
 }
 

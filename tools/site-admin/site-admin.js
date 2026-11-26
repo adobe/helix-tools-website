@@ -3,7 +3,7 @@ import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { VIEW_STORAGE_KEY } from './helpers/constants.js';
 import getAdminClient from '../../scripts/admin-compat.js';
-import { executeAdminRequest, AuthMode, isAdminSignedIn } from '../../utils/admin-request.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import {
   loadIcon,
   icon,
@@ -353,10 +353,7 @@ const initSiteAdmin = async () => {
   if (params.get('org')) {
     org.value = params.get('org');
     if (params.get('site')) site.value = params.get('site');
-    // auto-list only when signed in: signing in needs a click
-    isAdminSignedIn().then((signedIn) => {
-      if (signedIn) document.getElementById('list').click();
-    });
+    document.getElementById('list').click();
   }
 };
 

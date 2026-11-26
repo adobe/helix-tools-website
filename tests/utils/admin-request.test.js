@@ -29,7 +29,7 @@ mock.module('../../utils/ims.js', {
   },
 });
 const {
-  executeAdminRequest, ensureAdminLogin, isAdminSignedIn, AuthMode,
+  executeAdminRequest, ensureAdminLogin, AuthMode,
 } = await import('../../utils/admin-request.js');
 
 const settle = () => new Promise((resolve) => { setImmediate(resolve); });
@@ -83,22 +83,6 @@ describe('ensureAdminLogin', () => {
   it('does not sign in when imslib is unavailable', async () => {
     loadImsStub = async () => { throw new Error('IMS timeout'); };
     assert.equal(await ensureAdminLogin(), false);
-    assert.equal(signInCalls, 0);
-  });
-});
-
-describe('isAdminSignedIn', () => {
-  it('is true only with a fresh IMS token, and never signs in', async () => {
-    imsToken = 'ims-token';
-    imsTokenFresh = true;
-    assert.equal(await isAdminSignedIn(), true);
-
-    // a token that expires soon would need a sign-in
-    imsTokenFresh = false;
-    assert.equal(await isAdminSignedIn(), false);
-
-    loadImsStub = async () => { throw new Error('IMS timeout'); };
-    assert.equal(await isAdminSignedIn(), false);
     assert.equal(signInCalls, 0);
   });
 });

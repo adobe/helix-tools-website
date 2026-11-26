@@ -3,7 +3,7 @@ import { diffJson } from '../../vendor/diff/diff.js';
 import { logResponse } from '../../blocks/console/console.js';
 import { initConfigField } from '../../utils/config/config.js';
 import getAdminClient from '../../scripts/admin-compat.js';
-import { executeAdminRequest, AuthMode, isAdminSignedIn } from '../../utils/admin-request.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 
 let admin;
 
@@ -428,14 +428,12 @@ async function init() {
     profile.value = profileParam;
   }
 
-  // Auto-submit if we have the required parameters, when signed in (signing in needs a click)
+  // Auto-submit if we have the required parameters
   if (typeParam && org.value
       && ((typeParam === 'org')
        || (typeParam === 'profile' && profileParam)
        || (typeParam === 'site' && site.value))) {
-    isAdminSignedIn().then((signedIn) => {
-      if (signedIn) adminForm.dispatchEvent(new Event('submit'));
-    });
+    adminForm.dispatchEvent(new Event('submit'));
   }
 }
 

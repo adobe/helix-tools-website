@@ -390,24 +390,3 @@ export function createImsLogin() {
 
   return container;
 }
-
-/**
- * Shows a sign-in button in the element until signed in, in any tab, then calls back.
- * For pages that load on their own only when signed in.
- * @param {HTMLElement} element Where to show the button
- * @param {() => void} onSignedIn Called once signed in
- * @returns {() => void} Cancels: removes the button and stops waiting
- */
-export function promptImsSignIn(element, onSignedIn) {
-  const button = createButton('Sign in with Adobe', signIn);
-  const resume = () => {
-    button.remove();
-    onSignedIn();
-  };
-  element.append(button);
-  window.addEventListener('ims-signed-in', resume, { once: true });
-  return () => {
-    button.remove();
-    window.removeEventListener('ims-signed-in', resume);
-  };
-}

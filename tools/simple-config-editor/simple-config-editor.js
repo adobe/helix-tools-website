@@ -3,7 +3,7 @@ import { logResponse, logMessage } from '../../blocks/console/console.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { createModal } from '../../blocks/modal/modal.js';
 import getAdminClient from '../../scripts/admin-compat.js';
-import { executeAdminRequest, AuthMode, isAdminSignedIn } from '../../utils/admin-request.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
 import {
   setNestedValue,
   removeNestedValue,
@@ -1105,8 +1105,8 @@ async function init() {
 const initPromise = init();
 
 initPromise.then(async () => {
-  // Auto-load config if both org and site are set from URL params, when signed in
-  if (org.value && site.value && await isAdminSignedIn()) {
+  // Auto-load config if both org and site are set from URL params
+  if (org.value && site.value) {
     logMessage(consoleBlock, 'info', ['AUTO-LOAD', 'Auto-loading configuration from URL parameters', '']);
     await loadConfig();
   }
