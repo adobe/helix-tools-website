@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 
 // cache-auth.js only needs the IMS token
 mock.module('../../../utils/ims.js', {
-  namedExports: { getImsToken: () => undefined },
+  exports: { getImsToken: () => undefined },
 });
 
 const { getAuthError } = await import('../../../ops/cache/cache-auth.js');

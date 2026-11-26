@@ -11,7 +11,7 @@ const DEFAULT_AVATAR = '/blocks/profile/profile.svg';
 
 export default async function decorate(block) {
   block.innerHTML = `
-    <button id="profile" class="profile-trigger" type="button" hidden
+    <button class="profile-trigger" type="button" hidden
       aria-label="Open profile menu" aria-expanded="false" popovertarget="profile-menu">
       <img src="${DEFAULT_AVATAR}" alt="" width="24" height="24">
     </button>
@@ -20,17 +20,16 @@ export default async function decorate(block) {
     <div id="profile-menu" class="profile-menu" popover aria-label="Adobe account" role="dialog"></div>
   `;
   const trigger = block.querySelector('.profile-trigger');
+  const triggerAvatar = trigger.querySelector('img');
   const signin = block.querySelector('.profile-signin');
   const state = block.querySelector('.profile-state');
   const menu = block.querySelector('.profile-menu');
   let revision = 0;
 
   const positionMenu = () => {
-    const rect = trigger.getBoundingClientRect();
-    menu.style.setProperty('--profile-menu-top', `${rect.bottom + 8}px`);
-    const width = Math.min(340, window.innerWidth - 32);
-    const right = Math.min(window.innerWidth - rect.right, window.innerWidth - width - 16);
-    menu.style.right = `${Math.max(16, right)}px`;
+    const { bottom, right } = trigger.getBoundingClientRect();
+    menu.style.setProperty('--profile-menu-top', `${bottom + 8}px`);
+    menu.style.setProperty('--profile-menu-right', `${window.innerWidth - right}px`);
   };
   menu.addEventListener('beforetoggle', ({ newState }) => {
     if (newState === 'open') positionMenu();
@@ -38,7 +37,9 @@ export default async function decorate(block) {
   menu.addEventListener('toggle', ({ newState }) => {
     trigger.setAttribute('aria-expanded', String(newState === 'open'));
   });
-  window.addEventListener('resize', positionMenu);
+  window.addEventListener('resize', () => {
+    if (menu.matches(':popover-open')) positionMenu();
+  });
   signin.addEventListener('click', leaveToSignIn);
 
   const render = async () => {
@@ -47,8 +48,8 @@ export default async function decorate(block) {
     if (menu.matches(':popover-open')) menu.hidePopover();
     trigger.hidden = true;
     signin.hidden = true;
-    trigger.querySelector('img').onerror = null;
-    trigger.querySelector('img').src = DEFAULT_AVATAR;
+    triggerAvatar.onerror = null;
+    triggerAvatar.src = DEFAULT_AVATAR;
     menu.replaceChildren();
     state.textContent = 'Checking Adobe sign-in...';
     try {
@@ -61,12 +62,12 @@ export default async function decorate(block) {
     }
     if (current !== revision) return;
     state.textContent = '';
-    const token = getImsToken();
-    if (!token) {
+    if (!getImsToken()) {
       signin.hidden = false;
       return;
     }
-    const isCurrent = () => current === revision && token === getImsToken();
+    // getImsProfile() and getImsAvatar() already discard another account's results
+    const isCurrent = () => current === revision;
     trigger.hidden = false;
     menu.innerHTML = `
       <div class="profile-details">
@@ -83,6 +84,7 @@ export default async function decorate(block) {
           </svg>
         </button>
         <p class="profile-feedback" role="status"></p>
+        <span class="profile-copied" role="status"></span>
       </div>
       <div class="profile-links">
         <p class="profile-label">Links</p>
@@ -95,6 +97,7 @@ export default async function decorate(block) {
       <button class="profile-signout" type="button">Sign out</button>
     `;
     const feedback = menu.querySelector('.profile-feedback');
+    const copied = menu.querySelector('.profile-copied');
     const copy = menu.querySelector('.profile-copy');
     let profile;
     getImsProfile().then((details) => {
@@ -108,24 +111,22 @@ export default async function decorate(block) {
     });
     getImsAvatar().then((avatar) => {
       if (!isCurrent()) return;
-      [trigger.querySelector('img'), copy.querySelector('img')].forEach((img) => {
+      [triggerAvatar, copy.querySelector('img')].forEach((img) => {
         img.onerror = () => {
           img.onerror = null;
-          // eslint-disable-next-line no-console
-          console.warn('Could not display Adobe profile photo.');
           img.src = DEFAULT_AVATAR;
         };
         img.src = avatar;
       });
-    }).catch((error) => {
-      if (!isCurrent()) return;
-      // eslint-disable-next-line no-console
-      console.warn('Could not load Adobe profile photo.', error);
+    }).catch(() => {
+      // keep the default avatar
     });
     copy.addEventListener('click', async () => {
+      feedback.textContent = '';
+      copied.textContent = '';
       try {
         await navigator.clipboard.writeText(profile.userId);
-        if (isCurrent()) feedback.textContent = 'User ID copied to clipboard.';
+        if (isCurrent()) copied.textContent = 'User ID copied.';
       } catch {
         if (isCurrent()) feedback.textContent = 'Could not copy user ID. Check clipboard permissions and try again.';
       }

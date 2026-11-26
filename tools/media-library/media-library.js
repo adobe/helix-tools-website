@@ -16,7 +16,8 @@ import t from './core/messages.js';
 import { MediaLibraryError, ErrorCodes, logMediaLibraryError } from './core/errors.js';
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
-import { AuthMode, ensureAdminLogin } from '../../utils/admin-request.js';
+import { AuthMode } from '../../utils/admin-request.js';
+import { ensureSignedIn } from '../../utils/ims.js';
 import {
   getMetadata,
   getMediaData,
@@ -297,11 +298,7 @@ async function init() {
     }
   }
 
-  // a load waiting for the sign-in; a new load replaces it
-  let resumeAfterSignIn;
-
   async function loadMediaData(orgKey, siteKey, pathKey = '') {
-    window.removeEventListener('ims-signed-in', resumeAfterSignIn);
     updateAppState({
       org: orgKey,
       site: siteKey,
@@ -313,7 +310,7 @@ async function init() {
 
     let cancelProgressiveThrottle = () => {};
     try {
-      if (!(await ensureAdminLogin())) {
+      if (!(await ensureSignedIn())) {
         logMediaLibraryError(ErrorCodes.AUTH_REQUIRED, { context: 'build' });
         showNotification(t('NOTIFY_ERROR'), t('AUTH_REQUIRED'), 'danger');
         updateAppState({
@@ -321,13 +318,6 @@ async function init() {
           validationError: t('AUTH_REQUIRED'),
           sitePathValid: false,
         });
-        resumeAfterSignIn = async () => {
-          if (await ensureAdminLogin()) {
-            updateAppState({ validationError: null });
-            loadMediaData(orgKey, siteKey, pathKey);
-          }
-        };
-        window.addEventListener('ims-signed-in', resumeAfterSignIn, { once: true });
         return;
       }
       updateAppState({ sitePathValid: true, validationError: null });

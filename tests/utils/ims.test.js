@@ -6,23 +6,22 @@ import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 
 let loadScriptStub;
-// imslib loads through a script element: hand its URL to the stub, which fails it by throwing
+// imslib loads via a script element; the stub fails it by throwing
 const stubScriptLoading = () => mock.method(document.head, 'append', (script) => {
   loadScriptStub(script.src).catch(() => script.onerror());
 });
 stubScriptLoading();
 
-// a fresh module instance per case, so the memoized IMS promise is not shared
+// a fresh module per case, so the memoized IMS promise isn't shared
 let instance = 0;
 function importIms() {
   instance += 1;
   return import(`../../utils/ims.js?instance=${instance}`);
 }
 
-// flushes pending promise callbacks
 const settle = () => new Promise((resolve) => { setImmediate(resolve); });
 
-// simulates imslib: installs window.adobeIMS, then calls the adobeid callbacks
+// fake imslib: installs window.adobeIMS, then calls the adobeid callbacks
 function imslib({
   token, expire, profile, errorFirst = false,
 } = {}) {
@@ -49,12 +48,11 @@ function imslib({
 
 const HOUR = 60 * 60 * 1000;
 
-// checks that window.open showed the sign-in page in a new tab
 function assertSignInTab(open) {
   assert.deepEqual(open.mock.calls[0].arguments, ['/utils/ims-sign-in.html', '_blank']);
 }
 
-// loads the sign-in page in a fresh module instance, as each step at Adobe reloads it
+// each IMS step reloads the sign-in page, so each run gets a fresh module
 async function runSignInPage() {
   return (await importIms()).runSignInPage();
 }
@@ -68,8 +66,8 @@ function stubDialogs({ HTMLDialogElement }) {
   };
 }
 
-// shows the page at this URL in a window of its own, the global window and document until
-// restored: the shared window's host (localhost) never signs in on page load
+// a window at this URL replaces the global one until restored: the shared window's host
+// (localhost) never signs in on page load
 function openPage(url) {
   const shared = { window: global.window, document: global.document, Event: global.Event };
   const dom = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>', { url });
@@ -84,7 +82,7 @@ function openPage(url) {
   };
 }
 
-// JSDOM can't leave a page: it reports each try as an error instead (console.error)
+// JSDOM can't navigate: it reports each try as a console.error
 function countNavigations(error) {
   return error.mock.calls.filter(({ arguments: [message] }) => /navigation/.test(message)).length;
 }
@@ -103,7 +101,7 @@ describe('utils/ims', () => {
   beforeEach(() => {
     warn = mock.method(console, 'warn', () => {});
     timeouts = mock.method(global, 'setTimeout');
-    // drop each case's window listeners, or they'd react to later cases' events
+    // so afterEach can drop this case's window listeners
     addEventListener = mock.method(window, 'addEventListener');
   });
 
@@ -162,10 +160,10 @@ describe('utils/ims', () => {
 
   it('treats onError as non-fatal when onReady follows', async () => {
     imslib({ errorFirst: true });
-    const { loadIms, isSignedIn, leaveToSignIn } = await importIms();
+    const { loadIms, getImsToken, leaveToSignIn } = await importIms();
     await loadIms();
     assert.equal(warn.mock.callCount(), 1);
-    assert.equal(await isSignedIn(), false);
+    assert.equal(getImsToken(), undefined);
 
     const error = mock.method(console, 'error', () => {});
     try {
@@ -179,9 +177,9 @@ describe('utils/ims', () => {
 
   it('rejects when imslib fails to load', async () => {
     loadScriptStub = mock.fn(async () => { throw new Error('load failed'); });
-    const { loadIms, isSignedIn } = await importIms();
+    const { loadIms, waitForIms } = await importIms();
     await assert.rejects(loadIms(), /IMS failed to load/);
-    assert.equal(await isSignedIn(), false);
+    assert.equal(await waitForIms(), false);
 
     assert.equal(loadScriptStub.mock.callCount(), 1);
   });
@@ -208,17 +206,15 @@ describe('utils/ims', () => {
 
   it('reads the token live', async () => {
     const adobeIMS = imslib();
-    const { getImsToken, isSignedIn } = await importIms();
+    const { getImsToken, waitForIms } = await importIms();
+    assert.equal(await waitForIms(), true);
     assert.equal(getImsToken(), undefined);
-    assert.equal(await isSignedIn(), false);
 
     adobeIMS.token = 'token-1';
     assert.equal(getImsToken(), 'token-1');
-    assert.equal(await isSignedIn(), true);
 
     adobeIMS.token = null;
     assert.equal(getImsToken(), undefined);
-    assert.equal(await isSignedIn(), false);
   });
 
   it('reads the current profile and announces a local sign-out', async () => {
@@ -502,7 +498,7 @@ describe('utils/ims', () => {
     assert.equal(await pending, undefined);
   });
 
-  it('discards a late profile from a previous account without caching it', async () => {
+  it('discards a late profile from a previous account', async () => {
     let resolveProfile;
     const adobeIMS = imslib({
       token: 'token-1',
@@ -519,6 +515,52 @@ describe('utils/ims', () => {
     resolveProfile({ userId: 'alice@AdobeID', displayName: 'Alice' });
     assert.equal(await pending, undefined);
     assert.deepEqual(await getImsProfile(), currentProfile);
+  });
+
+  describe('ensureSignedIn', () => {
+    let open;
+
+    beforeEach(() => {
+      mock.timers.enable({ apis: ['setInterval'] });
+      open = mock.method(window, 'open', () => ({ closed: false, close: () => {} }));
+    });
+
+    afterEach(() => {
+      open.mock.restore();
+      mock.timers.reset();
+    });
+
+    async function cancelSignIn() {
+      await settle();
+      document.querySelector('dialog.ims-sign-in-dialog button').click();
+    }
+
+    it('opens no sign-in with a fresh token', async () => {
+      imslib({ token: 'token-1', expire: new Date(Date.now() + 24 * HOUR) });
+      assert.equal(await (await importIms()).ensureSignedIn(), true);
+      assert.equal(open.mock.callCount(), 0);
+    });
+
+    it('opens the sign-in when the token expires soon, keeping it if cancelled', async () => {
+      imslib({ token: 'token-1', expire: new Date(Date.now() + HOUR / 2) });
+      const signedIn = (await importIms()).ensureSignedIn();
+      await cancelSignIn();
+      assert.equal(await signedIn, true);
+      assert.equal(open.mock.callCount(), 1);
+    });
+
+    it('is not signed in without a token when the sign-in is cancelled', async () => {
+      imslib();
+      const signedIn = (await importIms()).ensureSignedIn();
+      await cancelSignIn();
+      assert.equal(await signedIn, false);
+    });
+
+    it('opens no sign-in when imslib is unavailable', async () => {
+      loadScriptStub = mock.fn(async () => { throw new Error('load failed'); });
+      assert.equal(await (await importIms()).ensureSignedIn(), false);
+      assert.equal(open.mock.callCount(), 0);
+    });
   });
 
   describe('signing in on page load', () => {
@@ -571,6 +613,21 @@ describe('utils/ims', () => {
         await (await importIms()).requireSignIn();
         assert.equal(countNavigations(error), 1);
         assert.equal(window.sessionStorage.getItem('ims-sign-in-left'), null);
+      } finally {
+        restore();
+      }
+    });
+
+    it('opens no sign-in dialog while the page leaves to sign in', async () => {
+      const restore = openPage(TOOL);
+      try {
+        imslib();
+        let done = false;
+        (await importIms()).ensureSignedIn().then(() => { done = true; });
+        await settle();
+        assert.equal(countNavigations(error), 1);
+        assert.equal(done, false);
+        assert.equal(document.querySelector('dialog'), null);
       } finally {
         restore();
       }

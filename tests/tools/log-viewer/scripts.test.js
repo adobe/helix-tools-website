@@ -5,11 +5,9 @@ import {
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import createMockAemApi from '../../helpers/mock-aem-api.js';
+import mockIms from '../../helpers/mock-ims.js';
 
 let ready;
-let signIns;
-let imsToken;
-let completeSignIn;
 let editorDocuments;
 let requests;
 let unexpected;
@@ -24,20 +22,7 @@ mock.module('../../../scripts/scripts.js', {
 mock.module('../../../utils/config/config.js', {
   exports: { initConfigField: async () => {}, updateConfig: () => {} },
 });
-// The Adobe sign-in (utils/ims.js) completes at once, storing a token, unless cancelled.
-mock.module('../../../utils/ims.js', {
-  exports: {
-    getImsToken: () => imsToken,
-    isImsTokenFresh: () => !!imsToken,
-    loadIms: async () => {},
-    requireSignIn: async () => {},
-    signIn: async () => {
-      signIns += 1;
-      if (completeSignIn) imsToken = 'ims-token';
-      return completeSignIn;
-    },
-  },
-});
+const ims = mockIms();
 mock.module('../../../blocks/modal/modal.js', {
   exports: { createModal: async () => ({ showModal: () => {} }) },
 });
@@ -103,9 +88,7 @@ describe('log-viewer request compatibility', () => {
   beforeEach(() => {
     window.localStorage.clear();
     window.history.replaceState(null, '', '/');
-    signIns = 0;
-    imsToken = undefined;
-    completeSignIn = true;
+    ims.reset();
     editorDocuments = [];
     requests = [];
     probes = [];
@@ -122,7 +105,7 @@ describe('log-viewer request compatibility', () => {
     document.getElementById('org').value = 'acme';
     document.getElementById('site').value = 'docs';
     fetchMocks.push(mock.method(global, 'fetch', async (url, init = {}) => {
-      const call = { url, method: init.method, signIns };
+      const call = { url, method: init.method, signIns: ims.signIns };
       if (new URL(url).pathname.startsWith('/sidekick/')) probes.push(call);
       else requests.push(call);
       if (new URL(url).origin === 'https://api.aem.live') return h6Fetch(url, init);
@@ -221,17 +204,17 @@ describe('log-viewer request compatibility', () => {
     const { fetch } = global;
     fetchMocks.push(mock.method(global, 'fetch', async (...args) => {
       const res = await fetch(...args);
-      if (res.status === 401) imsToken = undefined;
+      if (res.status === 401) ims.token = undefined;
       return res;
     }));
     await submit();
     assert.deepEqual(urls(), [STATUS, `${LOG}?since=24h`, `${LOG}?since=24h`]);
-    assert.equal(signIns, 2);
+    assert.equal(ims.signIns, 2);
     assert.equal(visible('results'), true);
   });
 
   it('makes no request after preflight login is cancelled', async () => {
-    completeSignIn = false;
+    ims.completeSignIn = false;
     await submit();
     assert.deepEqual(urls(), []);
     assert.equal(visible('login'), true);
@@ -245,8 +228,8 @@ describe('log-viewer request compatibility', () => {
     fetchMocks.push(mock.method(global, 'fetch', async (...args) => {
       const res = await fetch(...args);
       if (res.status === 401) {
-        imsToken = undefined;
-        completeSignIn = false;
+        ims.token = undefined;
+        ims.completeSignIn = false;
       }
       return res;
     }));
@@ -339,7 +322,7 @@ describe('log-viewer request compatibility', () => {
       'https://api.aem.live/detected-h6/sites/docs/log?since=24h',
       status, log,
     ]);
-    assert.equal(signIns, 1);
+    assert.equal(ims.signIns, 1);
     assert.equal(rows()[0].querySelector('a').href, 'https://preview.example.com/legacy');
   });
 
@@ -366,7 +349,7 @@ describe('log-viewer request compatibility', () => {
       job, report,
     ]);
     assert.deepEqual(editorDocuments, [details]);
-    assert.equal(signIns, 1);
+    assert.equal(ims.signIns, 1);
   });
 
   it('surfaces detection failures and restores the submit button', async () => {
@@ -395,7 +378,7 @@ describe('log-viewer request compatibility', () => {
       next,
     ]);
     assert.equal(rows().length, 2);
-    assert.equal(signIns, 1);
+    assert.equal(ims.signIns, 1);
   });
 
   it('does not duplicate the version pin when an H6 pagination link already carries it', async () => {

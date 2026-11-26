@@ -21,9 +21,9 @@ function logResult(result) {
 }
 
 /**
- * Shows a message under a form's button, as media-library does, or hides it.
- * @param {HTMLElement} el The message element
- * @param {string} [message] The message; none hides it
+ * Shows the message in el; no message hides el.
+ * @param {HTMLElement} el
+ * @param {string} [message]
  */
 function showError(el, message = '') {
   el.textContent = message;
@@ -31,14 +31,13 @@ function showError(el, message = '') {
 }
 
 /**
- * Explains a request for robots.txt that didn't succeed.
- * @param {object|null} result The admin response, null if the user didn't sign in
- * @param {string} verb What the request does with robots.txt: 'view' or 'change'
- * @returns {string} The message
+ * @param {object|null} result admin response; null if the user didn't sign in
+ * @param {string} verb 'view' or 'change'
+ * @returns {string} the message for a failed robots.txt request
  */
 function getErrorMessage(result, verb) {
   if (!result) return `Sign in to ${verb} this site's robots.txt.`;
-  if (result.status === 401) return 'Your sign-in wasn\'t accepted. Sign out, then sign in with Adobe again.';
+  if (result.status === 401) return 'Your Adobe sign-in wasn\'t accepted. Sign out, then sign in with Adobe again.';
   if (result.status === 403) return `Your account isn't allowed to ${verb} this site's robots.txt. Ask a site admin for access.`;
   return `Couldn't ${verb} robots.txt: ${result.error || `HTTP ${result.status}`}`;
 }

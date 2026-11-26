@@ -2,7 +2,7 @@ import { sampleRUM } from '../../scripts/aem.js';
 import { registerToolReady } from '../../scripts/scripts.js';
 import { createModal } from '../../blocks/modal/modal.js';
 import escapeHtml from '../../utils/html.js';
-import { getImsToken, isSignedIn, signIn } from '../../utils/ims.js';
+import { ensureSignedIn } from '../../utils/ims.js';
 import { authHeaders, getAuthError } from './cache-auth.js';
 import {
   parseHostList,
@@ -16,9 +16,6 @@ import {
 
 const API = 'https://helix-cache-debug.adobeaem.workers.dev';
 const RESOLVE_CONCURRENCY = 4;
-
-// the cache superuser key is no longer used, remove any stored copy
-localStorage.removeItem('cache-debug-key');
 
 const hostsInput = document.querySelector('#hosts-input');
 const customKeysInput = document.querySelector('#custom-keys-input');
@@ -48,12 +45,10 @@ let stopRequested = false;
 /** @type {(() => void)|null} aborts the current inter-site delay, if any */
 let sleepAbort = null;
 
-const jsonAuthHeaders = () => authHeaders({ 'content-type': 'application/json' });
-
 /**
- * Shows the message for an authorization error response of the cache worker (once).
+ * Shows a cache worker auth error, once.
  * @param {Response} resp
- * @returns {string|null} the message, or null if the response is not an authorization error
+ * @returns {string|null} the message, or null if not an auth error
  */
 const handleAuthError = (resp) => {
   const message = getAuthError(resp);
@@ -80,13 +75,13 @@ const resolveSite = (host) => fetch(`${API}/resolve?host=${encodeURIComponent(ho
 const purgeKeysOrPaths = (liveHost, keys, paths) => fetch(`${API}/purge`, {
   method: 'POST',
   body: JSON.stringify({ liveHost, keys, paths }),
-  headers: jsonAuthHeaders(),
+  headers: authHeaders({ 'content-type': 'application/json' }),
 });
 
 const purgeConfig = (liveHost, purgeOrg, purgeHead) => fetch(`${API}/purge-config`, {
   method: 'POST',
   body: JSON.stringify({ liveHost, purgeOrg, purgeHead }),
-  headers: jsonAuthHeaders(),
+  headers: authHeaders({ 'content-type': 'application/json' }),
 });
 
 const showLogModal = async (liveHost, log) => {
@@ -365,7 +360,7 @@ const onResolveClick = async () => {
   resolveButton.disabled = true;
   updatePurgeButtonState();
   try {
-    if (!await isSignedIn() && !await signIn()) {
+    if (!await ensureSignedIn()) {
       const p = document.createElement('p');
       p.className = 'error';
       p.textContent = 'Sign in with Adobe to use the bulk purge.';
@@ -552,7 +547,7 @@ const onPurgeClick = async () => {
   running = true;
   setFormDisabled(true);
   try {
-    if (!getImsToken() && !await signIn()) {
+    if (!await ensureSignedIn()) {
       const p = document.createElement('p');
       p.className = 'error purge-error';
       p.textContent = 'Sign in with Adobe to purge.';
@@ -641,8 +636,6 @@ async function init() {
   downloadButton.addEventListener('click', onDownloadClick);
 
   updatePurgeButtonState();
-  // load imslib up front: the purge reads the token synchronously
-  await isSignedIn();
   sampleRUM.enhance();
 }
 

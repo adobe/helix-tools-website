@@ -2,7 +2,7 @@ import { sampleRUM } from '../../scripts/aem.js';
 import { registerToolReady } from '../../scripts/scripts.js';
 import { createModal } from '../../blocks/modal/modal.js';
 import escapeHtml from '../../utils/html.js';
-import { getImsToken, isSignedIn, signIn } from '../../utils/ims.js';
+import { ensureSignedIn } from '../../utils/ims.js';
 import { authHeaders, getAuthError } from './cache-auth.js';
 
 const API = 'https://helix-cache-debug.adobeaem.workers.dev';
@@ -11,9 +11,6 @@ const input = document.querySelector('input#url-input');
 const button = document.querySelector('button#search-button');
 /** @type {HTMLDivElement} */
 const resultsContainer = document.querySelector('div#results');
-
-// the cache superuser key is no longer used, remove any stored copy
-localStorage.removeItem('cache-debug-key');
 
 let createEditorPromise;
 function loadCreateEditor() {
@@ -464,7 +461,7 @@ const renderPurgeSection = (container, data) => {
     // lock before signing in, so more clicks don't send more purges
     purgeBtn.disabled = true;
     try {
-      if (!getImsToken() && !await signIn()) {
+      if (!await ensureSignedIn()) {
         await showPurgeError('Sign in with Adobe to purge.');
         return;
       }
@@ -591,9 +588,9 @@ const renderDetails = (data) => {
 };
 
 async function init() {
-  const params = new URLSearchParams(window.location.search);
-  if (params.has('url')) {
-    input.value = params.get('url');
+  const loc = new URL(window.location.href);
+  if (loc.searchParams.has('url')) {
+    input.value = loc.searchParams.get('url');
     setTimeout(() => button.click());
   }
 
@@ -617,12 +614,11 @@ async function init() {
 
     try {
       button.disabled = true;
-      if (!await isSignedIn() && !await signIn()) {
+      if (!await ensureSignedIn()) {
         resultsContainer.innerHTML = '<p class="error">Sign in with Adobe to use the cache debugger.</p>';
         return;
       }
 
-      const loc = new URL(window.location.href);
       loc.searchParams.set('url', url.toString());
       window.history.replaceState({}, '', loc);
 
@@ -646,8 +642,6 @@ async function init() {
       button.disabled = false;
     }
   });
-  // load imslib up front: the purge reads the token synchronously
-  await isSignedIn();
   sampleRUM.enhance();
 }
 

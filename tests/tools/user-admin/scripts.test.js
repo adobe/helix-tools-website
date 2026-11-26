@@ -4,23 +4,9 @@ import {
 } from 'node:test';
 import assert from 'node:assert/strict';
 import createMockAemApi from '../../helpers/mock-aem-api.js';
+import mockIms from '../../helpers/mock-ims.js';
 
-// The Adobe sign-in (utils/ims.js) completes at once, storing a token.
-let signIns = 0;
-let imsToken;
-mock.module('../../../utils/ims.js', {
-  exports: {
-    getImsToken: () => imsToken,
-    isImsTokenFresh: () => !!imsToken,
-    loadIms: async () => {},
-    requireSignIn: async () => {},
-    signIn: async () => {
-      signIns += 1;
-      imsToken = 'ims-token';
-      return true;
-    },
-  },
-});
+const ims = mockIms();
 mock.module('../../../utils/config/config.js', {
   exports: { updateConfig: () => {}, initConfigField: async () => {} },
 });
@@ -70,8 +56,7 @@ describe('user-admin:user-admin.js', () => {
     api.install();
     probes = [];
     probeStatus = 200;
-    signIns = 0;
-    imsToken = undefined;
+    ims.reset();
     const specFetch = global.fetch;
     // Backend detection hits the legacy host, which the spec-routed fake does not serve.
     global.fetch = async (url, init) => {
@@ -126,7 +111,7 @@ describe('user-admin:user-admin.js', () => {
       ['GET', 'https://api.aem.live/myorg/config.json'],
     ]);
     assert.deepEqual(probes, []);
-    assert.equal(signIns, 1);
+    assert.equal(ims.signIns, 1);
   });
 
   it('adds an org user at the org users path', async () => {
@@ -231,7 +216,7 @@ describe('user-admin:user-admin.js', () => {
     assert.deepEqual(probes, ['https://admin.hlx.page/sidekick/myorg/mysite/main/config.json']);
     assert.deepEqual(cards(), ['a@example.com']);
     assert.equal(api.calls[0].pathname, '/myorg/sites/mysite/config/access.json');
-    assert.equal(signIns, 1);
+    assert.equal(ims.signIns, 1);
   });
 
   it('adds a site user by rewriting access.json', async () => {

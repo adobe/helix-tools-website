@@ -2,16 +2,6 @@
   margin: 6px 0;
 }
 
-.cache {
-  --header-height: 154px;
-}
-
-@media (width >= 900px) {
-  .cache {
-    --header-height: 74px;
-  }
-}
-
 .cache div.form {
   display: flex;
   align-items: flex-end;

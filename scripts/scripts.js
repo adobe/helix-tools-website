@@ -369,7 +369,7 @@ function loadDelayed() {
 }
 
 async function loadPage() {
-  // not awaited: a signed-in page shouldn't wait for imslib to render
+  // not awaited: rendering doesn't wait for imslib
   requireSignIn();
   await loadEager(document);
   await loadLazy(document);

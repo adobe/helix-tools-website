@@ -4,33 +4,29 @@ import {
 } from 'node:test';
 import assert from 'node:assert/strict';
 
-// Mock the collaborators before importing the helper. This is one of the rare
-// places where mocking is the right call (see TESTING.md): the helper's only job
-// IS to orchestrate imslib and updateConfig into a result, so the seam under
-// test is the contract with those collaborators.
+// Mocking is the right call here (see TESTING.md): orchestrating imslib and
+// updateConfig is this helper's contract.
 let updateConfigCalls;
 let imsToken;
-let imsTokenFresh;
-let loadImsStub;
-let requireSignInStub;
+let waitForImsStub;
+let ensureSignedInCalls;
+let ensureSignedInResult;
+let ensureSignedInStub;
 let signInCalls;
 let signInResult;
 let signInStub;
 mock.module('../../utils/config/config.js', {
-  namedExports: { updateConfig: () => { updateConfigCalls += 1; } },
+  exports: { updateConfig: () => { updateConfigCalls += 1; } },
 });
 mock.module('../../utils/ims.js', {
-  namedExports: {
+  exports: {
+    ensureSignedIn: () => ensureSignedInStub(),
     getImsToken: () => imsToken,
-    isImsTokenFresh: () => imsTokenFresh,
-    loadIms: () => loadImsStub(),
-    requireSignIn: () => requireSignInStub(),
     signIn: () => signInStub(),
+    waitForIms: () => waitForImsStub(),
   },
 });
-const {
-  executeAdminRequest, ensureAdminLogin, AuthMode,
-} = await import('../../utils/admin-request.js');
+const { executeAdminRequest, AuthMode } = await import('../../utils/admin-request.js');
 
 const settle = () => new Promise((resolve) => { setImmediate(resolve); });
 
@@ -48,9 +44,13 @@ function requestFnReturning(...statuses) {
 beforeEach(() => {
   updateConfigCalls = 0;
   imsToken = undefined;
-  imsTokenFresh = false;
-  loadImsStub = async () => {};
-  requireSignInStub = async () => {};
+  waitForImsStub = async () => true;
+  ensureSignedInCalls = 0;
+  ensureSignedInResult = true;
+  ensureSignedInStub = async () => {
+    ensureSignedInCalls += 1;
+    return ensureSignedInResult;
+  };
   signInCalls = 0;
   signInResult = false;
   signInStub = async () => {
@@ -59,38 +59,10 @@ beforeEach(() => {
   };
 });
 
-describe('ensureAdminLogin', () => {
-  it('is signed in with a fresh IMS token', async () => {
-    imsToken = 'ims-token';
-    imsTokenFresh = true;
-    assert.equal(await ensureAdminLogin(), true);
-    assert.equal(signInCalls, 0);
-  });
-
-  it('opens the sign-in when the IMS token expires soon, keeping it if the user closes the tab', async () => {
-    imsToken = 'ims-token';
-    assert.equal(await ensureAdminLogin(), true);
-    assert.equal(signInCalls, 1);
-  });
-
-  it('signs in with Adobe without a token', async () => {
-    assert.equal(await ensureAdminLogin(), false);
-    signInResult = true;
-    assert.equal(await ensureAdminLogin(), true);
-    assert.equal(signInCalls, 2);
-  });
-
-  it('does not sign in when imslib is unavailable', async () => {
-    loadImsStub = async () => { throw new Error('IMS timeout'); };
-    assert.equal(await ensureAdminLogin(), false);
-    assert.equal(signInCalls, 0);
-  });
-});
-
 describe('executeAdminRequest', () => {
   it('waits for imslib, then sends the request once', async () => {
     let imsReady;
-    loadImsStub = () => new Promise((resolve) => { imsReady = resolve; });
+    waitForImsStub = () => new Promise((resolve) => { imsReady = () => resolve(true); });
     imsToken = 'ims-token';
     const requestFn = requestFnReturning(200);
     const promise = executeAdminRequest(requestFn, { org: 'adobe', site: 'x' });
@@ -105,8 +77,9 @@ describe('executeAdminRequest', () => {
   });
 
   it('sends nothing and opens no sign-in while the page leaves to sign in', async () => {
-    // requireSignIn() never settles once the page leaves for the sign-in page
-    requireSignInStub = () => new Promise(() => {});
+    // neither settles once the page leaves for the sign-in page
+    waitForImsStub = () => new Promise(() => {});
+    ensureSignedInStub = () => new Promise(() => {});
     const requestFn = requestFnReturning(401);
     executeAdminRequest(requestFn, { org: 'adobe', site: 'x' });
     executeAdminRequest(requestFn, {
@@ -123,7 +96,7 @@ describe('executeAdminRequest', () => {
         name: 'preflights and retries with the third-argument policy',
         options: { policy: AuthMode.PREFLIGHT_AND_RETRY },
         statuses: [401, 200],
-        events: [['signIn'], ['request', 401], ['signIn'], ['request', 200]],
+        events: [['ensureSignedIn'], ['request', 401], ['signIn'], ['request', 200]],
       },
       {
         name: 'signs in on a 401 with an explicit 401-retry policy',
@@ -151,6 +124,10 @@ describe('executeAdminRequest', () => {
           coords: Object.freeze({ org: 'bound-org', site: 'bound-site', ref: 'main' }),
         });
         const events = [];
+        ensureSignedInStub = async () => {
+          events.push(['ensureSignedIn']);
+          return true;
+        };
         signInStub = async () => {
           events.push(['signIn']);
           return true;
@@ -207,7 +184,7 @@ describe('executeAdminRequest', () => {
   });
 
   it('returns the 401 without signing in when imslib is unavailable', async () => {
-    loadImsStub = async () => { throw new Error('IMS timeout'); };
+    waitForImsStub = async () => false;
     const result = await executeAdminRequest(requestFnReturning(401), { org: 'adobe' });
     assert.equal(result.status, 401);
     assert.equal(signInCalls, 0);
@@ -221,13 +198,14 @@ describe('executeAdminRequest', () => {
 
   describe('policy: preflightAndRetry', () => {
     it('skips the request when the user does not complete the sign-in', async () => {
+      ensureSignedInResult = false;
       const requestFn = requestFnReturning(200);
       const result = await executeAdminRequest(requestFn, {
         org: 'adobe', policy: AuthMode.PREFLIGHT_AND_RETRY,
       });
       assert.equal(result, null);
       assert.equal(requestFn.calls, 0);
-      assert.equal(signInCalls, 1);
+      assert.equal(ensureSignedInCalls, 1);
     });
   });
 });

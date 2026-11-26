@@ -1,13 +1,12 @@
 // @ts-check
 import { updateConfig } from './config/config.js';
 import {
-  getImsToken, isImsTokenFresh, loadIms, requireSignIn, signIn,
+  ensureSignedIn, getImsToken, signIn, waitForIms,
 } from './ims.js';
 
 /**
- * Auth-handling policy for {@link executeAdminRequest}. `retryOn401` opens the Adobe
- * sign-in on a 401 and then sends the request again, and `preflightAndRetry` also
- * checks the sign-in before sending.
+ * Auth-handling policy for {@link executeAdminRequest}: `retryOn401` signs in and
+ * retries on a 401; `preflightAndRetry` also checks the sign-in first.
  *
  * @readonly
  * @enum {string}
@@ -27,34 +26,6 @@ export const AuthMode = Object.freeze({
  */
 
 /**
- * Waits for the page-load sign-in (which never ends while the page leaves to sign in) and
- * imslib, so the admin clients can send the IMS token.
- * @returns {Promise<boolean>} false if imslib is unavailable
- */
-async function waitForIms() {
-  await requireSignIn();
-  try {
-    await loadIms();
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Checks for an IMS token that won't expire during the task about to start; otherwise opens
- * the Adobe sign-in.
- * @returns {Promise<boolean>} true if signed in
- */
-export async function ensureAdminLogin() {
-  const imsReady = await waitForIms();
-  if (isImsTokenFresh()) return true;
-  if (!imsReady) return false;
-  // a token that expires soon still works if the user closes the sign-in
-  return await signIn() || !!getImsToken();
-}
-
-/**
  * @template {{ status: number, ok?: boolean }} T
  * @overload
  * @param {() => Promise<T>} requestFn
@@ -71,12 +42,10 @@ export async function ensureAdminLogin() {
  */
 /**
  * Execute an admin API request with an optional sign-in check, signing in and
- * sending it again on a 401. Returns `null` if the user didn't complete the
- * Adobe sign-in.
+ * retrying on a 401. Returns `null` if the user didn't complete the sign-in.
  *
- * The admin clients send the IMS token once imslib is ready. Only a 401 sent
- * without an IMS token opens the Adobe sign-in: admin would reject a new token
- * just like the current one.
+ * Only a 401 sent without a token opens the sign-in: admin would reject a new
+ * token like the current one.
  *
  * `updateConfig()` only fires on 2xx — a 4xx/5xx may not actually validate
  * the org/site combo (e.g. 404 could mean the org doesn't exist). It's a
@@ -94,7 +63,7 @@ export async function ensureAdminLogin() {
  */
 export async function executeAdminRequest(requestFn, authConfig, options = {}) {
   const { policy = AuthMode.RETRY_ON_401 } = 'coords' in authConfig ? options : authConfig;
-  if (policy === AuthMode.PREFLIGHT_AND_RETRY && !await ensureAdminLogin()) return null;
+  if (policy === AuthMode.PREFLIGHT_AND_RETRY && !await ensureSignedIn()) return null;
 
   const imsReady = await waitForIms();
   let result = await requestFn();

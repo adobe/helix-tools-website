@@ -1,7 +1,8 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import getAdminClient from '../../scripts/admin-compat.js';
-import { executeAdminRequest, AuthMode, ensureAdminLogin } from '../../utils/admin-request.js';
+import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
+import { ensureSignedIn } from '../../utils/ims.js';
 import {
   discardBrokenMediaEntries,
   dedupeMediaUrls,
@@ -1980,22 +1981,14 @@ function showReport(startTime, exportResult) {
   log('Done.', 'success');
 }
 
-// a run waiting for the sign-in; a new run replaces it
-let resumeAfterSignIn;
-
 async function runBackfill() {
-  window.removeEventListener('ims-signed-in', resumeAfterSignIn);
   const org = DOM.org.value.trim();
   const site = DOM.site.value.trim();
   const fallbackUser = DOM.fallbackUser.value.trim();
 
   if (!org || !site) return;
 
-  if (!await ensureAdminLogin()) {
-    resumeAfterSignIn = () => DOM.runBtn.click();
-    window.addEventListener('ims-signed-in', resumeAfterSignIn, { once: true });
-    return;
-  }
+  if (!await ensureSignedIn()) return;
 
   abortController = new AbortController();
   adminLimiter.reset();

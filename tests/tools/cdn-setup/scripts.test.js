@@ -4,6 +4,7 @@ import {
 } from 'node:test';
 import assert from 'node:assert/strict';
 import createMockAemApi from '../../helpers/mock-aem-api.js';
+import mockIms from '../../helpers/mock-ims.js';
 
 mock.module('../../../scripts/scripts.js', {
   exports: { registerToolReady: (...promises) => Promise.all(promises) },
@@ -18,15 +19,7 @@ mock.module('../../../blocks/console/console.js', {
   },
 });
 global.cdnSetupLogs = [];
-mock.module('../../../utils/ims.js', {
-  exports: {
-    getImsToken: () => 'ims-token',
-    isImsTokenFresh: () => true,
-    loadIms: async () => {},
-    requireSignIn: async () => {},
-    signIn: async () => true,
-  },
-});
+mockIms({ token: 'ims-token' });
 
 const waitFor = async (predicate, timeoutMs = 5000) => {
   const start = Date.now();

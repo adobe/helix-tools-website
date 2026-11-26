@@ -5,26 +5,10 @@ import {
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import createMockAemApi from '../../helpers/mock-aem-api.js';
+import mockIms from '../../helpers/mock-ims.js';
 
-// Sign-in and config refresh are out of scope for the bulk tool; same seam as
-// tests/utils/admin-request.test.js. The Adobe sign-in (utils/ims.js) completes at once,
-// storing a token, unless cancelled.
-let signIns = 0;
-let imsToken;
-let completeSignIn = true;
-mock.module('../../../utils/ims.js', {
-  exports: {
-    getImsToken: () => imsToken,
-    isImsTokenFresh: () => !!imsToken,
-    loadIms: async () => {},
-    requireSignIn: async () => {},
-    signIn: async () => {
-      signIns += 1;
-      if (completeSignIn) imsToken = 'ims-token';
-      return completeSignIn;
-    },
-  },
-});
+// Sign-in and config refresh are out of scope for the bulk tool.
+const ims = mockIms();
 mock.module('../../../utils/config/config.js', {
   exports: { updateConfig: () => {} },
 });
@@ -193,7 +177,7 @@ function installTargetResponses(api, targets, {
     calls.push({
       ...request,
       buckets: visibleTargetKeys(),
-      signedIn: !!imsToken,
+      signedIn: !!ims.token,
     });
     const route = routes.get(requestKey(request));
     if (!route) {
@@ -254,9 +238,7 @@ describe('bulk:scripts.js', () => {
       intervals.push(id);
       return id;
     });
-    signIns = 0;
-    imsToken = undefined;
-    completeSignIn = true;
+    ims.reset();
     window.localStorage.setItem('use-h6-api', 'true');
     document.getElementById('results-container').innerHTML = '';
     document.getElementById('urls').value = URLS;
@@ -340,7 +322,7 @@ describe('bulk:scripts.js', () => {
 
   ['preview', 'index'].forEach((operation) => {
     it(`marks later ${operation} buckets skipped when sign-in is cancelled`, async () => {
-      completeSignIn = false;
+      ims.completeSignIn = false;
       document.getElementById('operation').dataset.value = operation;
       document.getElementById('urls').value = [
         `https://main--docs--cancel-${operation}-first.aem.page/first`,
@@ -350,7 +332,7 @@ describe('bulk:scripts.js', () => {
       submit();
       await waitFor(finished);
 
-      assert.equal(signIns, 1);
+      assert.equal(ims.signIns, 1);
       assert.deepEqual(api.calls, [], 'cancellation must prevent writes and later sign-in prompts');
       assert.match(
         document.querySelector('#results-container > .run-result > summary').textContent,
@@ -443,7 +425,7 @@ describe('bulk:scripts.js', () => {
       writes.forEach((request) => {
         assert.ok(request.signedIn, `sign in before ${request.method} ${request.url}`);
       });
-      assert.equal(signIns, 1, 'one Adobe sign-in covers every bucket');
+      assert.equal(ims.signIns, 1, 'one Adobe sign-in covers every bucket');
     });
   });
 

@@ -14,7 +14,7 @@
     import { runSignInPage } from '/utils/ims.js';
 
     runSignInPage();
-    // Back (e.g. from the IMS form) can restore this page as it left, without running it again
+    // a page restored from the bfcache (Back) doesn't rerun the module
     window.addEventListener('pageshow', ({ persisted }) => {
       if (persisted) runSignInPage();
     });

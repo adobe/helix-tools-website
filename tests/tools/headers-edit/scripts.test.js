@@ -5,6 +5,7 @@ import {
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import createMockAemApi from '../../helpers/mock-aem-api.js';
+import mockIms from '../../helpers/mock-ims.js';
 
 let toolReady;
 
@@ -17,22 +18,7 @@ mock.module('../../../scripts/scripts.js', {
 mock.module('../../../scripts/aem.js', {
   exports: { loadCSS: async () => {} },
 });
-// The Adobe sign-in (utils/ims.js) completes at once, storing a token.
-let signIns = 0;
-let imsToken;
-mock.module('../../../utils/ims.js', {
-  exports: {
-    getImsToken: () => imsToken,
-    isImsTokenFresh: () => !!imsToken,
-    loadIms: async () => {},
-    requireSignIn: async () => {},
-    signIn: async () => {
-      signIns += 1;
-      imsToken = 'ims-token';
-      return true;
-    },
-  },
-});
+const ims = mockIms();
 
 const HEADERS_URL = 'https://api.aem.live/myorg/sites/mysite/config/headers.json';
 
@@ -71,8 +57,7 @@ describe('headers-edit:headers-edit.js', () => {
     api.install();
     probes = [];
     probeStatus = 401;
-    signIns = 0;
-    imsToken = undefined;
+    ims.reset();
     const specFetch = global.fetch;
     // Backend detection hits the legacy host, which the spec-routed fake does not serve.
     global.fetch = async (url, init) => {
@@ -107,7 +92,7 @@ describe('headers-edit:headers-edit.js', () => {
     await fetchHeaders();
 
     assert.deepEqual(probes, ['https://admin.hlx.page/sidekick/myorg/mysite/main/config.json']);
-    assert.equal(signIns, 1);
+    assert.equal(ims.signIns, 1);
     assert.deepEqual(rows(), [['200', 'GET', HEADERS_URL, '']]);
     assert.equal(document.querySelector('#headers-list .header-key').value, 'x-a');
     assert.ok(editorShown());
@@ -226,6 +211,6 @@ describe('headers-edit:headers-edit.js', () => {
     assert.deepEqual([level, source, target], ['ERROR', 'Backend detection', 'myorg/detect-fails']);
     assert.match(error, /Admin backend detection failed .* HTTP 404/);
     assert.deepEqual(api.calls, []);
-    assert.equal(signIns, 0);
+    assert.equal(ims.signIns, 0);
   });
 });
