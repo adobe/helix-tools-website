@@ -29,6 +29,9 @@ const SIGN_IN_SKIPPED = 'ims-sign-in-skipped';
 
 let ims;
 let signInChecked;
+// set once requireSignIn() finds this page signs in on load
+let signsInOnLoad = false;
+let signedOutDialog;
 let signInTab;
 let signingIn;
 // the token last announced with ims-signed-in or ims-signed-out
@@ -51,6 +54,51 @@ function announceTokenChange() {
   if (token === announcedToken) return;
   announcedToken = token;
   window.dispatchEvent(new Event(token ? 'ims-signed-in' : 'ims-signed-out'));
+}
+
+function createButton(text, onClick) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'button';
+  button.textContent = text;
+  button.addEventListener('click', onClick);
+  return button;
+}
+
+/**
+ * Leaves for the sign-in page in this tab, which comes back to this page once signed in.
+ * Unlike opening a tab (signIn), leaving needs no click.
+ */
+function leaveToSignIn() {
+  const { sessionStorage } = window;
+  // start over, even if an earlier sign-in in this tab stopped halfway
+  sessionStorage.removeItem(SIGN_IN_STAGE);
+  sessionStorage.setItem(SIGN_IN_RETURN, window.location.href);
+  sessionStorage.setItem(SIGN_IN_LEFT, String(Date.now()));
+  // replace: Back must not return to a page that leaves again at once
+  window.location.replace(SIGN_IN_PAGE);
+}
+
+/**
+ * Covers the page once another tab signed out, as da.live does. Only a sign-in ends it: in
+ * this tab, or in another one, which reloads the page for that account.
+ */
+function showSignedOutDialog() {
+  if (signedOutDialog) return;
+  signedOutDialog = document.createElement('dialog');
+  signedOutDialog.className = 'ims-sign-in-dialog';
+  signedOutDialog.setAttribute('aria-label', 'Signed out');
+  signedOutDialog.closedBy = 'none';
+  signedOutDialog.addEventListener('cancel', (event) => event.preventDefault());
+  const message = document.createElement('p');
+  message.textContent = 'You signed out in another tab. Sign in again to continue.';
+  const buttons = document.createElement('p');
+  buttons.className = 'button-wrapper';
+  buttons.append(createButton('Sign in with Adobe', leaveToSignIn));
+  signedOutDialog.append(message, buttons);
+  document.body.append(signedOutDialog);
+  signedOutDialog.showModal();
+  window.addEventListener('ims-signed-in', () => window.location.reload(), { once: true });
 }
 
 /**
@@ -84,7 +132,11 @@ export function loadIms() {
         console.warn('IMS error', type, message);
       },
       // another tab signed out (imslib already removed the token)
-      onSignOutEventReceived: announceTokenChange,
+      onSignOutEventReceived: () => {
+        const wasSignedIn = !!announcedToken;
+        announceTokenChange();
+        if (wasSignedIn && signsInOnLoad) showSignedOutDialog();
+      },
     };
     // not loadScript from scripts/aem.js: importing that module starts RUM
     const script = document.createElement('script');
@@ -127,6 +179,7 @@ export function requireSignIn() {
     } catch {
       return;
     }
+    signsInOnLoad = true;
     const { sessionStorage } = window;
     if (isImsTokenFresh()) {
       sessionStorage.removeItem(SIGN_IN_LEFT);
@@ -135,12 +188,7 @@ export function requireSignIn() {
     }
     const left = Number(sessionStorage.getItem(SIGN_IN_LEFT));
     if (sessionStorage.getItem(SIGN_IN_SKIPPED) || Date.now() - left < SIGN_IN_LOOP_GUARD) return;
-    // start over, even if an earlier sign-in in this tab stopped halfway
-    sessionStorage.removeItem(SIGN_IN_STAGE);
-    sessionStorage.setItem(SIGN_IN_RETURN, window.location.href);
-    sessionStorage.setItem(SIGN_IN_LEFT, String(Date.now()));
-    // replace: Back must not return to a page that leaves again at once
-    window.location.replace(SIGN_IN_PAGE);
+    leaveToSignIn();
     await new Promise(() => {});
   })();
   return signInChecked;
@@ -160,19 +208,11 @@ export async function isSignedIn() {
   return !!getImsToken();
 }
 
-function createButton(text, onClick) {
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = 'button';
-  button.textContent = text;
-  button.addEventListener('click', onClick);
-  return button;
-}
-
 /**
  * Signs in with Adobe in a new tab, which closes itself once signed in and leaves the token in
  * the localStorage it shares with this page. Meanwhile a modal dialog keeps the page from
- * starting anything else, and offers a button when the tab can't open on its own.
+ * starting anything else, and offers a button when the tab can't open on its own. For sign-ins
+ * in the middle of a task: unlike leaving (leaveToSignIn), it keeps what the page holds.
  * @returns {Promise<boolean>} true once signed in; false if cancelled, or if the tab closed
  *   without signing in
  */
@@ -209,8 +249,15 @@ export function signIn() {
         if (signInTab.closed) dialog.close();
       }, SIGN_IN_POLL_INTERVAL);
     };
-    // the tab closed, or Cancel or Esc
+    // the token is in the shared localStorage, even if the browser keeps the tab from closing
+    // itself or from being watched
+    const onSignedIn = () => {
+      if (isImsTokenFresh()) dialog.close();
+    };
+    window.addEventListener('ims-signed-in', onSignedIn);
+    // signed in, the tab closed, or Cancel or Esc
     dialog.addEventListener('close', () => {
+      window.removeEventListener('ims-signed-in', onSignedIn);
       clearInterval(poll);
       signInTab?.close();
       signInTab = undefined;
@@ -298,13 +345,14 @@ export async function runSignInPage() {
       window.location.replace(returnTo);
       return;
     }
-    // stays visible if the browser doesn't let the page close the tab, e.g. after Back from a
-    // page this tab went back to
-    status.textContent = 'You are signed in. You can close this tab, or go to ';
-    const home = document.createElement('a');
-    home.href = '/';
-    home.textContent = 'AEM Tools';
-    status.append(home, '.');
+    // no page to go back to, and no page that opened this tab (signIn) or still linked to it,
+    // e.g. after Back from the page this tab went back to
+    if (!window.opener) {
+      window.location.replace('/');
+      return;
+    }
+    // stays visible if the browser doesn't let the page close the tab
+    status.textContent = 'You are signed in. You can close this tab.';
     window.close();
   } else if (!stage) {
     window.sessionStorage.setItem(SIGN_IN_STAGE, 'silent');
@@ -352,7 +400,7 @@ export function createImsLogin() {
     const current = renders;
     clearTimeout(expiryTimer);
     if (!getImsToken()) {
-      container.replaceChildren(createButton('Sign in with Adobe', signIn));
+      container.replaceChildren(createButton('Sign in with Adobe', leaveToSignIn));
       return;
     }
     // imslib doesn't tell the page when the token expires: announce it then

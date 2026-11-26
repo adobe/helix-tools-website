@@ -59,6 +59,15 @@ async function runSignInPage() {
   return (await importIms()).runSignInPage();
 }
 
+// JSDOM has no modal dialogs
+function stubDialogs({ HTMLDialogElement }) {
+  HTMLDialogElement.prototype.showModal = function showModal() { this.open = true; };
+  HTMLDialogElement.prototype.close = function close() {
+    this.open = false;
+    this.dispatchEvent(new Event('close'));
+  };
+}
+
 // shows the page at this URL in a window of its own, the global window and document until
 // restored: the shared window's host (localhost) never signs in on page load
 function openPage(url) {
@@ -68,6 +77,7 @@ function openPage(url) {
   global.document = dom.window.document;
   global.Event = dom.window.Event;
   stubScriptLoading();
+  stubDialogs(dom.window);
   return () => {
     dom.window.close();
     Object.assign(global, shared);
@@ -86,12 +96,7 @@ describe('utils/ims', () => {
   before(() => {
     // JSDOM only dispatches its own events
     global.Event = window.Event;
-    // nor has it modal dialogs
-    window.HTMLDialogElement.prototype.showModal = function showModal() { this.open = true; };
-    window.HTMLDialogElement.prototype.close = function close() {
-      this.open = false;
-      this.dispatchEvent(new Event('close'));
-    };
+    stubDialogs(window);
   });
 
   beforeEach(() => {
@@ -106,6 +111,7 @@ describe('utils/ims', () => {
     warn.mock.restore();
     delete window.adobeid;
     delete window.adobeIMS;
+    delete window.opener;
     window.sessionStorage.clear();
     document.querySelectorAll('dialog').forEach((dialog) => dialog.remove());
   });
@@ -157,18 +163,18 @@ describe('utils/ims', () => {
     assert.equal(warn.mock.callCount(), 1);
     assert.equal(await isSignedIn(), false);
 
-    mock.timers.enable({ apis: ['setInterval'] });
-    const open = mock.method(window, 'open', () => ({ closed: false }));
+    const error = mock.method(console, 'error', () => {});
     try {
       const login = createImsLogin();
       await settle();
       const button = login.querySelector('button.button');
       assert.equal(button.textContent, 'Sign in with Adobe');
+      // signs in in this tab, as on page load
       button.click();
-      assertSignInTab(open);
+      assert.equal(window.sessionStorage.getItem('ims-sign-in-return'), 'http://localhost/');
+      assert.equal(countNavigations(error), 1);
     } finally {
-      open.mock.restore();
-      mock.timers.reset();
+      error.mock.restore();
     }
   });
 
@@ -283,6 +289,8 @@ describe('utils/ims', () => {
 
   it('first asks IMS without a page, and closes the tab at once if signed in to Adobe', async () => {
     document.body.innerHTML = '<p class="ims-sign-in-status"></p>';
+    // the page that opened the tab (signIn)
+    window.opener = {};
     const close = mock.method(window, 'close', () => {});
     try {
       const silent = imslib();
@@ -302,6 +310,7 @@ describe('utils/ims', () => {
 
   it('shows the sign-in form if not signed in to Adobe, then closes the tab', async () => {
     document.body.innerHTML = '<p class="ims-sign-in-status"></p>';
+    window.opener = {};
     const close = mock.method(window, 'close', () => {});
     try {
       imslib();
@@ -404,6 +413,29 @@ describe('utils/ims', () => {
       // the next sign-in starts over
       signIn();
       assert.equal(open.mock.callCount(), 3);
+    } finally {
+      open.mock.restore();
+      mock.timers.reset();
+    }
+  });
+
+  it('stops waiting for the sign-in tab once its token arrives, even if the tab stays open', async () => {
+    mock.timers.enable({ apis: ['setInterval'] });
+    const tab = { closed: false, close: mock.fn() };
+    const open = mock.method(window, 'open', () => tab);
+    try {
+      const adobeIMS = imslib();
+      const { loadIms, signIn } = await importIms();
+      await loadIms();
+      const signedIn = signIn();
+
+      // the tab stores its token in the shared localStorage, but can't close itself
+      adobeIMS.token = 'token-1';
+      adobeIMS.expire = new Date(Date.now() + 24 * HOUR);
+      window.dispatchEvent(new window.StorageEvent('storage', { newValue: 'token-1' }));
+      assert.equal(await signedIn, true);
+      assert.equal(tab.close.mock.callCount(), 1);
+      assert.equal(document.querySelector('dialog.ims-sign-in-dialog'), null);
     } finally {
       open.mock.restore();
       mock.timers.reset();
@@ -552,6 +584,7 @@ describe('utils/ims', () => {
 
     it('closes the tab instead of going to a return URL on another origin', async () => {
       document.body.innerHTML = '<main><p class="ims-sign-in-status"></p></main>';
+      window.opener = {};
       const close = mock.method(window, 'close', () => {});
       try {
         window.sessionStorage.setItem('ims-sign-in-return', 'https://example.com/');
@@ -609,6 +642,70 @@ describe('utils/ims', () => {
         open.mock.restore();
         mock.timers.reset();
       }
+    });
+
+    it('goes to the tools home page once signed in, with neither a page to go back to nor one that opened it', async () => {
+      const restore = openPage('http://localhost:3000/utils/ims-sign-in.html');
+      try {
+        document.body.innerHTML = '<main><p class="ims-sign-in-status"></p></main>';
+        const close = mock.method(window, 'close', () => {});
+        imslib({ token: 'token-1', expire: new Date(Date.now() + 24 * HOUR) });
+        await runSignInPage();
+        assert.equal(close.mock.callCount(), 0);
+        assert.equal(countNavigations(error), 1);
+      } finally {
+        restore();
+      }
+    });
+
+    it('covers a signed-in page once another tab signs out, until a sign-in in this tab or any other', async () => {
+      const restore = openPage(TOOL);
+      try {
+        const adobeIMS = imslib({ token: 'token-1', expire: new Date(Date.now() + 24 * HOUR) });
+        await (await importIms()).requireSignIn();
+
+        // imslib removes the token, then reports the other tab's sign-out
+        adobeIMS.token = null;
+        window.adobeid.onSignOutEventReceived();
+        const dialog = document.querySelector('dialog.ims-sign-in-dialog');
+        assert.equal(dialog.open, true);
+        assert.equal(dialog.querySelector('p').textContent, 'You signed out in another tab. Sign in again to continue.');
+        // Esc doesn't close it
+        assert.equal(dialog.dispatchEvent(new Event('cancel', { cancelable: true })), false);
+
+        // its button signs in in this tab
+        dialog.querySelector('button').click();
+        assert.equal(window.sessionStorage.getItem('ims-sign-in-return'), TOOL);
+        assert.equal(countNavigations(error), 1);
+
+        // a sign-in in another tab reloads the page, for that account
+        adobeIMS.token = 'token-2';
+        window.dispatchEvent(new window.StorageEvent('storage', { newValue: 'token-2' }));
+        assert.equal(countNavigations(error), 2);
+      } finally {
+        restore();
+      }
+    });
+
+    [
+      ['after "Continue without signing in"', TOOL, undefined, () => window.sessionStorage.setItem('ims-sign-in-skipped', 'true')],
+      ['on a host that does not sign in on load', 'https://main--helix-tools-website--adobe.aem.page/tools/sitemap-admin/index.html', 'token-1', () => {}],
+    ].forEach(([where, url, token, setup]) => {
+      it(`leaves a page as it is ${where} when another tab signs out`, async () => {
+        const restore = openPage(url);
+        try {
+          const adobeIMS = imslib({ token, expire: new Date(Date.now() + 24 * HOUR) });
+          setup();
+          const { loadIms, requireSignIn } = await importIms();
+          await requireSignIn();
+          await loadIms();
+          adobeIMS.token = null;
+          window.adobeid.onSignOutEventReceived();
+          assert.equal(document.querySelector('dialog'), null);
+        } finally {
+          restore();
+        }
+      });
     });
   });
 });
