@@ -3,6 +3,7 @@ const IMS_URL = 'https://auth.services.adobe.com/imslib/imslib.min.js';
 const IMS_ENV = 'stg1';
 const IMS_CLIENT_ID = 'darkalley';
 const IMS_SCOPE = 'AdobeID,openid,additional_info.ownerOrg,read_organizations,aem.frontend.all';
+const IO_ORIGIN = `https://cc-collab${IMS_ENV === 'prod' ? '' : '-stage'}.adobe.io`;
 const IMS_TIMEOUT = 5000;
 // a task started now should not outlive the token, so it needs this much validity left
 const MIN_TOKEN_VALIDITY = 60 * 60 * 1000;
@@ -36,6 +37,7 @@ let signInTab;
 let signingIn;
 // the token last announced with ims-signed-in or ims-signed-out
 let announcedToken;
+let expiryTimer;
 
 /**
  * Returns the current IMS access token.
@@ -51,6 +53,12 @@ export function getImsToken() {
  */
 function announceTokenChange() {
   const token = getImsToken();
+  clearTimeout(expiryTimer);
+  // imslib doesn't announce expiry; keep watching even when there is no profile UI.
+  const expiresIn = new Date(window.adobeIMS?.getAccessToken()?.expire).getTime() - Date.now();
+  if (expiresIn >= 0) {
+    expiryTimer = setTimeout(announceTokenChange, Math.min(expiresIn + 1000, MAX_DELAY));
+  }
   if (token === announcedToken) return;
   announcedToken = token;
   window.dispatchEvent(new Event(token ? 'ims-signed-in' : 'ims-signed-out'));
@@ -69,7 +77,7 @@ function createButton(text, onClick) {
  * Leaves for the sign-in page in this tab, which comes back to this page once signed in.
  * Unlike opening a tab (signIn), leaving needs no click.
  */
-function leaveToSignIn() {
+export function leaveToSignIn() {
   const { sessionStorage } = window;
   // start over, even if an earlier sign-in in this tab stopped halfway
   sessionStorage.removeItem(SIGN_IN_STAGE);
@@ -119,6 +127,7 @@ export function loadIms() {
       onReady: () => {
         clearTimeout(timer);
         announcedToken = getImsToken();
+        announceTokenChange();
         // follow sign-ins in other tabs (tabs share localStorage). Not removals: reading then
         // restores imslib's in-memory token; sign-outs come through onSignOutEventReceived
         window.addEventListener('storage', ({ newValue }) => {
@@ -369,72 +378,35 @@ export async function runSignInPage() {
   }
 }
 
-export function signOut() {
-  window.adobeIMS.signOut();
-}
-
-async function getProfileName() {
-  try {
-    const profile = await window.adobeIMS.getProfile();
-    return profile?.email || profile?.displayName;
-  } catch {
-    return undefined;
-  }
+export async function signOut() {
+  await window.adobeIMS.signOut();
+  announceTokenChange();
 }
 
 /**
- * Returns an element showing the IMS sign-in state with a sign-in or sign-out button.
- * @returns {HTMLElement} The IMS login element
+ * Returns the current Adobe profile, or undefined if signed out or the account changed.
  */
-export function createImsLogin() {
-  const container = document.createElement('div');
-  container.className = 'ims-login';
-  container.setAttribute('role', 'group');
-  container.setAttribute('aria-label', 'Adobe sign-in');
-  container.textContent = 'Checking Adobe sign-in…';
+export async function getImsProfile() {
+  await loadIms();
+  const token = getImsToken();
+  if (!token) return undefined;
+  const profile = await window.adobeIMS.getProfile();
+  if (token !== getImsToken()) return undefined;
+  if (!profile) throw new Error('Adobe profile is unavailable.');
+  return profile;
+}
 
-  let renders = 0;
-  let expiryTimer;
-  const render = async () => {
-    renders += 1;
-    const current = renders;
-    clearTimeout(expiryTimer);
-    if (!getImsToken()) {
-      container.replaceChildren(createButton('Sign in with Adobe', leaveToSignIn));
-      return;
-    }
-    // imslib doesn't tell the page when the token expires: announce it then
-    const expiresIn = new Date(window.adobeIMS.getAccessToken()?.expire).getTime() - Date.now();
-    if (!Number.isNaN(expiresIn)) {
-      expiryTimer = setTimeout(announceTokenChange, Math.min(expiresIn + 1000, MAX_DELAY));
-    }
-    const name = await getProfileName();
-    // a newer render ran meanwhile, e.g. after a sign-out
-    if (current !== renders) return;
-    const status = document.createElement('span');
-    status.className = 'ims-account';
-    const label = document.createElement('span');
-    label.className = 'ims-label';
-    label.textContent = name ? 'Signed in as ' : 'Signed in with Adobe';
-    status.append(label);
-    if (name) {
-      const identity = document.createElement('span');
-      identity.className = 'ims-identity';
-      identity.textContent = name;
-      identity.title = name;
-      status.append(identity);
-    }
-    const button = createButton('Sign out', signOut);
-    button.classList.add('outline');
-    container.replaceChildren(status, button);
-  };
-
-  loadIms().then(render).catch(() => {
-    container.textContent = 'Adobe sign-in is unavailable. Reload the page to try again.';
+export async function getImsAvatar() {
+  await loadIms();
+  const token = getImsToken();
+  if (!token) throw new Error('Sign in with Adobe to load your profile photo.');
+  const response = await fetch(`${IO_ORIGIN}/profile`, {
+    headers: { Authorization: `Bearer ${token}` },
   });
-  // sign-ins, sign-outs and expiry, in any tab (announceTokenChange)
-  window.addEventListener('ims-signed-in', render);
-  window.addEventListener('ims-signed-out', render);
-
-  return container;
+  if (!response.ok) throw new Error(`Adobe profile photo request failed (${response.status}).`);
+  const { user } = await response.json();
+  if (token !== getImsToken()) throw new Error('Adobe account changed while loading the profile photo.');
+  const avatar = new URL(user?.avatar);
+  if (avatar.protocol !== 'https:') throw new Error('Invalid Adobe profile photo URL.');
+  return avatar.href;
 }

@@ -92,6 +92,7 @@ function countNavigations(error) {
 describe('utils/ims', () => {
   let warn;
   let addEventListener;
+  let timeouts;
 
   before(() => {
     // JSDOM only dispatches its own events
@@ -101,6 +102,7 @@ describe('utils/ims', () => {
 
   beforeEach(() => {
     warn = mock.method(console, 'warn', () => {});
+    timeouts = mock.method(global, 'setTimeout');
     // drop each case's window listeners, or they'd react to later cases' events
     addEventListener = mock.method(window, 'addEventListener');
   });
@@ -108,6 +110,8 @@ describe('utils/ims', () => {
   afterEach(() => {
     addEventListener.mock.calls.forEach((call) => window.removeEventListener(...call.arguments));
     addEventListener.mock.restore();
+    timeouts.mock.calls.forEach(({ result }) => clearTimeout(result));
+    timeouts.mock.restore();
     warn.mock.restore();
     delete window.adobeid;
     delete window.adobeIMS;
@@ -158,19 +162,14 @@ describe('utils/ims', () => {
 
   it('treats onError as non-fatal when onReady follows', async () => {
     imslib({ errorFirst: true });
-    const { loadIms, isSignedIn, createImsLogin } = await importIms();
+    const { loadIms, isSignedIn, leaveToSignIn } = await importIms();
     await loadIms();
     assert.equal(warn.mock.callCount(), 1);
     assert.equal(await isSignedIn(), false);
 
     const error = mock.method(console, 'error', () => {});
     try {
-      const login = createImsLogin();
-      await settle();
-      const button = login.querySelector('button.button');
-      assert.equal(button.textContent, 'Sign in with Adobe');
-      // signs in in this tab, as on page load
-      button.click();
+      leaveToSignIn();
       assert.equal(window.sessionStorage.getItem('ims-sign-in-return'), 'http://localhost/');
       assert.equal(countNavigations(error), 1);
     } finally {
@@ -180,13 +179,10 @@ describe('utils/ims', () => {
 
   it('rejects when imslib fails to load', async () => {
     loadScriptStub = mock.fn(async () => { throw new Error('load failed'); });
-    const { loadIms, isSignedIn, createImsLogin } = await importIms();
+    const { loadIms, isSignedIn } = await importIms();
     await assert.rejects(loadIms(), /IMS failed to load/);
     assert.equal(await isSignedIn(), false);
 
-    const login = createImsLogin();
-    await settle();
-    assert.equal(login.textContent, 'Adobe sign-in is unavailable. Reload the page to try again.');
     assert.equal(loadScriptStub.mock.callCount(), 1);
   });
 
@@ -225,27 +221,26 @@ describe('utils/ims', () => {
     assert.equal(await isSignedIn(), false);
   });
 
-  it('shows the signed-in user with a sign-out button', async () => {
-    const adobeIMS = imslib({ token: 'token-1', profile: { email: 'alice@example.com', displayName: 'Alice' } });
-    const { createImsLogin } = await importIms();
-    const login = createImsLogin();
-    assert.equal(login.className, 'ims-login');
-    assert.equal(login.textContent, 'Checking Adobe sign-in…');
-
-    await settle();
-    assert.equal(login.querySelector('span').textContent, 'Signed in as alice@example.com');
-    const button = login.querySelector('button.button');
-    assert.equal(button.textContent, 'Sign out');
-    button.click();
+  it('reads the current profile and announces a local sign-out', async () => {
+    const profile = { userId: 'alice@AdobeID', email: 'alice@example.com', displayName: 'Alice' };
+    const adobeIMS = imslib({ token: 'token-1', profile });
+    const { getImsProfile, signOut } = await importIms();
+    assert.deepEqual(await getImsProfile(), profile);
+    const signedOut = mock.fn();
+    window.addEventListener('ims-signed-out', signedOut);
+    adobeIMS.signOut.mock.mockImplementation(async () => { adobeIMS.token = null; });
+    await signOut();
     assert.equal(adobeIMS.signOut.mock.callCount(), 1);
+    assert.equal(signedOut.mock.callCount(), 1);
+    assert.equal(await getImsProfile(), undefined);
   });
 
-  it('falls back to a generic signed-in text if the profile cannot be read', async () => {
+  it('propagates profile and sign-out errors to the account UI', async () => {
     imslib({ token: 'token-1', profile: new Error('profile failed') });
-    const { createImsLogin } = await importIms();
-    const login = createImsLogin();
-    await settle();
-    assert.equal(login.querySelector('span').textContent, 'Signed in with Adobe');
+    const { getImsProfile, signOut } = await importIms();
+    await assert.rejects(getImsProfile(), /profile failed/);
+    window.adobeIMS.signOut.mock.mockImplementation(async () => { throw new Error('sign-out failed'); });
+    await assert.rejects(signOut(), /sign-out failed/);
   });
 
   it('signs in in a new tab behind a dialog, and updates the page once the tab closes signed in', async () => {
@@ -330,7 +325,7 @@ describe('utils/ims', () => {
     }
   });
 
-  it('shows the sign-in button again once the token expires', async () => {
+  it('announces token expiry without mounting the profile UI', async () => {
     mock.timers.enable({ apis: ['setTimeout'] });
     try {
       const adobeIMS = imslib({
@@ -338,16 +333,39 @@ describe('utils/ims', () => {
         expire: new Date(Date.now() + 2000),
         profile: { email: 'alice@example.com' },
       });
-      const { createImsLogin } = await importIms();
-      const login = createImsLogin();
-      await settle();
-      assert.equal(login.querySelector('button').textContent, 'Sign out');
+      const { loadIms } = await importIms();
+      await loadIms();
+      const signedOut = mock.fn();
+      window.addEventListener('ims-signed-out', signedOut);
 
       // imslib no longer returns a token once it has expired
       adobeIMS.token = null;
       mock.timers.tick(3000);
       await settle();
-      assert.equal(login.querySelector('button').textContent, 'Sign in with Adobe');
+      assert.equal(signedOut.mock.callCount(), 1);
+    } finally {
+      mock.timers.reset();
+    }
+  });
+
+  it('reschedules expiry when another tab replaces the token', async () => {
+    mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+    try {
+      const adobeIMS = imslib({ token: 'token-1', expire: new Date(Date.now() + 2000) });
+      const { loadIms } = await importIms();
+      await loadIms();
+      const signedOut = mock.fn();
+      window.addEventListener('ims-signed-out', signedOut);
+
+      adobeIMS.token = 'token-2';
+      adobeIMS.expire = new Date(Date.now() + HOUR);
+      window.dispatchEvent(new window.StorageEvent('storage', { newValue: 'token-2' }));
+      mock.timers.tick(3000);
+      assert.equal(signedOut.mock.callCount(), 0);
+
+      adobeIMS.token = null;
+      mock.timers.tick(HOUR);
+      assert.equal(signedOut.mock.callCount(), 1);
     } finally {
       mock.timers.reset();
     }
@@ -444,9 +462,8 @@ describe('utils/ims', () => {
 
   it('follows a sign-in in another tab', async () => {
     const adobeIMS = imslib({ profile: { email: 'alice@example.com' } });
-    const { createImsLogin } = await importIms();
-    const login = createImsLogin();
-    await settle();
+    const { loadIms, getImsProfile } = await importIms();
+    await loadIms();
     const events = [];
     const record = ({ type }) => events.push(type);
     window.addEventListener('ims-signed-in', record);
@@ -457,7 +474,7 @@ describe('utils/ims', () => {
     window.dispatchEvent(new window.StorageEvent('storage', { newValue: 'token-1' }));
     await settle();
     assert.deepEqual(events, ['ims-signed-in']);
-    assert.equal(login.querySelector('span').textContent, 'Signed in as alice@example.com');
+    assert.equal((await getImsProfile()).email, 'alice@example.com');
 
     // other writes change nothing
     window.dispatchEvent(new window.StorageEvent('storage', { newValue: 'other' }));
@@ -471,19 +488,37 @@ describe('utils/ims', () => {
       token: 'token-1',
       profile: new Promise((resolve) => { resolveProfile = resolve; }),
     });
-    const { createImsLogin } = await importIms();
-    const login = createImsLogin();
+    const { getImsProfile } = await importIms();
+    const pending = getImsProfile();
     await settle();
 
     // imslib removes the token, then reports the other tab's sign-out
     adobeIMS.token = null;
     window.adobeid.onSignOutEventReceived();
     await settle();
-    assert.equal(login.querySelector('button').textContent, 'Sign in with Adobe');
+    assert.equal(await getImsProfile(), undefined);
 
     resolveProfile({ email: 'alice@example.com' });
+    assert.equal(await pending, undefined);
+  });
+
+  it('discards a late profile from a previous account without caching it', async () => {
+    let resolveProfile;
+    const adobeIMS = imslib({
+      token: 'token-1',
+      profile: new Promise((resolve) => { resolveProfile = resolve; }),
+    });
+    const { getImsProfile } = await importIms();
+    const pending = getImsProfile();
     await settle();
-    assert.equal(login.querySelector('button').textContent, 'Sign in with Adobe');
+    adobeIMS.token = 'token-2';
+    const currentProfile = { userId: 'bob@AdobeID', displayName: 'Bob' };
+    adobeIMS.getProfile = async () => currentProfile;
+    window.dispatchEvent(new window.StorageEvent('storage', { newValue: 'token-2' }));
+    assert.deepEqual(await getImsProfile(), currentProfile);
+    resolveProfile({ userId: 'alice@AdobeID', displayName: 'Alice' });
+    assert.equal(await pending, undefined);
+    assert.deepEqual(await getImsProfile(), currentProfile);
   });
 
   describe('signing in on page load', () => {
