@@ -64,6 +64,12 @@ describe('utils/ims', () => {
   before(() => {
     // JSDOM only dispatches its own events
     global.Event = window.Event;
+    // nor has it modal dialogs
+    window.HTMLDialogElement.prototype.showModal = function showModal() { this.open = true; };
+    window.HTMLDialogElement.prototype.close = function close() {
+      this.open = false;
+      this.dispatchEvent(new Event('close'));
+    };
   });
 
   beforeEach(() => {
@@ -79,6 +85,7 @@ describe('utils/ims', () => {
     delete window.adobeid;
     delete window.adobeIMS;
     window.sessionStorage.clear();
+    document.querySelectorAll('dialog').forEach((dialog) => dialog.remove());
   });
 
   it('configures imslib for the tools client and loads it once', async () => {
@@ -213,9 +220,9 @@ describe('utils/ims', () => {
     assert.equal(login.querySelector('span').textContent, 'Signed in with Adobe');
   });
 
-  it('signs in in a new tab, and updates the page once the tab closes signed in', async () => {
+  it('signs in in a new tab behind a dialog, and updates the page once the tab closes signed in', async () => {
     mock.timers.enable({ apis: ['setInterval'] });
-    const tab = { closed: false };
+    const tab = { closed: false, close: mock.fn(), focus: mock.fn() };
     const open = mock.method(window, 'open', () => tab);
     let updates = 0;
     const onSignedIn = () => { updates += 1; };
@@ -226,6 +233,14 @@ describe('utils/ims', () => {
       await loadIms();
       const signedIn = signIn();
       assertSignInTab(open);
+      const dialog = document.querySelector('dialog.ims-sign-in-dialog');
+      assert.equal(dialog.open, true);
+      assert.equal(dialog.querySelector('p').textContent, 'Finish signing in with Adobe in the new tab.');
+
+      // another request shares the sign-in
+      assert.equal(signIn(), signedIn);
+      assert.equal(open.mock.callCount(), 1);
+      assert.equal(tab.focus.mock.callCount(), 1);
 
       // the tab leaves the token in the shared localStorage, then closes
       adobeIMS.token = 'token-1';
@@ -236,6 +251,7 @@ describe('utils/ims', () => {
       mock.timers.tick(500);
       assert.equal(await signedIn, true);
       assert.equal(updates, 1);
+      assert.equal(dialog.isConnected, false);
     } finally {
       window.removeEventListener('ims-signed-in', onSignedIn);
       open.mock.restore();
@@ -306,24 +322,69 @@ describe('utils/ims', () => {
     }
   });
 
-  it('asks for another click when the browser would block the sign-in tab', async () => {
+  it('asks for a click in the dialog when the click that started the sign-in has expired', async () => {
     Object.defineProperty(window.navigator, 'userActivation', {
       value: { isActive: false },
       configurable: true,
     });
-    const open = mock.method(window, 'open', () => ({ closed: false }));
-    const alert = mock.method(window, 'alert', () => {});
+    mock.timers.enable({ apis: ['setInterval'] });
+    const tab = { closed: false, close: mock.fn() };
+    const open = mock.method(window, 'open', () => tab);
+    try {
+      const adobeIMS = imslib();
+      const { loadIms, signIn } = await importIms();
+      await loadIms();
+      const signedIn = signIn();
+      assert.equal(open.mock.callCount(), 0);
+      const dialog = document.querySelector('dialog.ims-sign-in-dialog');
+      assert.equal(dialog.querySelector('p').textContent, 'Sign in with Adobe to continue.');
+
+      // the button's click lets the browser open the tab
+      dialog.querySelector('button').click();
+      assertSignInTab(open);
+      assert.equal(dialog.querySelector('p').textContent, 'Finish signing in with Adobe in the new tab.');
+
+      adobeIMS.token = 'token-1';
+      adobeIMS.expire = new Date(Date.now() + 24 * HOUR);
+      tab.closed = true;
+      mock.timers.tick(500);
+      assert.equal(await signedIn, true);
+    } finally {
+      open.mock.restore();
+      mock.timers.reset();
+      delete window.navigator.userActivation;
+    }
+  });
+
+  it('offers another try when the browser blocks the tab, and closes the tab on Cancel', async () => {
+    mock.timers.enable({ apis: ['setInterval'] });
+    const tab = { closed: false, close: mock.fn() };
+    const open = mock.method(window, 'open', () => null);
     try {
       imslib();
       const { loadIms, signIn } = await importIms();
       await loadIms();
-      assert.equal(await signIn(), false);
-      assert.equal(open.mock.callCount(), 0);
-      assert.equal(alert.mock.callCount(), 1);
+      const signedIn = signIn();
+      const dialog = document.querySelector('dialog.ims-sign-in-dialog');
+      assert.match(dialog.querySelector('p').textContent, /^Your browser blocked the Adobe sign-in tab/);
+
+      open.mock.mockImplementation(() => tab);
+      dialog.querySelector('button').click();
+      assert.equal(open.mock.callCount(), 2);
+
+      const [cancel] = dialog.querySelectorAll('button');
+      assert.equal(cancel.textContent, 'Cancel');
+      cancel.click();
+      assert.equal(await signedIn, false);
+      assert.equal(tab.close.mock.callCount(), 1);
+      assert.equal(dialog.isConnected, false);
+
+      // the next sign-in starts over
+      signIn();
+      assert.equal(open.mock.callCount(), 3);
     } finally {
       open.mock.restore();
-      alert.mock.restore();
-      delete window.navigator.userActivation;
+      mock.timers.reset();
     }
   });
 

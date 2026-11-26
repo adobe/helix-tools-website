@@ -10,7 +10,7 @@ const MIN_TOKEN_VALIDITY = 60 * 60 * 1000;
 const MAX_DELAY = 2 ** 31 - 1;
 // signs in without scripts/aem.js, whose RUM would report the token in the page's URL
 const SIGN_IN_PAGE = '/utils/ims-sign-in.html';
-// as often as the sidekick sign-in checks its tab (blocks/profile/profile.js)
+// how often signIn() checks whether the sign-in tab closed
 const SIGN_IN_POLL_INTERVAL = 500;
 // how far the sign-in tab got: 'silent' while IMS checks for an Adobe session, 'form' while
 // the user signs in
@@ -109,38 +109,70 @@ export async function isSignedIn() {
   return !!getImsToken();
 }
 
+function createButton(text, onClick) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'button';
+  button.textContent = text;
+  button.addEventListener('click', onClick);
+  return button;
+}
+
 /**
- * Signs in with Adobe in a new tab, as the sidekick sign-in does (blocks/profile/profile.js).
- * The tab closes itself once signed in, and leaves the token in the localStorage it shares
- * with this page.
- * @returns {Promise<boolean>} true once signed in; false if the tab closed without it,
- *   or couldn't open
+ * Signs in with Adobe in a new tab, which closes itself once signed in and leaves the token in
+ * the localStorage it shares with this page. Meanwhile a modal dialog keeps the page from
+ * starting anything else, and offers a button when the tab can't open on its own.
+ * @returns {Promise<boolean>} true once signed in; false if cancelled, or if the tab closed
+ *   without signing in
  */
 export function signIn() {
   if (signingIn) {
-    signInTab.focus();
+    signInTab?.focus();
     return signingIn;
   }
-  // browsers only open a tab right after a click
-  if (window.navigator.userActivation?.isActive === false) {
-    // eslint-disable-next-line no-alert
-    window.alert('Sign in with Adobe to continue: click again, or sign in from the profile menu.');
-    return Promise.resolve(false);
-  }
-  signInTab = window.open(SIGN_IN_PAGE, '_blank');
-  if (!signInTab) {
-    // eslint-disable-next-line no-alert
-    window.alert('Your browser blocked the Adobe sign-in tab. Allow pop-ups for this site, then try again.');
-    return Promise.resolve(false);
-  }
   signingIn = new Promise((resolve) => {
-    const timer = setInterval(() => {
-      if (!signInTab.closed) return;
-      clearInterval(timer);
+    const dialog = document.createElement('dialog');
+    dialog.className = 'ims-sign-in-dialog';
+    dialog.setAttribute('aria-label', 'Adobe sign-in');
+    const message = document.createElement('p');
+    const buttons = document.createElement('p');
+    buttons.className = 'button-wrapper';
+    const cancel = createButton('Cancel', () => dialog.close());
+    cancel.classList.add('outline');
+    dialog.append(message, buttons);
+    let poll;
+    const openTab = () => {
+      signInTab = window.open(SIGN_IN_PAGE, '_blank');
+      if (!signInTab) {
+        message.textContent = 'Your browser blocked the Adobe sign-in tab. Allow pop-ups for this site, then try again.';
+        buttons.replaceChildren(createButton('Sign in with Adobe', openTab), cancel);
+        return;
+      }
+      message.textContent = 'Finish signing in with Adobe in the new tab.';
+      buttons.replaceChildren(cancel);
+      poll = setInterval(() => {
+        if (signInTab.closed) dialog.close();
+      }, SIGN_IN_POLL_INTERVAL);
+    };
+    // the tab closed, or Cancel or Esc
+    dialog.addEventListener('close', () => {
+      clearInterval(poll);
+      signInTab?.close();
+      signInTab = undefined;
       signingIn = undefined;
+      dialog.remove();
       announceTokenChange();
       resolve(isImsTokenFresh());
-    }, SIGN_IN_POLL_INTERVAL);
+    });
+    // browsers only open a tab right after a click
+    if (window.navigator.userActivation?.isActive === false) {
+      message.textContent = 'Sign in with Adobe to continue.';
+      buttons.replaceChildren(createButton('Sign in with Adobe', openTab), cancel);
+    } else {
+      openTab();
+    }
+    document.body.append(dialog);
+    dialog.showModal();
   });
   return signingIn;
 }
@@ -181,15 +213,6 @@ export async function runSignInPage() {
 
 export function signOut() {
   window.adobeIMS.signOut();
-}
-
-function createButton(text, onClick) {
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = 'button';
-  button.textContent = text;
-  button.addEventListener('click', onClick);
-  return button;
 }
 
 async function getProfileName() {
