@@ -5,10 +5,9 @@ import {
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import createMockAemApi from '../../helpers/mock-aem-api.js';
+import mockIms from '../../helpers/mock-ims.js';
 
 let ready;
-let loginCalls;
-let signedIn;
 let editorDocuments;
 let requests;
 let unexpected;
@@ -23,17 +22,7 @@ mock.module('../../../scripts/scripts.js', {
 mock.module('../../../utils/config/config.js', {
   exports: { initConfigField: async () => {}, updateConfig: () => {} },
 });
-mock.module('../../../blocks/profile/profile.js', {
-  exports: {
-    ensureLogin: async (org, site) => {
-      loginCalls.push([org, site]);
-      if (!signedIn) {
-        setTimeout(() => window.dispatchEvent(new window.Event('profile-cancelled')), 0);
-      }
-      return signedIn;
-    },
-  },
-});
+const ims = mockIms();
 mock.module('../../../blocks/modal/modal.js', {
   exports: { createModal: async () => ({ showModal: () => {} }) },
 });
@@ -73,7 +62,6 @@ const detect = (org, site, ref, h6) => {
   return url;
 };
 const urls = () => requests.map(({ url }) => url);
-const logins = () => loginCalls.map((coords) => coords.join('/'));
 const rows = () => [...document.querySelectorAll('tbody.results > tr')];
 const visible = (name) => document.querySelector(`tbody.${name}`).getAttribute('aria-hidden') === 'false';
 
@@ -100,8 +88,7 @@ describe('log-viewer request compatibility', () => {
   beforeEach(() => {
     window.localStorage.clear();
     window.history.replaceState(null, '', '/');
-    loginCalls = [];
-    signedIn = true;
+    ims.reset();
     editorDocuments = [];
     requests = [];
     probes = [];
@@ -118,7 +105,7 @@ describe('log-viewer request compatibility', () => {
     document.getElementById('org').value = 'acme';
     document.getElementById('site').value = 'docs';
     fetchMocks.push(mock.method(global, 'fetch', async (url, init = {}) => {
-      const call = { url, method: init.method, logins: [...logins()] };
+      const call = { url, method: init.method, signIns: ims.signIns };
       if (new URL(url).pathname.startsWith('/sidekick/')) probes.push(call);
       else requests.push(call);
       if (new URL(url).origin === 'https://api.aem.live') return h6Fetch(url, init);
@@ -147,9 +134,9 @@ describe('log-viewer request compatibility', () => {
     await submit();
 
     assert.deepEqual(requests, [
-      { url: STATUS, method: 'GET', logins: ['acme/docs'] },
-      { url: `${LOG}?since=24h`, method: 'GET', logins: ['acme/docs', 'acme/docs'] },
-      { url: `${LOG}?since=24h&nextToken=AB%2B%2F%3D%3D`, method: 'GET', logins: ['acme/docs', 'acme/docs'] },
+      { url: STATUS, method: 'GET', signIns: 1 },
+      { url: `${LOG}?since=24h`, method: 'GET', signIns: 1 },
+      { url: `${LOG}?since=24h&nextToken=AB%2B%2F%3D%3D`, method: 'GET', signIns: 1 },
     ]);
     assert.equal(visible('results'), true);
     assert.deepEqual(rows().map((row) => row.querySelector('a').href), [
@@ -210,18 +197,24 @@ describe('log-viewer request compatibility', () => {
     assert.match(document.querySelector('tbody.error').textContent, /0 Error/);
   });
 
-  it('retries an unauthorized log page with the same target and query', async () => {
+  it('signs in again and retries a log page whose token expired, with the same target and query', async () => {
     respond(STATUS, HOSTS);
     respond(`${LOG}?since=24h`, {}, 401);
     respond(`${LOG}?since=24h`, { entries: [entry('/retried')] });
+    const { fetch } = global;
+    fetchMocks.push(mock.method(global, 'fetch', async (...args) => {
+      const res = await fetch(...args);
+      if (res.status === 401) ims.token = undefined;
+      return res;
+    }));
     await submit();
     assert.deepEqual(urls(), [STATUS, `${LOG}?since=24h`, `${LOG}?since=24h`]);
-    assert.deepEqual(logins(), ['acme/docs', 'acme/docs', 'acme/docs']);
+    assert.equal(ims.signIns, 2);
     assert.equal(visible('results'), true);
   });
 
   it('makes no request after preflight login is cancelled', async () => {
-    signedIn = false;
+    ims.completeSignIn = false;
     await submit();
     assert.deepEqual(urls(), []);
     assert.equal(visible('login'), true);
@@ -234,7 +227,10 @@ describe('log-viewer request compatibility', () => {
     const { fetch } = global;
     fetchMocks.push(mock.method(global, 'fetch', async (...args) => {
       const res = await fetch(...args);
-      if (res.status === 401) signedIn = false;
+      if (res.status === 401) {
+        ims.token = undefined;
+        ims.completeSignIn = false;
+      }
       return res;
     }));
     await submit();
@@ -326,9 +322,7 @@ describe('log-viewer request compatibility', () => {
       'https://api.aem.live/detected-h6/sites/docs/log?since=24h',
       status, log,
     ]);
-    assert.deepEqual(logins(), [
-      'detected-h6/docs', 'detected-h6/docs', 'detected-h5/legacy', 'detected-h5/legacy',
-    ]);
+    assert.equal(ims.signIns, 1);
     assert.equal(rows()[0].querySelector('a').href, 'https://preview.example.com/legacy');
   });
 
@@ -355,7 +349,7 @@ describe('log-viewer request compatibility', () => {
       job, report,
     ]);
     assert.deepEqual(editorDocuments, [details]);
-    assert.deepEqual(logins(), ['acme/docs', 'acme/docs']);
+    assert.equal(ims.signIns, 1);
   });
 
   it('surfaces detection failures and restores the submit button', async () => {
@@ -384,7 +378,7 @@ describe('log-viewer request compatibility', () => {
       next,
     ]);
     assert.equal(rows().length, 2);
-    assert.deepEqual(logins(), ['acme/docs', 'acme/docs']);
+    assert.equal(ims.signIns, 1);
   });
 
   it('does not duplicate the version pin when an H6 pagination link already carries it', async () => {

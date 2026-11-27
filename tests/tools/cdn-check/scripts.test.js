@@ -1,14 +1,13 @@
 /* eslint-env node */
 import {
-  describe, it, beforeEach, afterEach, mock,
+  describe, it, beforeEach, afterEach,
 } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import createMockAemApi from '../../helpers/mock-aem-api.js';
+import mockIms from '../../helpers/mock-ims.js';
 
-mock.module('../../../blocks/profile/profile.js', {
-  exports: { ensureLogin: async () => true },
-});
+mockIms({ token: 'ims-token' });
 
 const html = readFileSync(new URL('../../../tools/cdn-check/index.html', import.meta.url), 'utf8');
 const body = html.match(/<body[^>]*>([\s\S]*)<\/body>/)[1].replace(/<script[\s\S]*?<\/script>/g, '');

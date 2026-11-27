@@ -1,8 +1,8 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest, AuthMode } from '../../utils/admin-request.js';
+import { ensureSignedIn } from '../../utils/ims.js';
 import {
   discardBrokenMediaEntries,
   dedupeMediaUrls,
@@ -1988,14 +1988,7 @@ async function runBackfill() {
 
   if (!org || !site) return;
 
-  if (!await ensureLogin(org, site)) {
-    window.addEventListener('profile-update', ({ detail: loginInfo }) => {
-      if (loginInfo.includes(org)) {
-        DOM.runBtn.click();
-      }
-    }, { once: true });
-    return;
-  }
+  if (!await ensureSignedIn()) return;
 
   abortController = new AbortController();
   adminLimiter.reset();

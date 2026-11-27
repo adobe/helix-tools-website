@@ -1,9 +1,9 @@
 import { registerToolReady } from '../../scripts/scripts.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
 import { initConfigField } from '../../utils/config/config.js';
 import { logResponse } from '../../blocks/console/console.js';
 import getAdminClient from '../../scripts/admin-compat.js';
 import { executeAdminRequest } from '../../utils/admin-request.js';
+import { ensureSignedIn } from '../../utils/ims.js';
 import * as api from './utils.js';
 
 let scheduleAdmin;
@@ -297,7 +297,7 @@ async function handleSubmit(event) {
     setStatus('Enter an organization and site to load schedules.', 'warning');
     return;
   }
-  const signedIn = await ensureLogin(currentOrg, currentSite);
+  const signedIn = await ensureSignedIn();
   if (!signedIn) return;
   await loadSiteState();
 }
@@ -313,8 +313,8 @@ function handleReset() {
 
 async function init() {
   const admin = await getAdminClient();
-  // The tools-site shell can drive the profile login/retry flow, so Admin calls
-  // go through executeAdminRequest. `same-origin` credentials match page-status.
+  // Admin calls go through executeAdminRequest for the sign-in and 401 retry.
+  // `same-origin` credentials match page-status.
   scheduleAdmin = admin.withRequestInit({
     mode: 'cors',
     cache: 'no-cache',

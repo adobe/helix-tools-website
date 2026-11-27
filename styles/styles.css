@@ -226,6 +226,12 @@ dialog::backdrop {
   background-color: var(--transparent-black-600);
 }
 
+/* utils/ims.js dialogs */
+dialog.ims-sign-in-dialog {
+  max-width: 480px;
+  padding: var(--horizontal-spacing);
+}
+
 /* images and icons */
 p.img-wrapper {
   margin: 0;

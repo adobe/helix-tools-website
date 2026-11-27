@@ -4,17 +4,9 @@ import {
 } from 'node:test';
 import assert from 'node:assert/strict';
 import createMockAemApi from '../../helpers/mock-aem-api.js';
+import mockIms from '../../helpers/mock-ims.js';
 
-let loginCalls = [];
-
-mock.module('../../../blocks/profile/profile.js', {
-  exports: {
-    ensureLogin: async (org, site) => {
-      loginCalls.push([org, site]);
-      return true;
-    },
-  },
-});
+const ims = mockIms();
 mock.module('../../../utils/config/config.js', {
   exports: { updateConfig: () => {}, initConfigField: async () => {} },
 });
@@ -64,7 +56,7 @@ describe('user-admin:user-admin.js', () => {
     api.install();
     probes = [];
     probeStatus = 200;
-    loginCalls = [];
+    ims.reset();
     const specFetch = global.fetch;
     // Backend detection hits the legacy host, which the spec-routed fake does not serve.
     global.fetch = async (url, init) => {
@@ -119,7 +111,7 @@ describe('user-admin:user-admin.js', () => {
       ['GET', 'https://api.aem.live/myorg/config.json'],
     ]);
     assert.deepEqual(probes, []);
-    assert.deepEqual(loginCalls, [['myorg', undefined]]);
+    assert.equal(ims.signIns, 1);
   });
 
   it('adds an org user at the org users path', async () => {
@@ -201,6 +193,8 @@ describe('user-admin:user-admin.js', () => {
   it('keeps writing to the loaded org after the form inputs change', async () => {
     api.respond('getConfigOrg', { status: 200, body: ORG_USERS });
     api.respond('updateConfigOrgSub', { status: 200, body: {} });
+    // after saving, the list reloads from the edited form
+    api.respond('getConfigSiteSub', { status: 200, body: SITE_ACCESS });
     await load();
 
     document.getElementById('org').value = 'otherorg';
@@ -222,7 +216,7 @@ describe('user-admin:user-admin.js', () => {
     assert.deepEqual(probes, ['https://admin.hlx.page/sidekick/myorg/mysite/main/config.json']);
     assert.deepEqual(cards(), ['a@example.com']);
     assert.equal(api.calls[0].pathname, '/myorg/sites/mysite/config/access.json');
-    assert.deepEqual(loginCalls, [['myorg', 'mysite']]);
+    assert.equal(ims.signIns, 1);
   });
 
   it('adds a site user by rewriting access.json', async () => {

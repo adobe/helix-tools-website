@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign in with Adobe | AEM Tools</title>
+  <!-- no scripts/aem.js: its RUM would report the token in this page's URL -->
+  <script nonce="aem" type="module">
+    import { runSignInPage } from '/utils/ims.js';
+
+    runSignInPage();
+    // a page restored from the bfcache (Back) doesn't rerun the module
+    window.addEventListener('pageshow', ({ persisted }) => {
+      if (persisted) runSignInPage();
+    });
+  </script>
+  <link rel="stylesheet" href="/styles/styles.css" />
+</head>
+<body class="appear">
+  <main>
+    <p class="ims-sign-in-status">Signing in with Adobe…</p>
+  </main>
+</body>
+</html>

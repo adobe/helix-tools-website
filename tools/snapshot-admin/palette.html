@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 <html></html>
 <head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
   <title>Snapshot Admin</title>
-  <script src="/tools/snapshot-admin/palette.js" type="module"></script>
+  <script nonce="aem" src="/tools/snapshot-admin/palette.js" type="module"></script>
   <link rel="stylesheet" href="/tools/snapshot-admin/palette.css" />
   <link rel="stylesheet" href="/tools/snapshot-admin/snapshot-admin.css" />
 </head>
-<script>
-</script>
 <body>
   <div id="page-status-wrapper">
     <p><span id="page-status">Loading...</span></p>

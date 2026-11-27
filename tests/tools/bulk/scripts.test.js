@@ -5,20 +5,10 @@ import {
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import createMockAemApi from '../../helpers/mock-aem-api.js';
+import mockIms from '../../helpers/mock-ims.js';
 
-let loginCalls = [];
-let signedIn = true;
-
-// Login and config refresh are out of scope for the bulk tool; the real
-// ensureLogin opens the profile modal. Same seam as tests/utils/admin-request.test.js.
-mock.module('../../../blocks/profile/profile.js', {
-  exports: {
-    ensureLogin: async (org, site) => {
-      loginCalls.push([org, site]);
-      return signedIn;
-    },
-  },
-});
+// Sign-in and config refresh are out of scope for the bulk tool.
+const ims = mockIms();
 mock.module('../../../utils/config/config.js', {
   exports: { updateConfig: () => {} },
 });
@@ -187,7 +177,7 @@ function installTargetResponses(api, targets, {
     calls.push({
       ...request,
       buckets: visibleTargetKeys(),
-      logins: [...loginCalls],
+      signedIn: !!ims.token,
     });
     const route = routes.get(requestKey(request));
     if (!route) {
@@ -248,8 +238,7 @@ describe('bulk:scripts.js', () => {
       intervals.push(id);
       return id;
     });
-    loginCalls = [];
-    signedIn = true;
+    ims.reset();
     window.localStorage.setItem('use-h6-api', 'true');
     document.getElementById('results-container').innerHTML = '';
     document.getElementById('urls').value = URLS;
@@ -333,7 +322,7 @@ describe('bulk:scripts.js', () => {
 
   ['preview', 'index'].forEach((operation) => {
     it(`marks later ${operation} buckets skipped when sign-in is cancelled`, async () => {
-      signedIn = false;
+      ims.completeSignIn = false;
       document.getElementById('operation').dataset.value = operation;
       document.getElementById('urls').value = [
         `https://main--docs--cancel-${operation}-first.aem.page/first`,
@@ -341,11 +330,9 @@ describe('bulk:scripts.js', () => {
       ].join('\n');
 
       submit();
-      await waitFor(() => loginCalls.length === 1);
-      window.dispatchEvent(new window.Event('profile-cancelled'));
       await waitFor(finished);
 
-      assert.deepEqual(loginCalls, [[`cancel-${operation}-first`, 'docs']]);
+      assert.equal(ims.signIns, 1);
       assert.deepEqual(api.calls, [], 'cancellation must prevent writes and later sign-in prompts');
       assert.match(
         document.querySelector('#results-container > .run-result > summary').textContent,
@@ -436,19 +423,9 @@ describe('bulk:scripts.js', () => {
         });
       });
       writes.forEach((request) => {
-        const target = targets.find((candidate) => {
-          if (candidate.h6) {
-            return request.url.startsWith(
-              `https://api.aem.live/${candidate.org}/sites/${candidate.site}/`,
-            );
-          }
-          return request.url.includes(`/${candidate.org}/${candidate.site}/${candidate.ref}/`);
-        });
-        assert.ok(
-          request.logins.some(([org, site]) => org === target.org && site === target.site),
-          `authenticate ${target.org}/${target.site} before submitting its operation`,
-        );
+        assert.ok(request.signedIn, `sign in before ${request.method} ${request.url}`);
       });
+      assert.equal(ims.signIns, 1, 'one Adobe sign-in covers every bucket');
     });
   });
 

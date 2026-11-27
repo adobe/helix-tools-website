@@ -1,9 +1,12 @@
 // @ts-check
-import { ensureLogin } from '../blocks/profile/profile.js';
 import { updateConfig } from './config/config.js';
+import {
+  ensureSignedIn, getImsToken, signIn, waitForIms,
+} from './ims.js';
 
 /**
- * Auth-handling policy for {@link executeAdminRequest}.
+ * Auth-handling policy for {@link executeAdminRequest}: `retryOn401` signs in and
+ * retries on a 401; `preflightAndRetry` also checks the sign-in first.
  *
  * @readonly
  * @enum {string}
@@ -23,32 +26,6 @@ export const AuthMode = Object.freeze({
  */
 
 /**
- * @param {string} org
- * @returns {Promise<boolean>}
- */
-function waitForLogin(org) {
-  return new Promise((resolve) => {
-    const handlers = {
-      /** @param {boolean} value */
-      finish(value) {
-        window.removeEventListener('profile-update', handlers.onUpdate);
-        window.removeEventListener('profile-cancelled', handlers.onCancel);
-        resolve(value);
-      },
-      /** @param {Event} event */
-      onUpdate(event) {
-        handlers.finish('detail' in event && Array.isArray(event.detail) && event.detail.includes(org));
-      },
-      onCancel() {
-        handlers.finish(false);
-      },
-    };
-    window.addEventListener('profile-update', handlers.onUpdate);
-    window.addEventListener('profile-cancelled', handlers.onCancel);
-  });
-}
-
-/**
  * @template {{ status: number, ok?: boolean }} T
  * @overload
  * @param {() => Promise<T>} requestFn
@@ -64,8 +41,11 @@ function waitForLogin(org) {
  * @returns {Promise<T | null>}
  */
 /**
- * Execute an admin API request with optional auth pre-check and 401 retry.
- * Returns `null` if the user fails to complete login.
+ * Execute an admin API request with an optional sign-in check, signing in and
+ * retrying on a 401. Returns `null` if the user didn't complete the sign-in.
+ *
+ * Only a 401 sent without a token opens the sign-in: admin would reject a new
+ * token like the current one.
  *
  * `updateConfig()` only fires on 2xx — a 4xx/5xx may not actually validate
  * the org/site combo (e.g. 404 could mean the org doesn't exist). It's a
@@ -82,25 +62,15 @@ function waitForLogin(org) {
  * @returns {Promise<T | null>}
  */
 export async function executeAdminRequest(requestFn, authConfig, options = {}) {
-  const config = 'coords' in authConfig
-    ? { ...authConfig.coords, policy: options.policy }
-    : authConfig;
-  const { org, site, policy = AuthMode.RETRY_ON_401 } = config;
+  const { policy = AuthMode.RETRY_ON_401 } = 'coords' in authConfig ? options : authConfig;
+  if (policy === AuthMode.PREFLIGHT_AND_RETRY && !await ensureSignedIn()) return null;
 
-  if (policy === AuthMode.PREFLIGHT_AND_RETRY) {
-    const signedIn = await ensureLogin(org, site) || await waitForLogin(org);
-    if (!signedIn) return null;
-  }
-
+  const imsReady = await waitForIms();
   let result = await requestFn();
-
-  const retry = policy === AuthMode.RETRY_ON_401 || policy === AuthMode.PREFLIGHT_AND_RETRY;
-  if (retry && result?.status === 401) {
-    const signedIn = await ensureLogin(org, site) || await waitForLogin(org);
-    if (!signedIn) return null;
+  if (imsReady && policy !== AuthMode.NONE && result?.status === 401 && !getImsToken()) {
+    if (!await signIn()) return null;
     result = await requestFn();
   }
-
   if (result?.ok) updateConfig('coords' in authConfig ? authConfig.coords : undefined);
   return result;
 }

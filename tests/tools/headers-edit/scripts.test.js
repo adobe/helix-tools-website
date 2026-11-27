@@ -5,8 +5,8 @@ import {
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import createMockAemApi from '../../helpers/mock-aem-api.js';
+import mockIms from '../../helpers/mock-ims.js';
 
-let loginCalls = [];
 let toolReady;
 
 // Page bootstrap and login are out of scope; same seams as the bulk tests. The org/site
@@ -18,14 +18,7 @@ mock.module('../../../scripts/scripts.js', {
 mock.module('../../../scripts/aem.js', {
   exports: { loadCSS: async () => {} },
 });
-mock.module('../../../blocks/profile/profile.js', {
-  exports: {
-    ensureLogin: async (org, site) => {
-      loginCalls.push([org, site]);
-      return true;
-    },
-  },
-});
+const ims = mockIms();
 
 const HEADERS_URL = 'https://api.aem.live/myorg/sites/mysite/config/headers.json';
 
@@ -64,7 +57,7 @@ describe('headers-edit:headers-edit.js', () => {
     api.install();
     probes = [];
     probeStatus = 401;
-    loginCalls = [];
+    ims.reset();
     const specFetch = global.fetch;
     // Backend detection hits the legacy host, which the spec-routed fake does not serve.
     global.fetch = async (url, init) => {
@@ -99,7 +92,7 @@ describe('headers-edit:headers-edit.js', () => {
     await fetchHeaders();
 
     assert.deepEqual(probes, ['https://admin.hlx.page/sidekick/myorg/mysite/main/config.json']);
-    assert.deepEqual(loginCalls, [['myorg', 'mysite']]);
+    assert.equal(ims.signIns, 1);
     assert.deepEqual(rows(), [['200', 'GET', HEADERS_URL, '']]);
     assert.equal(document.querySelector('#headers-list .header-key').value, 'x-a');
     assert.ok(editorShown());
@@ -218,6 +211,6 @@ describe('headers-edit:headers-edit.js', () => {
     assert.deepEqual([level, source, target], ['ERROR', 'Backend detection', 'myorg/detect-fails']);
     assert.match(error, /Admin backend detection failed .* HTTP 404/);
     assert.deepEqual(api.calls, []);
-    assert.deepEqual(loginCalls, []);
+    assert.equal(ims.signIns, 0);
   });
 });

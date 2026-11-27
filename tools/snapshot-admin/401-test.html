@@ -1,8 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+      move-to-http-header="true"
+    >
     <title>Protected Site</title>
-    <script src="401.js"></script>
+    <script nonce="aem" src="401.js"></script>
 </head>
 <body>
     <h1>Unauthorized</h1>

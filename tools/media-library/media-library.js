@@ -14,10 +14,10 @@ import {
 } from './core/state.js';
 import t from './core/messages.js';
 import { MediaLibraryError, ErrorCodes, logMediaLibraryError } from './core/errors.js';
-import { ensureLogin } from '../../blocks/profile/profile.js';
 import { registerToolReady } from '../../scripts/scripts.js';
 import { initConfigField, updateConfig } from '../../utils/config/config.js';
 import { AuthMode } from '../../utils/admin-request.js';
+import { ensureSignedIn } from '../../utils/ims.js';
 import {
   getMetadata,
   getMediaData,
@@ -255,8 +255,6 @@ async function init() {
     if (!isIncrementalEligible(metadata)) return;
 
     try {
-      if (!(await ensureLogin(orgKey, siteKey))) return;
-
       const cachedMediaData = await getMediaData(orgKey, siteKey, pathKey);
       const timeParams = incrementalTimeParams(metadata.lastFetchTime);
 
@@ -312,7 +310,7 @@ async function init() {
 
     let cancelProgressiveThrottle = () => {};
     try {
-      if (!(await ensureLogin(orgKey, siteKey))) {
+      if (!(await ensureSignedIn())) {
         logMediaLibraryError(ErrorCodes.AUTH_REQUIRED, { context: 'build' });
         showNotification(t('NOTIFY_ERROR'), t('AUTH_REQUIRED'), 'danger');
         updateAppState({
@@ -320,14 +318,6 @@ async function init() {
           validationError: t('AUTH_REQUIRED'),
           sitePathValid: false,
         });
-        const onProfileUpdate = async () => {
-          window.removeEventListener('profile-update', onProfileUpdate);
-          if (await ensureLogin(orgKey, siteKey)) {
-            updateAppState({ validationError: null });
-            loadMediaData(orgKey, siteKey, pathKey);
-          }
-        };
-        window.addEventListener('profile-update', onProfileUpdate);
         return;
       }
       updateAppState({ sitePathValid: true, validationError: null });

@@ -1,6 +1,5 @@
 import { registerToolReady } from '../../scripts/scripts.js';
 import { toClassName } from '../../scripts/aem.js';
-import createLoginButton from '../../utils/login.js';
 import { messageSidekick, NO_SIDEKICK } from '../../utils/sidekick.js';
 
 /* eslint-disable no-alert */
@@ -166,21 +165,13 @@ function displayProjects(projects) {
   });
 
   const sortedOrgs = Object.keys(projectsByOrg).sort((a, b) => a.localeCompare(b));
-  sortedOrgs.forEach(async (org) => {
+  sortedOrgs.forEach((org) => {
     const orgContainer = document.createElement('div');
     orgContainer.classList.add('projects-org');
 
     const titleBar = document.createElement('div');
     titleBar.classList.add('projects-title-bar');
     titleBar.innerHTML = `<h3>${org}</h3>`;
-    const loginButton = await createLoginButton({
-      org,
-      site: projectsByOrg[org][0].site, // default to first site
-      // eslint-disable-next-line no-use-before-define
-      callback: () => setTimeout(() => init(), 1000), // refresh UI after login
-    });
-    loginButton.classList.add('outline');
-    titleBar.append(loginButton);
     orgContainer.append(titleBar);
 
     // list sites for org
@@ -201,23 +192,6 @@ function displayProjects(projects) {
 async function init() {
   const projects = await messageSidekick({ action: 'getSites' }) || [];
   displayProjects(projects);
-
-  // recheck authInfo every 10s and update login buttons
-  setInterval(async () => {
-    const updatedAuthInfo = await messageSidekick({ action: 'getAuthInfo' }) || [];
-    document.querySelectorAll('input[id^="login-button-"]').forEach((loginPicker) => {
-      const org = loginPicker.id.replace('login-button-', '');
-      if (updatedAuthInfo.includes(org)) {
-        loginPicker.value = 'Signed in';
-        loginPicker.disabled = true;
-        loginPicker.nextElementSibling.ariaHidden = true;
-      } else {
-        loginPicker.value = 'Sign in';
-        loginPicker.disabled = false;
-        loginPicker.nextElementSibling.ariaHidden = false;
-      }
-    });
-  }, 10000);
 }
 
 registerToolReady(init());

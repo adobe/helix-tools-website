@@ -1,11 +1,10 @@
 /* eslint-env node */
-import { it, mock } from 'node:test';
+import { it } from 'node:test';
 import assert from 'node:assert/strict';
+import mockIms from '../helpers/mock-ims.js';
 
 // Keep real persistence isolated from admin-request.test.js's config-module mock.
-mock.module('../../blocks/profile/profile.js', {
-  exports: { ensureLogin: async () => true },
-});
+mockIms({ token: 'ims-token' });
 
 const { executeAdminRequest, AuthMode } = await import('../../utils/admin-request.js');
 const { getAdminClientForSite, getAdminClientForOrg } = await import('../../scripts/admin-compat.js');

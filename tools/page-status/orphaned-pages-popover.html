@@ -1,8 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="script-src 'nonce-aem' 'strict-dynamic'; base-uri 'self'; object-src 'none';"
+    move-to-http-header="true"
+  >
   <title>Orphaned Pages Popover</title>
-  <script src="/tools/page-status/orphaned-pages-popover.js" type="module"></script>
+  <script nonce="aem" src="/tools/page-status/orphaned-pages-popover.js" type="module"></script>
   <link rel="stylesheet" href="/tools/page-status/orphaned-pages-popover.css" />
 </head>
 <body>

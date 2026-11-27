@@ -1,3 +1,5 @@
+import { addImsToken } from '../utils/ims.js';
+
 const ADMIN_BASE = 'https://api.aem.live';
 const VERSION_PARAM_KEY = 'aem-api-version';
 
@@ -82,6 +84,7 @@ function createAdmin(defaults = {}) {
         init.headers = headers;
       }
     }
+    if (finalUrl.startsWith(`${ADMIN_BASE}/`)) addImsToken(init);
     try {
       const resp = await fetch(finalUrl, init);
       return {

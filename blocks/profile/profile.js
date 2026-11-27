@@ -1,514 +1,150 @@
-/* eslint-disable no-restricted-globals, no-alert, no-await-in-loop */
-
 import {
-  getSidekickId,
-  messageSidekick,
-  NO_SIDEKICK,
-} from '../../utils/sidekick.js';
+  getImsAvatar,
+  getImsProfile,
+  getImsToken,
+  leaveToSignIn,
+  loadIms,
+  signOut,
+} from '../../utils/ims.js';
 
-async function getLoginInfo() {
-  return messageSidekick({ action: 'getAuthInfo' });
-}
-
-function dispatchProfileEvent(event, detail = {}) {
-  window.dispatchEvent(
-    new CustomEvent(`profile-${event}`, { detail }),
-  );
-}
-
-function confirmInstallSidekick(resp) {
-  if (resp === NO_SIDEKICK && confirm('AEM Sidekick is required to sign in. Install now?')) {
-    window.open('https://chromewebstore.google.com/detail/aem-sidekick/igkmdomcgoebiipaifhmpfjhbjccggml', '_blank');
-  }
-}
-
-function isOpsMode(target) {
-  return window.localStorage.getItem('aem-ops-mode') === 'true'
-    || !!target?.classList.contains('ops');
-}
-
-async function waitForSiteAdded(org, site) {
-  for (let i = 0; i < 5; i += 1) {
-    const sites = await messageSidekick({ action: 'getSites' });
-    if (!Array.isArray(sites)) {
-      confirmInstallSidekick(sites);
-      return false;
-    }
-    if (sites.find((s) => s.org === org && s.site === site)) {
-      return true;
-    }
-    await new Promise((resolve) => { setTimeout(resolve, 100); });
-  }
-  return false;
-}
-
-async function addSite(org, site, opsMode = false) {
-  if (!org || !site) {
-    return false;
-  }
-
-  const sites = await messageSidekick({ action: 'getSites' });
-  if (!Array.isArray(sites)) {
-    confirmInstallSidekick(sites);
-    return false;
-  }
-  if (sites.find((s) => s.org === org && s.site === site)) {
-    alert(`${site} already exists in ${org}.`);
-    return false;
-  }
-
-  await messageSidekick({
-    action: 'addSite',
-    config: { org, site },
-    idp: opsMode ? 'microsoft' : undefined,
-    tenant: opsMode ? 'common' : undefined,
-  }, null, 10000);
-
-  if (await waitForSiteAdded(org, site)) {
-    return true;
-  }
-
-  alert('Failed to add project. Please try again.');
-  return false;
-}
-
-async function removeSite(org, site) {
-  if (!org || !site) {
-    return false;
-  }
-
-  const sites = await messageSidekick({ action: 'getSites' });
-  if (!Array.isArray(sites)) {
-    confirmInstallSidekick();
-    return false;
-  }
-  if (!sites.find((s) => s.org === org && s.site === site)) {
-    alert(`${site} does not exist in ${org}.`);
-    return false;
-  }
-
-  return messageSidekick({
-    action: 'removeSite',
-    config: { org, site },
-  });
-}
-
-async function fetchUserInfo(userInfoElem, org, site, loginInfo) {
-  let userInfo = '';
-  if (Array.isArray(loginInfo) && loginInfo.includes(org)) {
-    const resp = await fetch(`https://admin.hlx.page/profile/${org}/${site}`);
-    if (resp.ok) {
-      const { profile } = await resp.json();
-      if (profile) {
-        userInfo = `(${profile.email})`;
-      }
-    }
-  }
-  userInfoElem.textContent = userInfo;
-}
-
-function createLoginButton(org, loginInfo, closeModal) {
-  const loggedIn = Array.isArray(loginInfo) && loginInfo.includes(org);
-  const action = loggedIn ? 'logout' : 'login';
-
-  const loginButton = document.createElement('button');
-  loginButton.id = `profile-login-${org}`;
-  loginButton.classList.add('button', action);
-  loginButton.textContent = loggedIn ? 'Sign out' : 'Sign in';
-  loginButton.title = loggedIn ? `Sign out of ${org}` : `Sign in to ${org}`;
-  if (loggedIn) {
-    loginButton.className = 'button logout outline';
-  } else {
-    loginButton.className = 'button login';
-  }
-
-  loginButton.addEventListener('click', async ({ target }) => {
-    if (!Array.isArray(loginInfo)) {
-      confirmInstallSidekick(loginInfo);
-      return;
-    }
-
-    loginButton.disabled = true;
-
-    // check and remove ops mode
-    const opsMode = isOpsMode(target);
-    document.querySelectorAll('#profile-modal button').forEach((button) => button.classList.remove('ops'));
-
-    const selectedSite = target.closest('li').querySelector(`input[name="profile-${org}-site"]:checked`)?.value;
-
-    const loginUrl = new URL(`https://admin.hlx.page/${action}/${org}/${selectedSite}/main`);
-    if (!loggedIn) {
-      if (opsMode) {
-        loginUrl.searchParams.append('idp', 'microsoft');
-        loginUrl.searchParams.append('tenantId', 'common');
-        loginUrl.searchParams.append('selectAccount', true);
-      }
-    }
-    loginUrl.searchParams.append('extensionId', getSidekickId());
-    const loginWindow = window.open(loginUrl.toString(), '_blank');
-
-    // 60s safety net: fire `profile-cancelled` if the login window is left open.
-    let giveUpTimer;
-
-    // wait for login window to be closed, then dispatch event
-    const checkLoginWindow = setInterval(async () => {
-      if (loginWindow.closed) {
-        clearInterval(checkLoginWindow);
-        clearTimeout(giveUpTimer);
-        loginButton.disabled = false;
-        setTimeout(async () => {
-          const newLoginInfo = await getLoginInfo();
-          const orgTitle = loginButton.parentElement.parentElement;
-          loginButton.replaceWith(createLoginButton(org, newLoginInfo));
-          fetchUserInfo(orgTitle.querySelector('.user-info'), org, selectedSite, newLoginInfo);
-          // fire profile-update before close so listeners see the outcome
-          // before the close handler fires profile-cancelled.
-          dispatchProfileEvent('update', newLoginInfo);
-          if (closeModal) {
-            document.querySelector('#profile-modal').close();
-          }
-        }, 200);
-      }
-    }, 500);
-
-    giveUpTimer = setTimeout(() => {
-      clearInterval(checkLoginWindow);
-      loginButton.disabled = false;
-      dispatchProfileEvent('cancelled');
-    }, 60000);
-  });
-
-  return loginButton;
-}
-
-function updateButtons(dialog, orgs, focusedOrg) {
-  const wrapper = dialog.querySelector('.button-wrapper');
-
-  let addButton = dialog.querySelector('#profile-add-project');
-  if (!addButton) {
-    // button to add new project
-    addButton = document.createElement('button');
-    addButton.id = 'profile-add-project';
-    addButton.classList.add('button', 'outline');
-    addButton.textContent = 'Add project';
-    addButton.addEventListener('click', ({ target }) => {
-      target.closest('dialog').querySelectorAll('button, input').forEach((control) => {
-        control.disabled = true;
-      });
-
-      // form to add new project
-      const form = document.createElement('form');
-      form.classList.add('profile-add-form');
-      form.action = '#';
-      form.innerHTML = `
-        <p>Add a new project:</p>
-        <input type="text" id="profile-add-org" placeholder="org" required value="${orgs[0] || ''}">
-        <input type="text" id="profile-add-site" placeholder="site" required>
-        <div class="button-wrapper">
-          <button class="button " type="submit" id="profile-add-save">Save</button>
-          <button class="button outline" type="reset" id="profile-add-cancel">Cancel</button>
-        </div>
-      `;
-      dialog.append(form);
-      form.querySelectorAll('input').forEach((input) => {
-        input.addEventListener('change', () => {
-          input.value = input.value.toLowerCase();
-        });
-      });
-
-      const resetForm = () => {
-        form.querySelector('button').disabled = false;
-        form.remove();
-        target.closest('dialog').querySelectorAll('button, input').forEach((control) => {
-          control.disabled = false;
-        });
-      };
-
-      const orgField = form.querySelector('#profile-add-org');
-      orgField.focus();
-      if (orgField.value) {
-        orgField.select();
-      }
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const org = form.querySelector('#profile-add-org').value.trim().toLowerCase();
-        const site = form.querySelector('#profile-add-site').value.trim().toLowerCase();
-        const opsMode = isOpsMode(target);
-
-        if (!org || !site) {
-          alert('Please provide an org and site.');
-          return;
-        }
-
-        form.querySelectorAll('button, input').forEach((control) => {
-          control.disabled = true;
-        });
-
-        if (await addSite(org, site, opsMode)) {
-          setTimeout(async () => {
-            resetForm();
-            // eslint-disable-next-line no-use-before-define
-            await updateProjects(dialog, focusedOrg);
-            // select new site and focus login button
-            dialog.querySelector(`#profile-projects .profile-sites > li[data-name="${site}"] input`).checked = true;
-            dialog.querySelector(`#profile-projects .profile-orgs > li[data-name="${org}"] .button`).focus();
-          }, 600);
-        } else {
-          resetForm();
-        }
-      });
-      form.addEventListener('reset', resetForm);
-    });
-    wrapper.append(addButton);
-  }
-
-  let editButton = dialog.querySelector('#profile-edit-projects');
-  if (!editButton && orgs.length > 0) {
-    // button to edit projects
-    const isEditMode = dialog.classList.contains('edit-mode');
-    editButton = document.createElement('button');
-    editButton.id = 'profile-edit-projects';
-    editButton.classList.add('button', isEditMode ? 'accent' : 'outline');
-    editButton.textContent = isEditMode ? 'Done' : 'Edit projects';
-    editButton.addEventListener('click', ({ target }) => {
-      dialog.classList.toggle('edit-mode');
-      target.classList.toggle('outline');
-      target.classList.toggle('accent');
-      target.textContent = dialog.classList.contains('edit-mode') ? 'Done' : 'Edit projects';
-    });
-    wrapper.append(editButton);
-  } else if (editButton && orgs.length === 0) {
-    editButton.remove();
-  }
-}
-
-async function updateProjects(dialog, focusedOrg) {
-  let updatedProjects = await messageSidekick({ action: 'getSites' });
-  if (!Array.isArray(updatedProjects)) {
-    confirmInstallSidekick(updatedProjects);
-    updatedProjects = [];
-  }
-
-  // sort projects by org
-  const profileInfo = {};
-  updatedProjects.forEach((project) => {
-    const { org } = project;
-    if (!profileInfo[org]) {
-      profileInfo[org] = { sites: [] };
-    }
-    profileInfo[org].sites.push({
-      site: project.repo,
-      title: project.project || '',
-    });
-  });
-
-  const loginInfo = await getLoginInfo();
-
-  // list orgs
-  const orgList = document.createElement('ul');
-  orgList.classList.add('profile-orgs');
-  const orgs = Object.keys(profileInfo)
-    .filter((org) => !focusedOrg || org === focusedOrg)
-    .filter((org) => Array.isArray(profileInfo[org].sites)
-      && profileInfo[org].sites.length > 0)
-    .sort();
-
-  orgs.forEach((org) => {
-    const orgItem = document.createElement('li');
-    orgItem.dataset.name = org;
-    const orgTitle = document.createElement('h3');
-    orgTitle.textContent = org;
-    orgItem.append(orgTitle);
-    if (Array.isArray(loginInfo) && loginInfo.includes(org)) {
-      orgItem.classList.add('signed-in');
-    }
-    const userInfo = document.createElement('span');
-    userInfo.classList.add('user-info');
-    orgTitle.append(userInfo);
-    orgTitle.append(createLoginButton(org, loginInfo, !!focusedOrg));
-
-    // list sites within org
-    const sitesList = document.createElement('ul');
-    sitesList.classList.add('profile-sites');
-    const { sites = [] } = profileInfo[org];
-    sites.sort().forEach(({ site, title }, i) => {
-      if (!site) {
-        return;
-      }
-      if (i === 0) {
-        fetchUserInfo(userInfo, org, site, loginInfo);
-      }
-      const siteItem = document.createElement('li');
-      siteItem.dataset.name = site;
-      siteItem.innerHTML = `
-        <input type="radio" id="profile-${org}-site-${i}" name="profile-${org}-site" value="${site}">
-        <label for="profile-${org}-site-${i}">${title || site}</label>
-        <a
-          target="_blank"
-          href="https://main--${site}--${org}.aem.page/"
-          title="Open ${site}"
-        ><span class="external-link"></span><span class="user-info"></span></a>
-      `;
-
-      if (i === 0) {
-        siteItem.querySelector('input').checked = true;
-      }
-      const deleteButton = document.createElement('button');
-      deleteButton.classList.add('cross');
-      deleteButton.title = `Delete ${site} from ${org}`;
-      deleteButton.addEventListener('click', async () => {
-        if (confirm(`Are you sure you want to delete ${site} from ${org}?`)) {
-          if (await removeSite(org, site)) {
-            setTimeout(async () => {
-              await updateProjects(dialog, focusedOrg);
-            }, 500);
-          }
-        }
-      });
-      siteItem.append(deleteButton);
-      sitesList.append(siteItem);
-    });
-    orgItem.append(sitesList);
-    orgList.append(orgItem);
-  });
-
-  const projects = dialog.querySelector('#profile-projects');
-  projects.innerHTML = `
-    <p>${orgs.length > 0
-    ? 'Sign in to a project below. Note: You may need to allow pop-ups from this site.'
-    : 'No projects found'}</p>
-  `;
-  projects.append(orgList);
-
-  updateButtons(dialog, orgs, focusedOrg);
-
-  if (focusedOrg && orgs.includes(focusedOrg) && loginInfo.includes(focusedOrg)) {
-    // project added and logged in, close dialog
-    dispatchProfileEvent('update', loginInfo);
-    dialog.close();
-  }
-
-  return profileInfo;
-}
-
-async function showModal(block, focusedOrg) {
-  let dialog = block.querySelector('dialog');
-  if (!dialog) {
-    dialog = document.createElement('dialog');
-    dialog.classList.add('profile-modal');
-    dialog.id = 'profile-modal';
-    dialog.closedBy = 'any';
-    // enter ops mode if alt key is held — registered once here so it covers
-    // all buttons including dynamically added ones (e.g. Add project form)
-    window.addEventListener('keydown', ({ altKey }) => {
-      if (altKey) {
-        dialog.querySelectorAll('button').forEach((button) => button.classList.add('ops'));
-      }
-    });
-    window.addEventListener('keyup', ({ altKey }) => {
-      if (!altKey) {
-        dialog.querySelectorAll('button').forEach((button) => button.classList.remove('ops'));
-      }
-    });
-    // Bind once — the dialog is reused; rebinding stacks duplicate emissions.
-    dialog.addEventListener('close', () => {
-      dialog.classList.remove('edit-mode');
-      // Fires on every close, including post-login. Listeners that care about
-      // the login outcome should observe `profile-update` (dispatched first)
-      // and remove themselves before this fires.
-      dispatchProfileEvent('cancelled');
-    });
-    block.append(dialog);
-  }
-
-  dialog.innerHTML = `
-    <h2>Projects</h2>
-    <div id="profile-projects"></div>
-    <div class="button-wrapper"></div>
-  `;
-
-  await updateProjects(dialog, focusedOrg);
-
-  const closeButton = document.createElement('button');
-  closeButton.id = 'profile-close';
-  closeButton.classList.add('cross');
-  closeButton.textContent = 'Close';
-  closeButton.title = closeButton.textContent;
-  closeButton.addEventListener('click', () => dialog.close());
-  dialog.append(closeButton);
-
-  dialog.showModal();
-}
+const DEFAULT_AVATAR = '/blocks/profile/profile.svg';
 
 export default async function decorate(block) {
-  const avatar = document.createElement('button');
-  avatar.innerHTML = `
-    <span class="icon">
-      <img src="/blocks/profile/profile.svg" alt="User">
-    </span>
+  block.innerHTML = `
+    <button class="profile-trigger" type="button" hidden
+      aria-label="Open profile menu" aria-expanded="false" popovertarget="profile-menu">
+      <img src="${DEFAULT_AVATAR}" alt="" width="24" height="24">
+    </button>
+    <button class="profile-signin" type="button" hidden>Sign in with Adobe</button>
+    <p class="profile-state" role="status">Checking Adobe sign-in...</p>
+    <div id="profile-menu" class="profile-menu" popover aria-label="Adobe account" role="dialog"></div>
   `;
-  avatar.id = 'profile';
-  avatar.setAttribute('type', 'button');
-  avatar.setAttribute('title', 'Manage projects and sign in');
-  avatar.href = window.location.href;
-  avatar.addEventListener('click', (e) => {
-    e.preventDefault();
-    showModal(block);
+  const trigger = block.querySelector('.profile-trigger');
+  const triggerAvatar = trigger.querySelector('img');
+  const signin = block.querySelector('.profile-signin');
+  const state = block.querySelector('.profile-state');
+  const menu = block.querySelector('.profile-menu');
+  let revision = 0;
+
+  const positionMenu = () => {
+    const { bottom, right } = trigger.getBoundingClientRect();
+    menu.style.setProperty('--profile-menu-top', `${bottom + 8}px`);
+    menu.style.setProperty('--profile-menu-right', `${window.innerWidth - right}px`);
+  };
+  menu.addEventListener('beforetoggle', ({ newState }) => {
+    if (newState === 'open') positionMenu();
   });
-  block.append(avatar);
-  dispatchProfileEvent('loaded');
-}
+  menu.addEventListener('toggle', ({ newState }) => {
+    trigger.setAttribute('aria-expanded', String(newState === 'open'));
+  });
+  window.addEventListener('resize', () => {
+    if (menu.matches(':popover-open')) positionMenu();
+  });
+  signin.addEventListener('click', leaveToSignIn);
 
-/**
- * Ensures the user is logged in to a specified org/site.
- * @param {string} orgInput The login org.
- * @param {string} [siteInput] The login site.
- * @returns {Promise<boolean>} True if logged in, false otherwise.
- */
-export async function ensureLogin(orgInput, siteInput) {
-  const org = orgInput.toLowerCase();
-  const site = siteInput?.toLowerCase();
-  const loginInfo = await getLoginInfo();
-  const loggedIn = Array.isArray(loginInfo) && loginInfo.includes(org);
-  if (!loggedIn) {
-    // show the profile modal
-    const block = document.querySelector('header .profile');
-    if (!block) {
-      // wait for profile to be loaded
-      window.addEventListener('profile-loaded', () => {
-        ensureLogin(org, site);
-      }, { once: true });
-      return false;
+  const render = async () => {
+    revision += 1;
+    const current = revision;
+    if (menu.matches(':popover-open')) menu.hidePopover();
+    trigger.hidden = true;
+    signin.hidden = true;
+    triggerAvatar.onerror = null;
+    triggerAvatar.src = DEFAULT_AVATAR;
+    menu.replaceChildren();
+    state.textContent = 'Checking Adobe sign-in...';
+    try {
+      await loadIms();
+    } catch {
+      if (current === revision) {
+        state.textContent = 'Adobe sign-in is unavailable. Reload the page to try again.';
+      }
+      return;
     }
-    await showModal(block, org);
-
-    const orgItems = [...block.querySelectorAll('#profile-projects .profile-orgs > li')];
-    const orgItem = orgItems.find((li) => li.dataset.name === org);
-    if (orgItem) {
-      // remove other orgs
-      orgItems.forEach((li) => {
-        if (li !== orgItem) {
-          li.remove();
-        }
+    if (current !== revision) return;
+    state.textContent = '';
+    if (!getImsToken()) {
+      signin.hidden = false;
+      return;
+    }
+    // getImsProfile() and getImsAvatar() already discard another account's results
+    const isCurrent = () => current === revision;
+    trigger.hidden = false;
+    menu.innerHTML = `
+      <div class="profile-details">
+        <button class="profile-copy" type="button" aria-label="Copy user ID"
+          aria-describedby="profile-name profile-email" disabled autofocus>
+          <img src="${DEFAULT_AVATAR}" alt="" width="72" height="72">
+          <span class="profile-identity">
+            <span id="profile-name" class="profile-name">Adobe account</span>
+            <span id="profile-email" class="profile-email"></span>
+          </span>
+          <svg class="profile-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="8" y="8" width="12" height="13" rx="2"/>
+            <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>
+          </svg>
+        </button>
+        <p class="profile-feedback" role="status"></p>
+        <span class="profile-copied" role="status"></span>
+      </div>
+      <div class="profile-links">
+        <p class="profile-label">Links</p>
+        <ul>
+          <li><a href="https://account.adobe.com/" target="_blank" rel="noopener noreferrer">Account</a></li>
+          <li><a href="https://experience.adobe.com/#/preferences" target="_blank" rel="noopener noreferrer">Preferences</a></li>
+          <li><a href="https://adminconsole.adobe.com/" target="_blank" rel="noopener noreferrer">Admin Console</a></li>
+        </ul>
+      </div>
+      <button class="profile-signout" type="button">Sign out</button>
+    `;
+    const feedback = menu.querySelector('.profile-feedback');
+    const copied = menu.querySelector('.profile-copied');
+    const copy = menu.querySelector('.profile-copy');
+    let profile;
+    getImsProfile().then((details) => {
+      if (!isCurrent()) return;
+      profile = details;
+      menu.querySelector('.profile-name').textContent = profile?.displayName || 'Adobe account';
+      menu.querySelector('.profile-email').textContent = profile?.email || '';
+      copy.disabled = !profile?.userId;
+    }).catch(() => {
+      if (isCurrent()) feedback.textContent = 'Could not load your Adobe profile.';
+    });
+    getImsAvatar().then((avatar) => {
+      if (!isCurrent()) return;
+      [triggerAvatar, copy.querySelector('img')].forEach((img) => {
+        img.onerror = () => {
+          img.onerror = null;
+          img.src = DEFAULT_AVATAR;
+        };
+        img.src = avatar;
       });
-    }
-    const siteItem = site ? orgItem?.querySelector(`li[data-name="${CSS.escape(site)}"]`) : null;
-    if (orgItem && siteItem) {
-      // select site and place focus on login button
-      siteItem.querySelector('input[type="radio"]').checked = true;
-      orgItem.querySelector('.button.login')?.focus();
-    } else if (orgItem && !site) {
-      // org exists but no site specified: select first site in org and prompt user to log in
-      orgItem.querySelector('li > input[type="radio"]').checked = true;
-    } else {
-      // open and prefill add project form
-      const addButton = block.querySelector('#profile-add-project');
-      addButton.click();
-      block.querySelector('#profile-add-org').value = org;
-      block.querySelector('#profile-add-site').value = site;
-      block.querySelector('#profile-add-save').focus();
-    }
-    return false;
-  }
-  return true;
+    }).catch(() => {
+      // keep the default avatar
+    });
+    copy.addEventListener('click', async () => {
+      feedback.textContent = '';
+      copied.textContent = '';
+      try {
+        await navigator.clipboard.writeText(profile.userId);
+        if (isCurrent()) copied.textContent = 'User ID copied.';
+      } catch {
+        if (isCurrent()) feedback.textContent = 'Could not copy user ID. Check clipboard permissions and try again.';
+      }
+    });
+    const signout = menu.querySelector('.profile-signout');
+    signout.addEventListener('click', async () => {
+      signout.disabled = true;
+      try {
+        await signOut();
+      } catch {
+        if (isCurrent()) {
+          feedback.textContent = 'Could not sign out. Please try again.';
+          signout.disabled = false;
+        }
+      }
+    });
+  };
+  window.addEventListener('ims-signed-in', render);
+  window.addEventListener('ims-signed-out', render);
+  await render();
 }

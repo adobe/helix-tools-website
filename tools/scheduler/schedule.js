@@ -1,9 +1,8 @@
 import getAdminClient from '../../scripts/admin-compat.js';
 import * as api from './utils.js';
 
-// The Sidekick popover cannot drive the tools-site profile login flow, so Admin
-// calls go directly through the admin client and rely on Sidekick token
-// injection (same pattern as page-status/orphaned-pages-popover.js).
+// The Sidekick popover can't use the Adobe sign-in, so Admin calls rely on
+// Sidekick token injection (as in page-status/orphaned-pages-popover.js).
 let scheduleAdmin;
 
 // Previews the page so it can be scheduled. Returns the shared { ok, error,
