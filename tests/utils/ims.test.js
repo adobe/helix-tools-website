@@ -66,8 +66,7 @@ function stubDialogs({ HTMLDialogElement }) {
   };
 }
 
-// a window at this URL replaces the global one until restored: the shared window's host
-// (localhost) never signs in on page load
+// a window at this URL replaces the global one until restored
 function openPage(url) {
   const shared = { window: global.window, document: global.document, Event: global.Event };
   const dom = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>', { url });
@@ -206,8 +205,8 @@ describe('utils/ims', () => {
 
   it('reads the token live', async () => {
     const adobeIMS = imslib();
-    const { getImsToken, waitForIms } = await importIms();
-    assert.equal(await waitForIms(), true);
+    const { getImsToken, loadIms } = await importIms();
+    await loadIms();
     assert.equal(getImsToken(), undefined);
 
     adobeIMS.token = 'token-1';
@@ -542,16 +541,24 @@ describe('utils/ims', () => {
     });
 
     it('opens the sign-in when the token expires soon, keeping it if cancelled', async () => {
-      imslib({ token: 'token-1', expire: new Date(Date.now() + HOUR / 2) });
-      const signedIn = (await importIms()).ensureSignedIn();
+      const adobeIMS = imslib({ token: 'token-1', expire: new Date(Date.now() + 24 * HOUR) });
+      const { requireSignIn, ensureSignedIn } = await importIms();
+      await requireSignIn();
+      // the page stays open until the token expires within the hour
+      adobeIMS.expire = new Date(Date.now() + HOUR / 2);
+      const signedIn = ensureSignedIn();
       await cancelSignIn();
       assert.equal(await signedIn, true);
       assert.equal(open.mock.callCount(), 1);
     });
 
     it('is not signed in without a token when the sign-in is cancelled', async () => {
-      imslib();
-      const signedIn = (await importIms()).ensureSignedIn();
+      const adobeIMS = imslib({ token: 'token-1', expire: new Date(Date.now() + 24 * HOUR) });
+      const { requireSignIn, ensureSignedIn } = await importIms();
+      await requireSignIn();
+      // the token expires while the page is open
+      adobeIMS.token = null;
+      const signedIn = ensureSignedIn();
       await cancelSignIn();
       assert.equal(await signedIn, false);
     });
@@ -632,17 +639,26 @@ describe('utils/ims', () => {
       }
     });
 
+    it('leaves for the sign-in page on any host, such as a branch preview', async () => {
+      const restore = openPage('https://ims-login--helix-tools-website--adobe.aem.page/tools/sitemap-admin/index.html');
+      try {
+        imslib();
+        (await importIms()).requireSignIn();
+        await settle();
+        assert.equal(countNavigations(error), 1);
+      } finally {
+        restore();
+      }
+    });
+
     [
-      ['on a host not registered for the client', {
-        url: 'https://main--helix-tools-website--adobe.aem.page/tools/sitemap-admin/index.html',
-      }],
       ['in a frame', { setup: () => { window.self = {}; } }],
       ['without imslib', {
         setup: () => { loadScriptStub = mock.fn(async () => { throw new Error('load failed'); }); },
       }],
-    ].forEach(([when, { url = TOOL, setup = () => {} }]) => {
+    ].forEach(([when, { setup }]) => {
       it(`goes on without a token ${when}`, async () => {
-        const restore = openPage(url);
+        const restore = openPage(TOOL);
         try {
           imslib();
           setup();
@@ -772,10 +788,11 @@ describe('utils/ims', () => {
       }
     });
 
-    it('leaves a page as it is on a host that does not sign in on load when another tab signs out', async () => {
-      const restore = openPage('https://main--helix-tools-website--adobe.aem.page/tools/sitemap-admin/index.html');
+    it('leaves a page as it is in a frame when another tab signs out', async () => {
+      const restore = openPage(TOOL);
       try {
         const adobeIMS = imslib({ token: 'token-1', expire: new Date(Date.now() + 24 * HOUR) });
+        window.self = {};
         const { loadIms, requireSignIn } = await importIms();
         await requireSignIn();
         await loadIms();

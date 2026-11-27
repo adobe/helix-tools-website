@@ -13,8 +13,6 @@ const SIGN_IN_PAGE = '/utils/ims-sign-in.html';
 const SIGN_IN_POLL_INTERVAL = 500;
 // 'silent' while IMS checks for an Adobe session, then 'form'
 const SIGN_IN_STAGE = 'ims-sign-in-stage';
-// registered for darkalley in IMS_ENV; IMS sends other hosts' tokens to da.live
-const AUTO_SIGN_IN_HOSTS = ['tools.aem.live', 'localhost:3000'];
 const SIGN_IN_RETURN = 'ims-sign-in-return';
 
 let ims;
@@ -169,12 +167,12 @@ function isImsTokenFresh() {
 
 /**
  * Leaves to sign in on page load if the IMS token is missing or expires within the hour.
- * Skipped on unregistered hosts, in frames (IMS refuses them), and without imslib.
+ * Skipped in frames (IMS refuses them) and without imslib.
  * @returns {Promise<void>} never resolves while the page leaves to sign in
  */
 export function requireSignIn() {
   signInChecked ??= (async () => {
-    if (!AUTO_SIGN_IN_HOSTS.includes(window.location.host) || window.self !== window.top) return;
+    if (window.self !== window.top) return;
     try {
       await loadIms();
     } catch {
