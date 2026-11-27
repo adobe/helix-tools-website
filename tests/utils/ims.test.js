@@ -612,7 +612,6 @@ describe('utils/ims', () => {
         imslib({ token: 'token-2', expire: new Date(Date.now() + 24 * HOUR) });
         await (await importIms()).requireSignIn();
         assert.equal(countNavigations(error), 1);
-        assert.equal(window.sessionStorage.getItem('ims-sign-in-left'), null);
       } finally {
         restore();
       }
@@ -641,12 +640,6 @@ describe('utils/ims', () => {
       ['without imslib', {
         setup: () => { loadScriptStub = mock.fn(async () => { throw new Error('load failed'); }); },
       }],
-      ['after "Continue without signing in"', {
-        setup: () => window.sessionStorage.setItem('ims-sign-in-skipped', 'true'),
-      }],
-      ['less than a minute after leaving to sign in', {
-        setup: () => window.sessionStorage.setItem('ims-sign-in-left', String(Date.now() - 1000)),
-      }],
     ].forEach(([when, { url = TOOL, setup = () => {} }]) => {
       it(`goes on without a token ${when}`, async () => {
         const restore = openPage(url);
@@ -661,14 +654,16 @@ describe('utils/ims', () => {
       });
     });
 
-    it('leaves again a minute after leaving to sign in', async () => {
+    it('leaves again from the next page right after leaving to sign in', async () => {
       const restore = openPage(TOOL);
       try {
         imslib();
-        window.sessionStorage.setItem('ims-sign-in-left', String(Date.now() - 61 * 1000));
         (await importIms()).requireSignIn();
         await settle();
-        assert.equal(countNavigations(error), 1);
+        // the IMS form is left without signing in, and another page opens in this tab
+        (await importIms()).requireSignIn();
+        await settle();
+        assert.equal(countNavigations(error), 2);
       } finally {
         restore();
       }
@@ -692,23 +687,21 @@ describe('utils/ims', () => {
       }
     });
 
-    it('offers to try again or to go back without signing in when the sign-in stops', async () => {
+    it('offers to try again when the sign-in stops', async () => {
       document.body.innerHTML = '<main><p class="ims-sign-in-status"></p></main>';
       window.sessionStorage.setItem('ims-sign-in-return', 'http://localhost/tools/sitemap-admin/index.html');
       // back from the IMS form without a token
       window.sessionStorage.setItem('ims-sign-in-stage', 'form');
       imslib();
       await runSignInPage();
-      // a second run (Back) doesn't add the buttons twice
+      // a second run (Back) doesn't add the button twice
       window.sessionStorage.setItem('ims-sign-in-stage', 'form');
       await runSignInPage();
       assert.equal(document.querySelector('.ims-sign-in-status').textContent, 'The Adobe sign-in did not complete.');
       const buttons = [...document.querySelectorAll('main button')];
-      assert.deepEqual(buttons.map((button) => button.textContent), ['Try again', 'Continue without signing in']);
+      assert.deepEqual(buttons.map((button) => button.textContent), ['Try again']);
 
-      buttons[1].click();
-      assert.equal(window.sessionStorage.getItem('ims-sign-in-skipped'), 'true');
-      assert.equal(window.sessionStorage.getItem('ims-sign-in-return'), null);
+      buttons[0].click();
       assert.equal(countNavigations(error), 1);
     });
 
@@ -779,25 +772,19 @@ describe('utils/ims', () => {
       }
     });
 
-    [
-      ['after "Continue without signing in"', TOOL, undefined, () => window.sessionStorage.setItem('ims-sign-in-skipped', 'true')],
-      ['on a host that does not sign in on load', 'https://main--helix-tools-website--adobe.aem.page/tools/sitemap-admin/index.html', 'token-1', () => {}],
-    ].forEach(([where, url, token, setup]) => {
-      it(`leaves a page as it is ${where} when another tab signs out`, async () => {
-        const restore = openPage(url);
-        try {
-          const adobeIMS = imslib({ token, expire: new Date(Date.now() + 24 * HOUR) });
-          setup();
-          const { loadIms, requireSignIn } = await importIms();
-          await requireSignIn();
-          await loadIms();
-          adobeIMS.token = null;
-          window.adobeid.onSignOutEventReceived();
-          assert.equal(document.querySelector('dialog'), null);
-        } finally {
-          restore();
-        }
-      });
+    it('leaves a page as it is on a host that does not sign in on load when another tab signs out', async () => {
+      const restore = openPage('https://main--helix-tools-website--adobe.aem.page/tools/sitemap-admin/index.html');
+      try {
+        const adobeIMS = imslib({ token: 'token-1', expire: new Date(Date.now() + 24 * HOUR) });
+        const { loadIms, requireSignIn } = await importIms();
+        await requireSignIn();
+        await loadIms();
+        adobeIMS.token = null;
+        window.adobeid.onSignOutEventReceived();
+        assert.equal(document.querySelector('dialog'), null);
+      } finally {
+        restore();
+      }
     });
   });
 });

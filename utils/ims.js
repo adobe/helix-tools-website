@@ -16,11 +16,6 @@ const SIGN_IN_STAGE = 'ims-sign-in-stage';
 // registered for darkalley in IMS_ENV; IMS sends other hosts' tokens to da.live
 const AUTO_SIGN_IN_HOSTS = ['tools.aem.live', 'localhost:3000'];
 const SIGN_IN_RETURN = 'ims-sign-in-return';
-const SIGN_IN_LEFT = 'ims-sign-in-left';
-// no new redirect this soon after the last one, so a failing sign-in can't loop
-const SIGN_IN_LOOP_GUARD = 60 * 1000;
-// set by "Continue without signing in"
-const SIGN_IN_SKIPPED = 'ims-sign-in-skipped';
 
 let ims;
 let signInChecked;
@@ -96,7 +91,6 @@ export function leaveToSignIn() {
   // start over if an earlier sign-in stopped halfway
   sessionStorage.removeItem(SIGN_IN_STAGE);
   sessionStorage.setItem(SIGN_IN_RETURN, window.location.href);
-  sessionStorage.setItem(SIGN_IN_LEFT, String(Date.now()));
   // replace, so Back doesn't return to a page that leaves again
   window.location.replace(SIGN_IN_PAGE);
 }
@@ -175,8 +169,7 @@ function isImsTokenFresh() {
 
 /**
  * Leaves to sign in on page load if the IMS token is missing or expires within the hour.
- * Skipped on unregistered hosts, in frames (IMS refuses them), without imslib, after
- * "Continue without signing in", and right after leaving to sign in (loop guard).
+ * Skipped on unregistered hosts, in frames (IMS refuses them), and without imslib.
  * @returns {Promise<void>} never resolves while the page leaves to sign in
  */
 export function requireSignIn() {
@@ -188,14 +181,7 @@ export function requireSignIn() {
       return;
     }
     signsInOnLoad = true;
-    const { sessionStorage } = window;
-    if (isImsTokenFresh()) {
-      sessionStorage.removeItem(SIGN_IN_LEFT);
-      sessionStorage.removeItem(SIGN_IN_SKIPPED);
-      return;
-    }
-    const left = Number(sessionStorage.getItem(SIGN_IN_LEFT));
-    if (sessionStorage.getItem(SIGN_IN_SKIPPED) || Date.now() - left < SIGN_IN_LOOP_GUARD) return;
+    if (isImsTokenFresh()) return;
     leaveToSignIn();
     await new Promise(() => {});
   })();
@@ -301,7 +287,7 @@ function getSignInReturn() {
   return undefined;
 }
 
-/** Shows why the sign-in stopped, offering to try again or continue without signing in. */
+/** Shows why the sign-in stopped, offering to try again. */
 function showSignInFailure(status, message, returnTo) {
   // a reload starts over
   window.sessionStorage.removeItem(SIGN_IN_STAGE);
@@ -312,14 +298,8 @@ function showSignInFailure(status, message, returnTo) {
   status.textContent = message;
   // not a reload: the URL may still hold IMS's answer
   const retry = createButton('Try again', () => window.location.replace(SIGN_IN_PAGE));
-  const skip = createButton('Continue without signing in', () => {
-    window.sessionStorage.setItem(SIGN_IN_SKIPPED, 'true');
-    window.sessionStorage.removeItem(SIGN_IN_RETURN);
-    window.location.replace(returnTo);
-  });
-  skip.classList.add('outline');
-  // runs again on Back: don't add the buttons twice
-  status.parentElement.replaceChildren(status, createButtonWrapper(retry, skip));
+  // runs again on Back: don't add the button twice
+  status.parentElement.replaceChildren(status, createButtonWrapper(retry));
 }
 
 /**
